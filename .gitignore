@@ -32,3 +32,25 @@ pids
 .devcontainer/
 
 .spark-workbench-id
+
+# Laravel
+/vendor/
+/public/hot
+/public/storage
+/public/build
+/storage/*.key
+Homestead.json
+Homestead.yaml
+
+# Database
+/database/*.sqlite
+/database/*.sqlite-journal
+
+# Cache
+/bootstrap/cache/*
+!/bootstrap/cache/.gitkeep
+/storage/framework/cache/data/*
+!/storage/framework/cache/data/.gitkeep
+
+# Spark backup
+vite.config.spark.backup.ts
