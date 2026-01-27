@@ -28,7 +28,7 @@ export default defineConfig({
         },
     },
     build: {
-        manifest: true,
+        manifest: 'manifest.json', // ✅ Force manifest at root of build directory
         outDir: 'public/build',
         rollupOptions: {
             input: [
