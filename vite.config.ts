@@ -1,42 +1,40 @@
-import tailwindcss from "@tailwindcss/vite";
-import react from "@vitejs/plugin-react";
-import { defineConfig, PluginOption } from "vite";
-
-import sparkPlugin from "@github/spark/spark-vite-plugin";
-import createIconImportProxy from "@github/spark/vitePhosphorIconProxyPlugin";
-import path from 'path'
+import { defineConfig } from 'vite';
+import laravel from 'laravel-vite-plugin';
+import react from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
+import path from 'path';
 
 export default defineConfig({
-  plugins: [
-    react({
-      jsxRuntime: 'automatic',
-      fastRefresh: true,
-    }),
-    tailwindcss(),
-    createIconImportProxy() as PluginOption,
-    sparkPlugin() as PluginOption,
-  ],
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src')
-    }
-  },
-  optimizeDeps: {
-    exclude: ['@github/spark'],
-    include: ['react', 'react-dom', 'react/jsx-runtime']
-  },
-  server: {
-    fs: {
-      strict: false
+    plugins: [
+        laravel({
+            input: ['resources/css/app.css', 'resources/js/app.tsx'],
+            refresh: true,
+        }),
+        react(),
+        tailwindcss(),
+    ],
+    resolve: {
+        alias: {
+            '@': path.resolve(__dirname, './resources/js'),
+        },
     },
-    hmr: {
-      overlay: true
-    }
-  },
-  clearScreen: false,
-  build: {
-    commonjsOptions: {
-      include: [/node_modules/]
-    }
-  }
+    server: {
+        host: '0.0.0.0',
+        port: 5173,
+        strictPort: false,
+        hmr: false, // ✅ Desativa HMR (problemas em Codespace)
+        watch: {
+            usePolling: true, // ✅ Necessário para Codespace
+        },
+    },
+    build: {
+        manifest: true,
+        outDir: 'public/build',
+        rollupOptions: {
+            input: [
+                'resources/css/app.css',
+                'resources/js/app.tsx',
+            ],
+        },
+    },
 });
