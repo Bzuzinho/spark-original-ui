@@ -1,14 +1,31 @@
-# 🎉 FASE 3 COMPLETA - Migração Spark → Laravel 11
+# 🎉 FASE 3.5 COMPLETA - Layout Spark Migrado para Laravel
 
-## ✅ STATUS: FUNDAÇÃO ESTABELECIDA
+## ✅ STATUS: VISUAL SPARK IMPLEMENTADO
 
-A migração do Spark para Laravel 11 + Inertia React + PostgreSQL está **funcionando e pronta para expansão**.
+A migração visual do Spark para Laravel 11 + Inertia React está **funcionando com o layout original preservado**.
 
 ---
 
 ## 📊 O QUE FOI FEITO (29 Janeiro 2026)
 
-### FASE 3.0: PostgreSQL Setup ✅
+### FASE 3.5: Migração Visual Completa ✅
+- ✅ Layout Spark copiado (`src/components/Layout.tsx` → `resources/js/Layouts/Spark/AppLayout.tsx`)
+- ✅ 22 componentes UI migrados (button, card, avatar, input, etc.)
+- ✅ @phosphor-icons/react instalado
+- ✅ CSS customizado aplicado com CSS variables HSL
+- ✅ Dashboard reescrito para usar Inertia props
+- ✅ Sidebar 64px com 9 menus principais
+- ✅ Avatar com iniciais do utilizador
+- ✅ Mobile responsive preservado
+
+**Componentes UI copiados:**
+- button, card, avatar, input, badge
+- dropdown-menu, sidebar, navigation-menu
+- separator, scroll-area, dialog, alert
+- sheet, skeleton, table, form, select
+- checkbox, switch, textarea, tooltip, label
+
+### FASE 3.0-3.4: Fundação (Anteriormente Completadas) ✅
 - ✅ Driver `pdo_pgsql` instalado e configurado
 - ✅ Conexão ao Neon PostgreSQL estabelecida
 - ✅ Migrations com `$withinTransaction = false` (fix para PostgreSQL constraints)
