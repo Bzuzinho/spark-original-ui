@@ -19,3 +19,9 @@ Route::middleware('auth')->group(function () {
 });
 
 require __DIR__.'/auth.php';
+
+// Test route (remove later)
+Route::get('/test-components', function () {
+    return Inertia::render('TestComponents');
+})->name('test.components');
+

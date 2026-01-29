@@ -1,40 +1,28 @@
 import { defineConfig } from 'vite';
 import laravel from 'laravel-vite-plugin';
 import react from '@vitejs/plugin-react';
-import tailwindcss from '@tailwindcss/vite';
-import path from 'path';
 
 export default defineConfig({
     plugins: [
         laravel({
-            input: ['resources/css/app.css', 'resources/js/app.tsx'],
+            input: 'resources/js/app.tsx',
             refresh: true,
         }),
         react(),
-        tailwindcss(),
     ],
-    resolve: {
-        alias: {
-            '@': path.resolve(__dirname, './resources/js'),
-        },
-    },
     server: {
         host: '0.0.0.0',
         port: 5173,
-        strictPort: false,
-        hmr: false, // ✅ Desativa HMR (problemas em Codespace)
-        watch: {
-            usePolling: true, // ✅ Necessário para Codespace
+        strictPort: true,
+        cors: true,
+        hmr: {
+            host: 'ominous-xylophone-777r6x44pjjhrr96-5173.app.github.dev',
+            protocol: 'wss',
         },
     },
-    build: {
-        manifest: 'manifest.json', // ✅ Force manifest at root of build directory
-        outDir: 'public/build',
-        rollupOptions: {
-            input: [
-                'resources/css/app.css',
-                'resources/js/app.tsx',
-            ],
+    resolve: {
+        alias: {
+            '@': '/resources/js',
         },
     },
 });
