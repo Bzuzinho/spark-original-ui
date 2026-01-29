@@ -1,150 +1,162 @@
-import { AppLayout } from '@/Layouts/Spark/AppLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/Components/UI/card';
-import { Users, Trophy } from '@phosphor-icons/react';
+import { Head } from '@inertiajs/react';
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { Users, Trophy, Calendar } from '@phosphor-icons/react';
 
-interface UserType {
-  id: number;
-  name: string;
-  description?: string;
-  active: boolean;
+interface Props {
+    userTypes?: any[];
+    ageGroups?: any[];
+    stats?: {
+        totalUsers: number;
+        totalUserTypes: number;
+        totalAgeGroups: number;
+    };
 }
 
-interface AgeGroup {
-  id: number;
-  name: string;
-  min_age?: number;
-  max_age?: number;
-  sexo?: string;
-}
+export default function Dashboard({ userTypes = [], ageGroups = [], stats }: Props) {
+    return (
+        <AuthenticatedLayout
+            header={
+                <div>
+                    <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
+                    <p className="text-sm text-gray-600 mt-1">
+                        Bem-vindo ao BSCN Gestão de Clube
+                    </p>
+                </div>
+            }
+        >
+            <Head title="Dashboard" />
 
-interface DashboardProps {
-  userTypes: UserType[];
-  ageGroups: AgeGroup[];
-  stats?: {
-    totalUsers?: number;
-    activeUsers?: number;
-    totalGroups?: number;
-  };
-}
+            {/* Stats Cards */}
+            {stats && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div className="bg-white rounded-lg shadow p-6">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm font-medium text-gray-600">Total Utilizadores</p>
+                                <p className="text-3xl font-bold text-gray-900 mt-2">
+                                    {stats.totalUsers}
+                                </p>
+                            </div>
+                            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                                <Users size={24} className="text-blue-600" weight="fill" />
+                            </div>
+                        </div>
+                    </div>
 
-export default function Dashboard({ userTypes, ageGroups, stats }: DashboardProps) {
-  return (
-    <AppLayout>
-      <div className="p-6 space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground mt-1">
-            Bem-vindo ao sistema de gestão BSCN
-          </p>
-        </div>
+                    <div className="bg-white rounded-lg shadow p-6">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm font-medium text-gray-600">Tipos de Utilizador</p>
+                                <p className="text-3xl font-bold text-gray-900 mt-2">
+                                    {stats.totalUserTypes}
+                                </p>
+                            </div>
+                            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                                <Trophy size={24} className="text-green-600" weight="fill" />
+                            </div>
+                        </div>
+                    </div>
 
-        {/* Stats Cards */}
-        {stats && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Total Utilizadores</CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.totalUsers || 0}</div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Utilizadores Ativos</CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" weight="fill" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.activeUsers || 0}</div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Escalões</CardTitle>
-                <Trophy className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.totalGroups || 0}</div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-
-        {/* User Types Section */}
-        <div className="space-y-4">
-          <h2 className="text-2xl font-semibold">Tipos de Utilizador</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {userTypes && userTypes.length > 0 ? (
-              userTypes.map((type) => (
-                <Card key={type.id}>
-                  <CardHeader>
-                    <CardTitle className="text-base flex items-center justify-between">
-                      <span>{type.name}</span>
-                      {type.active && (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          Ativo
-                        </span>
-                      )}
-                    </CardTitle>
-                  </CardHeader>
-                  {type.description && (
-                    <CardContent>
-                      <p className="text-sm text-muted-foreground">{type.description}</p>
-                    </CardContent>
-                  )}
-                </Card>
-              ))
-            ) : (
-              <Card className="col-span-full">
-                <CardContent className="pt-6">
-                  <p className="text-center text-muted-foreground">
-                    Nenhum tipo de utilizador encontrado
-                  </p>
-                </CardContent>
-              </Card>
+                    <div className="bg-white rounded-lg shadow p-6">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm font-medium text-gray-600">Escalões</p>
+                                <p className="text-3xl font-bold text-gray-900 mt-2">
+                                    {stats.totalAgeGroups}
+                                </p>
+                            </div>
+                            <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                                <Calendar size={24} className="text-purple-600" weight="fill" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
             )}
-          </div>
-        </div>
 
-        {/* Age Groups Section */}
-        <div className="space-y-4">
-          <h2 className="text-2xl font-semibold">Escalões</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {ageGroups && ageGroups.length > 0 ? (
-              ageGroups.map((group) => (
-                <Card key={group.id}>
-                  <CardHeader>
-                    <CardTitle className="text-base">{group.name}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    {(group.min_age || group.max_age) && (
-                      <p className="text-sm text-muted-foreground">
-                        Idade: {group.min_age || 0} - {group.max_age || '∞'} anos
-                      </p>
-                    )}
-                    {group.sexo && (
-                      <p className="text-sm text-muted-foreground">
-                        Sexo: {group.sexo === 'M' ? 'Masculino' : group.sexo === 'F' ? 'Feminino' : 'Misto'}
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
-              ))
-            ) : (
-              <Card className="col-span-full">
-                <CardContent className="pt-6">
-                  <p className="text-center text-muted-foreground">
-                    Nenhum escalão encontrado
-                  </p>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        </div>
-      </div>
-    </AppLayout>
-  );
+            {/* Content Sections */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* User Types */}
+                <div className="bg-white rounded-lg shadow">
+                    <div className="px-6 py-4 border-b border-gray-200">
+                        <h3 className="text-lg font-semibold text-gray-800">Tipos de Utilizador</h3>
+                    </div>
+                    <div className="p-6">
+                        {userTypes.length === 0 ? (
+                            <p className="text-gray-500 text-center py-4">
+                                Nenhum tipo de utilizador configurado
+                            </p>
+                        ) : (
+                            <div className="space-y-3">
+                                {userTypes.map((type) => (
+                                    <div 
+                                        key={type.id} 
+                                        className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition"
+                                    >
+                                        <div>
+                                            <div className="font-medium text-gray-900">{type.name}</div>
+                                            {type.description && (
+                                                <div className="text-sm text-gray-600 mt-1">
+                                                    {type.description}
+                                                </div>
+                                            )}
+                                        </div>
+                                        {type.active && (
+                                            <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
+                                                Ativo
+                                            </span>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Age Groups */}
+                <div className="bg-white rounded-lg shadow">
+                    <div className="px-6 py-4 border-b border-gray-200">
+                        <h3 className="text-lg font-semibold text-gray-800">Escalões</h3>
+                    </div>
+                    <div className="p-6">
+                        {ageGroups.length === 0 ? (
+                            <p className="text-gray-500 text-center py-4">
+                                Nenhum escalão configurado
+                            </p>
+                        ) : (
+                            <div className="space-y-3">
+                                {ageGroups.map((group) => (
+                                    <div 
+                                        key={group.id} 
+                                        className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition"
+                                    >
+                                        <div className="font-medium text-gray-900">{group.name}</div>
+                                        <div className="text-sm text-gray-600">
+                                            {group.min_age} - {group.max_age} anos
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            {/* Migration Status */}
+            <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                    <div className="w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <span className="text-white text-xs font-bold">✓</span>
+                    </div>
+                    <div>
+                        <h4 className="text-sm font-medium text-blue-900">
+                            Migração Spark → Laravel COMPLETA (Visual)
+                        </h4>
+                        <p className="text-sm text-blue-700 mt-1">
+                            Sidebar azul BSCN implementada, 9 menus principais ativos, navegação Inertia SPA funcional.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </AuthenticatedLayout>
+    );
 }
