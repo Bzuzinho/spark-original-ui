@@ -14,10 +14,8 @@ export default defineConfig({
         host: '0.0.0.0',
         port: 5173,
         strictPort: true,
-        cors: true,
         hmr: {
             host: 'ominous-xylophone-777r6x44pjjhrr96-5173.app.github.dev',
-            protocol: 'wss',
         },
     },
     resolve: {
