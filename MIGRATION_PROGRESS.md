@@ -8,22 +8,27 @@ A migração visual do Spark para Laravel 11 + Inertia React está **funcionando
 
 ## 📊 O QUE FOI FEITO (29 Janeiro 2026)
 
-### FASE 3.5: Migração Visual Completa ✅
-- ✅ Layout Spark copiado (`src/components/Layout.tsx` → `resources/js/Layouts/Spark/AppLayout.tsx`)
-- ✅ 22 componentes UI migrados (button, card, avatar, input, etc.)
-- ✅ @phosphor-icons/react instalado
-- ✅ CSS customizado aplicado com CSS variables HSL
-- ✅ Dashboard reescrito para usar Inertia props
-- ✅ Sidebar 64px com 9 menus principais
-- ✅ Avatar com iniciais do utilizador
-- ✅ Mobile responsive preservado
+### FASE 3.5: Migração Visual COM CSS SPARK ORIGINAL ✅
+- ✅ **CSS Variables Spark copiadas**: oklch() colors do Spark original (`src/index.css`)
+- ✅ **Sidebar com classes corretas**: `bg-card`, `bg-primary`, `text-muted-foreground` (Spark style)
+- ✅ **Tailwind v3 syntax**: `@tailwind base/components/utilities` (v4 @import não funciona no Laravel)
+- ✅ **@phosphor-icons/react** instalado e funcionando
+- ✅ **Build success**: 7.36s, zero erros
+- ✅ **9 menus** principais + Configurações
+- ✅ **Mobile responsive** preservado
 
-**Componentes UI copiados:**
-- button, card, avatar, input, badge
-- dropdown-menu, sidebar, navigation-menu
-- separator, scroll-area, dialog, alert
-- sheet, skeleton, table, form, select
-- checkbox, switch, textarea, tooltip, label
+**PROBLEMA RESOLVIDO** (29 Jan 18:10):
+- ❌ **Antes**: Sidebar com `bg-blue-600` hardcoded (azul estático)
+- ✅ **Depois**: Sidebar com `bg-card` + `bg-primary` (variáveis CSS do Spark)
+- ✅ **CSS oklch()**: Copiado EXATAMENTE do Spark (`--primary: oklch(0.45 0.15 250)`)
+- ✅ **Visual agora é igual ao Spark deploy**: sidebar cinza claro, primary azul nos active states
+
+**CRÍTICO ENTENDIMENTO**:
+O Spark original NÃO usa sidebar azul sólida! Usa:
+- `bg-card` (cinza claro/branco) para sidebar background
+- `bg-primary` (azul) apenas para **active state** dos menus
+- `text-muted-foreground` para textos secundários
+- `hover:bg-muted` para hover states suaves
 
 ### FASE 3.0-3.4: Fundação (Anteriormente Completadas) ✅
 - ✅ Driver `pdo_pgsql` instalado e configurado
