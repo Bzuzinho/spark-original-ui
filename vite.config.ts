@@ -15,7 +15,9 @@ export default defineConfig({
         port: 5173,
         strictPort: true,
         hmr: {
+            protocol: 'wss',
             host: 'ominous-xylophone-777r6x44pjjhrr96-5173.app.github.dev',
+            clientPort: 443,
         },
     },
     resolve: {
