@@ -23,7 +23,7 @@
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
         "laravel-vite-plugin": "^1.1.1",
-        "lucide-react": "^0.469.0",
+        "lucide-react": "^0.563.0",
         "postcss": "^8.4.49",
         "react": "^19.0.0",
         "react-dom": "^19.0.0",
