@@ -42,16 +42,16 @@ export default function Sidebar() {
     };
 
     return (
-        <aside className="fixed left-0 top-0 h-screen w-64 bg-blue-600 text-white flex flex-col">
+        <aside className="fixed left-0 top-0 h-screen w-64 bg-card border-r flex flex-col">
             {/* Logo Section */}
-            <div className="p-6 border-b border-blue-500">
+            <div className="p-6 border-b">
                 <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center">
-                        <span className="text-blue-600 font-bold text-xl">BC</span>
+                    <div className="w-12 h-12 bg-primary text-primary-foreground rounded-full flex items-center justify-center">
+                        <span className="font-bold text-xl">BC</span>
                     </div>
                     <div>
                         <div className="font-bold text-lg">BSCN</div>
-                        <div className="text-sm text-blue-200">Gestão de Clube</div>
+                        <div className="text-sm text-muted-foreground">Gestão de Clube</div>
                     </div>
                 </div>
             </div>
@@ -71,8 +71,8 @@ export default function Sidebar() {
                                         flex items-center gap-3 px-4 py-3 rounded-lg
                                         transition-colors duration-200
                                         ${active 
-                                            ? 'bg-blue-700 text-white font-medium' 
-                                            : 'text-blue-100 hover:bg-blue-500 hover:text-white'
+                                            ? 'bg-primary text-primary-foreground font-medium' 
+                                            : 'hover:bg-muted'
                                         }
                                     `}
                                 >
@@ -86,7 +86,7 @@ export default function Sidebar() {
             </nav>
 
             {/* Bottom Section */}
-            <div className="border-t border-blue-500">
+            <div className="border-t">
                 {/* Configurações */}
                 <Link
                     href="/settings"
@@ -94,8 +94,8 @@ export default function Sidebar() {
                         flex items-center gap-3 px-7 py-3
                         transition-colors duration-200
                         ${isActive('/settings')
-                            ? 'bg-blue-700 text-white'
-                            : 'text-blue-100 hover:bg-blue-500'
+                            ? 'bg-primary text-primary-foreground'
+                            : 'hover:bg-muted'
                         }
                     `}
                 >
@@ -104,9 +104,9 @@ export default function Sidebar() {
                 </Link>
 
                 {/* User Section */}
-                <div className="p-4 bg-blue-700">
+                <div className="p-4">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-blue-800 flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
                             <span className="text-sm font-medium">
                                 {auth?.user?.name?.charAt(0).toUpperCase() || 'A'}
                             </span>
@@ -115,7 +115,7 @@ export default function Sidebar() {
                             <div className="text-sm font-medium truncate">
                                 {auth?.user?.name || 'Administrador'}
                             </div>
-                            <div className="text-xs text-blue-200 truncate">
+                            <div className="text-xs text-muted-foreground truncate">
                                 {auth?.user?.email || 'admin@bscn.pt'}
                             </div>
                         </div>
@@ -125,7 +125,7 @@ export default function Sidebar() {
                 {/* Sair */}
                 <button
                     onClick={handleLogout}
-                    className="w-full flex items-center gap-3 px-7 py-3 text-blue-100 hover:bg-blue-500 transition-colors"
+                    className="w-full flex items-center gap-3 px-7 py-3 hover:bg-muted transition-colors"
                 >
                     <SignOut size={20} />
                     <span>Sair</span>
