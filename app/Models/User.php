@@ -19,6 +19,33 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        // Spark fields
+        'numero_socio',
+        'nome_completo',
+        'perfil',
+        'tipo_membro',
+        'estado',
+        'data_nascimento',
+        'menor',
+        'sexo',
+        'escalao',
+        'rgpd',
+        'consentimento',
+        'afiliacao',
+        'declaracao_de_transporte',
+        'ativo_desportivo',
+        'morada',
+        'codigo_postal',
+        'localidade',
+        'telefone',
+        'telemovel',
+        'nif',
+        'numero_cartao_cidadao',
+        'validade_cartao_cidadao',
+        'numero_utente',
+        'contacto_emergencia_nome',
+        'contacto_emergencia_telefone',
+        'contacto_emergencia_relacao',
     ];
 
     /**
@@ -41,6 +68,17 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            // Spark casts
+            'data_nascimento' => 'date',
+            'validade_cartao_cidadao' => 'date',
+            'menor' => 'boolean',
+            'rgpd' => 'boolean',
+            'consentimento' => 'boolean',
+            'afiliacao' => 'boolean',
+            'declaracao_de_transporte' => 'boolean',
+            'ativo_desportivo' => 'boolean',
+            'tipo_membro' => 'array',
+            'escalao' => 'array',
         ];
     }
 }
