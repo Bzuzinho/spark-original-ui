@@ -9,7 +9,19 @@ Route::get('/', function () {
 });
 
 Route::get('/dashboard', function () {
-    return Inertia::render('Dashboard');
+    $userTypes = \App\Models\UserType::where('active', true)->get();
+    $ageGroups = \App\Models\AgeGroup::all();
+    $stats = [
+        'totalUsers' => \App\Models\User::count(),
+        'activeUsers' => \App\Models\User::whereNotNull('email_verified_at')->count(),
+        'totalGroups' => $ageGroups->count(),
+    ];
+    
+    return Inertia::render('Dashboard', [
+        'userTypes' => $userTypes,
+        'ageGroups' => $ageGroups,
+        'stats' => $stats,
+    ]);
 })->middleware(['auth'])->name('dashboard');
 
 Route::middleware('auth')->group(function () {
