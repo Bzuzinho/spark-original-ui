@@ -1,6 +1,6 @@
-import { Head } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Users, Trophy, Calendar } from '@phosphor-icons/react';
+import { Users, Trophy, Calendar, GraduationCap, CurrencyCircleDollar } from '@phosphor-icons/react';
 import StatsCard from '@/Components/StatsCard';
 
 interface Props {
@@ -10,6 +10,11 @@ interface Props {
         totalUsers: number;
         totalUserTypes: number;
         totalAgeGroups: number;
+        totalMembers: number;
+        activeAthletes: number;
+        guardians: number;
+        upcomingEvents: number;
+        monthlyRevenue: number;
     };
 }
 
@@ -27,39 +32,144 @@ export default function Dashboard({ userTypes = [], ageGroups = [], stats }: Pro
         >
             <Head title="Dashboard" />
 
-            {/* Stats Cards */}
+            {/* Stats Cards - 5 cards */}
             {stats && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
                     <StatsCard
-                        title="Total Utilizadores"
-                        value={stats.totalUsers}
+                        title="Membros Ativos"
+                        value={stats.totalMembers}
                         icon={Users}
-                        iconBgColor="#dbeafe"
-                        iconColor="#2563eb"
+                        iconBgColor="#DBEAFE"
+                        iconColor="#2563EB"
                     />
                     <StatsCard
-                        title="Tipos de Utilizador"
-                        value={stats.totalUserTypes}
+                        title="Atletas Ativos"
+                        value={stats.activeAthletes}
                         icon={Trophy}
-                        iconBgColor="#dcfce7"
-                        iconColor="#16a34a"
+                        iconBgColor="#D1FAE5"
+                        iconColor="#10B981"
                     />
                     <StatsCard
-                        title="Escalões"
-                        value={stats.totalAgeGroups}
+                        title="Encarregados de Educação"
+                        value={stats.guardians}
+                        icon={GraduationCap}
+                        iconBgColor="#FED7AA"
+                        iconColor="#F97316"
+                    />
+                    <StatsCard
+                        title="Eventos Próximos"
+                        value={stats.upcomingEvents}
                         icon={Calendar}
-                        iconBgColor="#f3e8ff"
-                        iconColor="#9333ea"
+                        iconBgColor="#FED7AA"
+                        iconColor="#F97316"
+                    />
+                    <StatsCard
+                        title="Receitas do Mês"
+                        value={`€${stats.monthlyRevenue.toFixed(2)}`}
+                        icon={CurrencyCircleDollar}
+                        iconBgColor="#E9D5FF"
+                        iconColor="#9333EA"
                     />
                 </div>
             )}
 
-            {/* Content Sections */}
+            {/* Grid 3 Sections: Events | Activity | Quick Access */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                
+                {/* Upcoming Events */}
+                <div className="bg-white rounded-lg shadow p-6">
+                    <h3 className="text-lg font-medium text-gray-800 mb-4">Próximos Eventos</h3>
+                    <div className="text-center py-8">
+                        <Calendar size={48} className="text-gray-300 mx-auto mb-3" weight="thin" />
+                        <p className="text-gray-500 text-sm">Nenhum evento próximo</p>
+                    </div>
+                    <Link 
+                        href="/eventos" 
+                        className="block w-full mt-4 text-sm text-center text-blue-600 hover:underline"
+                    >
+                        Ver Todos os Eventos →
+                    </Link>
+                </div>
+
+                {/* Recent Activity */}
+                <div className="bg-white rounded-lg shadow p-6">
+                    <h3 className="text-lg font-medium text-gray-800 mb-4">Atividade Recente</h3>
+                    <div className="space-y-2">
+                        {/* Item 1 */}
+                        <div className="text-sm border-b border-gray-100 pb-3">
+                            <p className="font-medium text-gray-900">Pagamento de fatura mensal - Alexandre Quitério Anastácio</p>
+                            <div className="flex justify-between items-center mt-1">
+                                <span className="text-gray-500 text-xs">07/10/2025</span>
+                                <span className="text-green-600 font-medium">+€35.00</span>
+                            </div>
+                        </div>
+                        {/* Item 2 */}
+                        <div className="text-sm border-b border-gray-100 pb-3">
+                            <p className="font-medium text-gray-900">Pagamento de fatura mensal - Ana Luísa Silva Rodrigues</p>
+                            <div className="flex justify-between items-center mt-1">
+                                <span className="text-gray-500 text-xs">07/10/2025</span>
+                                <span className="text-green-600 font-medium">+€25.00</span>
+                            </div>
+                        </div>
+                        {/* Item 3 */}
+                        <div className="text-sm pb-1">
+                            <p className="font-medium text-gray-900">Pagamento de fatura mensal - André Sousa Paulo</p>
+                            <div className="flex justify-between items-center mt-1">
+                                <span className="text-gray-500 text-xs">07/10/2025</span>
+                                <span className="text-green-600 font-medium">+€25.00</span>
+                            </div>
+                        </div>
+                    </div>
+                    <Link 
+                        href="/financeiro" 
+                        className="block w-full mt-4 text-sm text-center text-blue-600 hover:underline"
+                    >
+                        Ver Financeiro →
+                    </Link>
+                </div>
+
+                {/* Quick Access */}
+                <div className="bg-white rounded-lg shadow p-6">
+                    <h3 className="text-lg font-medium text-gray-800 mb-4">Acesso Rápido</h3>
+                    <div className="grid grid-cols-2 gap-3">
+                        <Link 
+                            href="/membros" 
+                            className="flex flex-col items-center justify-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all"
+                        >
+                            <Users size={32} className="text-gray-600 mb-2" />
+                            <span className="text-sm text-gray-700">Membros</span>
+                        </Link>
+                        <Link 
+                            href="/desportivo" 
+                            className="flex flex-col items-center justify-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all"
+                        >
+                            <Trophy size={32} className="text-gray-600 mb-2" />
+                            <span className="text-sm text-gray-700">Desportiva</span>
+                        </Link>
+                        <Link 
+                            href="/eventos" 
+                            className="flex flex-col items-center justify-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all"
+                        >
+                            <Calendar size={32} className="text-gray-600 mb-2" />
+                            <span className="text-sm text-gray-700">Eventos</span>
+                        </Link>
+                        <Link 
+                            href="/financeiro" 
+                            className="flex flex-col items-center justify-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all"
+                        >
+                            <CurrencyCircleDollar size={32} className="text-gray-600 mb-2" />
+                            <span className="text-sm text-gray-700">Financeiro</span>
+                        </Link>
+                    </div>
+                </div>
+            </div>
+
+            {/* Content Sections - 2 columns: User Types | Age Groups */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* User Types */}
                 <div className="bg-white rounded-lg shadow">
                     <div className="px-6 py-4 border-b border-gray-200">
-                        <h3 className="text-lg font-semibold text-gray-800">Tipos de Utilizador</h3>
+                        <h3 className="text-lg font-medium text-gray-800">Tipos de Utilizador</h3>
                     </div>
                     <div className="p-6">
                         {userTypes.length === 0 ? (
@@ -67,7 +177,7 @@ export default function Dashboard({ userTypes = [], ageGroups = [], stats }: Pro
                                 Nenhum tipo de utilizador configurado
                             </p>
                         ) : (
-                            <div className="space-y-3">
+                            <div className="space-y-2">
                                 {userTypes.map((type) => (
                                     <div 
                                         key={type.id} 
@@ -96,7 +206,7 @@ export default function Dashboard({ userTypes = [], ageGroups = [], stats }: Pro
                 {/* Age Groups */}
                 <div className="bg-white rounded-lg shadow">
                     <div className="px-6 py-4 border-b border-gray-200">
-                        <h3 className="text-lg font-semibold text-gray-800">Escalões</h3>
+                        <h3 className="text-lg font-medium text-gray-800">Escalões</h3>
                     </div>
                     <div className="p-6">
                         {ageGroups.length === 0 ? (
@@ -104,7 +214,7 @@ export default function Dashboard({ userTypes = [], ageGroups = [], stats }: Pro
                                 Nenhum escalão configurado
                             </p>
                         ) : (
-                            <div className="space-y-3">
+                            <div className="space-y-2">
                                 {ageGroups.map((group) => (
                                     <div 
                                         key={group.id} 
@@ -118,23 +228,6 @@ export default function Dashboard({ userTypes = [], ageGroups = [], stats }: Pro
                                 ))}
                             </div>
                         )}
-                    </div>
-                </div>
-            </div>
-
-            {/* Migration Status */}
-            <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="flex items-start gap-3">
-                    <div className="w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                        <span className="text-white text-xs font-bold">✓</span>
-                    </div>
-                    <div>
-                        <h4 className="text-sm font-medium text-blue-900">
-                            Migração Spark → Laravel COMPLETA (Visual)
-                        </h4>
-                        <p className="text-sm text-blue-700 mt-1">
-                            Sidebar azul BSCN implementada, 9 menus principais ativos, navegação Inertia SPA funcional.
-                        </p>
                     </div>
                 </div>
             </div>
