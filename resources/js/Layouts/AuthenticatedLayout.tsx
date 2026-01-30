@@ -1,7 +1,7 @@
 import { Head, Link } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import StatsCard from '@/Components/StatsCard';
-import { Users, Trophy, Calendar, GraduationCap, CurrencyEuro } from '@phosphor-icons/react';
+import { Users, Trophy, Calendar, GraduationCap, CurrencyCircleDollar } from '@phosphor-icons/react';
 
 interface Props {
     userTypes?: any[];
@@ -75,7 +75,7 @@ export default function Dashboard({
                 <StatsCard
                     title="Receitas do Mês"
                     value={`€${stats.monthlyRevenue.toFixed(2)}`}
-                    icon={CurrencyEuro}
+                    icon={CurrencyCircleDollar}
                     iconBgColor="#E9D5FF"
                     iconColor="#9333EA"
                 />
@@ -163,7 +163,7 @@ export default function Dashboard({
                             href="/financeiro" 
                             className="flex flex-col items-center justify-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all"
                         >
-                            <CurrencyEuro size={32} className="text-gray-600 mb-2" weight="regular" />
+                            <CurrencyCircleDollar size={32} className="text-gray-600 mb-2" weight="regular" />
                             <span className="text-sm text-gray-700">Financeiro</span>
                         </Link>
                     </div>
