@@ -11,8 +11,6 @@ class MovementItem extends Model
     use HasUuids;
 
     protected $table = 'movement_items';
-    protected $keyType = 'string';
-    public $incrementing = false;
 
     protected $fillable = [
         'movimento_id',

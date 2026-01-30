@@ -9,8 +9,6 @@ class ClubSetting extends Model
 {
     use HasUuids;
 
-    protected $keyType = 'string';
-    public $incrementing = false;
 
     protected $fillable = [
         'nome_clube',

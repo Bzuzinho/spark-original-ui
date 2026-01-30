@@ -11,8 +11,6 @@ class Result extends Model
 {
     use HasUuids;
 
-    protected $keyType = 'string';
-    public $incrementing = false;
 
     protected $fillable = [
         'prova_id',

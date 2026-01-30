@@ -11,8 +11,6 @@ class Competition extends Model
 {
     use HasUuids;
 
-    protected $keyType = 'string';
-    public $incrementing = false;
 
     protected $fillable = [
         'evento_id',

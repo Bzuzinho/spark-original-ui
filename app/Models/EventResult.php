@@ -11,8 +11,6 @@ class EventResult extends Model
     use HasUuids;
 
     protected $table = 'event_results';
-    protected $keyType = 'string';
-    public $incrementing = false;
 
     protected $fillable = [
         'evento_id',

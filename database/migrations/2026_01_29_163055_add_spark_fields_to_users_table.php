@@ -18,12 +18,12 @@ return new class extends Migration
             $table->string('numero_socio')->unique()->nullable();
             $table->string('nome_completo')->nullable();
             $table->string('perfil')->default('user'); // admin, user, atleta
-            $table->jsonb('tipo_membro')->default('[]'); // Array de tipos
+            $table->json('tipo_membro')->nullable(); // Array de tipos
             $table->string('estado')->default('ativo'); // ativo, inativo, suspenso
             $table->date('data_nascimento')->nullable();
             $table->boolean('menor')->default(false);
             $table->string('sexo')->nullable(); // masculino, feminino
-            $table->jsonb('escalao')->default('[]'); // Array de IDs de escalões
+            $table->json('escalao')->nullable(); // Array de IDs de escalões
             
             // Consents/Documents
             $table->boolean('rgpd')->default(false);

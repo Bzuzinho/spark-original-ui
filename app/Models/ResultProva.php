@@ -11,8 +11,6 @@ class ResultProva extends Model
     use HasUuids;
 
     protected $table = 'result_provas';
-    protected $keyType = 'string';
-    public $incrementing = false;
 
     protected $fillable = [
         'atleta_id',

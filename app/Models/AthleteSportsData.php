@@ -11,8 +11,6 @@ class AthleteSportsData extends Model
     use HasUuids;
 
     protected $table = 'athlete_sports_data';
-    protected $keyType = 'string';
-    public $incrementing = false;
 
     protected $fillable = [
         'atleta_id',

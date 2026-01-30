@@ -11,8 +11,6 @@ class Macrocycle extends Model
 {
     use HasUuids;
 
-    protected $keyType = 'string';
-    public $incrementing = false;
 
     protected $fillable = [
         'epoca_id',

@@ -11,8 +11,6 @@ class InvoiceItem extends Model
     use HasUuids;
 
     protected $table = 'invoice_items';
-    protected $keyType = 'string';
-    public $incrementing = false;
 
     protected $fillable = [
         'fatura_id',

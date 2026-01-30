@@ -11,8 +11,6 @@ class ResultSplit extends Model
     use HasUuids;
 
     protected $table = 'result_splits';
-    protected $keyType = 'string';
-    public $incrementing = false;
 
     protected $fillable = [
         'resultado_id',

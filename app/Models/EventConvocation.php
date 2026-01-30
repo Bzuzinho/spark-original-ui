@@ -11,8 +11,6 @@ class EventConvocation extends Model
     use HasUuids;
 
     protected $table = 'event_convocations';
-    protected $keyType = 'string';
-    public $incrementing = false;
 
     protected $fillable = [
         'evento_id',
