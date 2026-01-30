@@ -1,6 +1,7 @@
 import { Head } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Users, Trophy, Calendar } from '@phosphor-icons/react';
+import StatsCard from '@/Components/StatsCard';
 
 interface Props {
     userTypes?: any[];
@@ -29,47 +30,27 @@ export default function Dashboard({ userTypes = [], ageGroups = [], stats }: Pro
             {/* Stats Cards */}
             {stats && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                    <div className="bg-white rounded-lg shadow p-6">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm font-medium text-gray-600">Total Utilizadores</p>
-                                <p className="text-3xl font-bold text-gray-900 mt-2">
-                                    {stats.totalUsers}
-                                </p>
-                            </div>
-                            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                                <Users size={24} className="text-blue-600" weight="fill" />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-white rounded-lg shadow p-6">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm font-medium text-gray-600">Tipos de Utilizador</p>
-                                <p className="text-3xl font-bold text-gray-900 mt-2">
-                                    {stats.totalUserTypes}
-                                </p>
-                            </div>
-                            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                                <Trophy size={24} className="text-green-600" weight="fill" />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-white rounded-lg shadow p-6">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm font-medium text-gray-600">Escalões</p>
-                                <p className="text-3xl font-bold text-gray-900 mt-2">
-                                    {stats.totalAgeGroups}
-                                </p>
-                            </div>
-                            <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                                <Calendar size={24} className="text-purple-600" weight="fill" />
-                            </div>
-                        </div>
-                    </div>
+                    <StatsCard
+                        title="Total Utilizadores"
+                        value={stats.totalUsers}
+                        icon={Users}
+                        iconBgColor="#dbeafe"
+                        iconColor="#2563eb"
+                    />
+                    <StatsCard
+                        title="Tipos de Utilizador"
+                        value={stats.totalUserTypes}
+                        icon={Trophy}
+                        iconBgColor="#dcfce7"
+                        iconColor="#16a34a"
+                    />
+                    <StatsCard
+                        title="Escalões"
+                        value={stats.totalAgeGroups}
+                        icon={Calendar}
+                        iconBgColor="#f3e8ff"
+                        iconColor="#9333ea"
+                    />
                 </div>
             )}
 
