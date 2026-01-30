@@ -42,7 +42,6 @@ export default function Sidebar() {
             {/* Logo Section */}
             <div className="p-6 border-b border-gray-200">
                 <div className="flex items-center gap-3">
-                    {/* Logo circular AMARELO (como Spark) */}
                     <div className="w-12 h-12 bg-yellow-400 rounded-full flex items-center justify-center">
                         <span className="text-gray-900 font-bold text-xl">BC</span>
                     </div>
@@ -74,7 +73,7 @@ export default function Sidebar() {
                                     `}
                                 >
                                     <Icon size={20} weight={active ? 'fill' : 'regular'} />
-                                    <span>{item.name}</span>
+                                    <span className="text-sm">{item.name}</span>
                                 </Link>
                             </li>
                         );
@@ -97,11 +96,11 @@ export default function Sidebar() {
                     `}
                 >
                     <Gear size={20} />
-                    <span>Configurações</span>
+                    <span className="text-sm">Configurações</span>
                 </Link>
 
                 {/* User Section */}
-                <div className="p-4 bg-gray-50">
+                <div className="p-4 bg-gray-50 border-t border-gray-200">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white">
                             <span className="text-sm font-medium">
@@ -110,10 +109,10 @@ export default function Sidebar() {
                         </div>
                         <div className="flex-1 min-w-0">
                             <div className="text-sm font-medium truncate text-gray-900">
-                                {auth?.user?.name || 'Administrador'}
+                                {auth?.user?.name || 'Admin'}
                             </div>
                             <div className="text-xs text-gray-500 truncate">
-                                {auth?.user?.email || 'admin@bscn.pt'}
+                                {auth?.user?.email || 'admin@test.com'}
                             </div>
                         </div>
                     </div>
@@ -124,10 +123,10 @@ export default function Sidebar() {
                     href="/logout"
                     method="post"
                     as="button"
-                    className="w-full flex items-center gap-3 px-7 py-3 text-gray-700 hover:bg-gray-100 transition-colors"
+                    className="w-full flex items-center gap-3 px-7 py-3 text-gray-700 hover:bg-gray-100 transition-colors border-t border-gray-200"
                 >
                     <SignOut size={20} />
-                    <span>Sair</span>
+                    <span className="text-sm">Sair</span>
                 </Link>
             </div>
         </aside>
