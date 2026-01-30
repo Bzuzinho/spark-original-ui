@@ -43,19 +43,19 @@ export default function AppLayout({ children }: PropsWithChildren) {
     };
 
     return (
-        <div className="min-h-screen bg-bg flex">
+        <div className="min-h-screen bg-gray-50 flex">
             {/* Sidebar */}
-            <aside className="fixed inset-y-0 left-0 z-50 w-64 bg-neutral-2 border-r border-neutral-6">
+            <aside className="fixed inset-y-0 left-0 z-50 w-64 bg-blue-600 border-r border-blue-500">
                 <div className="h-full flex flex-col">
                     {/* Logo */}
-                    <div className="p-6 border-b border-neutral-6">
+                    <div className="p-6 border-b border-blue-500">
                         <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 bg-accent-9 text-accent-contrast rounded-full flex items-center justify-center font-bold text-xl">
+                            <div className="w-12 h-12 bg-white text-blue-600 rounded-full flex items-center justify-center font-bold text-xl">
                                 BC
                             </div>
                             <div>
-                                <h2 className="text-xl font-semibold text-fg">BSCN</h2>
-                                <p className="text-sm text-fg-secondary">Gestão de Clube</p>
+                                <h2 className="text-xl font-semibold text-white">BSCN</h2>
+                                <p className="text-sm text-blue-200">Gestão de Clube</p>
                             </div>
                         </div>
                     </div>
@@ -74,8 +74,8 @@ export default function AppLayout({ children }: PropsWithChildren) {
                                         flex items-center gap-3 px-4 py-3 mb-1 rounded-lg
                                         transition-colors duration-200
                                         ${isActive 
-                                            ? 'bg-accent-9 text-accent-contrast' 
-                                            : 'text-fg-secondary hover:bg-neutral-3'
+                                            ? 'bg-blue-700 text-white font-medium' 
+                                            : 'text-blue-100 hover:bg-blue-500 hover:text-white'
                                         }
                                     `}
                                 >
@@ -86,7 +86,7 @@ export default function AppLayout({ children }: PropsWithChildren) {
                         })}
                         
                         {/* Separator */}
-                        <div className="my-4 border-t border-neutral-6"></div>
+                        <div className="my-4 border-t border-blue-500"></div>
                         
                         {/* Settings */}
                         <Link
@@ -95,8 +95,8 @@ export default function AppLayout({ children }: PropsWithChildren) {
                                 flex items-center gap-3 px-4 py-3 mb-1 rounded-lg
                                 transition-colors duration-200
                                 ${url === '/settings'
-                                    ? 'bg-accent-9 text-accent-contrast' 
-                                    : 'text-fg-secondary hover:bg-neutral-3'
+                                    ? 'bg-blue-700 text-white font-medium' 
+                                    : 'text-blue-100 hover:bg-blue-500 hover:text-white'
                                 }
                             `}
                         >
@@ -107,23 +107,25 @@ export default function AppLayout({ children }: PropsWithChildren) {
                     
                     {/* User Section */}
                     {auth?.user && (
-                        <div className="p-4 border-t border-neutral-6">
-                            <div className="flex items-center gap-3 mb-3">
-                                <div className="w-10 h-10 rounded-full bg-accent-9 text-accent-contrast flex items-center justify-center font-medium text-sm">
-                                    {getUserInitials()}
+                        <div className="border-t border-blue-500">
+                            <div className="p-4 bg-blue-700">
+                                <div className="flex items-center gap-3 mb-3">
+                                    <div className="w-10 h-10 rounded-full bg-blue-800 flex items-center justify-center font-medium text-sm text-white">
+                                        {getUserInitials()}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium text-white truncate">{auth.user.name}</p>
+                                        <p className="text-xs text-blue-200 truncate">{auth.user.email}</p>
+                                    </div>
                                 </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium text-fg truncate">{auth.user.name}</p>
-                                    <p className="text-xs text-fg-secondary truncate">{auth.user.email}</p>
-                                </div>
+                                <button
+                                    onClick={handleLogout}
+                                    className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-blue-100 bg-blue-600 hover:bg-blue-500 rounded-lg transition-colors"
+                                >
+                                    <SignOut size={18} />
+                                    <span>Sair</span>
+                                </button>
                             </div>
-                            <button
-                                onClick={handleLogout}
-                                className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-fg-secondary bg-neutral-3 border border-neutral-6 rounded-lg hover:bg-neutral-4 transition-colors"
-                            >
-                                <SignOut size={18} />
-                                Sair
-                            </button>
                         </div>
                     )}
                 </div>
