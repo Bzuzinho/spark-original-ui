@@ -7,6 +7,10 @@ Este guia fornece os comandos essenciais para iniciar o projeto Laravel com Post
 Execute o script de validação para verificar se tudo está instalado:
 
 ```bash
+# Tornar o script executável (primeira vez)
+chmod +x setup-check.sh
+
+# Executar validação
 ./setup-check.sh
 ```
 

@@ -37,10 +37,10 @@ npm install
 
 ```bash
 # Iniciar o container PostgreSQL
-docker-compose up -d
+docker compose up -d
 
 # Verificar se está rodando
-docker-compose ps
+docker compose ps
 ```
 
 O Docker Compose já cria automaticamente o banco de dados `laravel` com usuário `postgres` e senha `postgres`.
@@ -174,19 +174,19 @@ psql -U postgres -d laravel
 
 ```bash
 # Iniciar o PostgreSQL
-docker-compose up -d
+docker compose up -d
 
 # Parar o PostgreSQL
-docker-compose down
+docker compose down
 
 # Ver logs do PostgreSQL
-docker-compose logs postgres
+docker compose logs postgres
 
 # Acessar o PostgreSQL via Docker
-docker-compose exec postgres psql -U postgres -d laravel
+docker compose exec postgres psql -U postgres -d laravel
 
 # Parar e remover volumes (CUIDADO: remove todos os dados)
-docker-compose down -v
+docker compose down -v
 ```
 
 ## 🔒 Segurança
