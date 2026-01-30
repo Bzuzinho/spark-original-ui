@@ -109,7 +109,7 @@ export default function AppLayout({ children }: PropsWithChildren) {
                     {auth?.user && (
                         <div className="border-t border-blue-500">
                             <div className="p-4 bg-blue-700">
-                                <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-3 mb-3">
                                     <div className="w-10 h-10 rounded-full bg-blue-800 flex items-center justify-center font-medium text-sm text-white">
                                         {getUserInitials()}
                                     </div>
@@ -118,14 +118,14 @@ export default function AppLayout({ children }: PropsWithChildren) {
                                         <p className="text-xs text-blue-200 truncate">{auth.user.email}</p>
                                     </div>
                                 </div>
+                                <button
+                                    onClick={handleLogout}
+                                    className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-blue-100 bg-blue-600 hover:bg-blue-500 rounded-lg transition-colors"
+                                >
+                                    <SignOut size={18} />
+                                    <span>Sair</span>
+                                </button>
                             </div>
-                            <button
-                                onClick={handleLogout}
-                                className="w-full flex items-center justify-center gap-2 px-7 py-3 text-blue-100 hover:bg-blue-500 transition-colors"
-                            >
-                                <SignOut size={18} />
-                                <span>Sair</span>
-                            </button>
                         </div>
                     )}
                 </div>
