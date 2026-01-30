@@ -21,11 +21,19 @@ class DatabaseSeeder extends Seeder
         User::create([
             'name' => 'Admin User',
             'email' => 'admin@test.com',
+            'email_verified_at' => now(),
             'password' => Hash::make('password'),
             'numero_socio' => '001',
             'nome_completo' => 'Administrador do Sistema',
             'perfil' => 'admin',
             'estado' => 'ativo',
+            'data_nascimento' => '1990-01-01',
+            'menor' => false,
+            'sexo' => 'masculino',
+            'rgpd' => true,
+            'consentimento' => true,
+            'afiliacao' => true,
+            'declaracao_de_transporte' => false,
         ]);
 
         // Create user types
