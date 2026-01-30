@@ -2,6 +2,8 @@
 
 Um sistema de gestão de clube desenvolvido com Laravel 11, Inertia.js e React, utilizando PostgreSQL como banco de dados.
 
+> 📖 **[Guia Rápido de Início](QUICK_START.md)** - Comandos essenciais para começar rapidamente!
+
 ## 🚀 Stack Tecnológico
 
 - **Backend**: Laravel 11 (PHP 8.3)
