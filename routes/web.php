@@ -11,10 +11,30 @@ Route::get('/', function () {
 Route::get('/dashboard', function () {
     $userTypes = \App\Models\UserType::where('active', true)->get();
     $ageGroups = \App\Models\AgeGroup::all();
+    
+    // Get user counts
+    $totalUsers = \App\Models\User::count();
+    
+    // Filter users by tipo_membro jsonb field
+    // Athletes: users with tipo='Atleta' in tipo_membro jsonb
+    $activeAthletes = \App\Models\User::whereNotNull('tipo_membro')
+        ->whereJsonContains('tipo_membro->tipo', 'Atleta')
+        ->count();
+    
+    // Guardians: users with tipo='Encarregado' in tipo_membro jsonb
+    $guardians = \App\Models\User::whereNotNull('tipo_membro')
+        ->whereJsonContains('tipo_membro->tipo', 'Encarregado')
+        ->count();
+    
     $stats = [
-        'totalUsers' => \App\Models\User::count(),
+        'totalUsers' => $totalUsers,
         'totalUserTypes' => $userTypes->count(),
         'totalAgeGroups' => $ageGroups->count(),
+        'totalMembers' => $totalUsers, // Same as totalUsers for now
+        'activeAthletes' => $activeAthletes,
+        'guardians' => $guardians,
+        'upcomingEvents' => 0, // Placeholder until events table exists
+        'monthlyRevenue' => 0.00, // Placeholder until transactions table exists
     ];
     
     return Inertia::render('Dashboard', [
