@@ -11,8 +11,6 @@ class EventTypeConfig extends Model
     use HasUuids;
 
     protected $table = 'event_type_configs';
-    protected $keyType = 'string';
-    public $incrementing = false;
 
     protected $fillable = [
         'nome',

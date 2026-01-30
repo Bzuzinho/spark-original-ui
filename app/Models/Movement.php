@@ -11,8 +11,6 @@ class Movement extends Model
 {
     use HasUuids;
 
-    protected $keyType = 'string';
-    public $incrementing = false;
 
     protected $fillable = [
         'socio_id',

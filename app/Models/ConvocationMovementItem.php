@@ -11,8 +11,6 @@ class ConvocationMovementItem extends Model
     use HasUuids;
 
     protected $table = 'convocation_movement_items';
-    protected $keyType = 'string';
-    public $incrementing = false;
 
     protected $fillable = [
         'convocatoria_movimento_id',

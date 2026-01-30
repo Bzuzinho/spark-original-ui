@@ -11,8 +11,6 @@ class Prova extends Model
 {
     use HasUuids;
 
-    protected $keyType = 'string';
-    public $incrementing = false;
 
     protected $fillable = [
         'competicao_id',

@@ -11,8 +11,6 @@ class ConvocationAthlete extends Model
     use HasUuids;
 
     protected $table = 'convocation_athletes';
-    protected $keyType = 'string';
-    public $incrementing = false;
 
     protected $fillable = [
         'convocatoria_grupo_id',

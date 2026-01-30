@@ -12,8 +12,6 @@ class FinancialEntry extends Model
     use HasUuids;
 
     protected $table = 'financial_entries';
-    protected $keyType = 'string';
-    public $incrementing = false;
 
     protected $fillable = [
         'data',

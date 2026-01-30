@@ -11,8 +11,6 @@ class MonthlyFee extends Model
     use HasUuids;
 
     protected $table = 'monthly_fees';
-    protected $keyType = 'string';
-    public $incrementing = false;
 
     protected $fillable = [
         'designacao',

@@ -11,8 +11,6 @@ class Mesocycle extends Model
 {
     use HasUuids;
 
-    protected $keyType = 'string';
-    public $incrementing = false;
 
     protected $fillable = [
         'macrociclo_id',

@@ -11,8 +11,6 @@ class NewsItem extends Model
     use HasUuids;
 
     protected $table = 'news_items';
-    protected $keyType = 'string';
-    public $incrementing = false;
 
     protected $fillable = [
         'titulo',

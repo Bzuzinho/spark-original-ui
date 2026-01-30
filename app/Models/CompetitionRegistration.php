@@ -11,8 +11,6 @@ class CompetitionRegistration extends Model
     use HasUuids;
 
     protected $table = 'competition_registrations';
-    protected $keyType = 'string';
-    public $incrementing = false;
 
     protected $fillable = [
         'prova_id',

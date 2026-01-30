@@ -10,8 +10,6 @@ class AutomatedCommunication extends Model
     use HasUuids;
 
     protected $table = 'automated_communications';
-    protected $keyType = 'string';
-    public $incrementing = false;
 
     protected $fillable = [
         'nome',

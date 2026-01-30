@@ -12,8 +12,6 @@ class ConvocationMovement extends Model
     use HasUuids;
 
     protected $table = 'convocation_movements';
-    protected $keyType = 'string';
-    public $incrementing = false;
 
     protected $fillable = [
         'atleta_id',

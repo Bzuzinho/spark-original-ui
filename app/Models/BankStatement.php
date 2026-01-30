@@ -11,8 +11,6 @@ class BankStatement extends Model
     use HasUuids;
 
     protected $table = 'bank_statements';
-    protected $keyType = 'string';
-    public $incrementing = false;
 
     protected $fillable = [
         'data_movimento',

@@ -11,8 +11,6 @@ class EventAttendance extends Model
     use HasUuids;
 
     protected $table = 'event_attendances';
-    protected $keyType = 'string';
-    public $incrementing = false;
 
     protected $fillable = [
         'evento_id',
