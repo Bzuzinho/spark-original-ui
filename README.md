@@ -31,7 +31,19 @@ npm install
 
 ### 2. Configurar o Banco de Dados PostgreSQL
 
-#### Criar o banco de dados
+#### Opção A: Usar Docker (Recomendado)
+
+```bash
+# Iniciar o container PostgreSQL
+docker-compose up -d
+
+# Verificar se está rodando
+docker-compose ps
+```
+
+O Docker Compose já cria automaticamente o banco de dados `laravel` com usuário `postgres` e senha `postgres`.
+
+#### Opção B: Instalar PostgreSQL localmente
 
 ```bash
 # Conectar ao PostgreSQL
@@ -53,6 +65,17 @@ cp .env.example .env
 
 Edite o arquivo `.env` e configure as credenciais do PostgreSQL:
 
+**Para Docker:**
+```env
+DB_CONNECTION=pgsql
+DB_HOST=127.0.0.1
+DB_PORT=5432
+DB_DATABASE=laravel
+DB_USERNAME=postgres
+DB_PASSWORD=postgres
+```
+
+**Para instalação local:**
 ```env
 DB_CONNECTION=pgsql
 DB_HOST=127.0.0.1
@@ -143,6 +166,25 @@ psql -U postgres -d laravel
 
 # Descrever tabela
 \d nome_da_tabela
+```
+
+### Comandos Docker Úteis
+
+```bash
+# Iniciar o PostgreSQL
+docker-compose up -d
+
+# Parar o PostgreSQL
+docker-compose down
+
+# Ver logs do PostgreSQL
+docker-compose logs postgres
+
+# Acessar o PostgreSQL via Docker
+docker-compose exec postgres psql -U postgres -d laravel
+
+# Parar e remover volumes (CUIDADO: remove todos os dados)
+docker-compose down -v
 ```
 
 ## 🔒 Segurança
