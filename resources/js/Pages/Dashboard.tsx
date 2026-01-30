@@ -34,7 +34,7 @@ export default function Dashboard({ userTypes = [], ageGroups = [], stats }: Pro
 
             {/* Stats Cards - 5 cards */}
             {stats && (
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
                     <StatsCard
                         title="Membros Ativos"
                         value={stats.totalMembers}
@@ -60,8 +60,8 @@ export default function Dashboard({ userTypes = [], ageGroups = [], stats }: Pro
                         title="Eventos Próximos"
                         value={stats.upcomingEvents}
                         icon={Calendar}
-                        iconBgColor="#FED7AA"
-                        iconColor="#F97316"
+                        iconBgColor="#DBEAFE"
+                        iconColor="#2563EB"
                     />
                     <StatsCard
                         title="Receitas do Mês"

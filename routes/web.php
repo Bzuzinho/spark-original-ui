@@ -17,10 +17,14 @@ Route::get('/dashboard', function () {
     
     // Filter users by tipo_membro jsonb field
     // Athletes: users with tipo='Atleta' in tipo_membro jsonb
-    $activeAthletes = \App\Models\User::whereJsonContains('tipo_membro->tipo', 'Atleta')->count();
+    $activeAthletes = \App\Models\User::whereNotNull('tipo_membro')
+        ->whereJsonContains('tipo_membro->tipo', 'Atleta')
+        ->count();
     
     // Guardians: users with tipo='Encarregado' in tipo_membro jsonb
-    $guardians = \App\Models\User::whereJsonContains('tipo_membro->tipo', 'Encarregado')->count();
+    $guardians = \App\Models\User::whereNotNull('tipo_membro')
+        ->whereJsonContains('tipo_membro->tipo', 'Encarregado')
+        ->count();
     
     $stats = [
         'totalUsers' => $totalUsers,
