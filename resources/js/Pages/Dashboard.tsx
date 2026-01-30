@@ -53,8 +53,8 @@ export default function Dashboard({ userTypes = [], ageGroups = [], stats }: Pro
                         title="Encarregados de Educação"
                         value={stats.guardians}
                         icon={GraduationCap}
-                        iconBgColor="#FED7AA"
-                        iconColor="#F97316"
+                        iconBgColor="#CFFAFE"
+                        iconColor="#06B6D4"
                     />
                     <StatsCard
                         title="Eventos Próximos"
@@ -79,9 +79,8 @@ export default function Dashboard({ userTypes = [], ageGroups = [], stats }: Pro
                 {/* Upcoming Events */}
                 <div className="bg-white rounded-lg shadow p-6">
                     <h3 className="text-lg font-medium text-gray-800 mb-4">Próximos Eventos</h3>
-                    <div className="text-center py-8">
-                        <Calendar size={48} className="text-gray-300 mx-auto mb-3" weight="thin" />
-                        <p className="text-gray-500 text-sm">Nenhum evento próximo</p>
+                    <div className="text-center py-12">
+                        <p className="text-gray-400 text-sm">Nenhum evento agendado</p>
                     </div>
                     <Link 
                         href="/eventos" 
@@ -96,7 +95,7 @@ export default function Dashboard({ userTypes = [], ageGroups = [], stats }: Pro
                     <h3 className="text-lg font-medium text-gray-800 mb-4">Atividade Recente</h3>
                     <div className="space-y-2">
                         {/* Item 1 */}
-                        <div className="text-sm border-b border-gray-100 pb-3">
+                        <div className="text-sm pb-3">
                             <p className="font-medium text-gray-900">Pagamento de fatura mensal - Alexandre Quitério Anastácio</p>
                             <div className="flex justify-between items-center mt-1">
                                 <span className="text-gray-500 text-xs">07/10/2025</span>
@@ -104,7 +103,7 @@ export default function Dashboard({ userTypes = [], ageGroups = [], stats }: Pro
                             </div>
                         </div>
                         {/* Item 2 */}
-                        <div className="text-sm border-b border-gray-100 pb-3">
+                        <div className="text-sm pb-3">
                             <p className="font-medium text-gray-900">Pagamento de fatura mensal - Ana Luísa Silva Rodrigues</p>
                             <div className="flex justify-between items-center mt-1">
                                 <span className="text-gray-500 text-xs">07/10/2025</span>
@@ -136,28 +135,28 @@ export default function Dashboard({ userTypes = [], ageGroups = [], stats }: Pro
                             href="/membros" 
                             className="flex flex-col items-center justify-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all"
                         >
-                            <Users size={32} className="text-gray-600 mb-2" />
+                            <Users size={32} className="text-gray-600 mb-2" weight="regular" />
                             <span className="text-sm text-gray-700">Membros</span>
                         </Link>
                         <Link 
                             href="/desportivo" 
                             className="flex flex-col items-center justify-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all"
                         >
-                            <Trophy size={32} className="text-gray-600 mb-2" />
+                            <Trophy size={32} className="text-gray-600 mb-2" weight="regular" />
                             <span className="text-sm text-gray-700">Desportiva</span>
                         </Link>
                         <Link 
                             href="/eventos" 
                             className="flex flex-col items-center justify-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all"
                         >
-                            <Calendar size={32} className="text-gray-600 mb-2" />
+                            <Calendar size={32} className="text-gray-600 mb-2" weight="regular" />
                             <span className="text-sm text-gray-700">Eventos</span>
                         </Link>
                         <Link 
                             href="/financeiro" 
                             className="flex flex-col items-center justify-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all"
                         >
-                            <CurrencyCircleDollar size={32} className="text-gray-600 mb-2" />
+                            <CurrencyCircleDollar size={32} className="text-gray-600 mb-2" weight="regular" />
                             <span className="text-sm text-gray-700">Financeiro</span>
                         </Link>
                     </div>
@@ -177,11 +176,11 @@ export default function Dashboard({ userTypes = [], ageGroups = [], stats }: Pro
                                 Nenhum tipo de utilizador configurado
                             </p>
                         ) : (
-                            <div className="space-y-2">
+                            <div className="space-y-0">
                                 {userTypes.map((type) => (
                                     <div 
                                         key={type.id} 
-                                        className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition"
+                                        className="flex items-center justify-between p-4 border-b border-gray-100 hover:bg-gray-50 transition"
                                     >
                                         <div>
                                             <div className="font-medium text-gray-900">{type.name}</div>
@@ -192,7 +191,7 @@ export default function Dashboard({ userTypes = [], ageGroups = [], stats }: Pro
                                             )}
                                         </div>
                                         {type.active && (
-                                            <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
+                                            <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded-full">
                                                 Ativo
                                             </span>
                                         )}
@@ -214,11 +213,11 @@ export default function Dashboard({ userTypes = [], ageGroups = [], stats }: Pro
                                 Nenhum escalão configurado
                             </p>
                         ) : (
-                            <div className="space-y-2">
+                            <div className="space-y-0">
                                 {ageGroups.map((group) => (
                                     <div 
                                         key={group.id} 
-                                        className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition"
+                                        className="flex items-center justify-between p-4 border-b border-gray-100 hover:bg-gray-50 transition"
                                     >
                                         <div className="font-medium text-gray-900">{group.name}</div>
                                         <div className="text-sm text-gray-600">

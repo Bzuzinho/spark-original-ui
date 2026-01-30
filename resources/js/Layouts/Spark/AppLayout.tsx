@@ -45,12 +45,12 @@ export default function AppLayout({ children }: PropsWithChildren) {
     return (
         <div className="min-h-screen bg-gray-50 flex">
             {/* Sidebar */}
-            <aside className="fixed inset-y-0 left-0 z-50 w-64 bg-gray-100 border-r border-gray-200">
+            <aside className="fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200">
                 <div className="h-full flex flex-col">
                     {/* Logo */}
                     <div className="p-6 border-b border-gray-200">
                         <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 bg-white text-blue-600 rounded-full flex items-center justify-center font-bold text-xl">
+                            <div className="w-12 h-12 bg-yellow-400 text-gray-900 rounded-full flex items-center justify-center font-bold text-xl">
                                 BC
                             </div>
                             <div>
