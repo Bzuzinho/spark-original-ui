@@ -2,6 +2,15 @@
 
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\MembrosController;
+use App\Http\Controllers\EventosController;
+use App\Http\Controllers\DesportivoController;
+use App\Http\Controllers\FinanceiroController;
+use App\Http\Controllers\LojaController;
+use App\Http\Controllers\PatrociniosController;
+use App\Http\Controllers\ComunicacaoController;
+use App\Http\Controllers\MarketingController;
+use App\Http\Controllers\SettingsController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -14,16 +23,31 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     
-    // Páginas placeholder (9 módulos)
-    Route::get('/membros', fn() => Inertia::render('Membros/Index'))->name('membros');
-    Route::get('/desportivo', fn() => Inertia::render('Desportivo/Index'))->name('desportivo');
-    Route::get('/eventos', fn() => Inertia::render('Eventos/Index'))->name('eventos');
-    Route::get('/financeiro', fn() => Inertia::render('Financeiro/Index'))->name('financeiro');
-    Route::get('/loja', fn() => Inertia::render('Loja/Index'))->name('loja');
-    Route::get('/patrocinios', fn() => Inertia::render('Patrocinios/Index'))->name('patrocinios');
-    Route::get('/comunicacao', fn() => Inertia::render('Comunicacao/Index'))->name('comunicacao');
-    Route::get('/marketing', fn() => Inertia::render('Marketing/Index'))->name('marketing');
-    Route::get('/settings', fn() => Inertia::render('Settings/Index'))->name('settings');
+    // Resource routes
+    Route::resource('membros', MembrosController::class);
+    Route::resource('eventos', EventosController::class);
+    Route::resource('desportivo', DesportivoController::class);
+    Route::resource('financeiro', FinanceiroController::class);
+    Route::resource('loja', LojaController::class);
+    Route::resource('patrocinios', PatrociniosController::class);
+    Route::resource('comunicacao', ComunicacaoController::class);
+    Route::resource('marketing', MarketingController::class);
+    
+    // Settings routes
+    Route::get('/settings', [SettingsController::class, 'index'])->name('settings');
+    
+    // Settings CRUD sub-routes
+    Route::post('/settings/user-types', [SettingsController::class, 'storeUserType'])->name('settings.user-types.store');
+    Route::put('/settings/user-types/{userType}', [SettingsController::class, 'updateUserType'])->name('settings.user-types.update');
+    Route::delete('/settings/user-types/{userType}', [SettingsController::class, 'destroyUserType'])->name('settings.user-types.destroy');
+    
+    Route::post('/settings/age-groups', [SettingsController::class, 'storeAgeGroup'])->name('settings.age-groups.store');
+    Route::put('/settings/age-groups/{ageGroup}', [SettingsController::class, 'updateAgeGroup'])->name('settings.age-groups.update');
+    Route::delete('/settings/age-groups/{ageGroup}', [SettingsController::class, 'destroyAgeGroup'])->name('settings.age-groups.destroy');
+    
+    Route::post('/settings/event-types', [SettingsController::class, 'storeEventType'])->name('settings.event-types.store');
+    Route::put('/settings/event-types/{eventType}', [SettingsController::class, 'updateEventType'])->name('settings.event-types.update');
+    Route::delete('/settings/event-types/{eventType}', [SettingsController::class, 'destroyEventType'])->name('settings.event-types.destroy');
 });
 
 Route::middleware('auth')->group(function () {

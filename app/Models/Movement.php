@@ -1,0 +1,53 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class Movement extends Model
+{
+    use HasUuids;
+
+    protected $keyType = 'string';
+    public $incrementing = false;
+
+    protected $fillable = [
+        'socio_id',
+        'classificacao',
+        'data_emissao',
+        'data_vencimento',
+        'valor_total',
+        'valor_pago',
+        'estado_pagamento',
+        'data_pagamento',
+        'metodo_pagamento',
+        'centro_custo_id',
+        'observacoes',
+    ];
+
+    protected $casts = [
+        'data_emissao' => 'date',
+        'data_vencimento' => 'date',
+        'data_pagamento' => 'date',
+        'valor_total' => 'decimal:2',
+        'valor_pago' => 'decimal:2',
+    ];
+
+    public function socio(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'socio_id');
+    }
+
+    public function centroCusto(): BelongsTo
+    {
+        return $this->belongsTo(CostCenter::class, 'centro_custo_id');
+    }
+
+    public function items(): HasMany
+    {
+        return $this->hasMany(MovementItem::class, 'movimento_id');
+    }
+}

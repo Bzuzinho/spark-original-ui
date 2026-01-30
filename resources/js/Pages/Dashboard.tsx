@@ -1,234 +1,206 @@
 import { Head, Link } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Users, Trophy, Calendar, GraduationCap, CurrencyCircleDollar } from '@phosphor-icons/react';
-import StatsCard from '@/Components/StatsCard';
+import { Users, Trophy, CalendarBlank, CurrencyCircleDollar, Heartbeat, UserCircle } from '@phosphor-icons/react';
+import { Card } from '@/Components/ui/card';
+import { Button } from '@/Components/ui/button';
+
+interface Event {
+    id: string;
+    titulo: string;
+    data_inicio: string;
+    tipo: string;
+    estado: string;
+}
+
+interface FinancialEntry {
+    id: string;
+    descricao: string;
+    data: string;
+    valor: number;
+    tipo: 'receita' | 'despesa';
+}
 
 interface Props {
-    userTypes?: any[];
-    ageGroups?: any[];
-    stats?: {
-        totalUsers: number;
-        totalUserTypes: number;
-        totalAgeGroups: number;
+    stats: {
         totalMembers: number;
         activeAthletes: number;
         guardians: number;
         upcomingEvents: number;
         monthlyRevenue: number;
     };
+    recentEvents: Event[];
+    recentActivity: FinancialEntry[];
 }
 
-export default function Dashboard({ userTypes = [], ageGroups = [], stats }: Props) {
+export default function Dashboard({ stats, recentEvents = [], recentActivity = [] }: Props) {
+    const statsConfig = [
+        {
+            title: 'Membros Ativos',
+            value: stats.totalMembers,
+            icon: Users,
+            color: 'text-blue-600',
+            bgColor: 'bg-blue-50',
+            link: '/membros'
+        },
+        {
+            title: 'Atletas Ativos',
+            value: stats.activeAthletes,
+            icon: Heartbeat,
+            color: 'text-emerald-600',
+            bgColor: 'bg-emerald-50',
+            link: '/membros'
+        },
+        {
+            title: 'Encarregados de Educação',
+            value: stats.guardians,
+            icon: UserCircle,
+            color: 'text-cyan-600',
+            bgColor: 'bg-cyan-50',
+            link: '/membros'
+        },
+        {
+            title: 'Eventos Próximos',
+            value: stats.upcomingEvents,
+            icon: CalendarBlank,
+            color: 'text-orange-600',
+            bgColor: 'bg-orange-50',
+            link: '/eventos'
+        },
+        {
+            title: 'Receitas do Mês',
+            value: `€${stats.monthlyRevenue.toFixed(2)}`,
+            icon: CurrencyCircleDollar,
+            color: 'text-purple-600',
+            bgColor: 'bg-purple-50',
+            link: '/financeiro'
+        }
+    ];
+
     return (
         <AuthenticatedLayout
             header={
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
-                    <p className="text-sm text-gray-600 mt-1">
-                        Bem-vindo ao BSCN Gestão de Clube
-                    </p>
+                    <h1 className="text-lg sm:text-xl font-semibold tracking-tight">Dashboard</h1>
+                    <p className="text-muted-foreground text-xs mt-0.5">Visão geral do clube</p>
                 </div>
             }
         >
             <Head title="Dashboard" />
 
-            {/* Stats Cards - 5 cards */}
-            {stats && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-                    <StatsCard
-                        title="Membros Ativos"
-                        value={stats.totalMembers}
-                        icon={Users}
-                        iconBgColor="#DBEAFE"
-                        iconColor="#2563EB"
-                    />
-                    <StatsCard
-                        title="Atletas Ativos"
-                        value={stats.activeAthletes}
-                        icon={Trophy}
-                        iconBgColor="#D1FAE5"
-                        iconColor="#10B981"
-                    />
-                    <StatsCard
-                        title="Encarregados de Educação"
-                        value={stats.guardians}
-                        icon={GraduationCap}
-                        iconBgColor="#CFFAFE"
-                        iconColor="#06B6D4"
-                    />
-                    <StatsCard
-                        title="Eventos Próximos"
-                        value={stats.upcomingEvents}
-                        icon={Calendar}
-                        iconBgColor="#DBEAFE"
-                        iconColor="#2563EB"
-                    />
-                    <StatsCard
-                        title="Receitas do Mês"
-                        value={`€${stats.monthlyRevenue.toFixed(2)}`}
-                        icon={CurrencyCircleDollar}
-                        iconBgColor="#E9D5FF"
-                        iconColor="#9333EA"
-                    />
-                </div>
-            )}
-
-            {/* Grid 3 Sections: Events | Activity | Quick Access */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-                
-                {/* Upcoming Events */}
-                <div className="bg-white rounded-lg shadow p-6">
-                    <h3 className="text-lg font-medium text-gray-800 mb-4">Próximos Eventos</h3>
-                    <div className="text-center py-12">
-                        <p className="text-gray-400 text-sm">Nenhum evento agendado</p>
-                    </div>
-                    <Link 
-                        href="/eventos" 
-                        className="block w-full mt-4 text-sm text-center text-blue-600 hover:underline"
-                    >
-                        Ver Todos os Eventos →
-                    </Link>
-                </div>
-
-                {/* Recent Activity */}
-                <div className="bg-white rounded-lg shadow p-6">
-                    <h3 className="text-lg font-medium text-gray-800 mb-4">Atividade Recente</h3>
-                    <div className="space-y-2">
-                        {/* Item 1 */}
-                        <div className="text-sm pb-3">
-                            <p className="font-medium text-gray-900">Pagamento de fatura mensal - Alexandre Quitério Anastácio</p>
-                            <div className="flex justify-between items-center mt-1">
-                                <span className="text-gray-500 text-xs">07/10/2025</span>
-                                <span className="text-green-600 font-medium">+€35.00</span>
-                            </div>
-                        </div>
-                        {/* Item 2 */}
-                        <div className="text-sm pb-3">
-                            <p className="font-medium text-gray-900">Pagamento de fatura mensal - Ana Luísa Silva Rodrigues</p>
-                            <div className="flex justify-between items-center mt-1">
-                                <span className="text-gray-500 text-xs">07/10/2025</span>
-                                <span className="text-green-600 font-medium">+€25.00</span>
-                            </div>
-                        </div>
-                        {/* Item 3 */}
-                        <div className="text-sm pb-1">
-                            <p className="font-medium text-gray-900">Pagamento de fatura mensal - André Sousa Paulo</p>
-                            <div className="flex justify-between items-center mt-1">
-                                <span className="text-gray-500 text-xs">07/10/2025</span>
-                                <span className="text-green-600 font-medium">+€25.00</span>
-                            </div>
-                        </div>
-                    </div>
-                    <Link 
-                        href="/financeiro" 
-                        className="block w-full mt-4 text-sm text-center text-blue-600 hover:underline"
-                    >
-                        Ver Financeiro →
-                    </Link>
-                </div>
-
-                {/* Quick Access */}
-                <div className="bg-white rounded-lg shadow p-6">
-                    <h3 className="text-lg font-medium text-gray-800 mb-4">Acesso Rápido</h3>
-                    <div className="grid grid-cols-2 gap-3">
-                        <Link 
-                            href="/membros" 
-                            className="flex flex-col items-center justify-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all"
-                        >
-                            <Users size={32} className="text-gray-600 mb-2" weight="regular" />
-                            <span className="text-sm text-gray-700">Membros</span>
-                        </Link>
-                        <Link 
-                            href="/desportivo" 
-                            className="flex flex-col items-center justify-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all"
-                        >
-                            <Trophy size={32} className="text-gray-600 mb-2" weight="regular" />
-                            <span className="text-sm text-gray-700">Desportiva</span>
-                        </Link>
-                        <Link 
-                            href="/eventos" 
-                            className="flex flex-col items-center justify-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all"
-                        >
-                            <Calendar size={32} className="text-gray-600 mb-2" weight="regular" />
-                            <span className="text-sm text-gray-700">Eventos</span>
-                        </Link>
-                        <Link 
-                            href="/financeiro" 
-                            className="flex flex-col items-center justify-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all"
-                        >
-                            <CurrencyCircleDollar size={32} className="text-gray-600 mb-2" weight="regular" />
-                            <span className="text-sm text-gray-700">Financeiro</span>
-                        </Link>
-                    </div>
-                </div>
-            </div>
-
-            {/* Content Sections - 2 columns: User Types | Age Groups */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* User Types */}
-                <div className="bg-white rounded-lg shadow">
-                    <div className="px-6 py-4 border-b border-gray-200">
-                        <h3 className="text-lg font-medium text-gray-800">Tipos de Utilizador</h3>
-                    </div>
-                    <div className="p-6">
-                        {userTypes.length === 0 ? (
-                            <p className="text-gray-500 text-center py-4">
-                                Nenhum tipo de utilizador configurado
-                            </p>
-                        ) : (
-                            <div className="space-y-0">
-                                {userTypes.map((type) => (
-                                    <div 
-                                        key={type.id} 
-                                        className="flex items-center justify-between p-4 border-b border-gray-100 hover:bg-gray-50 transition"
-                                    >
-                                        <div>
-                                            <div className="font-medium text-gray-900">{type.name}</div>
-                                            {type.description && (
-                                                <div className="text-sm text-gray-600 mt-1">
-                                                    {type.description}
-                                                </div>
-                                            )}
+            <div className="w-full px-2 sm:px-4 py-2 sm:py-3 space-y-2 sm:space-y-3">
+                {/* Stats Cards - 5 cards */}
+                <div className="grid gap-2 grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+                    {statsConfig.map((stat) => {
+                        const Icon = stat.icon;
+                        return (
+                            <Link key={stat.title} href={stat.link}>
+                                <Card className="p-2 sm:p-3 cursor-pointer transition-all hover:shadow-md hover:border-primary/50">
+                                    <div className="flex items-start justify-between gap-1">
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-xs text-muted-foreground font-medium leading-tight truncate">{stat.title}</p>
+                                            <p className="text-base sm:text-xl font-bold mt-0.5 truncate">{stat.value}</p>
                                         </div>
-                                        {type.active && (
-                                            <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded-full">
-                                                Ativo
-                                            </span>
-                                        )}
+                                        <div className={`p-1.5 rounded-lg ${stat.bgColor} flex-shrink-0`}>
+                                            <Icon className={stat.color} size={16} weight="bold" />
+                                        </div>
+                                    </div>
+                                </Card>
+                            </Link>
+                        );
+                    })}
+                </div>
+
+                {/* Two column layout: Events + Activity */}
+                <div className="grid gap-2 sm:gap-3 lg:grid-cols-2">
+                    {/* Próximos Eventos */}
+                    <Card className="p-2 sm:p-3 overflow-hidden">
+                        <h2 className="text-sm sm:text-base font-semibold mb-2">Próximos Eventos</h2>
+                        {recentEvents && recentEvents.length > 0 ? (
+                            <div className="space-y-1.5 overflow-hidden">
+                                {recentEvents.slice(0, 3).map(event => (
+                                    <div key={event.id} className="flex items-center justify-between p-1.5 border rounded-lg gap-2 overflow-hidden">
+                                        <div className="min-w-0 flex-1 overflow-hidden">
+                                            <p className="font-medium text-xs truncate">{event.titulo}</p>
+                                            <p className="text-[10px] xs:text-xs text-muted-foreground truncate">
+                                                {new Date(event.data_inicio).toLocaleDateString('pt-PT')}
+                                            </p>
+                                        </div>
+                                        <span className="text-xs px-1.5 py-0.5 bg-primary/10 text-primary rounded whitespace-nowrap flex-shrink-0">
+                                            {event.tipo}
+                                        </span>
                                     </div>
                                 ))}
                             </div>
-                        )}
-                    </div>
-                </div>
-
-                {/* Age Groups */}
-                <div className="bg-white rounded-lg shadow">
-                    <div className="px-6 py-4 border-b border-gray-200">
-                        <h3 className="text-lg font-medium text-gray-800">Escalões</h3>
-                    </div>
-                    <div className="p-6">
-                        {ageGroups.length === 0 ? (
-                            <p className="text-gray-500 text-center py-4">
-                                Nenhum escalão configurado
-                            </p>
                         ) : (
-                            <div className="space-y-0">
-                                {ageGroups.map((group) => (
-                                    <div 
-                                        key={group.id} 
-                                        className="flex items-center justify-between p-4 border-b border-gray-100 hover:bg-gray-50 transition"
-                                    >
-                                        <div className="font-medium text-gray-900">{group.name}</div>
-                                        <div className="text-sm text-gray-600">
-                                            {group.min_age} - {group.max_age} anos
+                            <p className="text-muted-foreground text-center py-3 text-xs">Nenhum evento agendado</p>
+                        )}
+                        <Link href="/eventos">
+                            <Button variant="outline" className="w-full mt-2 h-7 text-xs">
+                                Ver Todos os Eventos
+                            </Button>
+                        </Link>
+                    </Card>
+
+                    {/* Atividade Recente */}
+                    <Card className="p-2 sm:p-3 overflow-hidden">
+                        <h2 className="text-sm sm:text-base font-semibold mb-2">Atividade Recente</h2>
+                        {recentActivity && recentActivity.length > 0 ? (
+                            <div className="space-y-1.5 overflow-hidden">
+                                {recentActivity.slice(0, 3).map(entry => (
+                                    <div key={entry.id} className="flex items-center justify-between p-1.5 border rounded-lg gap-2 overflow-hidden">
+                                        <div className="flex-1 min-w-0 overflow-hidden">
+                                            <p className="font-medium truncate text-xs">{entry.descricao}</p>
+                                            <p className="text-[10px] xs:text-xs text-muted-foreground truncate">
+                                                {new Date(entry.data).toLocaleDateString('pt-PT')}
+                                            </p>
                                         </div>
+                                        <span className={`font-semibold text-xs whitespace-nowrap flex-shrink-0 ${entry.tipo === 'receita' ? 'text-green-600' : 'text-red-600'}`}>
+                                            {entry.tipo === 'receita' ? '+' : '-'}€{entry.valor.toFixed(2)}
+                                        </span>
                                     </div>
                                 ))}
                             </div>
+                        ) : (
+                            <p className="text-muted-foreground text-center py-3 text-xs">Nenhuma transação registada</p>
                         )}
-                    </div>
+                        <Link href="/financeiro">
+                            <Button variant="outline" className="w-full mt-2 h-7 text-xs">
+                                Ver Financeiro
+                            </Button>
+                        </Link>
+                    </Card>
                 </div>
+
+                {/* Acesso Rápido */}
+                <Card className="p-2 sm:p-3">
+                    <h2 className="text-sm sm:text-base font-semibold mb-2">Acesso Rápido</h2>
+                    <div className="grid gap-2 grid-cols-2 lg:grid-cols-4">
+                        <Link href="/membros">
+                            <Button variant="outline" className="h-auto py-2 sm:py-2.5 flex-col gap-1 w-full">
+                                <Users size={18} />
+                                <span className="text-xs">Membros</span>
+                            </Button>
+                        </Link>
+                        <Link href="/desportivo">
+                            <Button variant="outline" className="h-auto py-2 sm:py-2.5 flex-col gap-1 w-full">
+                                <Trophy size={18} />
+                                <span className="text-xs">Desportiva</span>
+                            </Button>
+                        </Link>
+                        <Link href="/eventos">
+                            <Button variant="outline" className="h-auto py-2 sm:py-2.5 flex-col gap-1 w-full">
+                                <CalendarBlank size={18} />
+                                <span className="text-xs">Eventos</span>
+                            </Button>
+                        </Link>
+                        <Link href="/financeiro">
+                            <Button variant="outline" className="h-auto py-2 sm:py-2.5 flex-col gap-1 w-full">
+                                <CurrencyCircleDollar size={18} />
+                                <span className="text-xs">Financeiro</span>
+                            </Button>
+                        </Link>
+                    </div>
+                </Card>
             </div>
         </AuthenticatedLayout>
     );
