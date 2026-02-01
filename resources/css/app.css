@@ -1,54 +1,66 @@
 @import '@radix-ui/colors/slate.css';
 @import '@radix-ui/colors/blue.css';
-@import '@radix-ui/colors/violet.css';
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
-  body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    @apply bg-white text-gray-900;
+  * {
+    @apply border-border;
   }
   
-  #root {
-    /* Neutral colors */
-    --color-neutral-1: var(--slate-1);
-    --color-neutral-2: var(--slate-2);
-    --color-neutral-3: var(--slate-3);
-    --color-neutral-4: var(--slate-4);
-    --color-neutral-5: var(--slate-5);
-    --color-neutral-6: var(--slate-6);
-    --color-neutral-7: var(--slate-7);
-    --color-neutral-8: var(--slate-8);
-    --color-neutral-9: var(--slate-9);
-    --color-neutral-10: var(--slate-10);
-    --color-neutral-11: var(--slate-11);
-    --color-neutral-12: var(--slate-12);
-
-    /* Accent colors (blue) */
-    --color-accent-1: var(--blue-1);
-    --color-accent-2: var(--blue-2);
-    --color-accent-3: var(--blue-3);
-    --color-accent-4: var(--blue-4);
-    --color-accent-5: var(--blue-5);
-    --color-accent-6: var(--blue-6);
-    --color-accent-7: var(--blue-7);
-    --color-accent-8: var(--blue-8);
-    --color-accent-9: var(--blue-9);
-    --color-accent-10: var(--blue-10);
-    --color-accent-11: var(--blue-11);
-    --color-accent-12: var(--blue-12);
-    --color-accent-contrast: #fff;
-
-    /* Foreground colors */
-    --color-fg: var(--color-neutral-12);
-    --color-fg-secondary: var(--color-neutral-11);
-
-    /* Background colors */
-    --color-bg: #ffffff;
-    --color-bg-inset: var(--color-neutral-2);
-    --color-bg-overlay: #ffffff;
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   }
+}
+
+:root {
+  --radius: 0.625rem;
+  
+  /* Dashboard background - BRANCO PURO */
+  --background: 0 0% 100%;              /* #FFFFFF */
+  --foreground: 222 47% 11%;            /* #141B2D */
+  
+  /* Cards - AZUL MUITO CLARO */
+  --card: 214 100% 97%;                 /* #EBF5FF - Azul claro */
+  --card-foreground: 222 47% 11%;
+  
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 47% 11%;
+  
+  /* Primary - AZUL */
+  --primary: 211 100% 50%;              /* #0090FF */
+  --primary-foreground: 0 0% 100%;
+  
+  /* Secondary/Muted */
+  --secondary: 214 32% 95%;
+  --secondary-foreground: 222 47% 11%;
+  
+  --muted: 215 20% 88%;
+  --muted-foreground: 215 16% 47%;
+  
+  /* Accent - AZUL CLARO (hover) */
+  --accent: 214 100% 95%;               /* #E0F2FE */
+  --accent-foreground: 211 100% 50%;
+  
+  /* Borders */
+  --border: 215 20% 88%;
+  --input: 215 20% 88%;
+  --ring: 211 100% 50%;
+  
+  /* Destructive */
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 98%;
+  
+  /* Sidebar - CINZA CLARO */
+  --sidebar: 210 40% 98%;               /* #F8FAFC - Slate 2 */
+  --sidebar-foreground: 222 47% 11%;
+  --sidebar-primary: 211 100% 50%;      /* #0090FF */
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 210 40% 96%;        /* #F1F5F9 */
+  --sidebar-accent-foreground: 222 47% 11%;
+  --sidebar-border: 214 32% 91%;
+  --sidebar-ring: 211 100% 50%;
 }

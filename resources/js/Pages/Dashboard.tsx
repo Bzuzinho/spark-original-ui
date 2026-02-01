@@ -34,7 +34,7 @@ interface Props {
 }
 
 export default function Dashboard({ stats, recentEvents = [], recentActivity = [] }: Props) {
-    // ===== VALIDAÇÃO CRÍTICA =====
+    // Validação de dados
     const safeStats = {
         totalMembers: stats?.totalMembers ?? 0,
         activeAthletes: stats?.activeAthletes ?? 0,
@@ -42,7 +42,6 @@ export default function Dashboard({ stats, recentEvents = [], recentActivity = [
         upcomingEvents: stats?.upcomingEvents ?? 0,
         monthlyRevenue: stats?.monthlyRevenue ?? 0,
     };
-    // ============================
 
     const handleNavigate = (view: string) => {
         const routes: Record<string, string> = {
@@ -89,7 +88,7 @@ export default function Dashboard({ stats, recentEvents = [], recentActivity = [
         },
         {
             title: 'Receitas do Mês',
-            value: `€${(safeStats.monthlyRevenue ?? 0).toFixed(2)}`,
+            value: `€${safeStats.monthlyRevenue.toFixed(2)}`,
             icon: CurrencyCircleDollar,
             color: 'text-purple-600',
             bgColor: 'bg-purple-50',
@@ -109,6 +108,7 @@ export default function Dashboard({ stats, recentEvents = [], recentActivity = [
             <Head title="Dashboard" />
 
             <div className="w-full px-2 sm:px-4 py-2 sm:py-3 space-y-2 sm:space-y-3">
+                {/* Stats Cards - 5 cards */}
                 <div className="grid gap-2 grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
                     {statsConfig.map((stat) => {
                         const Icon = stat.icon;
@@ -132,7 +132,9 @@ export default function Dashboard({ stats, recentEvents = [], recentActivity = [
                     })}
                 </div>
 
+                {/* Two column layout: Events + Activity */}
                 <div className="grid gap-2 sm:gap-3 lg:grid-cols-2">
+                    {/* Próximos Eventos */}
                     <Card className="p-2 sm:p-3 overflow-hidden">
                         <h2 className="text-sm sm:text-base font-semibold mb-2">Próximos Eventos</h2>
                         {recentEvents && recentEvents.length > 0 ? (
@@ -159,23 +161,38 @@ export default function Dashboard({ stats, recentEvents = [], recentActivity = [
                         </Button>
                     </Card>
 
+                    {/* Atividade Recente */}
                     <Card className="p-2 sm:p-3 overflow-hidden">
                         <h2 className="text-sm sm:text-base font-semibold mb-2">Atividade Recente</h2>
                         {recentActivity && recentActivity.length > 0 ? (
                             <div className="space-y-1.5 overflow-hidden">
-                                {recentActivity.slice(0, 3).map(entry => (
-                                    <div key={entry.id} className="flex items-center justify-between p-1.5 border rounded-lg gap-2 overflow-hidden">
-                                        <div className="flex-1 min-w-0 overflow-hidden">
-                                            <p className="font-medium truncate text-xs">{entry.descricao}</p>
-                                            <p className="text-[10px] xs:text-xs text-muted-foreground truncate">
-                                                {new Date(entry.data).toLocaleDateString('pt-PT')}
-                                            </p>
+                                {recentActivity.slice(0, 3).map(entry => {
+                                    // Validar data
+                                    const date = entry.data ? new Date(entry.data) : null;
+                                    const isValidDate = date && !isNaN(date.getTime());
+                                    const formattedDate = isValidDate 
+                                        ? date.toLocaleDateString('pt-PT') 
+                                        : 'Data inválida';
+                                    
+                                    // Validar valor
+                                    const valor = typeof entry.valor === 'number' && !isNaN(entry.valor) 
+                                        ? Math.abs(entry.valor) 
+                                        : 0;
+
+                                    return (
+                                        <div key={entry.id} className="flex items-center justify-between p-1.5 border rounded-lg gap-2 overflow-hidden">
+                                            <div className="flex-1 min-w-0 overflow-hidden">
+                                                <p className="font-medium truncate text-xs">{entry.descricao}</p>
+                                                <p className="text-[10px] xs:text-xs text-muted-foreground truncate">
+                                                    {formattedDate}
+                                                </p>
+                                            </div>
+                                            <span className={`font-semibold text-xs whitespace-nowrap flex-shrink-0 ${entry.tipo === 'receita' ? 'text-green-600' : 'text-red-600'}`}>
+                                                {entry.tipo === 'receita' ? '+' : '-'}€{valor.toFixed(2)}
+                                            </span>
                                         </div>
-                                        <span className={`font-semibold text-xs whitespace-nowrap flex-shrink-0 ${entry.tipo === 'receita' ? 'text-green-600' : 'text-red-600'}`}>
-                                            {entry.tipo === 'receita' ? '+' : '-'}€{(entry.valor ?? 0).toFixed(2)}
-                                        </span>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         ) : (
                             <p className="text-muted-foreground text-center py-3 text-xs">Nenhuma transação registada</p>
@@ -186,6 +203,7 @@ export default function Dashboard({ stats, recentEvents = [], recentActivity = [
                     </Card>
                 </div>
 
+                {/* Acesso Rápido */}
                 <Card className="p-2 sm:p-3">
                     <h2 className="text-sm sm:text-base font-semibold mb-2">Acesso Rápido</h2>
                     <div className="grid gap-2 grid-cols-2 lg:grid-cols-4">
