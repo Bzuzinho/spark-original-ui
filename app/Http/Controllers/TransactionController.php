@@ -27,7 +27,7 @@ class TransactionController extends Controller
 
         // Handle file upload
         if ($request->hasFile('comprovativo')) {
-            $data['comprovativo'] = $request->file('comprovativo')->store('comprovanvos', 'public');
+            $data['comprovativo'] = $request->file('comprovativo')->store('comprovatives', 'public');
         }
 
         Transaction::create($data);
