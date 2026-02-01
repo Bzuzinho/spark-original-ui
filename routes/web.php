@@ -26,6 +26,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Resource routes
     Route::resource('membros', MembrosController::class);
     Route::resource('eventos', EventosController::class);
+    
+    // Event participant management routes
+    Route::post('eventos/{evento}/participants', [EventosController::class, 'addParticipant'])->name('eventos.participants.add');
+    Route::delete('eventos/{evento}/participants/{user}', [EventosController::class, 'removeParticipant'])->name('eventos.participants.remove');
+    Route::put('eventos/{evento}/participants/{user}', [EventosController::class, 'updateParticipantStatus'])->name('eventos.participants.update');
+    Route::get('eventos-stats', [EventosController::class, 'stats'])->name('eventos.stats');
+    
     Route::resource('desportivo', DesportivoController::class);
     Route::resource('financeiro', FinanceiroController::class);
     Route::resource('loja', LojaController::class);

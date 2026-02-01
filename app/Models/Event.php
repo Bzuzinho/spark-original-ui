@@ -77,6 +77,11 @@ class Event extends Model
         return $this->belongsTo(User::class, 'criado_por');
     }
 
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'criado_por');
+    }
+
     public function eventoPai(): BelongsTo
     {
         return $this->belongsTo(Event::class, 'evento_pai_id');
@@ -88,6 +93,11 @@ class Event extends Model
     }
 
     public function convocations(): HasMany
+    {
+        return $this->hasMany(EventConvocation::class, 'evento_id');
+    }
+
+    public function participants(): HasMany
     {
         return $this->hasMany(EventConvocation::class, 'evento_id');
     }
