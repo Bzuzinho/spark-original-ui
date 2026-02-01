@@ -21,13 +21,16 @@ class ComunicacaoController extends Controller
 
         $totalCommunications = Communication::count();
         $scheduledCount = Communication::scheduled()->count();
-        $sentToday = Communication::sent()
-            ->whereDate('enviado_em', today())
-            ->count();
-        $totalSent = Communication::sent()->count();
-        $successRate = $totalSent > 0 
-            ? round((Communication::sent()->sum('total_enviados') / 
-                     (Communication::sent()->sum('total_enviados') + Communication::sent()->sum('total_falhados'))) * 100, 1)
+        
+        // Cache sent communications query to avoid redundant queries
+        $sentCommunications = Communication::sent();
+        $sentToday = (clone $sentCommunications)->whereDate('enviado_em', today())->count();
+        $totalSent = (clone $sentCommunications)->count();
+        
+        $totalEnviados = (clone $sentCommunications)->sum('total_enviados');
+        $totalFalhados = (clone $sentCommunications)->sum('total_falhados');
+        $successRate = ($totalEnviados + $totalFalhados) > 0 
+            ? round(($totalEnviados / ($totalEnviados + $totalFalhados)) * 100, 1)
             : 0;
 
         return Inertia::render('Comunicacao/Index', [
@@ -118,16 +121,19 @@ class ComunicacaoController extends Controller
         $sendNow = $request->boolean('send_now', true);
 
         if ($sendNow) {
-            // In a real implementation, this would dispatch a job to send emails
-            // For now, we'll just mark it as sent (mock implementation)
+            // TODO: Real implementation should dispatch a job to send emails asynchronously
+            // The job should track actual successful sends and update total_enviados accordingly,
+            // not just assume all sends succeed. Example:
+            // SendCommunicationJob::dispatch($comunicacao);
+            // The job will update: total_enviados (actual successful sends), total_falhados (actual failures)
+            
+            // Mock implementation for now - marks all as sent successfully
             $comunicacao->update([
                 'estado' => 'enviada',
                 'enviado_em' => now(),
                 'total_enviados' => count($comunicacao->destinatarios),
                 'total_falhados' => 0,
             ]);
-
-            // TODO: Dispatch SendCommunicationJob::dispatch($comunicacao);
 
             return redirect()->route('comunicacao.index')
                 ->with('success', 'Comunicação enviada com sucesso!');

@@ -20,7 +20,7 @@ class StoreCommunicationRequest extends FormRequest
             'destinatarios' => ['required', 'array', 'min:1'],
             'destinatarios.*' => ['string'],
             'estado' => ['nullable', 'in:rascunho,agendada,enviada,falhou'],
-            'agendado_para' => ['nullable', 'date', 'after:now'],
+            'agendado_para' => ['nullable', 'date', 'after_or_equal:now'],
         ];
     }
 
@@ -33,7 +33,7 @@ class StoreCommunicationRequest extends FormRequest
             'tipo.in' => 'O tipo de comunicação deve ser: email, sms, notificacao ou aviso.',
             'destinatarios.required' => 'Deve selecionar pelo menos um destinatário.',
             'destinatarios.min' => 'Deve selecionar pelo menos um destinatário.',
-            'agendado_para.after' => 'A data de agendamento deve ser no futuro.',
+            'agendado_para.after_or_equal' => 'A data de agendamento deve ser no presente ou futuro.',
         ];
     }
 }
