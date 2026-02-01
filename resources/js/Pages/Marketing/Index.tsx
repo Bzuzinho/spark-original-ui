@@ -6,6 +6,7 @@ import { Button } from '@/Components/ui/Button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/Components/ui/dialog';
 import { Input } from '@/Components/ui/Input';
 import { Label } from '@/Components/ui/Label';
+import { Textarea } from '@/Components/ui/textarea';
 import { MegaphoneSimple, ShareNetwork, EnvelopeSimple, ChartLine, Plus, Pencil, Trash } from '@phosphor-icons/react';
 
 interface Campaign {
@@ -297,11 +298,10 @@ export default function MarketingIndex({ campaigns, stats, filters }: Props) {
                             </div>
                             <div>
                                 <Label htmlFor="descricao">Descrição</Label>
-                                <textarea
+                                <Textarea
                                     id="descricao"
                                     value={formData.descricao}
                                     onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
-                                    className="w-full px-3 py-2 border rounded-md"
                                     rows={3}
                                 />
                             </div>
@@ -381,11 +381,10 @@ export default function MarketingIndex({ campaigns, stats, filters }: Props) {
                             </div>
                             <div>
                                 <Label htmlFor="notas">Notas</Label>
-                                <textarea
+                                <Textarea
                                     id="notas"
                                     value={formData.notas}
                                     onChange={(e) => setFormData({ ...formData, notas: e.target.value })}
-                                    className="w-full px-3 py-2 border rounded-md"
                                     rows={2}
                                 />
                             </div>
