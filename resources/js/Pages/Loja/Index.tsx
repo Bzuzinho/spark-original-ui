@@ -8,7 +8,7 @@ import { Badge } from '@/Components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/Components/ui/dialog';
 import { Label } from '@/Components/ui/label';
 import { Textarea } from '@/Components/ui/textarea';
-import { Plus, ShoppingCart, Package, TrendingUp } from 'lucide-react';
+import { Plus, ShoppingCart, Package, TrendUp } from '@phosphor-icons/react';
 
 interface Product {
     id: string;
@@ -256,7 +256,7 @@ export default function LojaIndex({ products, stats, categorias, filters }: Prop
                                 <p className="text-lg sm:text-xl font-bold text-blue-600 mt-0.5 truncate">€{stats.valor_total_stock.toFixed(2)}</p>
                             </div>
                             <div className="p-1.5 rounded-lg bg-blue-50 flex-shrink-0">
-                                <Package className="text-blue-600" size={16} />
+                                <Package className="text-blue-600" size={16} weight="bold" />
                             </div>
                         </div>
                     </Card>
@@ -268,7 +268,7 @@ export default function LojaIndex({ products, stats, categorias, filters }: Prop
                                 <p className="text-lg sm:text-xl font-bold mt-0.5">{stats.total_produtos}</p>
                             </div>
                             <div className="p-1.5 rounded-lg bg-green-50 flex-shrink-0">
-                                <ShoppingCart className="text-green-600" size={16} />
+                                <ShoppingCart className="text-green-600" size={16} weight="bold" />
                             </div>
                         </div>
                     </Card>
@@ -280,7 +280,7 @@ export default function LojaIndex({ products, stats, categorias, filters }: Prop
                                 <p className="text-lg sm:text-xl font-bold text-orange-600 mt-0.5">{stats.produtos_baixo_stock}</p>
                             </div>
                             <div className="p-1.5 rounded-lg bg-orange-50 flex-shrink-0">
-                                <TrendingUp className="text-orange-600" size={16} />
+                                <TrendUp className="text-orange-600" size={16} weight="bold" />
                             </div>
                         </div>
                     </Card>
@@ -350,7 +350,7 @@ export default function LojaIndex({ products, stats, categorias, filters }: Prop
                 {(!products || products.length === 0) && (
                     <Card className="p-6 sm:p-8">
                         <div className="text-center">
-                            <Package className="mx-auto text-muted-foreground mb-2 sm:mb-3" size={40} />
+                            <Package className="mx-auto text-muted-foreground mb-2 sm:mb-3" size={40} weight="thin" />
                             <h3 className="font-semibold text-sm mb-0.5">Nenhum produto registado</h3>
                             <p className="text-muted-foreground text-xs">
                                 Adicione produtos ao seu inventário.
