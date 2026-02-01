@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreCommunicationRequest;
+use App\Http\Requests\UpdateCommunicationRequest;
 use App\Models\Communication;
 use App\Models\User;
 use Inertia\Inertia;
@@ -13,37 +15,55 @@ class ComunicacaoController extends Controller
 {
     public function index(): Response
     {
+        $communications = Communication::query()
+            ->latest()
+            ->paginate(15);
+
+        $totalCommunications = Communication::count();
+        $scheduledCount = Communication::scheduled()->count();
+        
+        // Cache sent communications query to avoid redundant queries
+        $sentCommunications = Communication::sent();
+        $sentToday = (clone $sentCommunications)->whereDate('enviado_em', today())->count();
+        $totalSent = (clone $sentCommunications)->count();
+        
+        $totalEnviados = (clone $sentCommunications)->sum('total_enviados');
+        $totalFalhados = (clone $sentCommunications)->sum('total_falhados');
+        $successRate = ($totalEnviados + $totalFalhados) > 0 
+            ? round(($totalEnviados / ($totalEnviados + $totalFalhados)) * 100, 1)
+            : 0;
+
         return Inertia::render('Comunicacao/Index', [
-            'communications' => Communication::with(['sender'])
-                ->latest()
-                ->paginate(15),
+            'communications' => $communications,
             'stats' => [
-                'totalCommunications' => Communication::count(),
-                'sentToday' => Communication::whereDate('data_envio', today())->count(),
-                'pendingCommunications' => Communication::where('estado', 'pendente')->count(),
+                'totalCommunications' => $totalCommunications,
+                'scheduledCount' => $scheduledCount,
+                'sentToday' => $sentToday,
+                'totalSent' => $totalSent,
+                'successRate' => $successRate,
             ],
         ]);
     }
 
     public function create(): Response
     {
+        $users = User::where('estado', 'ativo')
+            ->select('id', 'name', 'email')
+            ->get();
+
         return Inertia::render('Comunicacao/Create', [
-            'users' => User::where('estado', 'ativo')->get(),
+            'users' => $users,
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(StoreCommunicationRequest $request): RedirectResponse
     {
-        $data = $request->validate([
-            'titulo' => 'required|string|max:255',
-            'mensagem' => 'required|string',
-            'tipo_comunicacao' => 'required|in:email,sms,notificacao',
-            'destinatarios' => 'required|array',
-            'data_envio' => 'nullable|date',
-        ]);
-
-        $data['enviado_por'] = auth()->id();
-        $data['estado'] = 'pendente';
+        $data = $request->validated();
+        
+        // Set default estado if not provided
+        if (!isset($data['estado'])) {
+            $data['estado'] = isset($data['agendado_para']) ? 'agendada' : 'rascunho';
+        }
 
         Communication::create($data);
 
@@ -54,27 +74,25 @@ class ComunicacaoController extends Controller
     public function show(Communication $comunicacao): Response
     {
         return Inertia::render('Comunicacao/Show', [
-            'communication' => $comunicacao->load(['sender']),
+            'communication' => $comunicacao,
         ]);
     }
 
     public function edit(Communication $comunicacao): Response
     {
+        $users = User::where('estado', 'ativo')
+            ->select('id', 'name', 'email')
+            ->get();
+
         return Inertia::render('Comunicacao/Edit', [
             'communication' => $comunicacao,
-            'users' => User::where('estado', 'ativo')->get(),
+            'users' => $users,
         ]);
     }
 
-    public function update(Request $request, Communication $comunicacao): RedirectResponse
+    public function update(UpdateCommunicationRequest $request, Communication $comunicacao): RedirectResponse
     {
-        $data = $request->validate([
-            'titulo' => 'required|string|max:255',
-            'mensagem' => 'required|string',
-            'tipo_comunicacao' => 'required|in:email,sms,notificacao',
-            'destinatarios' => 'required|array',
-            'data_envio' => 'nullable|date',
-        ]);
+        $data = $request->validated();
 
         $comunicacao->update($data);
 
@@ -89,4 +107,45 @@ class ComunicacaoController extends Controller
         return redirect()->route('comunicacao.index')
             ->with('success', 'Comunicação eliminada com sucesso!');
     }
+
+    /**
+     * Send a communication immediately or schedule it
+     */
+    public function send(Request $request, Communication $comunicacao): RedirectResponse
+    {
+        // Validate the communication is in a sendable state
+        if (!in_array($comunicacao->estado, ['rascunho', 'agendada'])) {
+            return back()->with('error', 'Esta comunicação já foi enviada ou falhou.');
+        }
+
+        $sendNow = $request->boolean('send_now', true);
+
+        if ($sendNow) {
+            // TODO: Real implementation should dispatch a job to send emails asynchronously
+            // The job should track actual successful sends and update total_enviados accordingly,
+            // not just assume all sends succeed. Example:
+            // SendCommunicationJob::dispatch($comunicacao);
+            // The job will update: total_enviados (actual successful sends), total_falhados (actual failures)
+            
+            // Mock implementation for now - marks all as sent successfully
+            $comunicacao->update([
+                'estado' => 'enviada',
+                'enviado_em' => now(),
+                'total_enviados' => count($comunicacao->destinatarios),
+                'total_falhados' => 0,
+            ]);
+
+            return redirect()->route('comunicacao.index')
+                ->with('success', 'Comunicação enviada com sucesso!');
+        } else {
+            // Schedule for later
+            $comunicacao->update([
+                'estado' => 'agendada',
+            ]);
+
+            return redirect()->route('comunicacao.index')
+                ->with('success', 'Comunicação agendada com sucesso!');
+        }
+    }
 }
+

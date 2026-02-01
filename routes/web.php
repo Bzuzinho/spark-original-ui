@@ -9,7 +9,7 @@ use App\Http\Controllers\FinanceiroController;
 use App\Http\Controllers\LojaController;
 use App\Http\Controllers\PatrociniosController;
 use App\Http\Controllers\ComunicacaoController;
-use App\Http\Controllers\MarketingController;
+use App\Http\Controllers\MarketingCampaignController;
 use App\Http\Controllers\SettingsController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
@@ -31,7 +31,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('loja', LojaController::class);
     Route::resource('patrocinios', PatrociniosController::class);
     Route::resource('comunicacao', ComunicacaoController::class);
+    Route::post('/comunicacao/{comunicacao}/send', [ComunicacaoController::class, 'send'])->name('comunicacao.send');
     Route::resource('marketing', MarketingController::class);
+    Route::resource('marketing', MarketingCampaignController::class);
     
     // Settings routes
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings');
