@@ -48,6 +48,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/settings/event-types', [SettingsController::class, 'storeEventType'])->name('settings.event-types.store');
     Route::put('/settings/event-types/{eventType}', [SettingsController::class, 'updateEventType'])->name('settings.event-types.update');
     Route::delete('/settings/event-types/{eventType}', [SettingsController::class, 'destroyEventType'])->name('settings.event-types.destroy');
+    
+    Route::put('/settings/club', [SettingsController::class, 'updateClubSettings'])->name('settings.club.update');
 });
 
 Route::middleware('auth')->group(function () {

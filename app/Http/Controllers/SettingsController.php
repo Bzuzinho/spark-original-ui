@@ -8,6 +8,7 @@ use App\Models\EventType;
 use App\Models\ProductCategory;
 use App\Models\SponsorCategory;
 use App\Models\NewsCategory;
+use App\Models\ClubSetting;
 use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Http\RedirectResponse;
@@ -24,14 +25,15 @@ class SettingsController extends Controller
             'productCategories' => ProductCategory::all(),
             'sponsorCategories' => SponsorCategory::all(),
             'newsCategories' => NewsCategory::all(),
+            'clubSettings' => ClubSetting::first(),
         ]);
     }
 
     public function storeUserType(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'nome' => 'required|string|max:255',
-            'descricao' => 'nullable|string',
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
             'active' => 'boolean',
         ]);
 
@@ -44,8 +46,8 @@ class SettingsController extends Controller
     public function updateUserType(Request $request, UserType $userType): RedirectResponse
     {
         $data = $request->validate([
-            'nome' => 'required|string|max:255',
-            'descricao' => 'nullable|string',
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
             'active' => 'boolean',
         ]);
 
@@ -66,10 +68,10 @@ class SettingsController extends Controller
     public function storeAgeGroup(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'nome' => 'required|string|max:255',
-            'idade_minima' => 'required|integer|min:0',
-            'idade_maxima' => 'required|integer|min:0',
-            'descricao' => 'nullable|string',
+            'name' => 'required|string|max:255',
+            'min_age' => 'required|integer|min:0',
+            'max_age' => 'required|integer|min:0',
+            'description' => 'nullable|string',
         ]);
 
         AgeGroup::create($data);
@@ -81,10 +83,10 @@ class SettingsController extends Controller
     public function updateAgeGroup(Request $request, AgeGroup $ageGroup): RedirectResponse
     {
         $data = $request->validate([
-            'nome' => 'required|string|max:255',
-            'idade_minima' => 'required|integer|min:0',
-            'idade_maxima' => 'required|integer|min:0',
-            'descricao' => 'nullable|string',
+            'name' => 'required|string|max:255',
+            'min_age' => 'required|integer|min:0',
+            'max_age' => 'required|integer|min:0',
+            'description' => 'nullable|string',
         ]);
 
         $ageGroup->update($data);
@@ -104,8 +106,10 @@ class SettingsController extends Controller
     public function storeEventType(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'nome' => 'required|string|max:255',
-            'descricao' => 'nullable|string',
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'category' => 'nullable|string',
+            'color' => 'nullable|string',
             'active' => 'boolean',
         ]);
 
@@ -118,8 +122,10 @@ class SettingsController extends Controller
     public function updateEventType(Request $request, EventType $eventType): RedirectResponse
     {
         $data = $request->validate([
-            'nome' => 'required|string|max:255',
-            'descricao' => 'nullable|string',
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'category' => 'nullable|string',
+            'color' => 'nullable|string',
             'active' => 'boolean',
         ]);
 
@@ -135,5 +141,32 @@ class SettingsController extends Controller
 
         return redirect()->route('settings')
             ->with('success', 'Tipo de evento eliminado com sucesso!');
+    }
+
+    public function updateClubSettings(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'nome_clube' => 'required|string|max:255',
+            'sigla' => 'nullable|string|max:10',
+            'morada' => 'nullable|string',
+            'codigo_postal' => 'nullable|string|max:20',
+            'localidade' => 'nullable|string|max:100',
+            'telefone' => 'nullable|string|max:20',
+            'email' => 'nullable|email|max:255',
+            'website' => 'nullable|url|max:255',
+            'nif' => 'nullable|string|max:20',
+            'iban' => 'nullable|string|max:34',
+        ]);
+
+        $clubSettings = ClubSetting::first();
+        
+        if ($clubSettings) {
+            $clubSettings->update($data);
+        } else {
+            ClubSetting::create($data);
+        }
+
+        return redirect()->route('settings')
+            ->with('success', 'Configurações do clube atualizadas com sucesso!');
     }
 }
