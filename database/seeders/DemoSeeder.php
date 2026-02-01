@@ -148,13 +148,14 @@ class DemoSeeder extends Seeder
             $date = Carbon::now()->addDays($daysOffset);
             
             $event = Event::create([
-                'nome' => $isPast ? "Treino Passado #{$i}" : "Evento Futuro #{$i}",
+                'titulo' => $isPast ? "Treino Passado #{$i}" : "Evento Futuro #{$i}",
                 'tipo' => $eventTypeIds[array_rand($eventTypeIds)],
                 'data_inicio' => $date->format('Y-m-d H:i:s'),
                 'data_fim' => $date->addHours(2)->format('Y-m-d H:i:s'),
                 'local' => ['Pavilhão Municipal', 'Piscina Olímpica', 'Campo de Futebol'][rand(0, 2)],
                 'descricao' => 'Evento de demonstração criado pelo seeder',
-                'escalao' => [['Juvenis', 'Juniores', 'Seniores'][rand(0, 2)]],
+                'escaloes_elegiveis' => [['Juvenis', 'Juniores', 'Seniores'][rand(0, 2)]],
+                'criado_por' => User::first()->id,
             ]);
 
             // Add attendances for past events
@@ -294,21 +295,23 @@ class DemoSeeder extends Seeder
 
                 // Create corresponding invoice
                 $invoice = Invoice::create([
-                    'numero' => 'INV-' . now()->year . '-' . str_pad(($month * 50 + $member->id), 4, '0', STR_PAD_LEFT),
-                    'user_id' => $member->id,
-                    'data_emissao' => $dueDate->subDays(5)->format('Y-m-d'),
-                    'data_vencimento' => $dueDate->format('Y-m-d'),
+                    'socio_id' => $member->id,
+                    'data_fatura' => $dueDate->subDays(5)->format('Y-m-d'),
+                    'mes' => $dueDate->month,
+                    'ano' => $dueDate->year,
                     'valor_total' => 50.00,
-                    'estado' => $isPaid ? 'pago' : 'pendente',
-                    'notas' => 'Mensalidade ' . $dueDate->format('F Y'),
+                    'valor_pago' => $isPaid ? 50.00 : 0,
+                    'estado_pagamento' => $isPaid ? 'pago' : 'pendente',
+                    'data_pagamento' => $isPaid ? $dueDate->addDays(rand(1, 10))->format('Y-m-d') : null,
+                    'observacoes' => 'Mensalidade ' . $dueDate->format('F Y'),
                 ]);
 
                 InvoiceItem::create([
-                    'invoice_id' => $invoice->id,
+                    'fatura_id' => $invoice->id,
                     'descricao' => 'Mensalidade - ' . $dueDate->format('F Y'),
                     'quantidade' => 1,
-                    'preco_unitario' => 50.00,
-                    'total' => 50.00,
+                    'valor_unitario' => 50.00,
+                    'total_linha' => 50.00,
                 ]);
             }
         }
