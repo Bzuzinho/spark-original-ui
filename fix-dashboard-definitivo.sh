@@ -1,3 +1,17 @@
+#!/bin/bash
+
+echo "=== APLICAR DASHBOARD FIX DEFINITIVO ==="
+echo ""
+
+# 1. Backup
+echo "1️⃣ Criando backup..."
+cp resources/js/Pages/Dashboard.tsx resources/js/Pages/Dashboard.tsx.backup-$(date +%s)
+echo "✅ Backup criado"
+
+# 2. Criar ficheiro temporário com código correto
+echo ""
+echo "2️⃣ Criando novo Dashboard.tsx..."
+cat > /tmp/dashboard-fixed.tsx << 'ENDOFCODE'
 import { Head } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Users, Trophy, CalendarBlank, CurrencyCircleDollar, Heartbeat, UserCircle } from '@phosphor-icons/react';
@@ -89,7 +103,7 @@ export default function Dashboard({ stats, recentEvents = [], recentActivity = [
         },
         {
             title: 'Receitas do Mês',
-            value: `€${(safeStats.monthlyRevenue ?? 0).toFixed(2)}`,
+            value: `€${safeStats.monthlyRevenue.toFixed(2)}`,
             icon: CurrencyCircleDollar,
             color: 'text-purple-600',
             bgColor: 'bg-purple-50',
@@ -172,7 +186,7 @@ export default function Dashboard({ stats, recentEvents = [], recentActivity = [
                                             </p>
                                         </div>
                                         <span className={`font-semibold text-xs whitespace-nowrap flex-shrink-0 ${entry.tipo === 'receita' ? 'text-green-600' : 'text-red-600'}`}>
-                                            {entry.tipo === 'receita' ? '+' : '-'}€{(entry.valor ?? 0).toFixed(2)}
+                                            {entry.tipo === 'receita' ? '+' : '-'}€{entry.valor.toFixed(2)}
                                         </span>
                                     </div>
                                 ))}
@@ -211,3 +225,47 @@ export default function Dashboard({ stats, recentEvents = [], recentActivity = [
         </AuthenticatedLayout>
     );
 }
+ENDOFCODE
+
+# 3. Mover ficheiro
+echo "✅ Código correto criado"
+mv /tmp/dashboard-fixed.tsx resources/js/Pages/Dashboard.tsx
+echo "✅ Dashboard.tsx substituído"
+
+# 4. Verificar se safeStats está presente
+echo ""
+echo "3️⃣ Verificando código..."
+if grep -q "safeStats" resources/js/Pages/Dashboard.tsx; then
+    echo "✅ safeStats encontrado no código"
+else
+    echo "❌ ERRO: safeStats NÃO foi aplicado!"
+    exit 1
+fi
+
+# 5. Limpar cache Vite COMPLETAMENTE
+echo ""
+echo "4️⃣ Limpando cache Vite..."
+rm -rf public/build
+rm -rf node_modules/.vite
+rm -rf node_modules/.cache
+echo "✅ Cache limpo"
+
+# 6. Rebuild FORÇADO
+echo ""
+echo "5️⃣ Rebuild frontend (FORÇADO)..."
+NODE_ENV=production npm run build -- --force
+
+# 7. Verificar novo hash
+echo ""
+echo "6️⃣ Verificando novo bundle..."
+NEW_HASH=$(ls public/build/assets/ | grep Dashboard | head -1)
+echo "Novo bundle: $NEW_HASH"
+
+echo ""
+echo "✅ FIX APLICADO COM SUCESSO!"
+echo ""
+echo "PRÓXIMOS PASSOS:"
+echo "1. Restart server: php artisan serve --host=0.0.0.0 --port=8000"
+echo "2. No browser: CTRL+SHIFT+DELETE → Clear cache → Last hour"
+echo "3. Aceder: /dashboard"
+echo "4. Dashboard deve carregar SEM ERROS! 🎉"

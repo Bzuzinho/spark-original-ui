@@ -19,13 +19,23 @@ class ForceAppUrl
         $appUrl = config('app.url');
         
         if ($appUrl) {
-            URL::forceRootUrl($appUrl);
-            
-            // Parse the URL to set scheme
+            // Parse the URL
             $parsedUrl = parse_url($appUrl);
-            if (isset($parsedUrl['scheme'])) {
-                URL::forceScheme($parsedUrl['scheme']);
+            
+            // Build root URL without port for standard HTTPS (443)
+            $scheme = $parsedUrl['scheme'] ?? 'https';
+            $host = $parsedUrl['host'] ?? '';
+            $port = $parsedUrl['port'] ?? null;
+            
+            // Don't include port in root URL if it's standard (443 for https, 80 for http)
+            if (($scheme === 'https' && $port === 443) || ($scheme === 'http' && $port === 80) || $port === null) {
+                $rootUrl = "{$scheme}://{$host}";
+            } else {
+                $rootUrl = "{$scheme}://{$host}:{$port}";
             }
+            
+            URL::forceRootUrl($rootUrl);
+            URL::forceScheme($scheme);
         }
         
         return $next($request);

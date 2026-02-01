@@ -34,7 +34,7 @@ interface Props {
 }
 
 export default function Dashboard({ stats, recentEvents = [], recentActivity = [] }: Props) {
-    // ===== VALIDAÇÃO CRÍTICA =====
+    // ===== VALIDAÇÃO DE DADOS (PREVENT UNDEFINED ERRORS) =====
     const safeStats = {
         totalMembers: stats?.totalMembers ?? 0,
         activeAthletes: stats?.activeAthletes ?? 0,
@@ -42,8 +42,9 @@ export default function Dashboard({ stats, recentEvents = [], recentActivity = [
         upcomingEvents: stats?.upcomingEvents ?? 0,
         monthlyRevenue: stats?.monthlyRevenue ?? 0,
     };
-    // ============================
+    // ==========================================================
 
+    // Navigation handler (matching Spark's onNavigate)
     const handleNavigate = (view: string) => {
         const routes: Record<string, string> = {
             'members': '/membros',
@@ -89,7 +90,7 @@ export default function Dashboard({ stats, recentEvents = [], recentActivity = [
         },
         {
             title: 'Receitas do Mês',
-            value: `€${(safeStats.monthlyRevenue ?? 0).toFixed(2)}`,
+            value: `€${safeStats.monthlyRevenue.toFixed(2)}`,
             icon: CurrencyCircleDollar,
             color: 'text-purple-600',
             bgColor: 'bg-purple-50',
@@ -109,6 +110,7 @@ export default function Dashboard({ stats, recentEvents = [], recentActivity = [
             <Head title="Dashboard" />
 
             <div className="w-full px-2 sm:px-4 py-2 sm:py-3 space-y-2 sm:space-y-3">
+                {/* Stats Cards - 5 cards - MATCHING SPARK EXACTLY */}
                 <div className="grid gap-2 grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
                     {statsConfig.map((stat) => {
                         const Icon = stat.icon;
@@ -132,7 +134,9 @@ export default function Dashboard({ stats, recentEvents = [], recentActivity = [
                     })}
                 </div>
 
+                {/* Two column layout: Events + Activity - MATCHING SPARK */}
                 <div className="grid gap-2 sm:gap-3 lg:grid-cols-2">
+                    {/* Próximos Eventos */}
                     <Card className="p-2 sm:p-3 overflow-hidden">
                         <h2 className="text-sm sm:text-base font-semibold mb-2">Próximos Eventos</h2>
                         {recentEvents && recentEvents.length > 0 ? (
@@ -159,6 +163,7 @@ export default function Dashboard({ stats, recentEvents = [], recentActivity = [
                         </Button>
                     </Card>
 
+                    {/* Atividade Recente */}
                     <Card className="p-2 sm:p-3 overflow-hidden">
                         <h2 className="text-sm sm:text-base font-semibold mb-2">Atividade Recente</h2>
                         {recentActivity && recentActivity.length > 0 ? (
@@ -172,7 +177,7 @@ export default function Dashboard({ stats, recentEvents = [], recentActivity = [
                                             </p>
                                         </div>
                                         <span className={`font-semibold text-xs whitespace-nowrap flex-shrink-0 ${entry.tipo === 'receita' ? 'text-green-600' : 'text-red-600'}`}>
-                                            {entry.tipo === 'receita' ? '+' : '-'}€{(entry.valor ?? 0).toFixed(2)}
+                                            {entry.tipo === 'receita' ? '+' : '-'}€{entry.valor.toFixed(2)}
                                         </span>
                                     </div>
                                 ))}
@@ -186,6 +191,7 @@ export default function Dashboard({ stats, recentEvents = [], recentActivity = [
                     </Card>
                 </div>
 
+                {/* Acesso Rápido - MATCHING SPARK (NO w-full on buttons) */}
                 <Card className="p-2 sm:p-3">
                     <h2 className="text-sm sm:text-base font-semibold mb-2">Acesso Rápido</h2>
                     <div className="grid gap-2 grid-cols-2 lg:grid-cols-4">

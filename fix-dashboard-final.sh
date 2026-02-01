@@ -1,3 +1,26 @@
+#!/bin/bash
+
+echo "=== FIX DASHBOARD - LARAVEL + SPARK HYBRID ==="
+echo ""
+
+# Verificar que estamos no projeto correto
+if [ ! -f "artisan" ]; then
+    echo "❌ ERRO: artisan não encontrado!"
+    exit 1
+fi
+
+echo "✅ Projeto Laravel detectado"
+echo ""
+
+# 1. Backup
+echo "1️⃣ Backup..."
+cp resources/js/Pages/Dashboard.tsx resources/js/Pages/Dashboard.tsx.backup-$(date +%s)
+echo "✅ Backup criado"
+
+# 2. Aplicar código corrigido
+echo ""
+echo "2️⃣ Aplicando código corrigido..."
+cat > resources/js/Pages/Dashboard.tsx << 'ENDOFCODE'
 import { Head } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Users, Trophy, CalendarBlank, CurrencyCircleDollar, Heartbeat, UserCircle } from '@phosphor-icons/react';
@@ -89,7 +112,7 @@ export default function Dashboard({ stats, recentEvents = [], recentActivity = [
         },
         {
             title: 'Receitas do Mês',
-            value: `€${(safeStats.monthlyRevenue ?? 0).toFixed(2)}`,
+            value: `€${safeStats.monthlyRevenue.toFixed(2)}`,
             icon: CurrencyCircleDollar,
             color: 'text-purple-600',
             bgColor: 'bg-purple-50',
@@ -172,7 +195,7 @@ export default function Dashboard({ stats, recentEvents = [], recentActivity = [
                                             </p>
                                         </div>
                                         <span className={`font-semibold text-xs whitespace-nowrap flex-shrink-0 ${entry.tipo === 'receita' ? 'text-green-600' : 'text-red-600'}`}>
-                                            {entry.tipo === 'receita' ? '+' : '-'}€{(entry.valor ?? 0).toFixed(2)}
+                                            {entry.tipo === 'receita' ? '+' : '-'}€{entry.valor.toFixed(2)}
                                         </span>
                                     </div>
                                 ))}
@@ -211,3 +234,47 @@ export default function Dashboard({ stats, recentEvents = [], recentActivity = [
         </AuthenticatedLayout>
     );
 }
+ENDOFCODE
+
+echo "✅ Código aplicado"
+
+# 3. Verificar
+echo ""
+echo "3️⃣ Verificando..."
+if grep -q "safeStats" resources/js/Pages/Dashboard.tsx; then
+    echo "✅ safeStats confirmado"
+else
+    echo "❌ safeStats não encontrado!"
+    exit 1
+fi
+
+# 4. Limpar cache Vite
+echo ""
+echo "4️⃣ Limpando cache..."
+rm -rf public/build
+rm -rf node_modules/.vite
+echo "✅ Cache limpo"
+
+# 5. Rebuild (SEM --force)
+echo ""
+echo "5️⃣ Rebuild..."
+npm run build
+
+# 6. Verificar
+echo ""
+echo "6️⃣ Resultado:"
+if [ -d "public/build" ]; then
+    echo "✅ Build criado"
+    ls -lah public/build/assets/ | grep Dashboard
+else
+    echo "❌ Build falhou"
+    exit 1
+fi
+
+echo ""
+echo "✅✅✅ FIX COMPLETO! ✅✅✅"
+echo ""
+echo "AGORA:"
+echo "1. php artisan serve --host=0.0.0.0 --port=8000"
+echo "2. Browser: CTRL+SHIFT+DELETE → Clear cache"
+echo "3. /dashboard → DEVE FUNCIONAR! 🎉"

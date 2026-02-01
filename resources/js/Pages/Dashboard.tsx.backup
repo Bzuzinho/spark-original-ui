@@ -1,9 +1,8 @@
-import { Head } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Users, Trophy, CalendarBlank, CurrencyCircleDollar, Heartbeat, UserCircle } from '@phosphor-icons/react';
 import { Card } from '@/Components/ui/card';
 import { Button } from '@/Components/ui/button';
-import { router } from '@inertiajs/react';
 
 interface Event {
     id: string;
@@ -34,7 +33,7 @@ interface Props {
 }
 
 export default function Dashboard({ stats, recentEvents = [], recentActivity = [] }: Props) {
-    // ===== VALIDAÇÃO CRÍTICA =====
+    // ===== VALIDAÇÃO DE DADOS (PREVENT UNDEFINED ERRORS) =====
     const safeStats = {
         totalMembers: stats?.totalMembers ?? 0,
         activeAthletes: stats?.activeAthletes ?? 0,
@@ -42,17 +41,7 @@ export default function Dashboard({ stats, recentEvents = [], recentActivity = [
         upcomingEvents: stats?.upcomingEvents ?? 0,
         monthlyRevenue: stats?.monthlyRevenue ?? 0,
     };
-    // ============================
-
-    const handleNavigate = (view: string) => {
-        const routes: Record<string, string> = {
-            'members': '/membros',
-            'sports': '/desportivo',
-            'events': '/eventos',
-            'financial': '/financeiro'
-        };
-        router.visit(routes[view] || '/dashboard');
-    };
+    // ==========================================================
 
     const statsConfig = [
         {
@@ -61,7 +50,7 @@ export default function Dashboard({ stats, recentEvents = [], recentActivity = [
             icon: Users,
             color: 'text-blue-600',
             bgColor: 'bg-blue-50',
-            view: 'members'
+            link: '/membros'
         },
         {
             title: 'Atletas Ativos',
@@ -69,7 +58,7 @@ export default function Dashboard({ stats, recentEvents = [], recentActivity = [
             icon: Heartbeat,
             color: 'text-emerald-600',
             bgColor: 'bg-emerald-50',
-            view: 'members'
+            link: '/membros'
         },
         {
             title: 'Encarregados de Educação',
@@ -77,7 +66,7 @@ export default function Dashboard({ stats, recentEvents = [], recentActivity = [
             icon: UserCircle,
             color: 'text-cyan-600',
             bgColor: 'bg-cyan-50',
-            view: 'members'
+            link: '/membros'
         },
         {
             title: 'Eventos Próximos',
@@ -85,15 +74,15 @@ export default function Dashboard({ stats, recentEvents = [], recentActivity = [
             icon: CalendarBlank,
             color: 'text-orange-600',
             bgColor: 'bg-orange-50',
-            view: 'events'
+            link: '/eventos'
         },
         {
             title: 'Receitas do Mês',
-            value: `€${(safeStats.monthlyRevenue ?? 0).toFixed(2)}`,
+            value: `€${safeStats.monthlyRevenue.toFixed(2)}`,
             icon: CurrencyCircleDollar,
             color: 'text-purple-600',
             bgColor: 'bg-purple-50',
-            view: 'financial'
+            link: '/financeiro'
         }
     ];
 
@@ -109,30 +98,31 @@ export default function Dashboard({ stats, recentEvents = [], recentActivity = [
             <Head title="Dashboard" />
 
             <div className="w-full px-2 sm:px-4 py-2 sm:py-3 space-y-2 sm:space-y-3">
+                {/* Stats Cards - 5 cards */}
                 <div className="grid gap-2 grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
                     {statsConfig.map((stat) => {
                         const Icon = stat.icon;
                         return (
-                            <Card
-                                key={stat.title}
-                                className="p-2 sm:p-3 cursor-pointer transition-all hover:shadow-md hover:border-primary/50"
-                                onClick={() => handleNavigate(stat.view)}
-                            >
-                                <div className="flex items-start justify-between gap-1">
-                                    <div className="min-w-0 flex-1">
-                                        <p className="text-xs text-muted-foreground font-medium leading-tight truncate">{stat.title}</p>
-                                        <p className="text-base sm:text-xl font-bold mt-0.5 truncate">{stat.value}</p>
+                            <Link key={stat.title} href={stat.link}>
+                                <Card className="p-2 sm:p-3 cursor-pointer transition-all hover:shadow-md hover:border-primary/50">
+                                    <div className="flex items-start justify-between gap-1">
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-xs text-muted-foreground font-medium leading-tight truncate">{stat.title}</p>
+                                            <p className="text-base sm:text-xl font-bold mt-0.5 truncate">{stat.value}</p>
+                                        </div>
+                                        <div className={`p-1.5 rounded-lg ${stat.bgColor} flex-shrink-0`}>
+                                            <Icon className={stat.color} size={16} weight="bold" />
+                                        </div>
                                     </div>
-                                    <div className={`p-1.5 rounded-lg ${stat.bgColor} flex-shrink-0`}>
-                                        <Icon className={stat.color} size={16} weight="bold" />
-                                    </div>
-                                </div>
-                            </Card>
+                                </Card>
+                            </Link>
                         );
                     })}
                 </div>
 
+                {/* Two column layout: Events + Activity */}
                 <div className="grid gap-2 sm:gap-3 lg:grid-cols-2">
+                    {/* Próximos Eventos */}
                     <Card className="p-2 sm:p-3 overflow-hidden">
                         <h2 className="text-sm sm:text-base font-semibold mb-2">Próximos Eventos</h2>
                         {recentEvents && recentEvents.length > 0 ? (
@@ -154,11 +144,14 @@ export default function Dashboard({ stats, recentEvents = [], recentActivity = [
                         ) : (
                             <p className="text-muted-foreground text-center py-3 text-xs">Nenhum evento agendado</p>
                         )}
-                        <Button variant="outline" className="w-full mt-2 h-7 text-xs" onClick={() => handleNavigate('events')}>
-                            Ver Todos os Eventos
-                        </Button>
+                        <Link href="/eventos">
+                            <Button variant="outline" className="w-full mt-2 h-7 text-xs">
+                                Ver Todos os Eventos
+                            </Button>
+                        </Link>
                     </Card>
 
+                    {/* Atividade Recente */}
                     <Card className="p-2 sm:p-3 overflow-hidden">
                         <h2 className="text-sm sm:text-base font-semibold mb-2">Atividade Recente</h2>
                         {recentActivity && recentActivity.length > 0 ? (
@@ -172,7 +165,7 @@ export default function Dashboard({ stats, recentEvents = [], recentActivity = [
                                             </p>
                                         </div>
                                         <span className={`font-semibold text-xs whitespace-nowrap flex-shrink-0 ${entry.tipo === 'receita' ? 'text-green-600' : 'text-red-600'}`}>
-                                            {entry.tipo === 'receita' ? '+' : '-'}€{(entry.valor ?? 0).toFixed(2)}
+                                            {entry.tipo === 'receita' ? '+' : '-'}€{entry.valor.toFixed(2)}
                                         </span>
                                     </div>
                                 ))}
@@ -180,31 +173,42 @@ export default function Dashboard({ stats, recentEvents = [], recentActivity = [
                         ) : (
                             <p className="text-muted-foreground text-center py-3 text-xs">Nenhuma transação registada</p>
                         )}
-                        <Button variant="outline" className="w-full mt-2 h-7 text-xs" onClick={() => handleNavigate('financial')}>
-                            Ver Financeiro
-                        </Button>
+                        <Link href="/financeiro">
+                            <Button variant="outline" className="w-full mt-2 h-7 text-xs">
+                                Ver Financeiro
+                            </Button>
+                        </Link>
                     </Card>
                 </div>
 
+                {/* Acesso Rápido */}
                 <Card className="p-2 sm:p-3">
                     <h2 className="text-sm sm:text-base font-semibold mb-2">Acesso Rápido</h2>
                     <div className="grid gap-2 grid-cols-2 lg:grid-cols-4">
-                        <Button variant="outline" className="h-auto py-2 sm:py-2.5 flex-col gap-1" onClick={() => handleNavigate('members')}>
-                            <Users size={18} />
-                            <span className="text-xs">Membros</span>
-                        </Button>
-                        <Button variant="outline" className="h-auto py-2 sm:py-2.5 flex-col gap-1" onClick={() => handleNavigate('sports')}>
-                            <Trophy size={18} />
-                            <span className="text-xs">Desportiva</span>
-                        </Button>
-                        <Button variant="outline" className="h-auto py-2 sm:py-2.5 flex-col gap-1" onClick={() => handleNavigate('events')}>
-                            <CalendarBlank size={18} />
-                            <span className="text-xs">Eventos</span>
-                        </Button>
-                        <Button variant="outline" className="h-auto py-2 sm:py-2.5 flex-col gap-1" onClick={() => handleNavigate('financial')}>
-                            <CurrencyCircleDollar size={18} />
-                            <span className="text-xs">Financeiro</span>
-                        </Button>
+                        <Link href="/membros">
+                            <Button variant="outline" className="h-auto py-2 sm:py-2.5 flex-col gap-1 w-full">
+                                <Users size={18} />
+                                <span className="text-xs">Membros</span>
+                            </Button>
+                        </Link>
+                        <Link href="/desportivo">
+                            <Button variant="outline" className="h-auto py-2 sm:py-2.5 flex-col gap-1 w-full">
+                                <Trophy size={18} />
+                                <span className="text-xs">Desportiva</span>
+                            </Button>
+                        </Link>
+                        <Link href="/eventos">
+                            <Button variant="outline" className="h-auto py-2 sm:py-2.5 flex-col gap-1 w-full">
+                                <CalendarBlank size={18} />
+                                <span className="text-xs">Eventos</span>
+                            </Button>
+                        </Link>
+                        <Link href="/financeiro">
+                            <Button variant="outline" className="h-auto py-2 sm:py-2.5 flex-col gap-1 w-full">
+                                <CurrencyCircleDollar size={18} />
+                                <span className="text-xs">Financeiro</span>
+                            </Button>
+                        </Link>
                     </div>
                 </Card>
             </div>

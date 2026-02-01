@@ -89,7 +89,7 @@ export default function Dashboard({ stats, recentEvents = [], recentActivity = [
         },
         {
             title: 'Receitas do Mês',
-            value: `€${(safeStats.monthlyRevenue ?? 0).toFixed(2)}`,
+            value: `€${safeStats.monthlyRevenue.toFixed(2)}`,
             icon: CurrencyCircleDollar,
             color: 'text-purple-600',
             bgColor: 'bg-purple-50',
@@ -172,7 +172,7 @@ export default function Dashboard({ stats, recentEvents = [], recentActivity = [
                                             </p>
                                         </div>
                                         <span className={`font-semibold text-xs whitespace-nowrap flex-shrink-0 ${entry.tipo === 'receita' ? 'text-green-600' : 'text-red-600'}`}>
-                                            {entry.tipo === 'receita' ? '+' : '-'}€{(entry.valor ?? 0).toFixed(2)}
+                                            {entry.tipo === 'receita' ? '+' : '-'}€{entry.valor.toFixed(2)}
                                         </span>
                                     </div>
                                 ))}
