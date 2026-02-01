@@ -32,7 +32,7 @@ class DashboardController extends Controller
                 'totalUserTypes' => UserType::count(),
                 'totalAgeGroups' => AgeGroup::count(),
             ],
-            'recentEvents' => Event::with(['creator', 'eventType'])
+            'recentEvents' => Event::with(['criador'])
                 ->latest()
                 ->take(5)
                 ->get(),
