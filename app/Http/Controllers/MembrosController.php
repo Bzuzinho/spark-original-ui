@@ -19,7 +19,7 @@ class MembrosController extends Controller
         return Inertia::render('Membros/Index', [
             'members' => User::with(['userTypes', 'ageGroup', 'encarregados', 'educandos'])
                 ->latest()
-                ->paginate(15),
+                ->get(),
             'userTypes' => UserType::where('active', true)->get(),
             'ageGroups' => AgeGroup::all(),
         ]);
@@ -64,7 +64,12 @@ class MembrosController extends Controller
                 'educandos',
                 'eventsCreated',
                 'eventAttendances',
+                'documents',
+                'relationships.relatedUser',
             ]),
+            'allUsers' => User::select('id', 'nome_completo', 'numero_socio', 'tipo_membro')->get(),
+            'userTypes' => UserType::where('active', true)->get(),
+            'ageGroups' => AgeGroup::all(),
         ]);
     }
 
