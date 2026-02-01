@@ -63,6 +63,28 @@ export default function Index({ sponsors, stats }: Props) {
         estado: 'ativo' as Sponsor['estado'],
     });
 
+    // Safe date parsing helper
+    const parseDate = (dateString: string | null | undefined): Date | undefined => {
+        if (!dateString) return undefined;
+        try {
+            const date = new Date(dateString);
+            return isNaN(date.getTime()) ? undefined : date;
+        } catch {
+            return undefined;
+        }
+    };
+
+    // Safe date formatting helper
+    const formatDate = (dateString: string | null | undefined, formatStr: string = 'PPP'): string => {
+        const date = parseDate(dateString);
+        if (!date) return '';
+        try {
+            return format(date, formatStr, { locale: pt });
+        } catch {
+            return '';
+        }
+    };
+
     const handleOpenDialog = (sponsor?: Sponsor) => {
         if (sponsor) {
             setEditingSponsor(sponsor);
@@ -293,13 +315,13 @@ export default function Index({ sponsors, stats }: Props) {
                                         <Popover>
                                             <PopoverTrigger asChild>
                                                 <Button variant="outline" className="w-full justify-start text-left font-normal">
-                                                    {format(new Date(formData.data_inicio), 'PPP', { locale: pt })}
+                                                    {formatDate(formData.data_inicio) || 'Selecione a data'}
                                                 </Button>
                                             </PopoverTrigger>
                                             <PopoverContent className="w-auto p-0" align="start">
                                                 <Calendar
                                                     mode="single"
-                                                    selected={new Date(formData.data_inicio)}
+                                                    selected={parseDate(formData.data_inicio)}
                                                     onSelect={(date) => setFormData({ ...formData, data_inicio: date ? format(date, 'yyyy-MM-dd') : '' })}
                                                     initialFocus
                                                 />
@@ -313,7 +335,7 @@ export default function Index({ sponsors, stats }: Props) {
                                             <PopoverTrigger asChild>
                                                 <Button variant="outline" className="w-full justify-start text-left font-normal">
                                                     {formData.data_fim 
-                                                        ? format(new Date(formData.data_fim), 'PPP', { locale: pt })
+                                                        ? formatDate(formData.data_fim) || 'Sem data definida'
                                                         : 'Sem data definida'
                                                     }
                                                 </Button>
@@ -321,7 +343,7 @@ export default function Index({ sponsors, stats }: Props) {
                                             <PopoverContent className="w-auto p-0" align="start">
                                                 <Calendar
                                                     mode="single"
-                                                    selected={formData.data_fim ? new Date(formData.data_fim) : undefined}
+                                                    selected={parseDate(formData.data_fim)}
                                                     onSelect={(date) => setFormData({ ...formData, data_fim: date ? format(date, 'yyyy-MM-dd') : '' })}
                                                     initialFocus
                                                 />
@@ -434,9 +456,9 @@ export default function Index({ sponsors, stats }: Props) {
                                 )}
 
                                 <div className="space-y-0.5 text-xs text-muted-foreground">
-                                    <p className="truncate">Início: {format(new Date(sponsor.data_inicio), 'PPP', { locale: pt })}</p>
+                                    <p className="truncate">Início: {formatDate(sponsor.data_inicio) || 'Data inválida'}</p>
                                     {sponsor.data_fim && (
-                                        <p className="truncate">Fim: {format(new Date(sponsor.data_fim), 'PPP', { locale: pt })}</p>
+                                        <p className="truncate">Fim: {formatDate(sponsor.data_fim) || 'Data inválida'}</p>
                                     )}
                                 </div>
 

@@ -49,6 +49,6 @@ class Sponsor extends Model
     public function getIsActiveAttribute(): bool
     {
         return $this->estado === 'ativo' && 
-               ($this->data_fim === null || $this->data_fim->isFuture());
+               ($this->data_fim === null || $this->data_fim > now());
     }
 }

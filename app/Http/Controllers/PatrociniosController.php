@@ -6,6 +6,7 @@ use App\Models\Sponsor;
 use App\Http\Requests\StoreSponsorRequest;
 use App\Http\Requests\UpdateSponsorRequest;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -60,7 +61,7 @@ class PatrociniosController extends Controller
         if ($request->hasFile('logo')) {
             // Delete old logo if exists
             if ($patrocinio->logo) {
-                \Storage::disk('public')->delete($patrocinio->logo);
+                Storage::disk('public')->delete($patrocinio->logo);
             }
             $data['logo'] = $request->file('logo')->store('sponsors', 'public');
         }
@@ -73,7 +74,7 @@ class PatrociniosController extends Controller
     public function destroy(Sponsor $patrocinio)
     {
         if ($patrocinio->logo) {
-            \Storage::disk('public')->delete($patrocinio->logo);
+            Storage::disk('public')->delete($patrocinio->logo);
         }
 
         $patrocinio->delete();
