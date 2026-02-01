@@ -13,19 +13,20 @@ return new class extends Migration
         Schema::create('sponsors', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->string('nome');
+            $table->text('descricao')->nullable();
             $table->string('logo')->nullable();
-            $table->string('tipo', 30);
-            $table->date('contrato_inicio');
-            $table->date('contrato_fim')->nullable();
+            $table->string('website')->nullable();
+            $table->string('contacto')->nullable();
+            $table->string('email')->nullable();
+            $table->enum('tipo', ['principal', 'secundario', 'apoio'])->default('secundario');
             $table->decimal('valor_anual', 10, 2)->nullable();
-            $table->string('contacto_nome')->nullable();
-            $table->string('contacto_email')->nullable();
-            $table->string('contacto_telefone')->nullable();
-            $table->boolean('ativo')->default(true);
+            $table->date('data_inicio');
+            $table->date('data_fim')->nullable();
+            $table->enum('estado', ['ativo', 'inativo', 'expirado'])->default('ativo');
             $table->timestamps();
             
             $table->index('tipo');
-            $table->index('ativo');
+            $table->index('estado');
         });
     }
 
