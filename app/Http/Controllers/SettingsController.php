@@ -5,9 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\UserType;
 use App\Models\AgeGroup;
 use App\Models\EventType;
-use App\Models\ProductCategory;
-use App\Models\SponsorCategory;
-use App\Models\NewsCategory;
 use App\Models\ClubSetting;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -22,9 +19,6 @@ class SettingsController extends Controller
             'userTypes' => UserType::all(),
             'ageGroups' => AgeGroup::all(),
             'eventTypes' => EventType::all(),
-            'productCategories' => ProductCategory::all(),
-            'sponsorCategories' => SponsorCategory::all(),
-            'newsCategories' => NewsCategory::all(),
             'clubSettings' => ClubSetting::first(),
         ]);
     }
