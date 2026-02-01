@@ -3,6 +3,8 @@
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MembrosController;
+use App\Http\Controllers\MemberDocumentController;
+use App\Http\Controllers\MemberRelationshipController;
 use App\Http\Controllers\EventosController;
 use App\Http\Controllers\DesportivoController;
 use App\Http\Controllers\FinanceiroController;
@@ -25,6 +27,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
     
     // Resource routes
     Route::resource('membros', MembrosController::class);
+    
+    // Member documents and relationships
+    Route::prefix('membros/{member}')->group(function() {
+        Route::get('documents', [MemberDocumentController::class, 'index'])->name('membros.documents.index');
+        Route::post('documents', [MemberDocumentController::class, 'store'])->name('membros.documents.store');
+        Route::delete('documents/{document}', [MemberDocumentController::class, 'destroy'])->name('membros.documents.destroy');
+        
+        Route::get('relationships', [MemberRelationshipController::class, 'index'])->name('membros.relationships.index');
+        Route::post('relationships', [MemberRelationshipController::class, 'store'])->name('membros.relationships.store');
+        Route::delete('relationships/{relationship}', [MemberRelationshipController::class, 'destroy'])->name('membros.relationships.destroy');
+    });
+    
     Route::resource('eventos', EventosController::class);
     Route::resource('desportivo', DesportivoController::class);
     Route::resource('financeiro', FinanceiroController::class);

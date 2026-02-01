@@ -247,4 +247,19 @@ class User extends Authenticatable
     {
         return $this->hasMany(ConvocationAthlete::class, 'atleta_id');
     }
+
+    public function documents(): HasMany
+    {
+        return $this->hasMany(UserDocument::class);
+    }
+
+    public function relationships(): HasMany
+    {
+        return $this->hasMany(UserRelationship::class);
+    }
+
+    public function relatedToMe(): HasMany
+    {
+        return $this->hasMany(UserRelationship::class, 'related_user_id');
+    }
 }
