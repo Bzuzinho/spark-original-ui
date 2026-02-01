@@ -11,6 +11,10 @@ use App\Http\Controllers\PatrociniosController;
 use App\Http\Controllers\ComunicacaoController;
 use App\Http\Controllers\MarketingController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\TeamController;
+use App\Http\Controllers\TeamMemberController;
+use App\Http\Controllers\TrainingSessionController;
+use App\Http\Controllers\CallUpController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -48,6 +52,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/settings/event-types', [SettingsController::class, 'storeEventType'])->name('settings.event-types.store');
     Route::put('/settings/event-types/{eventType}', [SettingsController::class, 'updateEventType'])->name('settings.event-types.update');
     Route::delete('/settings/event-types/{eventType}', [SettingsController::class, 'destroyEventType'])->name('settings.event-types.destroy');
+    
+    // Sports module routes
+    Route::resource('teams', TeamController::class);
+    Route::resource('team-members', TeamMemberController::class)->except(['index', 'create', 'show', 'edit']);
+    Route::resource('training-sessions', TrainingSessionController::class);
+    Route::resource('call-ups', CallUpController::class);
 });
 
 Route::middleware('auth')->group(function () {
