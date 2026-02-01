@@ -2,74 +2,83 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Sponsor;
 use App\Http\Requests\StoreSponsorRequest;
 use App\Http\Requests\UpdateSponsorRequest;
-use App\Models\Sponsor;
-use App\Models\SponsorCategory;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
-use Illuminate\Http\RedirectResponse;
 
 class PatrociniosController extends Controller
 {
-    public function index(): Response
+    public function index(Request $request): Response
     {
+        $sponsors = Sponsor::query()
+            ->when($request->search, function ($query, $search) {
+                $query->where('nome', 'like', "%{$search}%")
+                      ->orWhere('descricao', 'like', "%{$search}%");
+            })
+            ->when($request->tipo, function ($query, $tipo) {
+                $query->where('tipo', $tipo);
+            })
+            ->when($request->estado, function ($query, $estado) {
+                $query->where('estado', $estado);
+            })
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        $stats = [
+            'total' => Sponsor::count(),
+            'ativos' => Sponsor::active()->count(),
+            'valorTotal' => Sponsor::active()->sum('valor_anual'),
+        ];
+
         return Inertia::render('Patrocinios/Index', [
-            'sponsors' => Sponsor::with(['category'])
-                ->latest()
-                ->paginate(15),
-            'categories' => SponsorCategory::where('active', true)->get(),
-            'stats' => [
-                'totalSponsors' => Sponsor::count(),
-                'activeSponsors' => Sponsor::where('estado', 'ativo')->count(),
-                'totalValue' => Sponsor::where('estado', 'ativo')->sum('valor_patrocinio'),
-            ],
+            'sponsors' => $sponsors,
+            'stats' => $stats,
+            'filters' => $request->only(['search', 'tipo', 'estado']),
         ]);
     }
 
-    public function create(): Response
+    public function store(StoreSponsorRequest $request)
     {
-        return Inertia::render('Patrocinios/Create', [
-            'categories' => SponsorCategory::where('active', true)->get(),
-        ]);
+        $data = $request->validated();
+
+        if ($request->hasFile('logo')) {
+            $data['logo'] = $request->file('logo')->store('sponsors', 'public');
+        }
+
+        $sponsor = Sponsor::create($data);
+
+        return redirect()->back()->with('success', 'Patrocinador criado com sucesso');
     }
 
-    public function store(StoreSponsorRequest $request): RedirectResponse
+    public function update(UpdateSponsorRequest $request, Sponsor $patrocinio)
     {
-        Sponsor::create($request->validated());
+        $data = $request->validated();
 
-        return redirect()->route('patrocinios.index')
-            ->with('success', 'Patrocinador criado com sucesso!');
+        if ($request->hasFile('logo')) {
+            // Delete old logo if exists
+            if ($patrocinio->logo) {
+                Storage::disk('public')->delete($patrocinio->logo);
+            }
+            $data['logo'] = $request->file('logo')->store('sponsors', 'public');
+        }
+
+        $patrocinio->update($data);
+
+        return redirect()->back()->with('success', 'Patrocinador atualizado com sucesso');
     }
 
-    public function show(Sponsor $patrocinio): Response
+    public function destroy(Sponsor $patrocinio)
     {
-        return Inertia::render('Patrocinios/Show', [
-            'sponsor' => $patrocinio->load(['category']),
-        ]);
-    }
+        if ($patrocinio->logo) {
+            Storage::disk('public')->delete($patrocinio->logo);
+        }
 
-    public function edit(Sponsor $patrocinio): Response
-    {
-        return Inertia::render('Patrocinios/Edit', [
-            'sponsor' => $patrocinio->load(['category']),
-            'categories' => SponsorCategory::where('active', true)->get(),
-        ]);
-    }
-
-    public function update(UpdateSponsorRequest $request, Sponsor $patrocinio): RedirectResponse
-    {
-        $patrocinio->update($request->validated());
-
-        return redirect()->route('patrocinios.index')
-            ->with('success', 'Patrocinador atualizado com sucesso!');
-    }
-
-    public function destroy(Sponsor $patrocinio): RedirectResponse
-    {
         $patrocinio->delete();
 
-        return redirect()->route('patrocinios.index')
-            ->with('success', 'Patrocinador eliminado com sucesso!');
+        return redirect()->back()->with('success', 'Patrocinador removido com sucesso');
     }
 }

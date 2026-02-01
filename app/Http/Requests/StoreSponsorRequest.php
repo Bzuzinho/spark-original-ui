@@ -8,7 +8,7 @@ class StoreSponsorRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        return true; // Ajustar conforme permissões
     }
 
     public function rules(): array
@@ -16,14 +16,30 @@ class StoreSponsorRequest extends FormRequest
         return [
             'nome' => ['required', 'string', 'max:255'],
             'descricao' => ['nullable', 'string'],
-            'valor_patrocinio' => ['required', 'numeric', 'min:0'],
+            'logo' => ['nullable', 'image', 'max:2048'], // 2MB
+            'website' => ['nullable', 'url', 'max:255'],
+            'contacto' => ['nullable', 'string', 'max:20'],
+            'email' => ['nullable', 'email', 'max:255'],
+            'tipo' => ['required', 'in:principal,secundario,apoio'],
+            'valor_anual' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
             'data_inicio' => ['required', 'date'],
-            'data_fim' => ['nullable', 'date', 'after_or_equal:data_inicio'],
-            'category_id' => ['required', 'exists:sponsor_categories,id'],
+            'data_fim' => ['nullable', 'date', 'after:data_inicio'],
             'estado' => ['required', 'in:ativo,inativo,expirado'],
-            'logo' => ['nullable', 'string'],
-            'website' => ['nullable', 'url'],
-            'contacto' => ['nullable', 'string', 'max:255'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'nome.required' => 'O nome do patrocinador é obrigatório',
+            'tipo.required' => 'Selecione o tipo de patrocínio',
+            'tipo.in' => 'Tipo de patrocínio inválido',
+            'data_inicio.required' => 'A data de início é obrigatória',
+            'data_fim.after' => 'A data de fim deve ser posterior à data de início',
+            'email.email' => 'Email inválido',
+            'website.url' => 'URL inválida',
+            'logo.image' => 'O ficheiro deve ser uma imagem',
+            'logo.max' => 'A imagem não pode exceder 2MB',
         ];
     }
 }
