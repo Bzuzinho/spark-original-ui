@@ -7,21 +7,62 @@ use App\Http\Requests\UpdateTrainingRequest;
 use App\Models\Training;
 use App\Models\User;
 use App\Models\AgeGroup;
+use App\Models\Team;
+use App\Models\TrainingSession;
+use App\Models\Event;
 use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Http\RedirectResponse;
+use Carbon\Carbon;
 
 class DesportivoController extends Controller
 {
     public function index(): Response
     {
+        // Get stats for dashboard
+        $now = Carbon::now();
+        $sevenDaysAgo = $now->copy()->subDays(7);
+        $thirtyDaysAgo = $now->copy()->subDays(30);
+        $thirtyDaysAhead = $now->copy()->addDays(30);
+
+        $athletes = User::whereJsonContains('tipo_membro', 'atleta')
+            ->where('estado', 'ativo')
+            ->get(['id', 'nome_completo']);
+        
+        $activeTeams = Team::where('ativa', true)->count();
+        
+        $trainings7Days = TrainingSession::where('data_hora', '>=', $sevenDaysAgo)
+            ->where('data_hora', '<=', $now)
+            ->count();
+            
+        $trainings30Days = TrainingSession::where('data_hora', '>=', $thirtyDaysAgo)
+            ->where('data_hora', '<=', $now)
+            ->count();
+            
+        $upcomingEvents = Event::where('data_inicio', '>=', $now)
+            ->where('data_inicio', '<=', $thirtyDaysAhead)
+            ->count();
+
         return Inertia::render('Desportivo/Index', [
-            'trainings' => Training::with(['ageGroup', 'athletes'])
-                ->latest()
-                ->paginate(15),
-            'ageGroups' => AgeGroup::all(),
-            'athletes' => User::whereJsonContains('tipo_membro', 'atleta')
-                ->where('estado', 'ativo')
+            'stats' => [
+                'athletesCount' => $athletes->count(),
+                'activeTeams' => $activeTeams,
+                'trainings7Days' => $trainings7Days,
+                'trainings30Days' => $trainings30Days,
+                'upcomingEvents' => $upcomingEvents,
+            ],
+            'teams' => Team::with(['treinador', 'members'])
+                ->where('ativa', true)
+                ->get(),
+            'trainingSessions' => TrainingSession::with('team')
+                ->where('data_hora', '>=', $thirtyDaysAgo)
+                ->latest('data_hora')
+                ->take(20)
+                ->get(),
+            'athletes' => $athletes,
+            'events' => Event::where('data_inicio', '>=', $now)
+                ->orderBy('data_inicio')
+                ->take(10)
                 ->get(),
         ]);
     }
