@@ -311,7 +311,7 @@ export default function MarketingIndex({ campaigns, stats, filters }: Props) {
                                     <select
                                         id="tipo"
                                         value={formData.tipo}
-                                        onChange={(e) => setFormData({ ...formData, tipo: e.target.value as any })}
+                                        onChange={(e) => setFormData({ ...formData, tipo: e.target.value as 'email' | 'redes_sociais' | 'evento' | 'outro' })}
                                         className="w-full px-3 py-2 border rounded-md"
                                         required
                                     >
@@ -326,7 +326,7 @@ export default function MarketingIndex({ campaigns, stats, filters }: Props) {
                                     <select
                                         id="estado"
                                         value={formData.estado}
-                                        onChange={(e) => setFormData({ ...formData, estado: e.target.value as any })}
+                                        onChange={(e) => setFormData({ ...formData, estado: e.target.value as 'planeada' | 'ativa' | 'concluida' | 'cancelada' })}
                                         className="w-full px-3 py-2 border rounded-md"
                                         required
                                     >
