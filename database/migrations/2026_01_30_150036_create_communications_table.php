@@ -12,23 +12,21 @@ return new class extends Migration
     {
         Schema::create('communications', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->string('titulo');
+            $table->string('assunto');
             $table->text('mensagem');
-            $table->string('tipo', 30)->default('email');
-            $table->json('destinatarios_ids');
-            $table->uuid('remetente_id');
-            $table->datetime('data_envio');
-            $table->string('estado', 30)->default('rascunho');
-            $table->json('escaloes_alvo')->nullable();
-            $table->json('tipos_membro_alvo')->nullable();
+            $table->enum('tipo', ['email', 'sms', 'notificacao', 'aviso'])->default('email');
+            $table->json('destinatarios'); // Array de IDs ou emails
+            $table->enum('estado', ['rascunho', 'agendada', 'enviada', 'falhou'])->default('rascunho');
+            $table->timestamp('agendado_para')->nullable();
+            $table->timestamp('enviado_em')->nullable();
+            $table->integer('total_enviados')->default(0);
+            $table->integer('total_falhados')->default(0);
             $table->timestamps();
             
-            $table->foreign('remetente_id')->references('id')->on('users')->onDelete('cascade');
-            
-            $table->index('data_envio');
+            $table->index('agendado_para');
+            $table->index('enviado_em');
             $table->index('estado');
             $table->index('tipo');
-            $table->index('remetente_id');
         });
     }
 

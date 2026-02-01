@@ -31,6 +31,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('loja', LojaController::class);
     Route::resource('patrocinios', PatrociniosController::class);
     Route::resource('comunicacao', ComunicacaoController::class);
+    Route::post('/comunicacao/{comunicacao}/send', [ComunicacaoController::class, 'send'])->name('comunicacao.send');
     Route::resource('marketing', MarketingController::class);
     
     // Settings routes
