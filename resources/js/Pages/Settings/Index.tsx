@@ -166,7 +166,9 @@ export default function SettingsIndex({ userTypes, ageGroups, eventTypes, clubSe
             ...prev,
             [field]: !prev[field],
         }));
-        toast.success('Preferência de notificação atualizada');
+        // Note: Notification preferences are stored locally for demo purposes
+        // In a real implementation, these would be saved to the backend
+        toast.info('Preferência atualizada (apenas localmente)');
     };
 
     return (
@@ -584,7 +586,7 @@ export default function SettingsIndex({ userTypes, ageGroups, eventTypes, clubSe
                                                 type="number"
                                                 min="0"
                                                 value={data.min_age || ''}
-                                                onChange={e => setData('min_age', parseInt(e.target.value))}
+                                                onChange={e => setData('min_age', e.target.value ? parseInt(e.target.value, 10) : '')}
                                                 required
                                             />
                                         </div>
@@ -595,7 +597,7 @@ export default function SettingsIndex({ userTypes, ageGroups, eventTypes, clubSe
                                                 type="number"
                                                 min="0"
                                                 value={data.max_age || ''}
-                                                onChange={e => setData('max_age', parseInt(e.target.value))}
+                                                onChange={e => setData('max_age', e.target.value ? parseInt(e.target.value, 10) : '')}
                                                 required
                                             />
                                         </div>
