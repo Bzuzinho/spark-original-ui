@@ -3,7 +3,6 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class StoreProductRequest extends FormRequest
 {
@@ -17,13 +16,13 @@ class StoreProductRequest extends FormRequest
         return [
             'nome' => ['required', 'string', 'max:255'],
             'descricao' => ['nullable', 'string'],
-            'codigo' => ['required', 'string', 'max:50', 'unique:products'],
+            'codigo' => ['required', 'string', 'max:255', 'unique:products'],
+            'categoria' => ['nullable', 'string', 'max:255'],
             'preco' => ['required', 'numeric', 'min:0'],
-            'quantidade_stock' => ['required', 'integer', 'min:0'],
-            'stock_minimo' => ['nullable', 'integer', 'min:0'],
-            'category_id' => ['required', 'exists:product_categories,id'],
-            'estado' => ['required', 'in:ativo,inativo,esgotado'],
+            'stock' => ['required', 'integer', 'min:0'],
+            'stock_minimo' => ['required', 'integer', 'min:0'],
             'imagem' => ['nullable', 'string'],
+            'ativo' => ['boolean'],
         ];
     }
 }
