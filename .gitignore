@@ -54,3 +54,17 @@ Homestead.yaml
 
 # Spark backup
 vite.config.spark.backup.ts
+
+# Temporary files
+*.tmp
+*.temp
+.env.db.tmp
+*.backup
+*.bak
+*.swp
+*.swo
+
+# Build artifacts
+/public/build/*
+/.vite
+
