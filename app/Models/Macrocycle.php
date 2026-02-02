@@ -13,28 +13,25 @@ class Macrocycle extends Model
 
 
     protected $fillable = [
-        'epoca_id',
-        'nome',
-        'tipo',
-        'data_inicio',
-        'data_fim',
-        'escalao',
-        'objetivos',
-        'observacoes',
+        'season_id',
+        'name',
+        'start_date',
+        'end_date',
+        'objective',
     ];
 
     protected $casts = [
-        'data_inicio' => 'date',
-        'data_fim' => 'date',
+        'start_date' => 'date',
+        'end_date' => 'date',
     ];
 
     public function season(): BelongsTo
     {
-        return $this->belongsTo(Season::class, 'epoca_id');
+        return $this->belongsTo(Season::class, 'season_id');
     }
 
     public function mesocycles(): HasMany
     {
-        return $this->hasMany(Mesocycle::class, 'macrociclo_id');
+        return $this->hasMany(Mesocycle::class, 'macrocycle_id');
     }
 }

@@ -13,29 +13,26 @@ class ConvocationAthlete extends Model
     protected $table = 'convocation_athletes';
 
     protected $fillable = [
-        'convocatoria_grupo_id',
-        'atleta_id',
-        'provas',
-        'presente',
-        'confirmado',
-        'data_confirmacao',
-        'observacoes',
+        'convocation_group_id',
+        'athlete_id',
+        'races',
+        'present',
+        'confirmed',
     ];
 
     protected $casts = [
-        'provas' => 'array',
-        'presente' => 'boolean',
-        'confirmado' => 'boolean',
-        'data_confirmacao' => 'datetime',
+        'races' => 'array',
+        'present' => 'boolean',
+        'confirmed' => 'boolean',
     ];
 
     public function convocationGroup(): BelongsTo
     {
-        return $this->belongsTo(ConvocationGroup::class, 'convocatoria_grupo_id');
+        return $this->belongsTo(ConvocationGroup::class, 'convocation_group_id');
     }
 
     public function atleta(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'atleta_id');
+        return $this->belongsTo(User::class, 'athlete_id');
     }
 }

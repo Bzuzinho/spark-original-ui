@@ -12,36 +12,34 @@ class Sale extends Model
 
 
     protected $fillable = [
-        'produto_id',
-        'comprador_id',
-        'vendedor_id',
-        'quantidade',
-        'preco_unitario',
-        'total',
-        'data',
-        'metodo_pagamento',
-        'observacoes',
+        'product_id',
+        'user_id',
+        'quantity',
+        'unit_price',
+        'total_amount',
+        'sale_date',
+        'payment_method',
     ];
 
     protected $casts = [
-        'quantidade' => 'integer',
-        'preco_unitario' => 'decimal:2',
-        'total' => 'decimal:2',
-        'data' => 'datetime',
+        'quantity' => 'integer',
+        'unit_price' => 'decimal:2',
+        'total_amount' => 'decimal:2',
+        'sale_date' => 'datetime',
     ];
 
     public function product(): BelongsTo
     {
-        return $this->belongsTo(Product::class, 'produto_id');
+        return $this->belongsTo(Product::class, 'product_id');
     }
 
     public function comprador(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'comprador_id');
+        return $this->belongsTo(User::class, 'user_id');
     }
 
     public function vendedor(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'vendedor_id');
+        return $this->belongsTo(User::class, 'seller_id');
     }
 }

@@ -13,27 +13,24 @@ class CompetitionRegistration extends Model
     protected $table = 'competition_registrations';
 
     protected $fillable = [
-        'prova_id',
-        'atleta_id',
-        'estado',
-        'tempo_inscricao',
-        'valor_inscricao',
-        'data_inscricao',
-        'observacoes',
+        'competition_id',
+        'athlete_id',
+        'races',
+        'status',
+        'notes',
     ];
 
     protected $casts = [
-        'data_inscricao' => 'datetime',
-        'valor_inscricao' => 'decimal:2',
+        'races' => 'array',
     ];
 
     public function prova(): BelongsTo
     {
-        return $this->belongsTo(Prova::class, 'prova_id');
+        return $this->belongsTo(Prova::class, 'competition_id');
     }
 
     public function atleta(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'atleta_id');
+        return $this->belongsTo(User::class, 'athlete_id');
     }
 }

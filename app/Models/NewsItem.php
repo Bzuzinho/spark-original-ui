@@ -13,23 +13,21 @@ class NewsItem extends Model
     protected $table = 'news_items';
 
     protected $fillable = [
-        'titulo',
-        'conteudo',
-        'imagem',
-        'destaque',
-        'data_publicacao',
-        'categorias',
-        'autor_id',
+        'title',
+        'content',
+        'image',
+        'publish_date',
+        'author_id',
+        'visibility',
+        'status',
     ];
 
     protected $casts = [
-        'data_publicacao' => 'datetime',
-        'destaque' => 'boolean',
-        'categorias' => 'array',
+        'publish_date' => 'datetime',
     ];
 
     public function autor(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'autor_id');
+        return $this->belongsTo(User::class, 'author_id');
     }
 }

@@ -13,19 +13,17 @@ class ResultSplit extends Model
     protected $table = 'result_splits';
 
     protected $fillable = [
-        'resultado_id',
-        'distancia_parcial_m',
-        'tempo_parcial',
-        'ordem',
+        'result_id',
+        'partial_distance_m',
+        'partial_time',
     ];
 
     protected $casts = [
-        'distancia_parcial_m' => 'integer',
-        'ordem' => 'integer',
+        'partial_distance_m' => 'integer',
     ];
 
     public function result(): BelongsTo
     {
-        return $this->belongsTo(Result::class, 'resultado_id');
+        return $this->belongsTo(Result::class, 'result_id');
     }
 }

@@ -12,29 +12,25 @@ class Season extends Model
 
 
     protected $fillable = [
-        'nome',
-        'ano_temporada',
-        'data_inicio',
-        'data_fim',
-        'tipo',
-        'estado',
-        'piscina_principal',
-        'objetivos',
-        'observacoes',
+        'name',
+        'start_date',
+        'end_date',
+        'active',
     ];
 
     protected $casts = [
-        'data_inicio' => 'date',
-        'data_fim' => 'date',
+        'start_date' => 'date',
+        'end_date' => 'date',
+        'active' => 'boolean',
     ];
 
     public function macrocycles(): HasMany
     {
-        return $this->hasMany(Macrocycle::class, 'epoca_id');
+        return $this->hasMany(Macrocycle::class, 'season_id');
     }
 
     public function trainings(): HasMany
     {
-        return $this->hasMany(Training::class, 'epoca_id');
+        return $this->hasMany(Training::class, 'season_id');
     }
 }

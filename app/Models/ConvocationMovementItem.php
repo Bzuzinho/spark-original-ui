@@ -13,17 +13,17 @@ class ConvocationMovementItem extends Model
     protected $table = 'convocation_movement_items';
 
     protected $fillable = [
-        'convocatoria_movimento_id',
-        'descricao',
-        'valor',
+        'convocation_movement_id',
+        'description',
+        'amount',
     ];
 
     protected $casts = [
-        'valor' => 'decimal:2',
+        'amount' => 'decimal:2',
     ];
 
     public function convocationMovement(): BelongsTo
     {
-        return $this->belongsTo(ConvocationMovement::class, 'convocatoria_movimento_id');
+        return $this->belongsTo(ConvocationMovement::class, 'convocation_movement_id');
     }
 }

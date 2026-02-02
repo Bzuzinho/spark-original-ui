@@ -13,26 +13,27 @@ class ResultProva extends Model
     protected $table = 'result_provas';
 
     protected $fillable = [
-        'atleta_id',
-        'evento_id',
-        'prova',
-        'tempo_final',
-        'data',
-        'local',
-        'observacoes',
+        'athlete_id',
+        'event_id',
+        'event_name',
+        'race',
+        'location',
+        'date',
+        'pool',
+        'final_time',
     ];
 
     protected $casts = [
-        'data' => 'date',
+        'date' => 'date',
     ];
 
     public function atleta(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'atleta_id');
+        return $this->belongsTo(User::class, 'athlete_id');
     }
 
     public function evento(): BelongsTo
     {
-        return $this->belongsTo(Event::class, 'evento_id');
+        return $this->belongsTo(Event::class, 'event_id');
     }
 }

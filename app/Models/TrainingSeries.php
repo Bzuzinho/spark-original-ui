@@ -13,27 +13,27 @@ class TrainingSeries extends Model
     protected $table = 'training_series';
 
     protected $fillable = [
-        'treino_id',
-        'ordem',
-        'descricao',
-        'distancia_m',
-        'estilo',
-        'zona_intensidade',
-        'tempo_alvo',
-        'repeticoes',
-        'intervalo_descanso',
-        'equipamento',
-        'observacoes',
+        'training_id',
+        'order',
+        'description',
+        'total_distance_m',
+        'stroke',
+        'intensity_zone',
+        'target_time',
+        'repetitions',
+        'interval',
+        'equipment',
+        'notes',
     ];
 
     protected $casts = [
-        'ordem' => 'integer',
-        'distancia_m' => 'integer',
-        'repeticoes' => 'integer',
+        'order' => 'integer',
+        'total_distance_m' => 'integer',
+        'repetitions' => 'integer',
     ];
 
     public function training(): BelongsTo
     {
-        return $this->belongsTo(Training::class, 'treino_id');
+        return $this->belongsTo(Training::class, 'training_id');
     }
 }
