@@ -20,7 +20,7 @@ interface Team {
     escalao?: string;
     ativa: boolean;
     treinador?: {
-        nome_completo: string;
+        full_name: string;
     };
     members?: any[];
 }

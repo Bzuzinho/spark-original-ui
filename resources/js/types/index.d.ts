@@ -3,7 +3,7 @@ export interface User {
     name: string;
     email: string;
     email_verified_at?: string;
-    nome_completo?: string;
+    full_name?: string;
     email_utilizador?: string;
     foto_perfil?: string;
 }
