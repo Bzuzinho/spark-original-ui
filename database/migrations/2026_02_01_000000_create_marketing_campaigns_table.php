@@ -6,23 +6,25 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    public $withinTransaction = false; // ← ADD THIS for PostgreSQL ENUM support
+    
     public function up(): void
     {
         Schema::create('marketing_campaigns', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->string('nome');
-            $table->text('descricao')->nullable();
-            $table->enum('tipo', ['email', 'redes_sociais', 'evento', 'outro']);
-            $table->date('data_inicio');
-            $table->date('data_fim')->nullable();
-            $table->enum('estado', ['planeada', 'ativa', 'concluida', 'cancelada'])->default('planeada');
-            $table->decimal('orcamento', 10, 2)->nullable();
-            $table->integer('alcance_estimado')->nullable();
-            $table->text('notas')->nullable();
+            $table->string('name');                              // ← CHANGED
+            $table->text('description')->nullable();              // ← CHANGED
+            $table->string('type', 50);                          // ← CHANGED to string for flexibility
+            $table->date('start_date');                          // ← CHANGED
+            $table->date('end_date')->nullable();                // ← CHANGED
+            $table->string('status', 30)->default('planned');    // ← CHANGED
+            $table->decimal('budget', 10, 2)->nullable();        // ← CHANGED
+            $table->integer('estimated_reach')->nullable();       // ← CHANGED
+            $table->text('notes')->nullable();                   // ← CHANGED
             $table->timestamps();
             
-            $table->index('estado');
-            $table->index('tipo');
+            $table->index('status');  // ← CHANGED
+            $table->index('type');    // ← CHANGED
         });
     }
 
