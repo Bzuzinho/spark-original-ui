@@ -162,16 +162,18 @@ class DemoSeeder extends Seeder
             if ($isPast) {
                 foreach ($athletes->random(rand(10, 15)) as $athlete) {
                     EventConvocation::create([
-                        'event_id' => $event->id,
+                        'evento_id' => $event->id,
                         'user_id' => $athlete->id,
-                        'estado' => 'confirmado',
+                        'data_convocatoria' => $date->subDays(2)->format('Y-m-d'),
+                        'estado_confirmacao' => 'confirmado',
                     ]);
 
                     EventAttendance::create([
-                        'event_id' => $event->id,
+                        'evento_id' => $event->id,
                         'user_id' => $athlete->id,
-                        'presente' => rand(0, 10) > 2, // 80% presence rate
-                        'justificado' => false,
+                        'estado' => rand(0, 10) > 2 ? 'presente' : 'ausente', // 80% presence rate
+                        'registado_por' => User::first()->id,
+                        'registado_em' => $date->format('Y-m-d H:i:s'),
                     ]);
                 }
             }
@@ -185,10 +187,10 @@ class DemoSeeder extends Seeder
                 'data' => $date->format('Y-m-d'),
                 'hora_inicio' => '18:00:00',
                 'hora_fim' => '20:00:00',
-                'tipo' => ['tecnico', 'fisico', 'tatico'][rand(0, 2)],
-                'escalao' => ['Juvenis', 'Juniores', 'Seniores'][rand(0, 2)],
+                'tipo_treino' => ['tecnico', 'fisico', 'tatico'][rand(0, 2)],
+                'escaloes' => [['Juvenis', 'Juniores', 'Seniores'][rand(0, 2)]],
                 'local' => 'Piscina Municipal',
-                'descricao' => 'Treino técnico de natação',
+                'descricao_treino' => 'Treino técnico de natação',
             ]);
         }
 
@@ -212,9 +214,9 @@ class DemoSeeder extends Seeder
                 'nome' => $sponsorData[0],
                 'tipo' => $sponsorData[1],
                 'valor_anual' => $sponsorData[2],
-                'data_inicio' => Carbon::now()->subMonths(rand(1, 12))->format('Y-m-d'),
-                'data_fim' => Carbon::now()->addYear()->format('Y-m-d'),
-                'contacto' => strtolower(str_replace(' ', '', $sponsorData[0])) . '@example.com',
+                'contrato_inicio' => Carbon::now()->subMonths(rand(1, 12))->format('Y-m-d'),
+                'contrato_fim' => Carbon::now()->addYear()->format('Y-m-d'),
+                'contacto_email' => strtolower(str_replace(' ', '', $sponsorData[0])) . '@example.com',
                 'ativo' => true,
             ]);
         }
@@ -222,29 +224,30 @@ class DemoSeeder extends Seeder
         $this->command->info('Creating products...');
         // Create 15 Products
         $products = [
-            ['T-shirt Clube', 15.00, 50],
-            ['Calções Treino', 12.00, 40],
-            ['Casaco', 35.00, 20],
-            ['Meias', 5.00, 100],
-            ['Boné', 8.00, 30],
-            ['Mochila', 25.00, 15],
-            ['Toalha', 10.00, 25],
-            ['Garrafa Água', 7.00, 40],
-            ['Fato de Banho', 30.00, 25],
-            ['Óculos Natação', 12.00, 35],
-            ['Touca', 6.00, 50],
-            ['Chinelos', 10.00, 30],
-            ['Agasalho', 40.00, 15],
-            ['Leggings', 20.00, 20],
-            ['Porta-chaves', 3.00, 100],
+            ['T-shirt Clube', 'vestuario', 15.00, 50],
+            ['Calções Treino', 'vestuario', 12.00, 40],
+            ['Casaco', 'vestuario', 35.00, 20],
+            ['Meias', 'vestuario', 5.00, 100],
+            ['Boné', 'vestuario', 8.00, 30],
+            ['Mochila', 'acessorios', 25.00, 15],
+            ['Toalha', 'acessorios', 10.00, 25],
+            ['Garrafa Água', 'acessorios', 7.00, 40],
+            ['Fato de Banho', 'vestuario', 30.00, 25],
+            ['Óculos Natação', 'equipamento', 12.00, 35],
+            ['Touca', 'equipamento', 6.00, 50],
+            ['Chinelos', 'vestuario', 10.00, 30],
+            ['Agasalho', 'vestuario', 40.00, 15],
+            ['Leggings', 'vestuario', 20.00, 20],
+            ['Porta-chaves', 'acessorios', 3.00, 100],
         ];
 
         foreach ($products as $productData) {
             Product::create([
                 'nome' => $productData[0],
+                'categoria' => $productData[1],
                 'descricao' => 'Artigo oficial do clube - ' . $productData[0],
-                'preco' => $productData[1],
-                'stock' => $productData[2],
+                'preco' => $productData[2],
+                'stock' => $productData[3],
                 'ativo' => true,
             ]);
         }
@@ -325,23 +328,25 @@ class DemoSeeder extends Seeder
             $valor = rand(50, 2000);
             
             $movement = Movement::create([
-                'data' => Carbon::now()->subDays(rand(1, 90))->format('Y-m-d'),
-                'tipo' => $isReceita ? 'receita' : 'despesa',
-                'categoria' => $isReceita 
-                    ? ['Mensalidades', 'Patrocínios', 'Vendas'][rand(0, 2)]
-                    : ['Material', 'Transporte', 'Taxas'][rand(0, 2)],
-                'descricao' => $isReceita ? 'Recebimento de mensalidade' : 'Pagamento de fornecedor',
-                'valor' => $valor,
-                'metodo_pagamento' => ['transferencia', 'multibanco', 'dinheiro'][rand(0, 2)],
-                'cost_center_id' => $costCenterIds[array_rand($costCenterIds)],
+                'user_id' => User::where('perfil', '!=', 'admin')->inRandomOrder()->first()->id ?? null,
+                'classificacao' => $isReceita ? 'receita' : 'despesa',
+                'data_emissao' => Carbon::now()->subDays(rand(1, 90))->format('Y-m-d'),
+                'data_vencimento' => Carbon::now()->subDays(rand(1, 90))->addDays(15)->format('Y-m-d'),
+                'tipo' => $isReceita 
+                    ? ['mensalidade', 'patrocinio', 'venda'][rand(0, 2)]
+                    : ['material', 'transporte', 'taxa'][rand(0, 2)],
+                'valor_total' => $valor,
+                'estado_pagamento' => $isReceita && rand(0, 10) > 3 ? 'pago' : 'pendente',
+                'centro_custo_id' => $costCenterIds[array_rand($costCenterIds)],
+                'observacoes' => $isReceita ? 'Recebimento' : 'Pagamento a fornecedor',
             ]);
 
             MovementItem::create([
-                'movement_id' => $movement->id,
+                'movimento_id' => $movement->id,
                 'descricao' => 'Item de movimento financeiro',
                 'quantidade' => 1,
                 'valor_unitario' => $valor,
-                'total' => $valor,
+                'total_linha' => $valor,
             ]);
         }
 
@@ -356,7 +361,6 @@ class DemoSeeder extends Seeder
         $this->command->info('- Products: ' . Product::count());
         $this->command->info('- Sales: ' . Sale::count());
         $this->command->info('- Invoices: ' . Invoice::count());
-        $this->command->info('- Monthly Fees: ' . MonthlyFee::count());
         $this->command->info('- Movements: ' . Movement::count());
         $this->command->info('');
         $this->command->info('Login credentials:');
