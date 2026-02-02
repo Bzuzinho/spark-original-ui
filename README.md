@@ -1,3 +1,64 @@
+# Spark Original UI - Laravel Migration
+
+Laravel 11 + Inertia React migration of GitHub Spark template.
+
+## Quick Start
+
+### With Docker (Recommended)
+```bash
+docker-compose up -d
+composer install && npm install
+cp .env.example .env
+php artisan key:generate
+php artisan migrate:fresh
+npm run dev & php artisan serve
+```
+
+### Without Docker (Local)
+```bash
+cp .env.local.example .env
+php artisan key:generate
+touch database/database.sqlite
+php artisan migrate:fresh
+npm run dev & php artisan serve
+```
+
+See [docs/SETUP.md](docs/SETUP.md) for detailed setup instructions.
+
+## Tech Stack
+
+- **Backend:** Laravel 11 + PHP 8.3
+- **Frontend:** React 18 + Inertia.js + Vite
+- **Database:** PostgreSQL 16 (production) / SQLite (local)
+- **Cache/Sessions:** Redis 7 (production) / File (local)
+- **Styling:** Tailwind CSS
+
+## Development
+
+```bash
+# Start development servers
+npm run dev          # Vite dev server
+php artisan serve    # Laravel dev server
+
+# Run tests
+php artisan test
+
+# Check code style
+./vendor/bin/pint
+```
+
+## Architecture
+
+- **Models:** Eloquent ORM with relationships
+- **Controllers:** RESTful API endpoints
+- **Validation:** Form Requests
+- **Auth:** Laravel Breeze (Inertia React)
+- **UI Components:** React + Tailwind
+
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for detailed architecture info.
+
+---
+
 # BSCN Club Management System
 
 Sistema completo de gestão de clube desportivo desenvolvido com Laravel 11 + Inertia.js + React.
