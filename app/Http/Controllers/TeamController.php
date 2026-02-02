@@ -15,7 +15,7 @@ class TeamController extends Controller
     public function index(): Response
     {
         return Inertia::render('Desportivo/Teams/Index', [
-            'teams' => Team::with(['treinador', 'members'])
+            'teams' => Team::with(['coach', 'members'])
                 ->latest()
                 ->paginate(15),
         ]);
@@ -41,7 +41,7 @@ class TeamController extends Controller
     public function show(Team $team): Response
     {
         return Inertia::render('Desportivo/Teams/Show', [
-            'team' => $team->load(['treinador', 'members.user', 'trainingSessions']),
+            'team' => $team->load(['coach', 'members.user', 'trainingSessions']),
         ]);
     }
 
