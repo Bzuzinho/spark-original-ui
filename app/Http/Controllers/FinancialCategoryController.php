@@ -11,7 +11,7 @@ class FinancialCategoryController extends Controller
 {
     public function index()
     {
-        $categories = FinancialCategory::orderBy('nome')->get();
+        $categories = FinancialCategory::orderBy('name')->get();
 
         return response()->json($categories);
     }

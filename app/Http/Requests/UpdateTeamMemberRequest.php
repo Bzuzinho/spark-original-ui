@@ -14,10 +14,10 @@ class UpdateTeamMemberRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'posicao' => ['nullable', 'string', 'max:255'],
-            'numero_camisola' => ['nullable', 'integer', 'min:1', 'max:999'],
-            'data_entrada' => ['required', 'date'],
-            'data_saida' => ['nullable', 'date', 'after:data_entrada'],
+            'position' => ['nullable', 'string', 'max:255'],
+            'jersey_number' => ['nullable', 'integer', 'min:1', 'max:999'],
+            'join_date' => ['required', 'date'],
+            'leave_date' => ['nullable', 'date', 'after:join_date'],
         ];
     }
 }

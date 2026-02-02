@@ -15,10 +15,10 @@ class StoreMembershipFeeRequest extends FormRequest
     {
         return [
             'user_id' => 'required|uuid|exists:users,id',
-            'mes' => 'required|integer|min:1|max:12',
-            'ano' => 'required|integer|min:2000|max:2100',
-            'valor' => 'required|numeric|min:0',
-            'estado' => 'nullable|in:paga,pendente,atrasada',
+            'month' => 'required|integer|min:1|max:12',
+            'year' => 'required|integer|min:2000|max:2100',
+            'amount' => 'required|numeric|min:0',
+            'status' => 'nullable|in:paid,pending,overdue',
         ];
     }
 }

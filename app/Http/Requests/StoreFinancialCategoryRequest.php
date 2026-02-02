@@ -14,10 +14,10 @@ class StoreFinancialCategoryRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'nome' => 'required|string|max:255',
-            'tipo' => 'required|in:receita,despesa',
-            'cor' => 'nullable|string|max:50',
-            'ativa' => 'nullable|boolean',
+            'name' => 'required|string|max:255',
+            'type' => 'required|in:income,expense',
+            'color' => 'nullable|string|max:50',
+            'active' => 'nullable|boolean',
         ];
     }
 }

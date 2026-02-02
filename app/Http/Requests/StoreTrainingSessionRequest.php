@@ -15,11 +15,11 @@ class StoreTrainingSessionRequest extends FormRequest
     {
         return [
             'team_id' => ['nullable', 'exists:teams,id'],
-            'data_hora' => ['required', 'date'],
-            'duracao_minutos' => ['required', 'integer', 'min:1', 'max:600'],
-            'local' => ['nullable', 'string', 'max:255'],
-            'objetivos' => ['nullable', 'string'],
-            'estado' => ['required', 'in:agendado,realizado,cancelado'],
+            'datetime' => ['required', 'date'],
+            'duration_minutes' => ['required', 'integer', 'min:1', 'max:600'],
+            'location' => ['nullable', 'string', 'max:255'],
+            'objectives' => ['nullable', 'string'],
+            'status' => ['required', 'in:scheduled,completed,cancelled'],
         ];
     }
 }

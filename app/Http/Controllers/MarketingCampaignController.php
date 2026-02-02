@@ -36,7 +36,7 @@ class MarketingCampaignController extends Controller
             'total_campaigns' => MarketingCampaign::count(),
             'active_campaigns' => MarketingCampaign::active()->count(),
             'budget_total' => MarketingCampaign::sum('budget') ?? 0,
-            'planned_campaigns' => MarketingCampaign::ofStatus('planeada')->count(),
+            'planned_campaigns' => MarketingCampaign::ofStatus('planned')->count(),
             'completed_campaigns' => MarketingCampaign::completed()->count(),
         ];
 

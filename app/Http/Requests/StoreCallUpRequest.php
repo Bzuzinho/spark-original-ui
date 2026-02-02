@@ -16,10 +16,10 @@ class StoreCallUpRequest extends FormRequest
         return [
             'event_id' => ['required', 'exists:events,id'],
             'team_id' => ['required', 'exists:teams,id'],
-            'atletas_convocados' => ['required', 'array'],
-            'atletas_convocados.*' => ['exists:users,id'],
-            'presencas' => ['nullable', 'array'],
-            'observacoes' => ['nullable', 'string'],
+            'called_up_athletes' => ['required', 'array'],
+            'called_up_athletes.*' => ['exists:users,id'],
+            'attendances' => ['nullable', 'array'],
+            'notes' => ['nullable', 'string'],
         ];
     }
 }
