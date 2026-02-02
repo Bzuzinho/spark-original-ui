@@ -13,29 +13,23 @@ class TrainingAthlete extends Model
     protected $table = 'training_athletes';
 
     protected $fillable = [
-        'treino_id',
-        'atleta_id',
-        'presente',
-        'estado',
-        'volume_real_m',
-        'rpe',
-        'feedback',
-        'observacoes',
+        'training_id',
+        'athlete_id',
+        'present',
+        'notes',
     ];
 
     protected $casts = [
-        'presente' => 'boolean',
-        'volume_real_m' => 'integer',
-        'rpe' => 'integer',
+        'present' => 'boolean',
     ];
 
     public function training(): BelongsTo
     {
-        return $this->belongsTo(Training::class, 'treino_id');
+        return $this->belongsTo(Training::class, 'training_id');
     }
 
     public function atleta(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'atleta_id');
+        return $this->belongsTo(User::class, 'athlete_id');
     }
 }

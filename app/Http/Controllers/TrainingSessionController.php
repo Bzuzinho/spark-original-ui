@@ -16,16 +16,16 @@ class TrainingSessionController extends Controller
     {
         return Inertia::render('Desportivo/TrainingSessions/Index', [
             'trainingSessions' => TrainingSession::with('team')
-                ->latest('data_hora')
+                ->latest('datetime')
                 ->paginate(15),
-            'teams' => Team::where('ativa', true)->get(['id', 'nome']),
+            'teams' => Team::where('active', true)->get(['id', 'name']),
         ]);
     }
 
     public function create(): Response
     {
         return Inertia::render('Desportivo/TrainingSessions/Create', [
-            'teams' => Team::where('ativa', true)->get(['id', 'nome']),
+            'teams' => Team::where('active', true)->get(['id', 'name']),
         ]);
     }
 
@@ -48,7 +48,7 @@ class TrainingSessionController extends Controller
     {
         return Inertia::render('Desportivo/TrainingSessions/Edit', [
             'trainingSession' => $trainingSession,
-            'teams' => Team::where('ativa', true)->get(['id', 'nome']),
+            'teams' => Team::where('active', true)->get(['id', 'name']),
         ]);
     }
 

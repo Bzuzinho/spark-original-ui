@@ -140,15 +140,15 @@ class SettingsController extends Controller
     public function updateClubSettings(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'nome_clube' => 'required|string|max:255',
-            'sigla' => 'nullable|string|max:10',
-            'morada' => 'nullable|string',
-            'codigo_postal' => 'nullable|string|max:20',
-            'localidade' => 'nullable|string|max:100',
-            'telefone' => 'nullable|string|max:20',
+            'club_name' => 'required|string|max:255',
+            'abbreviation' => 'nullable|string|max:10',
+            'address' => 'nullable|string',
+            'postal_code' => 'nullable|string|max:20',
+            'city' => 'nullable|string|max:100',
+            'phone' => 'nullable|string|max:20',
             'email' => 'nullable|email|max:255',
             'website' => 'nullable|url|max:255',
-            'nif' => 'nullable|string|max:20',
+            'tax_id' => 'nullable|string|max:20',
             'iban' => 'nullable|string|max:34',
         ]);
 

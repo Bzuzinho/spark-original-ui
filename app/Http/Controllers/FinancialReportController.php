@@ -15,39 +15,39 @@ class FinancialReportController extends Controller
         $currentYear = $now->year;
 
         // Saldo atual
-        $receitas = Transaction::where('tipo', 'receita')
-            ->where('estado', 'paga')
-            ->sum('valor');
+        $receitas = Transaction::where('type', 'receita')
+            ->where('status', 'paga')
+            ->sum('amount');
         
-        $despesas = Transaction::where('tipo', 'despesa')
-            ->where('estado', 'paga')
-            ->sum('valor');
+        $despesas = Transaction::where('type', 'despesa')
+            ->where('status', 'paga')
+            ->sum('amount');
         
         $saldoAtual = $receitas - $despesas;
 
         // Receitas do mês
-        $receitasMes = Transaction::where('tipo', 'receita')
-            ->where('estado', 'paga')
-            ->whereMonth('data', $currentMonth)
-            ->whereYear('data', $currentYear)
-            ->sum('valor');
+        $receitasMes = Transaction::where('type', 'receita')
+            ->where('status', 'paga')
+            ->whereMonth('date', $currentMonth)
+            ->whereYear('date', $currentYear)
+            ->sum('amount');
 
         // Despesas do mês
-        $despesasMes = Transaction::where('tipo', 'despesa')
-            ->where('estado', 'paga')
-            ->whereMonth('data', $currentMonth)
-            ->whereYear('data', $currentYear)
-            ->sum('valor');
+        $despesasMes = Transaction::where('type', 'despesa')
+            ->where('status', 'paga')
+            ->whereMonth('date', $currentMonth)
+            ->whereYear('date', $currentYear)
+            ->sum('amount');
 
         // Mensalidades atrasadas
-        $mensalidadesAtrasadas = MembershipFee::where('estado', 'atrasada')
+        $mensalidadesAtrasadas = MembershipFee::where('status', 'atrasada')
             ->orWhere(function($query) use ($now) {
-                $query->where('estado', 'pendente')
+                $query->where('status', 'pendente')
                     ->where(function($q) use ($now) {
-                        $q->where('ano', '<', $now->year)
+                        $q->where('year', '<', $now->year)
                             ->orWhere(function($q2) use ($now) {
-                                $q2->where('ano', '=', $now->year)
-                                    ->where('mes', '<', $now->month);
+                                $q2->where('year', '=', $now->year)
+                                    ->where('month', '<', $now->month);
                             });
                     });
             })
@@ -60,17 +60,17 @@ class FinancialReportController extends Controller
             $month = $date->month;
             $year = $date->year;
 
-            $monthlyReceitas = Transaction::where('tipo', 'receita')
-                ->where('estado', 'paga')
-                ->whereMonth('data', $month)
-                ->whereYear('data', $year)
-                ->sum('valor');
+            $monthlyReceitas = Transaction::where('type', 'receita')
+                ->where('status', 'paga')
+                ->whereMonth('date', $month)
+                ->whereYear('date', $year)
+                ->sum('amount');
 
-            $monthlyDespesas = Transaction::where('tipo', 'despesa')
-                ->where('estado', 'paga')
-                ->whereMonth('data', $month)
-                ->whereYear('data', $year)
-                ->sum('valor');
+            $monthlyDespesas = Transaction::where('type', 'despesa')
+                ->where('status', 'paga')
+                ->whereMonth('date', $month)
+                ->whereYear('date', $year)
+                ->sum('amount');
 
             $monthlyData[] = [
                 'mes' => $date->format('M'),

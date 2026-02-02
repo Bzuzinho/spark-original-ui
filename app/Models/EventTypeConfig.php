@@ -13,29 +13,28 @@ class EventTypeConfig extends Model
     protected $table = 'event_type_configs';
 
     protected $fillable = [
-        'nome',
-        'cor',
-        'icon',
-        'descricao',
-        'gera_taxa',
-        'valor_taxa_padrao',
-        'requer_convocatoria',
-        'exige_confirmacao',
-        'permite_transporte',
-        'ativo',
+        'name',
+        'color',
+        'description',
+        'generates_fee',
+        'default_fee_value',
+        'requires_call_up',
+        'requires_confirmation',
+        'allows_transport',
+        'active',
     ];
 
     protected $casts = [
-        'gera_taxa' => 'boolean',
-        'requer_convocatoria' => 'boolean',
-        'exige_confirmacao' => 'boolean',
-        'permite_transporte' => 'boolean',
-        'ativo' => 'boolean',
-        'valor_taxa_padrao' => 'decimal:2',
+        'generates_fee' => 'boolean',
+        'requires_call_up' => 'boolean',
+        'requires_confirmation' => 'boolean',
+        'allows_transport' => 'boolean',
+        'active' => 'boolean',
+        'default_fee_value' => 'decimal:2',
     ];
 
     public function events(): HasMany
     {
-        return $this->hasMany(Event::class, 'tipo_config_id');
+        return $this->hasMany(Event::class, 'type_config_id');
     }
 }

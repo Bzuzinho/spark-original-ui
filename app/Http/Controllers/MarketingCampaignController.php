@@ -17,12 +17,12 @@ class MarketingCampaignController extends Controller
         $query = MarketingCampaign::query();
 
         // Apply filters
-        if ($request->filled('tipo')) {
-            $query->ofType($request->tipo);
+        if ($request->filled('type')) {
+            $query->ofType($request->type);
         }
 
-        if ($request->filled('estado')) {
-            $query->ofStatus($request->estado);
+        if ($request->filled('status')) {
+            $query->ofStatus($request->status);
         }
 
         if ($request->filled('search')) {
@@ -35,7 +35,7 @@ class MarketingCampaignController extends Controller
         $stats = [
             'total_campaigns' => MarketingCampaign::count(),
             'active_campaigns' => MarketingCampaign::active()->count(),
-            'budget_total' => MarketingCampaign::sum('orcamento') ?? 0,
+            'budget_total' => MarketingCampaign::sum('budget') ?? 0,
             'planned_campaigns' => MarketingCampaign::ofStatus('planeada')->count(),
             'completed_campaigns' => MarketingCampaign::completed()->count(),
         ];
@@ -44,8 +44,8 @@ class MarketingCampaignController extends Controller
             'campaigns' => $campaigns,
             'stats' => $stats,
             'filters' => [
-                'tipo' => $request->tipo,
-                'estado' => $request->estado,
+                'type' => $request->type,
+                'status' => $request->status,
                 'search' => $request->search,
             ],
         ]);

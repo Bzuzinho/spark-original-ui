@@ -13,39 +13,33 @@ class Prova extends Model
 
 
     protected $fillable = [
-        'competicao_id',
-        'estilo',
-        'distancia_m',
-        'genero',
-        'escalao_id',
-        'ordem_prova',
-        'data_hora',
-        'observacoes',
+        'competition_id',
+        'name',
+        'distance',
+        'stroke',
+        'gender',
+        'age_group',
+        'datetime',
+        'notes',
     ];
 
     protected $casts = [
-        'distancia_m' => 'integer',
-        'ordem_prova' => 'integer',
-        'data_hora' => 'datetime',
+        'distance' => 'integer',
+        'datetime' => 'datetime',
     ];
 
     public function competition(): BelongsTo
     {
-        return $this->belongsTo(Competition::class, 'competicao_id');
-    }
-
-    public function escalao(): BelongsTo
-    {
-        return $this->belongsTo(AgeGroup::class, 'escalao_id');
+        return $this->belongsTo(Competition::class, 'competition_id');
     }
 
     public function registrations(): HasMany
     {
-        return $this->hasMany(CompetitionRegistration::class, 'prova_id');
+        return $this->hasMany(CompetitionRegistration::class, 'competition_id');
     }
 
     public function results(): HasMany
     {
-        return $this->hasMany(Result::class, 'prova_id');
+        return $this->hasMany(Result::class, 'race_id');
     }
 }

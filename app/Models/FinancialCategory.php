@@ -11,14 +11,14 @@ class FinancialCategory extends Model
     use HasUuids;
 
     protected $fillable = [
-        'nome',
-        'tipo',
-        'cor',
-        'ativa',
+        'name',
+        'type',
+        'color',
+        'active',
     ];
 
     protected $casts = [
-        'ativa' => 'boolean',
+        'active' => 'boolean',
     ];
 
     public function transactions(): HasMany

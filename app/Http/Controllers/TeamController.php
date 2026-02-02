@@ -24,9 +24,9 @@ class TeamController extends Controller
     public function create(): Response
     {
         return Inertia::render('Desportivo/Teams/Create', [
-            'treinadores' => User::whereJsonContains('tipo_membro', 'treinador')
-                ->where('estado', 'ativo')
-                ->get(['id', 'nome_completo']),
+            'treinadores' => User::whereJsonContains('member_type', 'treinador')
+                ->where('status', 'ativo')
+                ->get(['id', 'full_name']),
         ]);
     }
 
@@ -49,9 +49,9 @@ class TeamController extends Controller
     {
         return Inertia::render('Desportivo/Teams/Edit', [
             'team' => $team,
-            'treinadores' => User::whereJsonContains('tipo_membro', 'treinador')
-                ->where('estado', 'ativo')
-                ->get(['id', 'nome_completo']),
+            'treinadores' => User::whereJsonContains('member_type', 'treinador')
+                ->where('status', 'ativo')
+                ->get(['id', 'full_name']),
         ]);
     }
 

@@ -12,14 +12,16 @@ class AutomatedCommunication extends Model
     protected $table = 'automated_communications';
 
     protected $fillable = [
-        'nome',
-        'tipo_trigger',
-        'tipo_comunicacao',
-        'template_mensagem',
-        'ativo',
+        'name',
+        'description',
+        'type',
+        'trigger',
+        'subject',
+        'message',
+        'active',
     ];
 
     protected $casts = [
-        'ativo' => 'boolean',
+        'active' => 'boolean',
     ];
 }

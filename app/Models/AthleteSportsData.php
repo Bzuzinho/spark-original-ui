@@ -13,33 +13,33 @@ class AthleteSportsData extends Model
     protected $table = 'athlete_sports_data';
 
     protected $fillable = [
-        'atleta_id',
-        'num_federacao',
-        'cartao_federacao',
-        'numero_pmb',
-        'escalao_id',
-        'atestado_medico',
-        'validade_atestado',
-        'observacoes_medicas',
-        'alergias',
-        'medicacao',
-        'seguro_desportivo',
-        'numero_seguro',
-        'validade_seguro',
+        'athlete_id',
+        'federation_number',
+        'federation_card',
+        'pmb_number',
+        'age_group_id',
+        'registration_date',
+        'registration_file',
+        'medical_certificate_date',
+        'medical_certificate_files',
+        'medical_information',
+        'active',
     ];
 
     protected $casts = [
-        'validade_atestado' => 'date',
-        'validade_seguro' => 'date',
+        'registration_date' => 'date',
+        'medical_certificate_date' => 'date',
+        'medical_certificate_files' => 'array',
+        'active' => 'boolean',
     ];
 
     public function atleta(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'atleta_id');
+        return $this->belongsTo(User::class, 'athlete_id');
     }
 
     public function escalao(): BelongsTo
     {
-        return $this->belongsTo(AgeGroup::class, 'escalao_id');
+        return $this->belongsTo(AgeGroup::class, 'age_group_id');
     }
 }

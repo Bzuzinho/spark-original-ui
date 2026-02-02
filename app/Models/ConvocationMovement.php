@@ -14,38 +14,30 @@ class ConvocationMovement extends Model
     protected $table = 'convocation_movements';
 
     protected $fillable = [
-        'atleta_id',
-        'convocatoria_grupo_id',
-        'evento_id',
-        'tipo',
-        'data_emissao',
-        'valor',
-        'estado',
-        'observacoes',
+        'event_id',
+        'convocation_group_id',
+        'type',
+        'description',
+        'total_amount',
+        'status',
     ];
 
     protected $casts = [
-        'data_emissao' => 'date',
-        'valor' => 'decimal:2',
+        'total_amount' => 'decimal:2',
     ];
-
-    public function atleta(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'atleta_id');
-    }
 
     public function convocationGroup(): BelongsTo
     {
-        return $this->belongsTo(ConvocationGroup::class, 'convocatoria_grupo_id');
+        return $this->belongsTo(ConvocationGroup::class, 'convocation_group_id');
     }
 
     public function evento(): BelongsTo
     {
-        return $this->belongsTo(Event::class, 'evento_id');
+        return $this->belongsTo(Event::class, 'event_id');
     }
 
     public function items(): HasMany
     {
-        return $this->hasMany(ConvocationMovementItem::class, 'convocatoria_movimento_id');
+        return $this->hasMany(ConvocationMovementItem::class, 'convocation_movement_id');
     }
 }

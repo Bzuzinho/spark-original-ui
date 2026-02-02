@@ -13,14 +13,12 @@ class Result extends Model
 
 
     protected $fillable = [
-        'prova_id',
-        'user_id',
+        'race_id',
+        'athlete_id',
         'official_time',
-        'tempo_reacao',
+        'reaction_time',
         'position',
         'fina_points',
-        'record_pessoal',
-        'record_clube',
         'disqualified',
         'notes',
     ];
@@ -28,23 +26,21 @@ class Result extends Model
     protected $casts = [
         'position' => 'integer',
         'fina_points' => 'integer',
-        'record_pessoal' => 'boolean',
-        'record_clube' => 'boolean',
         'disqualified' => 'boolean',
     ];
 
     public function prova(): BelongsTo
     {
-        return $this->belongsTo(Prova::class, 'prova_id');
+        return $this->belongsTo(Prova::class, 'race_id');
     }
 
     public function athlete(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'user_id');
+        return $this->belongsTo(User::class, 'athlete_id');
     }
 
     public function splits(): HasMany
     {
-        return $this->hasMany(ResultSplit::class, 'resultado_id');
+        return $this->hasMany(ResultSplit::class, 'result_id');
     }
 }

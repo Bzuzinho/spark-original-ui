@@ -89,41 +89,41 @@ class Event extends Model
 
     public function convocations(): HasMany
     {
-        return $this->hasMany(EventConvocation::class, 'evento_id');
+        return $this->hasMany(EventConvocation::class, 'event_id');
     }
 
     public function participants(): HasMany
     {
-        return $this->hasMany(EventConvocation::class, 'evento_id');
+        return $this->hasMany(EventConvocation::class, 'event_id');
     }
 
     public function attendances(): HasMany
     {
-        return $this->hasMany(EventAttendance::class, 'evento_id');
+        return $this->hasMany(EventAttendance::class, 'event_id');
     }
 
     public function results(): HasMany
     {
-        return $this->hasMany(EventResult::class, 'evento_id');
+        return $this->hasMany(EventResult::class, 'event_id');
     }
 
     public function trainings(): HasMany
     {
-        return $this->hasMany(Training::class, 'evento_id');
+        return $this->hasMany(Training::class, 'event_id');
     }
 
     public function competition(): HasMany
     {
-        return $this->hasMany(Competition::class, 'evento_id');
+        return $this->hasMany(Competition::class, 'event_id');
     }
 
     public function convocationGroups(): HasMany
     {
-        return $this->hasMany(ConvocationGroup::class, 'evento_id');
+        return $this->hasMany(ConvocationGroup::class, 'event_id');
     }
 
     public function convocationMovements(): HasMany
     {
-        return $this->hasMany(ConvocationMovement::class, 'evento_id');
+        return $this->hasMany(ConvocationMovement::class, 'event_id');
     }
 }

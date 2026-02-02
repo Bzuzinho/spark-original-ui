@@ -29,20 +29,20 @@ class MemberDocumentController extends Controller
     public function store(Request $request, User $member): JsonResponse
     {
         $validated = $request->validate([
-            'tipo' => ['required', Rule::in(['cc', 'atestado', 'autorizacao', 'rgpd', 'consentimento', 'afiliacao', 'declaracao_transporte', 'outro'])],
-            'nome' => 'nullable|string|max:255',
-            'ficheiro' => 'required|file|max:5120', // 5MB max
-            'data_validade' => 'nullable|date',
+            'type' => ['required', Rule::in(['cc', 'atestado', 'autorizacao', 'rgpd', 'consentimento', 'afiliacao', 'declaracao_transporte', 'outro'])],
+            'name' => 'nullable|string|max:255',
+            'file' => 'required|file|max:5120', // 5MB max
+            'expiry_date' => 'nullable|date',
         ]);
 
         // Store the file
-        $path = $request->file('ficheiro')->store('documents', 'public');
+        $path = $request->file('file')->store('documents', 'public');
 
         $document = $member->documents()->create([
-            'tipo' => $validated['tipo'],
-            'nome' => $validated['nome'] ?? null,
-            'ficheiro' => $path,
-            'data_validade' => $validated['data_validade'] ?? null,
+            'type' => $validated['type'],
+            'name' => $validated['name'] ?? null,
+            'file' => $path,
+            'expiry_date' => $validated['expiry_date'] ?? null,
         ]);
 
         return response()->json([
@@ -64,8 +64,8 @@ class MemberDocumentController extends Controller
         }
 
         // Delete file from storage
-        if ($document->ficheiro) {
-            Storage::disk('public')->delete($document->ficheiro);
+        if ($document->file) {
+            Storage::disk('public')->delete($document->file);
         }
 
         $document->delete();

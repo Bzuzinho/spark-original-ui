@@ -32,13 +32,13 @@ class MemberRelationshipController extends Controller
     {
         $validated = $request->validate([
             'related_user_id' => 'required|exists:users,id',
-            'tipo' => ['required', Rule::in(['encarregado_educacao', 'educando', 'familiar'])],
+            'type' => ['required', Rule::in(['encarregado_educacao', 'educando', 'familiar'])],
         ]);
 
         // Check if relationship already exists
         $exists = UserRelationship::where('user_id', $member->id)
             ->where('related_user_id', $validated['related_user_id'])
-            ->where('tipo', $validated['tipo'])
+            ->where('type', $validated['type'])
             ->exists();
 
         if ($exists) {
@@ -50,19 +50,19 @@ class MemberRelationshipController extends Controller
         $relationship = $member->relationships()->create($validated);
 
         // Create reciprocal relationship if needed
-        if ($validated['tipo'] === 'encarregado_educacao') {
+        if ($validated['type'] === 'encarregado_educacao') {
             // Create reciprocal educando relationship
             UserRelationship::firstOrCreate([
                 'user_id' => $validated['related_user_id'],
                 'related_user_id' => $member->id,
-                'tipo' => 'educando',
+                'type' => 'educando',
             ]);
-        } elseif ($validated['tipo'] === 'educando') {
+        } elseif ($validated['type'] === 'educando') {
             // Create reciprocal encarregado_educacao relationship
             UserRelationship::firstOrCreate([
                 'user_id' => $validated['related_user_id'],
                 'related_user_id' => $member->id,
-                'tipo' => 'encarregado_educacao',
+                'type' => 'encarregado_educacao',
             ]);
         }
 
@@ -85,15 +85,15 @@ class MemberRelationshipController extends Controller
         }
 
         // Delete reciprocal relationship
-        if ($relationship->tipo === 'encarregado_educacao') {
+        if ($relationship->type === 'encarregado_educacao') {
             UserRelationship::where('user_id', $relationship->related_user_id)
                 ->where('related_user_id', $member->id)
-                ->where('tipo', 'educando')
+                ->where('type', 'educando')
                 ->delete();
-        } elseif ($relationship->tipo === 'educando') {
+        } elseif ($relationship->type === 'educando') {
             UserRelationship::where('user_id', $relationship->related_user_id)
                 ->where('related_user_id', $member->id)
-                ->where('tipo', 'encarregado_educacao')
+                ->where('type', 'encarregado_educacao')
                 ->delete();
         }
 

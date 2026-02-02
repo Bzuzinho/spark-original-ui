@@ -18,17 +18,17 @@ class DashboardController extends Controller
         return Inertia::render('Dashboard', [
             'stats' => [
                 'totalMembers' => User::count(),
-                'activeAthletes' => User::whereJsonContains('tipo_membro', 'atleta')
-                    ->where('estado', 'ativo')
+                'activeAthletes' => User::whereJsonContains('member_type', 'atleta')
+                    ->where('status', 'ativo')
                     ->count(),
-                'guardians' => User::whereJsonContains('tipo_membro', 'encarregado_educacao')->count(),
+                'guardians' => User::whereJsonContains('member_type', 'encarregado_educacao')->count(),
                 'upcomingEvents' => Event::where('start_date', '>=', now())
                     ->where('status', 'agendado')
                     ->count(),
-                'monthlyRevenue' => Invoice::whereMonth('data_emissao', now()->month)
-                    ->whereYear('data_emissao', now()->year)
-                    ->where('estado_pagamento', 'pago')
-                    ->sum('valor_total'),
+                'monthlyRevenue' => Invoice::whereMonth('issue_date', now()->month)
+                    ->whereYear('issue_date', now()->year)
+                    ->where('payment_status', 'pago')
+                    ->sum('total_amount'),
                 'totalUserTypes' => UserType::count(),
                 'totalAgeGroups' => AgeGroup::count(),
             ],

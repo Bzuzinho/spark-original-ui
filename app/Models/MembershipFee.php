@@ -12,19 +12,19 @@ class MembershipFee extends Model
 
     protected $fillable = [
         'user_id',
-        'mes',
-        'ano',
-        'valor',
-        'estado',
-        'data_pagamento',
+        'month',
+        'year',
+        'amount',
+        'status',
+        'payment_date',
         'transaction_id',
     ];
 
     protected $casts = [
-        'mes' => 'integer',
-        'ano' => 'integer',
-        'valor' => 'decimal:2',
-        'data_pagamento' => 'date',
+        'month' => 'integer',
+        'year' => 'integer',
+        'amount' => 'decimal:2',
+        'payment_date' => 'date',
     ];
 
     public function user(): BelongsTo
