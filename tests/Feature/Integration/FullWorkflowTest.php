@@ -79,46 +79,34 @@ class FullWorkflowTest extends TestCase
 
         // 4. Convoke member to event
         EventConvocation::create([
-            'event_id' => $event->id,
+            'evento_id' => $event->id,
             'user_id' => $member->id,
-            'estado' => 'convocado',
+            'data_convocatoria' => now()->format('Y-m-d'),
+            'estado_confirmacao' => 'convocado',
         ]);
 
         $this->assertDatabaseHas('event_convocations', [
-            'event_id' => $event->id,
+            'evento_id' => $event->id,
             'user_id' => $member->id,
-            'estado' => 'convocado',
+            'estado_confirmacao' => 'convocado',
         ]);
 
         // 5. Mark presence
         EventAttendance::create([
-            'event_id' => $event->id,
+            'evento_id' => $event->id,
             'user_id' => $member->id,
-            'presente' => true,
-            'justificado' => false,
+            'estado' => 'presente',
+            'registado_por' => $admin->id,
+            'registado_em' => now(),
         ]);
 
         $this->assertDatabaseHas('event_attendances', [
-            'event_id' => $event->id,
+            'evento_id' => $event->id,
             'user_id' => $member->id,
-            'presente' => true,
+            'estado' => 'presente',
         ]);
 
-        // 6. Generate monthly fee
-        $monthlyFee = MonthlyFee::create([
-            'user_id' => $member->id,
-            'mes' => now()->month,
-            'ano' => now()->year,
-            'valor' => 50.00,
-            'estado' => 'pendente',
-            'data_vencimento' => now()->addDays(10)->format('Y-m-d'),
-        ]);
-
-        $this->assertNotNull($monthlyFee);
-        $this->assertEquals(50.00, $monthlyFee->valor);
-        $this->assertEquals('pendente', $monthlyFee->estado);
-
-        // 7. Generate invoice for monthly fee
+        // 6. Generate invoice for monthly fee
         $invoice = Invoice::create([
             'user_id' => $member->id,
             'data_fatura' => now()->format('Y-m-d'),
@@ -144,49 +132,45 @@ class FullWorkflowTest extends TestCase
             'estado_pagamento' => 'pendente',
         ]);
 
-        // 8. Pay monthly fee
-        $monthlyFee->update([
-            'estado' => 'pago',
-            'data_pagamento' => now()->format('Y-m-d'),
-        ]);
-
+        // 7. Pay invoice
         $invoice->update([
             'estado_pagamento' => 'pago',
         ]);
 
-        // 9. Create financial transaction for payment
+        // 8. Create financial transaction for payment
         $costCenter = CostCenter::first();
         
         $movement = Movement::create([
-            'data' => now()->format('Y-m-d'),
-            'tipo' => 'receita',
-            'categoria' => 'Mensalidades',
-            'descricao' => 'Payment from ' . $member->nome_completo,
-            'valor' => 50.00,
-            'metodo_pagamento' => 'transferencia',
-            'cost_center_id' => $costCenter->id,
+            'user_id' => $member->id,
+            'classificacao' => 'receita',
+            'data_emissao' => now()->format('Y-m-d'),
+            'data_vencimento' => now()->format('Y-m-d'),
+            'valor_total' => 50.00,
+            'estado_pagamento' => 'pago',
+            'tipo' => 'mensalidade',
+            'centro_custo_id' => $costCenter->id,
+            'observacoes' => 'Payment from ' . $member->nome_completo,
         ]);
 
         MovementItem::create([
-            'movement_id' => $movement->id,
+            'movimento_id' => $movement->id,
             'descricao' => 'Monthly fee payment',
             'quantidade' => 1,
             'valor_unitario' => 50.00,
-            'total' => 50.00,
+            'total_linha' => 50.00,
         ]);
 
         $this->assertDatabaseHas('movements', [
-            'tipo' => 'receita',
-            'categoria' => 'Mensalidades',
-            'valor' => 50.00,
+            'classificacao' => 'receita',
+            'tipo' => 'mensalidade',
+            'valor_total' => 50.00,
         ]);
 
-        // 10. Verify stats updated
+        // 9. Verify stats updated
         $this->assertEquals(1, Event::where('titulo', 'Training Session Test')->count());
-        $this->assertEquals(1, EventAttendance::where('user_id', $member->id)->where('presente', true)->count());
-        $this->assertEquals(1, MonthlyFee::where('user_id', $member->id)->where('estado', 'pago')->count());
+        $this->assertEquals(1, EventAttendance::where('user_id', $member->id)->where('estado', 'presente')->count());
         $this->assertEquals(1, Invoice::where('user_id', $member->id)->where('estado_pagamento', 'pago')->count());
-        $this->assertEquals(1, Movement::where('tipo', 'receita')->where('categoria', 'Mensalidades')->count());
+        $this->assertEquals(1, Movement::where('classificacao', 'receita')->where('tipo', 'mensalidade')->count());
     }
 
     /**
@@ -219,35 +203,39 @@ class FullWorkflowTest extends TestCase
         // Convoke all athletes
         foreach ($athletes as $athlete) {
             EventConvocation::create([
-                'event_id' => $event->id,
+                'evento_id' => $event->id,
                 'user_id' => $athlete->id,
-                'estado' => 'convocado',
+                'data_convocatoria' => now()->format('Y-m-d'),
+                'estado_confirmacao' => 'convocado',
             ]);
         }
 
         // Mark 3 present, 2 absent
         foreach ($athletes->take(3) as $athlete) {
             EventAttendance::create([
-                'event_id' => $event->id,
+                'evento_id' => $event->id,
                 'user_id' => $athlete->id,
-                'presente' => true,
+                'estado' => 'presente',
+                'registado_por' => $admin->id,
+                'registado_em' => now(),
             ]);
         }
 
         foreach ($athletes->skip(3) as $athlete) {
             EventAttendance::create([
-                'event_id' => $event->id,
+                'evento_id' => $event->id,
                 'user_id' => $athlete->id,
-                'presente' => false,
-                'justificado' => true,
+                'estado' => 'ausente',
+                'registado_por' => $admin->id,
+                'registado_em' => now(),
                 'observacoes' => 'Medical excuse',
             ]);
         }
 
         // Verify
-        $this->assertEquals(5, EventConvocation::where('event_id', $event->id)->count());
-        $this->assertEquals(3, EventAttendance::where('event_id', $event->id)->where('presente', true)->count());
-        $this->assertEquals(2, EventAttendance::where('event_id', $event->id)->where('presente', false)->count());
+        $this->assertEquals(5, EventConvocation::where('evento_id', $event->id)->count());
+        $this->assertEquals(3, EventAttendance::where('evento_id', $event->id)->where('estado', 'presente')->count());
+        $this->assertEquals(2, EventAttendance::where('evento_id', $event->id)->where('estado', 'ausente')->count());
     }
 
     /**
@@ -306,20 +294,22 @@ class FullWorkflowTest extends TestCase
         // Create movement for payment
         $costCenter = CostCenter::first();
         Movement::create([
-            'data' => now()->format('Y-m-d'),
-            'tipo' => 'receita',
-            'categoria' => 'Mensalidades',
-            'descricao' => 'Invoice payment',
-            'valor' => $invoice->valor_total,
-            'metodo_pagamento' => 'multibanco',
-            'cost_center_id' => $costCenter->id,
+            'user_id' => $member->id,
+            'classificacao' => 'receita',
+            'data_emissao' => now()->format('Y-m-d'),
+            'data_vencimento' => now()->format('Y-m-d'),
+            'valor_total' => $invoice->valor_total,
+            'estado_pagamento' => 'pago',
+            'tipo' => 'pagamento',
+            'centro_custo_id' => $costCenter->id,
+            'observacoes' => 'Invoice payment',
         ]);
 
         // Verify payment recorded
         $this->assertEquals('pago', $invoice->fresh()->estado_pagamento);
         $this->assertDatabaseHas('movements', [
-            'tipo' => 'receita',
-            'valor' => 75.00,
+            'classificacao' => 'receita',
+            'valor_total' => 75.00,
         ]);
     }
 

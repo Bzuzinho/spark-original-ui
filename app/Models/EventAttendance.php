@@ -14,15 +14,17 @@ class EventAttendance extends Model
 
     protected $fillable = [
         'evento_id',
-        'atleta_id',
+        'user_id',
         'estado',
         'hora_chegada',
         'observacoes',
         'registado_por',
+        'registado_em',
     ];
 
     protected $casts = [
         'hora_chegada' => 'datetime',
+        'registado_em' => 'datetime',
     ];
 
     public function evento(): BelongsTo
@@ -30,9 +32,9 @@ class EventAttendance extends Model
         return $this->belongsTo(Event::class, 'evento_id');
     }
 
-    public function atleta(): BelongsTo
+    public function user(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'atleta_id');
+        return $this->belongsTo(User::class, 'user_id');
     }
 
     public function registadoPor(): BelongsTo

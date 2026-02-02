@@ -14,18 +14,18 @@ class EventConvocation extends Model
 
     protected $fillable = [
         'evento_id',
-        'atleta_id',
+        'user_id',
         'data_convocatoria',
         'estado_confirmacao',
-        'data_confirmacao',
+        'data_resposta',
+        'justificacao',
         'transporte_clube',
         'observacoes',
-        'convocado_por',
     ];
 
     protected $casts = [
-        'data_convocatoria' => 'datetime',
-        'data_confirmacao' => 'datetime',
+        'data_convocatoria' => 'date',
+        'data_resposta' => 'datetime',
         'transporte_clube' => 'boolean',
     ];
 
@@ -34,13 +34,8 @@ class EventConvocation extends Model
         return $this->belongsTo(Event::class, 'evento_id');
     }
 
-    public function atleta(): BelongsTo
+    public function user(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'atleta_id');
-    }
-
-    public function convocadoPor(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'convocado_por');
+        return $this->belongsTo(User::class, 'user_id');
     }
 }
