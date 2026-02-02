@@ -25,55 +25,55 @@ class FinanceiroController extends Controller
 
         // Get all transactions with relationships
         $transactions = Transaction::with(['user', 'category'])
-            ->orderBy('data', 'desc')
+            ->orderBy('date', 'desc')
             ->get();
 
         // Get all membership fees with relationships
         $membershipFees = MembershipFee::with(['user', 'transaction'])
-            ->orderBy('ano', 'desc')
-            ->orderBy('mes', 'desc')
+            ->orderBy('year', 'desc')
+            ->orderBy('month', 'desc')
             ->get();
 
         // Get all categories
-        $categories = FinancialCategory::orderBy('nome')->get();
+        $categories = FinancialCategory::orderBy('name')->get();
 
         // Get active users for generating fees
-        $users = User::where('estado', 'ativo')
-            ->select('id', 'nome_completo', 'numero_socio')
-            ->orderBy('nome_completo')
+        $users = User::where('status', 'ativo')
+            ->select('id', 'full_name', 'member_number')
+            ->orderBy('full_name')
             ->get();
 
         // Calculate stats
-        $receitas = Transaction::where('tipo', 'receita')
-            ->where('estado', 'paga')
-            ->sum('valor');
+        $receitas = Transaction::where('type', 'receita')
+            ->where('status', 'paga')
+            ->sum('amount');
         
-        $despesas = Transaction::where('tipo', 'despesa')
-            ->where('estado', 'paga')
-            ->sum('valor');
+        $despesas = Transaction::where('type', 'despesa')
+            ->where('status', 'paga')
+            ->sum('amount');
         
         $saldoAtual = $receitas - $despesas;
 
-        $receitasMes = Transaction::where('tipo', 'receita')
-            ->where('estado', 'paga')
-            ->whereMonth('data', $currentMonth)
-            ->whereYear('data', $currentYear)
-            ->sum('valor');
+        $receitasMes = Transaction::where('type', 'receita')
+            ->where('status', 'paga')
+            ->whereMonth('date', $currentMonth)
+            ->whereYear('date', $currentYear)
+            ->sum('amount');
 
-        $despesasMes = Transaction::where('tipo', 'despesa')
-            ->where('estado', 'paga')
-            ->whereMonth('data', $currentMonth)
-            ->whereYear('data', $currentYear)
-            ->sum('valor');
+        $despesasMes = Transaction::where('type', 'despesa')
+            ->where('status', 'paga')
+            ->whereMonth('date', $currentMonth)
+            ->whereYear('date', $currentYear)
+            ->sum('amount');
 
-        $mensalidadesAtrasadas = MembershipFee::where('estado', 'atrasada')
+        $mensalidadesAtrasadas = MembershipFee::where('status', 'atrasada')
             ->orWhere(function($query) use ($now) {
-                $query->where('estado', 'pendente')
+                $query->where('status', 'pendente')
                     ->where(function($q) use ($now) {
-                        $q->where('ano', '<', $now->year)
+                        $q->where('year', '<', $now->year)
                             ->orWhere(function($q2) use ($now) {
-                                $q2->where('ano', '=', $now->year)
-                                    ->where('mes', '<', $now->month);
+                                $q2->where('year', '=', $now->year)
+                                    ->where('month', '<', $now->month);
                             });
                     });
             })
@@ -86,17 +86,17 @@ class FinanceiroController extends Controller
             $month = $date->month;
             $year = $date->year;
 
-            $monthlyReceitas = Transaction::where('tipo', 'receita')
-                ->where('estado', 'paga')
-                ->whereMonth('data', $month)
-                ->whereYear('data', $year)
-                ->sum('valor');
+            $monthlyReceitas = Transaction::where('type', 'receita')
+                ->where('status', 'paga')
+                ->whereMonth('date', $month)
+                ->whereYear('date', $year)
+                ->sum('amount');
 
-            $monthlyDespesas = Transaction::where('tipo', 'despesa')
-                ->where('estado', 'paga')
-                ->whereMonth('data', $month)
-                ->whereYear('data', $year)
-                ->sum('valor');
+            $monthlyDespesas = Transaction::where('type', 'despesa')
+                ->where('status', 'paga')
+                ->whereMonth('date', $month)
+                ->whereYear('date', $year)
+                ->sum('amount');
 
             $monthlyData[] = [
                 'mes' => $date->format('M'),
@@ -125,7 +125,7 @@ class FinanceiroController extends Controller
     public function create(): Response
     {
         return Inertia::render('Financeiro/Create', [
-            'users' => User::where('estado', 'ativo')->get(),
+            'users' => User::where('status', 'ativo')->get(),
         ]);
     }
 
@@ -135,12 +135,12 @@ class FinanceiroController extends Controller
         
         $invoice = Invoice::create([
             'user_id' => $data['user_id'],
-            'numero_fatura' => $this->generateInvoiceNumber(),
-            'data_emissao' => $data['data_emissao'],
-            'data_vencimento' => $data['data_vencimento'],
-            'estado_pagamento' => $data['estado_pagamento'],
-            'valor_total' => $data['valor_total'],
-            'observacoes' => $data['observacoes'] ?? null,
+            'invoice_number' => $this->generateInvoiceNumber(),
+            'issue_date' => $data['issue_date'],
+            'due_date' => $data['due_date'],
+            'payment_status' => $data['payment_status'],
+            'total_amount' => $data['total_amount'],
+            'notes' => $data['notes'] ?? null,
         ]);
 
         // Create invoice items
@@ -165,7 +165,7 @@ class FinanceiroController extends Controller
     {
         return Inertia::render('Financeiro/Edit', [
             'invoice' => $financeiro->load(['items']),
-            'users' => User::where('estado', 'ativo')->get(),
+            'users' => User::where('status', 'ativo')->get(),
         ]);
     }
 
@@ -175,11 +175,11 @@ class FinanceiroController extends Controller
         
         $financeiro->update([
             'user_id' => $data['user_id'],
-            'data_emissao' => $data['data_emissao'],
-            'data_vencimento' => $data['data_vencimento'],
-            'estado_pagamento' => $data['estado_pagamento'],
-            'valor_total' => $data['valor_total'],
-            'observacoes' => $data['observacoes'] ?? null,
+            'issue_date' => $data['issue_date'],
+            'due_date' => $data['due_date'],
+            'payment_status' => $data['payment_status'],
+            'total_amount' => $data['total_amount'],
+            'notes' => $data['notes'] ?? null,
         ]);
 
         // Update invoice items
@@ -205,12 +205,12 @@ class FinanceiroController extends Controller
     private function generateInvoiceNumber(): string
     {
         $year = now()->year;
-        $lastInvoice = Invoice::whereYear('data_emissao', $year)
-            ->orderBy('numero_fatura', 'desc')
+        $lastInvoice = Invoice::whereYear('issue_date', $year)
+            ->orderBy('invoice_number', 'desc')
             ->first();
 
         if ($lastInvoice) {
-            $lastNumber = (int) substr($lastInvoice->numero_fatura, -4);
+            $lastNumber = (int) substr($lastInvoice->invoice_number, -4);
             $newNumber = $lastNumber + 1;
         } else {
             $newNumber = 1;

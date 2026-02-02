@@ -15,15 +15,15 @@ class UpdateInvoiceRequest extends FormRequest
     {
         return [
             'user_id' => ['required', 'exists:users,id'],
-            'data_emissao' => ['required', 'date'],
-            'data_vencimento' => ['required', 'date', 'after_or_equal:data_emissao'],
-            'estado_pagamento' => ['required', 'in:pendente,pago,atrasado,cancelado'],
-            'valor_total' => ['required', 'numeric', 'min:0'],
-            'observacoes' => ['nullable', 'string'],
+            'issue_date' => ['required', 'date'],
+            'due_date' => ['required', 'date', 'after_or_equal:issue_date'],
+            'payment_status' => ['required', 'in:pendente,pago,atrasado,cancelado'],
+            'total_amount' => ['required', 'numeric', 'min:0'],
+            'notes' => ['nullable', 'string'],
             'items' => ['required', 'array', 'min:1'],
-            'items.*.descricao' => ['required', 'string', 'max:255'],
-            'items.*.quantidade' => ['required', 'integer', 'min:1'],
-            'items.*.preco_unitario' => ['required', 'numeric', 'min:0'],
+            'items.*.description' => ['required', 'string', 'max:255'],
+            'items.*.quantity' => ['required', 'integer', 'min:1'],
+            'items.*.unit_price' => ['required', 'numeric', 'min:0'],
             'items.*.subtotal' => ['required', 'numeric', 'min:0'],
         ];
     }

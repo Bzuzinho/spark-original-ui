@@ -18,12 +18,12 @@ class LojaController extends Controller
         $query = Product::query();
 
         // Apply filters
-        if ($request->filled('categoria')) {
-            $query->where('categoria', $request->categoria);
+        if ($request->filled('category')) {
+            $query->where('category', $request->category);
         }
 
-        if ($request->filled('ativo')) {
-            $query->where('ativo', $request->boolean('ativo'));
+        if ($request->filled('active')) {
+            $query->where('active', $request->boolean('active'));
         }
 
         if ($request->boolean('low_stock')) {
@@ -35,14 +35,14 @@ class LojaController extends Controller
         // Calculate stats
         $stats = [
             'total_produtos' => Product::count(),
-            'valor_total_stock' => Product::sum(DB::raw('preco * stock')),
+            'valor_total_stock' => Product::sum(DB::raw('price * stock')),
             'produtos_baixo_stock' => Product::lowStock()->count(),
         ];
 
         // Get unique categories
-        $categorias = Product::whereNotNull('categoria')
+        $categorias = Product::whereNotNull('category')
             ->distinct()
-            ->pluck('categoria')
+            ->pluck('category')
             ->filter()
             ->values();
 
@@ -50,7 +50,7 @@ class LojaController extends Controller
             'products' => $products,
             'stats' => $stats,
             'categorias' => $categorias,
-            'filters' => $request->only(['categoria', 'ativo', 'low_stock']),
+            'filters' => $request->only(['category', 'active', 'low_stock']),
         ]);
     }
 

@@ -15,8 +15,8 @@ class MembershipFeeController extends Controller
     public function index()
     {
         $fees = MembershipFee::with(['user', 'transaction'])
-            ->orderBy('ano', 'desc')
-            ->orderBy('mes', 'desc')
+            ->orderBy('year', 'desc')
+            ->orderBy('month', 'desc')
             ->paginate(15);
 
         return response()->json($fees);
@@ -49,32 +49,32 @@ class MembershipFeeController extends Controller
     public function generate(Request $request): RedirectResponse
     {
         $request->validate([
-            'mes' => 'required|integer|min:1|max:12',
-            'ano' => 'required|integer|min:2000|max:2100',
-            'valor' => 'required|numeric|min:0',
+            'month' => 'required|integer|min:1|max:12',
+            'year' => 'required|integer|min:2000|max:2100',
+            'amount' => 'required|numeric|min:0',
         ]);
 
-        $mes = $request->input('mes');
-        $ano = $request->input('ano');
-        $valor = $request->input('valor');
+        $month = $request->input('month');
+        $year = $request->input('year');
+        $amount = $request->input('amount');
 
-        $activeUsers = User::where('estado', 'ativo')->get();
+        $activeUsers = User::where('status', 'ativo')->get();
 
         $count = 0;
         foreach ($activeUsers as $user) {
             // Check if fee already exists
             $exists = MembershipFee::where('user_id', $user->id)
-                ->where('mes', $mes)
-                ->where('ano', $ano)
+                ->where('month', $month)
+                ->where('year', $year)
                 ->exists();
 
             if (!$exists) {
                 MembershipFee::create([
                     'user_id' => $user->id,
-                    'mes' => $mes,
-                    'ano' => $ano,
-                    'valor' => $valor,
-                    'estado' => 'pendente',
+                    'month' => $month,
+                    'year' => $year,
+                    'amount' => $amount,
+                    'status' => 'pendente',
                 ]);
                 $count++;
             }
@@ -89,25 +89,25 @@ class MembershipFeeController extends Controller
     public function markAsPaid(Request $request, MembershipFee $membershipFee): RedirectResponse
     {
         $request->validate([
-            'data_pagamento' => 'required|date',
-            'metodo_pagamento' => 'required|in:dinheiro,transferencia,mbway,multibanco,cartao',
+            'payment_date' => 'required|date',
+            'payment_method' => 'required|in:dinheiro,transferencia,mbway,multibanco,cartao',
         ]);
 
         // Create transaction
         $transaction = Transaction::create([
             'user_id' => $membershipFee->user_id,
-            'descricao' => "Mensalidade {$membershipFee->mes}/{$membershipFee->ano}",
-            'valor' => $membershipFee->valor,
-            'tipo' => 'receita',
-            'data' => $request->input('data_pagamento'),
-            'metodo_pagamento' => $request->input('metodo_pagamento'),
-            'estado' => 'paga',
+            'description' => "Mensalidade {$membershipFee->month}/{$membershipFee->year}",
+            'amount' => $membershipFee->amount,
+            'type' => 'receita',
+            'date' => $request->input('payment_date'),
+            'payment_method' => $request->input('payment_method'),
+            'status' => 'paga',
         ]);
 
         // Update membership fee
         $membershipFee->update([
-            'estado' => 'paga',
-            'data_pagamento' => $request->input('data_pagamento'),
+            'status' => 'paga',
+            'payment_date' => $request->input('payment_date'),
             'transaction_id' => $transaction->id,
         ]);
 

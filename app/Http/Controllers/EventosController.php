@@ -41,7 +41,7 @@ class EventosController extends Controller
                 ->orderBy('start_date', 'desc')
                 ->get(),
             'stats' => $stats,
-            'users' => User::where('estado', 'ativo')->get(['id', 'nome', 'tipo_utilizador']),
+            'users' => User::where('status', 'ativo')->get(['id', 'name', 'user_type']),
         ]);
     }
 
@@ -49,7 +49,7 @@ class EventosController extends Controller
     {
         return Inertia::render('Eventos/Create', [
             'eventTypes' => EventType::where('active', true)->get(),
-            'users' => User::where('estado', 'ativo')->get(),
+            'users' => User::where('status', 'ativo')->get(),
         ]);
     }
 
@@ -87,7 +87,7 @@ class EventosController extends Controller
         return Inertia::render('Eventos/Edit', [
             'event' => $evento->load(['eventType']),
             'eventTypes' => EventType::where('active', true)->get(),
-            'users' => User::where('estado', 'ativo')->get(),
+            'users' => User::where('status', 'ativo')->get(),
         ]);
     }
 
@@ -114,11 +114,11 @@ class EventosController extends Controller
     {
         $request->validate([
             'user_id' => 'required|exists:users,id',
-            'estado' => 'nullable|in:confirmado,pendente,ausente',
-            'observacoes' => 'nullable|string',
+            'status' => 'nullable|in:confirmado,pendente,ausente',
+            'notes' => 'nullable|string',
         ]);
 
-        $estado = $request->input('estado', 'pendente');
+        $status = $request->input('status', 'pendente');
 
         // Check if participant already exists
         $existing = EventConvocation::where('event_id', $evento->id)
@@ -135,8 +135,8 @@ class EventosController extends Controller
             'event_id' => $evento->id,
             'user_id' => $request->user_id,
             'convocation_date' => now(),
-            'confirmation_status' => $estado,
-            'notes' => $request->observacoes,
+            'confirmation_status' => $status,
+            'notes' => $request->notes,
         ]);
 
         return response()->json([
@@ -173,8 +173,8 @@ class EventosController extends Controller
     public function updateParticipantStatus(Request $request, Event $evento, User $user): JsonResponse
     {
         $request->validate([
-            'estado' => 'required|in:confirmado,pendente,ausente',
-            'observacoes' => 'nullable|string',
+            'status' => 'required|in:confirmado,pendente,ausente',
+            'notes' => 'nullable|string',
         ]);
 
         $convocation = EventConvocation::where('event_id', $evento->id)
@@ -188,8 +188,8 @@ class EventosController extends Controller
         }
 
         $convocation->update([
-            'confirmation_status' => $request->estado,
-            'notes' => $request->observacoes,
+            'confirmation_status' => $request->status,
+            'notes' => $request->notes,
             'response_date' => now(),
         ]);
 

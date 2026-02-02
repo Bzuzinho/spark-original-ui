@@ -15,7 +15,7 @@ class TransactionController extends Controller
     public function index()
     {
         $transactions = Transaction::with(['user', 'category'])
-            ->orderBy('data', 'desc')
+            ->orderBy('date', 'desc')
             ->paginate(15);
 
         return response()->json($transactions);
@@ -26,8 +26,8 @@ class TransactionController extends Controller
         $data = $request->validated();
 
         // Handle file upload
-        if ($request->hasFile('comprovativo')) {
-            $data['comprovativo'] = $request->file('comprovativo')->store('comprovatives', 'public');
+        if ($request->hasFile('receipt')) {
+            $data['receipt'] = $request->file('receipt')->store('comprovatives', 'public');
         }
 
         Transaction::create($data);
@@ -40,12 +40,12 @@ class TransactionController extends Controller
         $data = $request->validated();
 
         // Handle file upload
-        if ($request->hasFile('comprovativo')) {
+        if ($request->hasFile('receipt')) {
             // Delete old file if exists
-            if ($transaction->comprovativo) {
-                Storage::disk('public')->delete($transaction->comprovativo);
+            if ($transaction->receipt) {
+                Storage::disk('public')->delete($transaction->receipt);
             }
-            $data['comprovativo'] = $request->file('comprovativo')->store('comprovatives', 'public');
+            $data['receipt'] = $request->file('receipt')->store('comprovatives', 'public');
         }
 
         $transaction->update($data);
@@ -56,8 +56,8 @@ class TransactionController extends Controller
     public function destroy(Transaction $transaction): RedirectResponse
     {
         // Delete file if exists
-        if ($transaction->comprovativo) {
-            Storage::disk('public')->delete($transaction->comprovativo);
+        if ($transaction->receipt) {
+            Storage::disk('public')->delete($transaction->receipt);
         }
 
         $transaction->delete();

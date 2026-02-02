@@ -47,7 +47,7 @@ class ComunicacaoController extends Controller
 
     public function create(): Response
     {
-        $users = User::where('estado', 'ativo')
+        $users = User::where('status', 'ativo')
             ->select('id', 'name', 'email')
             ->get();
 
@@ -80,7 +80,7 @@ class ComunicacaoController extends Controller
 
     public function edit(Communication $comunicacao): Response
     {
-        $users = User::where('estado', 'ativo')
+        $users = User::where('status', 'ativo')
             ->select('id', 'name', 'email')
             ->get();
 

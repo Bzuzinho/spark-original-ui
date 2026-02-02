@@ -26,13 +26,13 @@ class CallUpController extends Controller
     public function create(): Response
     {
         return Inertia::render('Desportivo/CallUps/Create', [
-            'teams' => Team::where('ativa', true)->get(['id', 'nome']),
-            'events' => Event::where('data_inicio', '>=', now())
-                ->orderBy('data_inicio')
-                ->get(['id', 'titulo', 'data_inicio']),
-            'athletes' => User::whereJsonContains('tipo_membro', 'atleta')
-                ->where('estado', 'ativo')
-                ->get(['id', 'nome_completo']),
+            'teams' => Team::where('active', true)->get(['id', 'name']),
+            'events' => Event::where('start_date', '>=', now())
+                ->orderBy('start_date')
+                ->get(['id', 'title', 'start_date']),
+            'athletes' => User::whereJsonContains('member_type', 'atleta')
+                ->where('status', 'ativo')
+                ->get(['id', 'full_name']),
         ]);
     }
 
@@ -55,9 +55,9 @@ class CallUpController extends Controller
     {
         return Inertia::render('Desportivo/CallUps/Edit', [
             'callUp' => $callUp,
-            'athletes' => User::whereJsonContains('tipo_membro', 'atleta')
-                ->where('estado', 'ativo')
-                ->get(['id', 'nome_completo']),
+            'athletes' => User::whereJsonContains('member_type', 'atleta')
+                ->where('status', 'ativo')
+                ->get(['id', 'full_name']),
         ]);
     }
 

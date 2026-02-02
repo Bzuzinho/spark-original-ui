@@ -30,7 +30,7 @@ class MembrosController extends Controller
         return Inertia::render('Membros/Create', [
             'userTypes' => UserType::where('active', true)->get(),
             'ageGroups' => AgeGroup::all(),
-            'guardians' => User::whereJsonContains('tipo_membro', 'encarregado_educacao')->get(),
+            'guardians' => User::whereJsonContains('member_type', 'encarregado_educacao')->get(),
         ]);
     }
 
@@ -67,7 +67,7 @@ class MembrosController extends Controller
                 'documents',
                 'relationships.relatedUser',
             ]),
-            'allUsers' => User::select('id', 'nome_completo', 'numero_socio', 'tipo_membro')->get(),
+            'allUsers' => User::select('id', 'full_name', 'member_number', 'member_type')->get(),
             'userTypes' => UserType::where('active', true)->get(),
             'ageGroups' => AgeGroup::all(),
         ]);
@@ -79,7 +79,7 @@ class MembrosController extends Controller
             'member' => $membro->load(['userTypes', 'ageGroup', 'encarregados', 'educandos']),
             'userTypes' => UserType::where('active', true)->get(),
             'ageGroups' => AgeGroup::all(),
-            'guardians' => User::whereJsonContains('tipo_membro', 'encarregado_educacao')
+            'guardians' => User::whereJsonContains('member_type', 'encarregado_educacao')
                 ->where('id', '!=', $membro->id)
                 ->get(),
         ]);
