@@ -38,4 +38,9 @@ class EventConvocation extends Model
     {
         return $this->belongsTo(User::class, 'user_id');
     }
+
+    public function atleta(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
 }

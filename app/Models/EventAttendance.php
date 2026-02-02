@@ -37,6 +37,11 @@ class EventAttendance extends Model
         return $this->belongsTo(User::class, 'user_id');
     }
 
+    public function atleta(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
     public function registadoPor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'registado_por');
