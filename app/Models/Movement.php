@@ -13,30 +13,31 @@ class Movement extends Model
 
 
     protected $fillable = [
-        'socio_id',
+        'user_id',
+        'nome_manual',
+        'nif_manual',
+        'morada_manual',
         'classificacao',
         'data_emissao',
         'data_vencimento',
         'valor_total',
-        'valor_pago',
         'estado_pagamento',
-        'data_pagamento',
-        'metodo_pagamento',
+        'numero_recibo',
+        'referencia_pagamento',
         'centro_custo_id',
+        'tipo',
         'observacoes',
     ];
 
     protected $casts = [
         'data_emissao' => 'date',
         'data_vencimento' => 'date',
-        'data_pagamento' => 'date',
         'valor_total' => 'decimal:2',
-        'valor_pago' => 'decimal:2',
     ];
 
-    public function socio(): BelongsTo
+    public function user(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'socio_id');
+        return $this->belongsTo(User::class, 'user_id');
     }
 
     public function centroCusto(): BelongsTo

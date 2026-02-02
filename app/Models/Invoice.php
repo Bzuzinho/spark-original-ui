@@ -13,31 +13,30 @@ class Invoice extends Model
 
 
     protected $fillable = [
-        'socio_id',
+        'user_id',
         'data_fatura',
         'mes',
-        'ano',
+        'data_emissao',
+        'data_vencimento',
         'valor_total',
-        'valor_pago',
         'estado_pagamento',
-        'data_pagamento',
-        'metodo_pagamento',
         'numero_recibo',
+        'referencia_pagamento',
         'centro_custo_id',
+        'tipo',
         'observacoes',
     ];
 
     protected $casts = [
         'data_fatura' => 'date',
-        'data_pagamento' => 'date',
+        'data_emissao' => 'date',
+        'data_vencimento' => 'date',
         'valor_total' => 'decimal:2',
-        'valor_pago' => 'decimal:2',
-        'ano' => 'integer',
     ];
 
-    public function socio(): BelongsTo
+    public function user(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'socio_id');
+        return $this->belongsTo(User::class, 'user_id');
     }
 
     public function centroCusto(): BelongsTo
