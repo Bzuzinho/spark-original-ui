@@ -48,7 +48,7 @@ class ComunicacaoController extends Controller
     public function create(): Response
     {
         $users = User::where('status', 'ativo')
-            ->select('id', 'name', 'email')
+            ->select('id', 'full_name', 'email')
             ->get();
 
         return Inertia::render('Comunicacao/Create', [
@@ -81,7 +81,7 @@ class ComunicacaoController extends Controller
     public function edit(Communication $comunicacao): Response
     {
         $users = User::where('status', 'ativo')
-            ->select('id', 'name', 'email')
+            ->select('id', 'full_name', 'email')
             ->get();
 
         return Inertia::render('Comunicacao/Edit', [
