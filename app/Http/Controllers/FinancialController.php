@@ -154,26 +154,26 @@ class FinancialController extends Controller
             ->with('success', 'Fatura criada com sucesso!');
     }
 
-    public function show(Invoice $financeiro): Response
+    public function show(Invoice $financial): Response
     {
         return Inertia::render('Financial/Show', [
-            'invoice' => $financeiro->load(['user', 'items']),
+            'invoice' => $financial->load(['user', 'items']),
         ]);
     }
 
-    public function edit(Invoice $financeiro): Response
+    public function edit(Invoice $financial): Response
     {
         return Inertia::render('Financial/Edit', [
-            'invoice' => $financeiro->load(['items']),
+            'invoice' => $financial->load(['items']),
             'users' => User::where('status', 'ativo')->get(),
         ]);
     }
 
-    public function update(UpdateInvoiceRequest $request, Invoice $financeiro): RedirectResponse
+    public function update(UpdateInvoiceRequest $request, Invoice $financial): RedirectResponse
     {
         $data = $request->validated();
         
-        $financeiro->update([
+        $financial->update([
             'user_id' => $data['user_id'],
             'issue_date' => $data['issue_date'],
             'due_date' => $data['due_date'],
@@ -184,9 +184,9 @@ class FinancialController extends Controller
 
         // Update invoice items
         if (isset($data['items'])) {
-            $financeiro->items()->delete();
+            $financial->items()->delete();
             foreach ($data['items'] as $item) {
-                $financeiro->items()->create($item);
+                $financial->items()->create($item);
             }
         }
 
@@ -194,9 +194,9 @@ class FinancialController extends Controller
             ->with('success', 'Fatura atualizada com sucesso!');
     }
 
-    public function destroy(Invoice $financeiro): RedirectResponse
+    public function destroy(Invoice $financial): RedirectResponse
     {
-        $financeiro->delete();
+        $financial->delete();
 
         return redirect()->route('financial.index')
             ->with('success', 'Fatura eliminada com sucesso!');

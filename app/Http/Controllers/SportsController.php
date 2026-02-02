@@ -89,17 +89,17 @@ class SportsController extends Controller
             ->with('success', 'Treino criado com sucesso!');
     }
 
-    public function show(Training $desportivo): Response
+    public function show(Training $sport): Response
     {
         return Inertia::render('Sports/Show', [
-            'training' => $desportivo->load(['ageGroup', 'athletes']),
+            'training' => $sport->load(['ageGroup', 'athletes']),
         ]);
     }
 
-    public function edit(Training $desportivo): Response
+    public function edit(Training $sport): Response
     {
         return Inertia::render('Sports/Edit', [
-            'training' => $desportivo->load(['ageGroup', 'athletes']),
+            'training' => $sport->load(['ageGroup', 'athletes']),
             'ageGroups' => AgeGroup::all(),
             'athletes' => User::whereJsonContains('member_type', 'atleta')
                 ->where('status', 'ativo')
@@ -107,21 +107,21 @@ class SportsController extends Controller
         ]);
     }
 
-    public function update(UpdateTrainingRequest $request, Training $desportivo): RedirectResponse
+    public function update(UpdateTrainingRequest $request, Training $sport): RedirectResponse
     {
-        $desportivo->update($request->validated());
+        $sport->update($request->validated());
 
         if ($request->has('athletes')) {
-            $desportivo->athletes()->sync($request->athletes);
+            $sport->athletes()->sync($request->athletes);
         }
 
         return redirect()->route('sports.index')
             ->with('success', 'Treino atualizado com sucesso!');
     }
 
-    public function destroy(Training $desportivo): RedirectResponse
+    public function destroy(Training $sport): RedirectResponse
     {
-        $desportivo->delete();
+        $sport->delete();
 
         return redirect()->route('sports.index')
             ->with('success', 'Treino eliminado com sucesso!');

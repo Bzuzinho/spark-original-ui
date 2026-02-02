@@ -37,7 +37,7 @@ class EventsController extends Controller
         ];
 
         return Inertia::render('Events/Index', [
-            'eventos' => Event::with(['creator', 'convocations.athlete', 'attendances.athlete'])
+            'events' => Event::with(['creator', 'convocations.athlete', 'attendances.athlete'])
                 ->orderBy('start_date', 'desc')
                 ->get(),
             'stats' => $stats,

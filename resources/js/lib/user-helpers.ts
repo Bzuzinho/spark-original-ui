@@ -3,7 +3,7 @@
 export function generateMemberNumber(existingUsers: any[]): string {
   const currentYear = new Date().getFullYear();
   const existingNumbers = existingUsers
-    .map(u => u.numero_socio)
+    .map(u => u.member_number)
     .filter(n => n && n.startsWith(currentYear.toString()))
     .map(n => parseInt(n.split('-')[1] || '0'))
     .filter(n => !isNaN(n));
@@ -16,7 +16,7 @@ export function generateMemberNumber(existingUsers: any[]): string {
 }
 
 export function getUserDisplayName(user: any): string {
-  return user.nome_completo || 'Sem nome';
+  return user.full_name || 'Sem nome';
 }
 
 export function getUserAge(birthDate: string): number | null {
@@ -38,11 +38,11 @@ export function isMinor(birthDate: string): boolean {
 
 export function getStatusColor(status: string): string {
   switch (status) {
-    case 'ativo':
+    case 'active':
       return 'bg-green-100 text-green-800 border-green-200';
-    case 'inativo':
+    case 'inactive':
       return 'bg-gray-100 text-gray-800 border-gray-200';
-    case 'suspenso':
+    case 'suspended':
       return 'bg-red-100 text-red-800 border-red-200';
     default:
       return 'bg-gray-100 text-gray-800 border-gray-200';
@@ -51,11 +51,11 @@ export function getStatusColor(status: string): string {
 
 export function getStatusLabel(status: string): string {
   switch (status) {
-    case 'ativo':
+    case 'active':
       return 'Ativo';
-    case 'inativo':
+    case 'inactive':
       return 'Inativo';
-    case 'suspenso':
+    case 'suspended':
       return 'Suspenso';
     default:
       return status;
