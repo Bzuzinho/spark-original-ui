@@ -17,13 +17,13 @@ class UpdateProductRequest extends FormRequest
         return [
             'nome' => ['required', 'string', 'max:255'],
             'descricao' => ['nullable', 'string'],
-            'codigo' => ['required', 'string', 'max:50', Rule::unique('products')->ignore($this->loja)],
+            'codigo' => ['required', 'string', 'max:255', Rule::unique('products')->ignore($this->loja)],
+            'categoria' => ['nullable', 'string', 'max:255'],
             'preco' => ['required', 'numeric', 'min:0'],
-            'quantidade_stock' => ['required', 'integer', 'min:0'],
-            'stock_minimo' => ['nullable', 'integer', 'min:0'],
-            'category_id' => ['required', 'exists:product_categories,id'],
-            'estado' => ['required', 'in:ativo,inativo,esgotado'],
+            'stock' => ['required', 'integer', 'min:0'],
+            'stock_minimo' => ['required', 'integer', 'min:0'],
             'imagem' => ['nullable', 'string'],
+            'ativo' => ['boolean'],
         ];
     }
 }
