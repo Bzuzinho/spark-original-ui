@@ -13,23 +13,23 @@ class EventAttendance extends Model
     protected $table = 'event_attendances';
 
     protected $fillable = [
-        'evento_id',
+        'event_id',
         'user_id',
-        'estado',
-        'hora_chegada',
-        'observacoes',
-        'registado_por',
-        'registado_em',
+        'status',
+        'arrival_time',
+        'notes',
+        'registered_by',
+        'registered_at',
     ];
 
     protected $casts = [
-        'hora_chegada' => 'datetime',
-        'registado_em' => 'datetime',
+        'arrival_time' => 'datetime',
+        'registered_at' => 'datetime',
     ];
 
-    public function evento(): BelongsTo
+    public function event(): BelongsTo
     {
-        return $this->belongsTo(Event::class, 'evento_id');
+        return $this->belongsTo(Event::class, 'event_id');
     }
 
     public function user(): BelongsTo
@@ -37,13 +37,13 @@ class EventAttendance extends Model
         return $this->belongsTo(User::class, 'user_id');
     }
 
-    public function atleta(): BelongsTo
+    public function athlete(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
     }
 
-    public function registadoPor(): BelongsTo
+    public function registeredBy(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'registado_por');
+        return $this->belongsTo(User::class, 'registered_by');
     }
 }

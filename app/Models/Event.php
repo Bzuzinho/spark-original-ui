@@ -13,53 +13,53 @@ class Event extends Model
 
 
     protected $fillable = [
-        'titulo',
-        'descricao',
-        'data_inicio',
-        'hora_inicio',
-        'data_fim',
-        'hora_fim',
-        'local',
-        'local_detalhes',
-        'tipo',
+        'title',
+        'description',
+        'start_date',
+        'start_time',
+        'end_date',
+        'end_time',
+        'location',
+        'location_details',
+        'type',
         'tipo_config_id',
-        'tipo_piscina',
-        'visibilidade',
-        'escaloes_elegiveis',
-        'transporte_necessario',
-        'transporte_detalhes',
-        'hora_partida',
-        'local_partida',
-        'taxa_inscricao',
-        'custo_inscricao_por_prova',
-        'custo_inscricao_por_salto',
-        'custo_inscricao_estafeta',
+        'pool_type',
+        'visibility',
+        'eligible_age_groups',
+        'transport_required',
+        'transport_details',
+        'departure_time',
+        'departure_location',
+        'registration_fee',
+        'cost_per_race',
+        'cost_per_dive',
+        'relay_cost',
         'centro_custo_id',
-        'observacoes',
-        'convocatoria_ficheiro',
-        'regulamento_ficheiro',
-        'estado',
-        'criado_por',
-        'recorrente',
-        'recorrencia_data_inicio',
-        'recorrencia_data_fim',
-        'recorrencia_dias_semana',
-        'evento_pai_id',
+        'notes',
+        'call_up_file',
+        'regulations_file',
+        'status',
+        'created_by',
+        'recurring',
+        'recurrence_start_date',
+        'recurrence_end_date',
+        'recurrence_weekdays',
+        'parent_event_id',
     ];
 
     protected $casts = [
-        'data_inicio' => 'date',
-        'data_fim' => 'date',
-        'transporte_necessario' => 'boolean',
-        'recorrente' => 'boolean',
-        'recorrencia_data_inicio' => 'date',
-        'recorrencia_data_fim' => 'date',
-        'escaloes_elegiveis' => 'array',
-        'recorrencia_dias_semana' => 'array',
-        'taxa_inscricao' => 'decimal:2',
-        'custo_inscricao_por_prova' => 'decimal:2',
-        'custo_inscricao_por_salto' => 'decimal:2',
-        'custo_inscricao_estafeta' => 'decimal:2',
+        'start_date' => 'date',
+        'end_date' => 'date',
+        'transport_required' => 'boolean',
+        'recurring' => 'boolean',
+        'recurrence_start_date' => 'date',
+        'recurrence_end_date' => 'date',
+        'eligible_age_groups' => 'array',
+        'recurrence_weekdays' => 'array',
+        'registration_fee' => 'decimal:2',
+        'cost_per_race' => 'decimal:2',
+        'cost_per_dive' => 'decimal:2',
+        'relay_cost' => 'decimal:2',
     ];
 
     public function tipoConfig(): BelongsTo
@@ -67,29 +67,24 @@ class Event extends Model
         return $this->belongsTo(EventTypeConfig::class, 'tipo_config_id');
     }
 
-    public function centroCusto(): BelongsTo
+    public function costCenter(): BelongsTo
     {
         return $this->belongsTo(CostCenter::class, 'centro_custo_id');
     }
 
-    public function criador(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'criado_por');
-    }
-
     public function creator(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'criado_por');
+        return $this->belongsTo(User::class, 'created_by');
     }
 
-    public function eventoPai(): BelongsTo
+    public function parentEvent(): BelongsTo
     {
-        return $this->belongsTo(Event::class, 'evento_pai_id');
+        return $this->belongsTo(Event::class, 'parent_event_id');
     }
 
-    public function eventosFilhos(): HasMany
+    public function childEvents(): HasMany
     {
-        return $this->hasMany(Event::class, 'evento_pai_id');
+        return $this->hasMany(Event::class, 'parent_event_id');
     }
 
     public function convocations(): HasMany

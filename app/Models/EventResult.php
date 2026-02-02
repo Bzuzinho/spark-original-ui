@@ -13,34 +13,36 @@ class EventResult extends Model
     protected $table = 'event_results';
 
     protected $fillable = [
-        'evento_id',
-        'atleta_id',
-        'prova',
-        'tempo',
-        'classificacao',
-        'pontos',
-        'escalao',
-        'observacoes',
-        'registado_por',
+        'event_id',
+        'user_id',
+        'race',
+        'time',
+        'classification',
+        'pool',
+        'age_group',
+        'notes',
+        'season',
+        'registered_by',
+        'registered_at',
     ];
 
     protected $casts = [
-        'classificacao' => 'integer',
-        'pontos' => 'integer',
+        'classification' => 'integer',
+        'registered_at' => 'datetime',
     ];
 
-    public function evento(): BelongsTo
+    public function event(): BelongsTo
     {
-        return $this->belongsTo(Event::class, 'evento_id');
+        return $this->belongsTo(Event::class, 'event_id');
     }
 
-    public function atleta(): BelongsTo
+    public function athlete(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'atleta_id');
+        return $this->belongsTo(User::class, 'user_id');
     }
 
-    public function registadoPor(): BelongsTo
+    public function registeredBy(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'registado_por');
+        return $this->belongsTo(User::class, 'registered_by');
     }
 }
