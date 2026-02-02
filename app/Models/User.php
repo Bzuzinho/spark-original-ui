@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -14,252 +16,271 @@ class User extends Authenticatable
 {
     use HasFactory, Notifiable, HasApiTokens, HasUuids;
 
-
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
-     */
     protected $fillable = [
         'name',
         'email',
         'password',
-        // Basic Spark fields
-        'member_number',
-        'full_name',
-        'profile',
-        'member_type',
-        'status',
-        'birth_date',
-        'is_minor',
-        'gender',
-        'age_groups',
-        'gdpr_consent',
-        'consent',
-        'affiliation',
-        'transport_declaration',
-        'sports_active',
-        'address',
-        'postal_code',
-        'city',
-        'phone',
-        'mobile',
+        'email_verified_at',
+        // Spark fields (português)
+        'numero_socio',
+        'nome_completo',
+        'perfil',
+        'tipo_membro',
+        'estado',
+        'data_nascimento',
+        'menor',
+        'sexo',
+        'escalao',
+        'rgpd',
+        'consentimento',
+        'afiliacao',
+        'declaracao_de_transporte',
+        'ativo_desportivo',
+        'morada',
+        'codigo_postal',
+        'localidade',
+        'telefone',
+        'telemovel',
         'nif',
-        'id_card_number',
-        'id_card_expiry',
-        'health_number',
-        'emergency_contact_name',
-        'emergency_contact_phone',
-        'emergency_contact_relationship',
+        'numero_cartao_cidadao',
+        'validade_cartao_cidadao',
+        'numero_utente',
+        'contacto_emergencia_nome',
+        'contacto_emergencia_telefone',
+        'contacto_emergencia_relacao',
         // Extended fields
-        'profile_photo',
+        'foto_perfil',
         'cc',
-        'nationality',
-        'marital_status',
-        'occupation',
-        'company',
-        'school',
-        'siblings_count',
-        'contact',
-        'secondary_email',
-        'guardians',
-        'dependents',
-        'phone_contact',
-        'membership_fee_type',
-        'current_account',
-        'cost_centers',
-        'federation_number',
-        'federation_card',
-        'pmb_number',
-        'registration_date',
-        'registration_file',
-        'medical_certificate_date',
-        'medical_certificate_files',
-        'medical_information',
-        'gdpr_date',
-        'gdpr_file',
-        'consent_date',
-        'consent_file',
-        'affiliation_date',
-        'affiliation_file',
-        'transport_declaration_file',
-        'user_email',
-        'user_password',
+        'nacionalidade',
+        'estado_civil',
+        'ocupacao',
+        'empresa',
+        'escola',
+        'numero_irmaos',
+        'contacto',
+        'email_secundario',
+        'encarregado_educacao',
+        'educandos',
+        'contacto_telefonico',
+        'tipo_mensalidade',
+        'conta_corrente',
+        'centro_custo',
+        'num_federacao',
+        'cartao_federacao',
+        'numero_pmb',
+        'data_inscricao',
+        'inscricao',
+        'data_atestado_medico',
+        'arquivo_atestado_medico',
+        'informacoes_medicas',
+        'data_rgpd',
+        'arquivo_rgpd',
+        'data_consentimento',
+        'arquivo_consentimento',
+        'data_afiliacao',
+        'arquivo_afiliacao',
+        'declaracao_transporte',
+        'email_utilizador',
+        'senha',
     ];
 
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var array<int, string>
-     */
     protected $hidden = [
         'password',
         'remember_token',
-        'user_password',
+        'senha',
     ];
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             // Dates
-            'birth_date' => 'date',
-            'id_card_expiry' => 'date',
-            'registration_date' => 'date',
-            'medical_certificate_date' => 'date',
-            'gdpr_date' => 'date',
-            'consent_date' => 'date',
-            'affiliation_date' => 'date',
+            'data_nascimento' => 'date',
+            'validade_cartao_cidadao' => 'date',
+            'data_inscricao' => 'date',
+            'data_atestado_medico' => 'date',
+            'data_rgpd' => 'date',
+            'data_consentimento' => 'date',
+            'data_afiliacao' => 'date',
             // Booleans
-            'is_minor' => 'boolean',
-            'gdpr_consent' => 'boolean',
-            'consent' => 'boolean',
-            'affiliation' => 'boolean',
-            'transport_declaration' => 'boolean',
-            'sports_active' => 'boolean',
+            'menor' => 'boolean',
+            'rgpd' => 'boolean',
+            'consentimento' => 'boolean',
+            'afiliacao' => 'boolean',
+            'declaracao_de_transporte' => 'boolean',
+            'ativo_desportivo' => 'boolean',
             // JSON
-            'member_type' => 'array',
-            'age_groups' => 'array',
-            'guardians' => 'array',
-            'dependents' => 'array',
-            'cost_centers' => 'array',
-            'medical_certificate_files' => 'array',
+            'tipo_membro' => 'array',
+            'escalao' => 'array',
+            'encarregado_educacao' => 'array',
+            'educandos' => 'array',
+            'centro_custo' => 'array',
+            'arquivo_atestado_medico' => 'array',
             // Decimals
-            'current_account' => 'decimal:2',
-            // Integers
-            'siblings_count' => 'integer',
+            'conta_corrente' => 'decimal:2',
         ];
     }
 
-    // Relationships
-    public function athleteSportsData(): HasOne
+    // ===================================
+    // RELATIONSHIPS
+    // ===================================
+
+    /**
+     * Many-to-Many: User <-> UserType
+     */
+    public function userTypes(): BelongsToMany
     {
-        return $this->hasOne(AthleteSportsData::class, 'athlete_id');
+        return $this->belongsToMany(UserType::class, 'user_user_type', 'user_id', 'user_type_id')
+            ->withTimestamps();
     }
 
-    public function createdEvents(): HasMany
+    /**
+     * BelongsTo: User -> AgeGroup (escalão)
+     * Nota: A coluna 'escalao' é JSON, mas pode haver também 'escalao_id' para primary
+     */
+    public function ageGroup(): BelongsTo
     {
-        return $this->hasMany(Event::class, 'created_by');
+        return $this->belongsTo(AgeGroup::class, 'escalao_id');
     }
 
-    public function convocations(): HasMany
+    /**
+     * Self-referencing Many-to-Many: Encarregados (guardians)
+     * Tabela pivot: user_relationships (type = 'encarregado')
+     * ✅ CORRIGIDO: relationship_type → type
+     */
+    public function encarregados(): BelongsToMany
     {
-        return $this->hasMany(EventConvocation::class, 'athlete_id');
+        return $this->belongsToMany(
+            User::class,
+            'user_relationships',
+            'user_id',
+            'related_user_id'
+        )
+        ->wherePivot('type', 'encarregado')  // ✅ CORRIGIDO
+        ->withPivot('type')
+        ->withTimestamps();
     }
 
-    public function givenConvocations(): HasMany
+    /**
+     * Self-referencing Many-to-Many: Educandos (dependents)
+     * Inverso da relação encarregados
+     * ✅ CORRIGIDO: relationship_type → type
+     */
+    public function educandos(): BelongsToMany
     {
-        return $this->hasMany(EventConvocation::class, 'called_up_by');
+        return $this->belongsToMany(
+            User::class,
+            'user_relationships',
+            'related_user_id',
+            'user_id'
+        )
+        ->wherePivot('type', 'encarregado')  // ✅ CORRIGIDO
+        ->withPivot('type')
+        ->withTimestamps();
     }
 
-    public function eventAttendances(): HasMany
+    /**
+     * HasMany: User -> Event (creator)
+     */
+    public function eventsCreated(): HasMany
     {
-        return $this->hasMany(EventAttendance::class, 'athlete_id');
+        return $this->hasMany(Event::class, 'criado_por');
     }
 
-    public function eventResults(): HasMany
+    /**
+     * Many-to-Many: User <-> Event (attendance/participation)
+     */
+    public function eventAttendances(): BelongsToMany
     {
-        return $this->hasMany(EventResult::class, 'athlete_id');
+        return $this->belongsToMany(Event::class, 'event_participants', 'user_id', 'event_id')
+            ->withPivot(['status', 'notes'])
+            ->withTimestamps();
     }
 
-    public function resultProvas(): HasMany
+    /**
+     * HasMany: User -> MemberDocument
+     */
+    public function documents(): HasMany
     {
-        return $this->hasMany(ResultProva::class, 'athlete_id');
+        return $this->hasMany(MemberDocument::class, 'member_id');
     }
 
-    public function createdTrainings(): HasMany
+    /**
+     * HasMany: User -> MemberRelationship (custom relationships)
+     */
+    public function relationships(): HasMany
     {
-        return $this->hasMany(Training::class, 'created_by');
+        return $this->hasMany(MemberRelationship::class, 'user_id');
     }
 
-    public function trainingAthletes(): HasMany
-    {
-        return $this->hasMany(TrainingAthlete::class, 'athlete_id');
-    }
-
-    public function presences(): HasMany
-    {
-        return $this->hasMany(Presence::class, 'athlete_id');
-    }
-
-    public function competitionRegistrations(): HasMany
-    {
-        return $this->hasMany(CompetitionRegistration::class, 'athlete_id');
-    }
-
-    public function results(): HasMany
-    {
-        return $this->hasMany(Result::class, 'athlete_id');
-    }
-
+    /**
+     * HasMany: User -> Invoice
+     */
     public function invoices(): HasMany
     {
         return $this->hasMany(Invoice::class, 'user_id');
     }
 
-    public function movements(): HasMany
+    /**
+     * HasMany: User -> MembershipFee
+     */
+    public function membershipFees(): HasMany
     {
-        return $this->hasMany(Movement::class, 'user_id');
+        return $this->hasMany(MembershipFee::class, 'user_id');
     }
 
-    public function convocationMovements(): HasMany
+    /**
+     * HasOne: User -> AthleteSportsData
+     */
+    public function athleteSportsData(): HasOne
     {
-        return $this->hasMany(ConvocationMovement::class, 'athlete_id');
+        return $this->hasOne(AthleteSportsData::class, 'user_id');
     }
 
-    public function financialEntries(): HasMany
+    /**
+     * Many-to-Many: User <-> Team
+     */
+    public function teams(): BelongsToMany
     {
-        return $this->hasMany(FinancialEntry::class, 'user_id');
+        return $this->belongsToMany(Team::class, 'team_members', 'user_id', 'team_id')
+            ->withPivot(['position', 'jersey_number', 'join_date', 'leave_date'])
+            ->withTimestamps();
     }
 
-    public function purchases(): HasMany
+    // ===================================
+    // ACCESSORS & SCOPES
+    // ===================================
+
+    /**
+     * Accessor: Get display name (nome_completo ou name)
+     */
+    public function getDisplayNameAttribute(): string
     {
-        return $this->hasMany(Sale::class, 'user_id');
+        return $this->nome_completo ?? $this->name ?? 'Sem nome';
     }
 
-    public function salesMade(): HasMany
+    /**
+     * Scope: Active members only
+     */
+    public function scopeActive($query)
     {
-        return $this->hasMany(Sale::class, 'seller_id');
+        return $query->where('estado', 'ativo');
     }
 
-    public function newsItems(): HasMany
+    /**
+     * Scope: Athletes only
+     */
+    public function scopeAthletes($query)
     {
-        return $this->hasMany(NewsItem::class, 'author_id');
+        return $query->whereRaw("tipo_membro::jsonb @> ?", [json_encode('atleta')]);
     }
 
-    public function sentCommunications(): HasMany
+    /**
+     * Scope: Guardians only
+     */
+    public function scopeGuardians($query)
     {
-        return $this->hasMany(Communication::class, 'sender_id');
-    }
-
-    public function createdConvocationGroups(): HasMany
-    {
-        return $this->hasMany(ConvocationGroup::class, 'created_by');
-    }
-
-    public function convocationAthletes(): HasMany
-    {
-        return $this->hasMany(ConvocationAthlete::class, 'athlete_id');
-    }
-
-    public function documents(): HasMany
-    {
-        return $this->hasMany(UserDocument::class);
-    }
-
-    public function relationships(): HasMany
-    {
-        return $this->hasMany(UserRelationship::class);
-    }
-
-    public function relatedToMe(): HasMany
-    {
-        return $this->hasMany(UserRelationship::class, 'related_user_id');
+        return $query->whereRaw("tipo_membro::jsonb @> ?", [json_encode('encarregado_educacao')]);
     }
 }
