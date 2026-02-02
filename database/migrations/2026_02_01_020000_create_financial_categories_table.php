@@ -12,14 +12,14 @@ return new class extends Migration
     {
         Schema::create('financial_categories', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->string('nome');
-            $table->enum('tipo', ['receita', 'despesa']);
-            $table->string('cor')->nullable();
-            $table->boolean('ativa')->default(true);
+            $table->string('name');
+            $table->string('type', 30);
+            $table->string('color')->nullable();
+            $table->boolean('active')->default(true);
             $table->timestamps();
             
-            $table->index('tipo');
-            $table->index('ativa');
+            $table->index('type');
+            $table->index('active');
         });
     }
 

@@ -13,14 +13,14 @@ class UserDocument extends Model
 
     protected $fillable = [
         'user_id',
-        'tipo',
-        'nome',
-        'ficheiro',
-        'data_validade',
+        'type',
+        'name',
+        'file_path',
+        'expiry_date',
     ];
 
     protected $casts = [
-        'data_validade' => 'date',
+        'expiry_date' => 'date',
     ];
 
     /**

@@ -13,16 +13,16 @@ return new class extends Migration
         Schema::create('training_sessions', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->foreignUuid('team_id')->nullable()->constrained()->onDelete('set null');
-            $table->dateTime('data_hora');
-            $table->integer('duracao_minutos')->default(60);
-            $table->string('local')->nullable();
-            $table->text('objetivos')->nullable();
-            $table->enum('estado', ['agendado', 'realizado', 'cancelado'])->default('agendado');
+            $table->dateTime('datetime');
+            $table->integer('duration_minutes')->default(60);
+            $table->string('location')->nullable();
+            $table->text('objectives')->nullable();
+            $table->string('status', 30)->default('scheduled');
             $table->timestamps();
             
-            $table->index('data_hora');
+            $table->index('datetime');
             $table->index('team_id');
-            $table->index('estado');
+            $table->index('status');
         });
     }
 

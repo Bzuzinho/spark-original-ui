@@ -13,18 +13,18 @@ return new class extends Migration
         Schema::create('membership_fees', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->foreignUuid('user_id')->constrained()->onDelete('cascade');
-            $table->integer('mes');
-            $table->integer('ano');
-            $table->decimal('valor', 10, 2);
-            $table->enum('estado', ['paga', 'pendente', 'atrasada'])->default('pendente');
-            $table->date('data_pagamento')->nullable();
+            $table->integer('month');
+            $table->integer('year');
+            $table->decimal('amount', 10, 2);
+            $table->string('status', 30)->default('pending');
+            $table->date('payment_date')->nullable();
             $table->foreignUuid('transaction_id')->nullable()->constrained()->onDelete('set null');
             $table->timestamps();
             
-            $table->unique(['user_id', 'mes', 'ano']);
-            $table->index('estado');
-            $table->index('mes');
-            $table->index('ano');
+            $table->unique(['user_id', 'month', 'year']);
+            $table->index('status');
+            $table->index('month');
+            $table->index('year');
         });
     }
 

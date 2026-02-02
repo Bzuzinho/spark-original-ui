@@ -14,10 +14,10 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->foreignUuid('team_id')->constrained()->onDelete('cascade');
             $table->foreignUuid('user_id')->constrained()->onDelete('cascade');
-            $table->string('posicao')->nullable();
-            $table->integer('numero_camisola')->nullable();
-            $table->date('data_entrada');
-            $table->date('data_saida')->nullable();
+            $table->string('position')->nullable();
+            $table->integer('jersey_number')->nullable();
+            $table->date('join_date');
+            $table->date('leave_date')->nullable();
             $table->timestamps();
             
             $table->unique(['team_id', 'user_id']);

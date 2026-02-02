@@ -6,6 +6,8 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    public $withinTransaction = false;
+    
     /**
      * Run the migrations.
      */
@@ -15,10 +17,10 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->foreignUuid('user_id')->constrained()->onDelete('cascade');
             $table->foreignUuid('related_user_id')->constrained('users')->onDelete('cascade');
-            $table->enum('tipo', ['encarregado_educacao', 'educando', 'familiar']);
+            $table->string('type', 50);
             $table->timestamps();
             
-            $table->unique(['user_id', 'related_user_id', 'tipo']);
+            $table->unique(['user_id', 'related_user_id', 'type']);
             $table->index('user_id');
             $table->index('related_user_id');
         });
