@@ -70,7 +70,7 @@ export default function ComunicacaoIndex({ communications, stats }: Props) {
     const handleSubmit: FormEventHandler = (e) => {
         e.preventDefault();
 
-        post(route('comunicacao.store'), {
+        post(route('communication.store'), {
             onSuccess: () => {
                 reset();
                 setShowNewDialog(false);
@@ -81,13 +81,13 @@ export default function ComunicacaoIndex({ communications, stats }: Props) {
 
     const handleDelete = (id: string) => {
         if (confirm('Tem a certeza que deseja eliminar esta comunicação?')) {
-            router.delete(route('comunicacao.destroy', id));
+            router.delete(route('communication.destroy', id));
         }
     };
 
     const handleSend = (id: string) => {
         if (confirm('Tem a certeza que deseja enviar esta comunicação agora?')) {
-            router.post(route('comunicacao.send', id), {
+            router.post(route('communication.send', id), {
                 send_now: true
             });
         }

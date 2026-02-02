@@ -16,7 +16,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 
-class EventosController extends Controller
+class EventsController extends Controller
 {
     public function index(): Response
     {
@@ -36,7 +36,7 @@ class EventosController extends Controller
                 ->count(),
         ];
 
-        return Inertia::render('Eventos/Index', [
+        return Inertia::render('Events/Index', [
             'eventos' => Event::with(['creator', 'convocations.athlete', 'attendances.athlete'])
                 ->orderBy('start_date', 'desc')
                 ->get(),
@@ -47,7 +47,7 @@ class EventosController extends Controller
 
     public function create(): Response
     {
-        return Inertia::render('Eventos/Create', [
+        return Inertia::render('Events/Create', [
             'eventTypes' => EventType::where('active', true)->get(),
             'users' => User::where('status', 'ativo')->get(),
         ]);
@@ -65,13 +65,13 @@ class EventosController extends Controller
         
         $event = Event::create($data);
 
-        return redirect()->route('eventos.index')
+        return redirect()->route('events.index')
             ->with('success', 'Evento criado com sucesso!');
     }
 
     public function show(Event $evento): Response
     {
-        return Inertia::render('Eventos/Show', [
+        return Inertia::render('Events/Show', [
             'event' => $evento->load([
                 'creator',
                 'eventType',
@@ -84,7 +84,7 @@ class EventosController extends Controller
 
     public function edit(Event $evento): Response
     {
-        return Inertia::render('Eventos/Edit', [
+        return Inertia::render('Events/Edit', [
             'event' => $evento->load(['eventType']),
             'eventTypes' => EventType::where('active', true)->get(),
             'users' => User::where('status', 'ativo')->get(),
@@ -95,7 +95,7 @@ class EventosController extends Controller
     {
         $evento->update($request->validated());
 
-        return redirect()->route('eventos.index')
+        return redirect()->route('events.index')
             ->with('success', 'Evento atualizado com sucesso!');
     }
 
@@ -103,7 +103,7 @@ class EventosController extends Controller
     {
         $evento->delete();
 
-        return redirect()->route('eventos.index')
+        return redirect()->route('events.index')
             ->with('success', 'Evento eliminado com sucesso!');
     }
 

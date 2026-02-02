@@ -15,7 +15,7 @@ use Inertia\Response;
 use Illuminate\Http\RedirectResponse;
 use Carbon\Carbon;
 
-class FinanceiroController extends Controller
+class FinancialController extends Controller
 {
     public function index(): Response
     {
@@ -105,7 +105,7 @@ class FinanceiroController extends Controller
             ];
         }
 
-        return Inertia::render('Financeiro/Index', [
+        return Inertia::render('Financial/Index', [
             'transactions' => $transactions,
             'membershipFees' => $membershipFees,
             'categories' => $categories,
@@ -124,7 +124,7 @@ class FinanceiroController extends Controller
 
     public function create(): Response
     {
-        return Inertia::render('Financeiro/Create', [
+        return Inertia::render('Financial/Create', [
             'users' => User::where('status', 'ativo')->get(),
         ]);
     }
@@ -150,20 +150,20 @@ class FinanceiroController extends Controller
             }
         }
 
-        return redirect()->route('financeiro.index')
+        return redirect()->route('financial.index')
             ->with('success', 'Fatura criada com sucesso!');
     }
 
     public function show(Invoice $financeiro): Response
     {
-        return Inertia::render('Financeiro/Show', [
+        return Inertia::render('Financial/Show', [
             'invoice' => $financeiro->load(['user', 'items']),
         ]);
     }
 
     public function edit(Invoice $financeiro): Response
     {
-        return Inertia::render('Financeiro/Edit', [
+        return Inertia::render('Financial/Edit', [
             'invoice' => $financeiro->load(['items']),
             'users' => User::where('status', 'ativo')->get(),
         ]);
@@ -190,7 +190,7 @@ class FinanceiroController extends Controller
             }
         }
 
-        return redirect()->route('financeiro.index')
+        return redirect()->route('financial.index')
             ->with('success', 'Fatura atualizada com sucesso!');
     }
 
@@ -198,7 +198,7 @@ class FinanceiroController extends Controller
     {
         $financeiro->delete();
 
-        return redirect()->route('financeiro.index')
+        return redirect()->route('financial.index')
             ->with('success', 'Fatura eliminada com sucesso!');
     }
 
