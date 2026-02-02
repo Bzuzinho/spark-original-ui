@@ -7,12 +7,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs';
 
 interface User {
     id: string;
-    numero_socio: string;
-    nome_completo: string;
+    member_number: string;
+    full_name: string;
     email_utilizador?: string;
     foto_perfil?: string;
     estado: string;
-    tipo_membro: string[];
+    member_type: string[];
     data_nascimento: string;
     perfil: string;
     // ... other fields
@@ -37,7 +37,7 @@ export default function Show({ member, allUsers, userTypes, ageGroups }: Props) 
 
     const handleSave: FormEventHandler = (e) => {
         e.preventDefault();
-        router.put(route('membros.update', user.id), user, {
+        router.put(route('members.update', user.id), user, {
             onSuccess: () => {
                 setHasChanges(false);
             }
@@ -47,14 +47,14 @@ export default function Show({ member, allUsers, userTypes, ageGroups }: Props) 
     const handleBack = () => {
         if (hasChanges) {
             if (window.confirm('Tem alterações não guardadas. Deseja sair sem guardar?')) {
-                router.visit(route('membros.index'));
+                router.visit(route('members.index'));
             }
         } else {
-            router.visit(route('membros.index'));
+            router.visit(route('members.index'));
         }
     };
 
-    const showSportsTab = user.tipo_membro.includes('atleta');
+    const showSportsTab = user.member_type.includes('atleta');
 
     return (
         <AuthenticatedLayout
@@ -68,10 +68,10 @@ export default function Show({ member, allUsers, userTypes, ageGroups }: Props) 
                         </Button>
                         <div>
                             <h1 className="text-base sm:text-lg font-semibold tracking-tight">
-                                {user.nome_completo || 'Novo Membro'}
+                                {user.full_name || 'Novo Membro'}
                             </h1>
                             <p className="text-muted-foreground text-xs">
-                                Nº de Sócio: {user.numero_socio}
+                                Nº de Sócio: {user.member_number}
                             </p>
                         </div>
                     </div>
@@ -92,7 +92,7 @@ export default function Show({ member, allUsers, userTypes, ageGroups }: Props) 
                 </div>
             }
         >
-            <Head title={`Membro - ${user.nome_completo}`} />
+            <Head title={`Membro - ${user.full_name}`} />
 
             <Card className="p-2 sm:p-3">
                 <Tabs defaultValue="personal" className="space-y-2">

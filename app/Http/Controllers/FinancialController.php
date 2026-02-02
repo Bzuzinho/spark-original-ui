@@ -15,7 +15,7 @@ use Inertia\Response;
 use Illuminate\Http\RedirectResponse;
 use Carbon\Carbon;
 
-class FinanceiroController extends Controller
+class FinancialController extends Controller
 {
     public function index(): Response
     {
@@ -105,7 +105,7 @@ class FinanceiroController extends Controller
             ];
         }
 
-        return Inertia::render('Financeiro/Index', [
+        return Inertia::render('Financial/Index', [
             'transactions' => $transactions,
             'membershipFees' => $membershipFees,
             'categories' => $categories,
@@ -124,7 +124,7 @@ class FinanceiroController extends Controller
 
     public function create(): Response
     {
-        return Inertia::render('Financeiro/Create', [
+        return Inertia::render('Financial/Create', [
             'users' => User::where('status', 'ativo')->get(),
         ]);
     }
@@ -150,30 +150,30 @@ class FinanceiroController extends Controller
             }
         }
 
-        return redirect()->route('financeiro.index')
+        return redirect()->route('financial.index')
             ->with('success', 'Fatura criada com sucesso!');
     }
 
-    public function show(Invoice $financeiro): Response
+    public function show(Invoice $financial): Response
     {
-        return Inertia::render('Financeiro/Show', [
-            'invoice' => $financeiro->load(['user', 'items']),
+        return Inertia::render('Financial/Show', [
+            'invoice' => $financial->load(['user', 'items']),
         ]);
     }
 
-    public function edit(Invoice $financeiro): Response
+    public function edit(Invoice $financial): Response
     {
-        return Inertia::render('Financeiro/Edit', [
-            'invoice' => $financeiro->load(['items']),
+        return Inertia::render('Financial/Edit', [
+            'invoice' => $financial->load(['items']),
             'users' => User::where('status', 'ativo')->get(),
         ]);
     }
 
-    public function update(UpdateInvoiceRequest $request, Invoice $financeiro): RedirectResponse
+    public function update(UpdateInvoiceRequest $request, Invoice $financial): RedirectResponse
     {
         $data = $request->validated();
         
-        $financeiro->update([
+        $financial->update([
             'user_id' => $data['user_id'],
             'issue_date' => $data['issue_date'],
             'due_date' => $data['due_date'],
@@ -184,21 +184,21 @@ class FinanceiroController extends Controller
 
         // Update invoice items
         if (isset($data['items'])) {
-            $financeiro->items()->delete();
+            $financial->items()->delete();
             foreach ($data['items'] as $item) {
-                $financeiro->items()->create($item);
+                $financial->items()->create($item);
             }
         }
 
-        return redirect()->route('financeiro.index')
+        return redirect()->route('financial.index')
             ->with('success', 'Fatura atualizada com sucesso!');
     }
 
-    public function destroy(Invoice $financeiro): RedirectResponse
+    public function destroy(Invoice $financial): RedirectResponse
     {
-        $financeiro->delete();
+        $financial->delete();
 
-        return redirect()->route('financeiro.index')
+        return redirect()->route('financial.index')
             ->with('success', 'Fatura eliminada com sucesso!');
     }
 

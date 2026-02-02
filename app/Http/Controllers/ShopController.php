@@ -11,7 +11,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
-class LojaController extends Controller
+class ShopController extends Controller
 {
     public function index(Request $request): Response
     {
@@ -46,7 +46,7 @@ class LojaController extends Controller
             ->filter()
             ->values();
 
-        return Inertia::render('Loja/Index', [
+        return Inertia::render('Shop/Index', [
             'products' => $products,
             'stats' => $stats,
             'categorias' => $categorias,
@@ -56,27 +56,27 @@ class LojaController extends Controller
 
     public function create(): Response
     {
-        return Inertia::render('Loja/Create');
+        return Inertia::render('Shop/Create');
     }
 
     public function store(StoreProductRequest $request): RedirectResponse
     {
         Product::create($request->validated());
 
-        return redirect()->route('loja.index')
+        return redirect()->route('shop.index')
             ->with('success', 'Produto criado com sucesso!');
     }
 
     public function show(Product $loja): Response
     {
-        return Inertia::render('Loja/Show', [
+        return Inertia::render('Shop/Show', [
             'product' => $loja,
         ]);
     }
 
     public function edit(Product $loja): Response
     {
-        return Inertia::render('Loja/Edit', [
+        return Inertia::render('Shop/Edit', [
             'product' => $loja,
         ]);
     }
@@ -85,7 +85,7 @@ class LojaController extends Controller
     {
         $loja->update($request->validated());
 
-        return redirect()->route('loja.index')
+        return redirect()->route('shop.index')
             ->with('success', 'Produto atualizado com sucesso!');
     }
 
@@ -93,7 +93,7 @@ class LojaController extends Controller
     {
         $loja->delete();
 
-        return redirect()->route('loja.index')
+        return redirect()->route('shop.index')
             ->with('success', 'Produto eliminado com sucesso!');
     }
 }

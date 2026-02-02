@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
-class PatrociniosController extends Controller
+class SponsorshipsController extends Controller
 {
     public function index(Request $request): Response
     {
@@ -34,7 +34,7 @@ class PatrociniosController extends Controller
             'valorTotal' => Sponsor::active()->sum('valor_anual'),
         ];
 
-        return Inertia::render('Patrocinios/Index', [
+        return Inertia::render('Sponsorships/Index', [
             'sponsors' => $sponsors,
             'stats' => $stats,
             'filters' => $request->only(['search', 'tipo', 'estado']),

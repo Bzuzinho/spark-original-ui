@@ -11,7 +11,7 @@ use Inertia\Response;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
-class ComunicacaoController extends Controller
+class CommunicationController extends Controller
 {
     public function index(): Response
     {
@@ -33,7 +33,7 @@ class ComunicacaoController extends Controller
             ? round(($totalEnviados / ($totalEnviados + $totalFalhados)) * 100, 1)
             : 0;
 
-        return Inertia::render('Comunicacao/Index', [
+        return Inertia::render('Communication/Index', [
             'communications' => $communications,
             'stats' => [
                 'totalCommunications' => $totalCommunications,
@@ -51,7 +51,7 @@ class ComunicacaoController extends Controller
             ->select('id', 'full_name', 'email')
             ->get();
 
-        return Inertia::render('Comunicacao/Create', [
+        return Inertia::render('Communication/Create', [
             'users' => $users,
         ]);
     }
@@ -67,13 +67,13 @@ class ComunicacaoController extends Controller
 
         Communication::create($data);
 
-        return redirect()->route('comunicacao.index')
+        return redirect()->route('communication.index')
             ->with('success', 'Comunicação criada com sucesso!');
     }
 
     public function show(Communication $comunicacao): Response
     {
-        return Inertia::render('Comunicacao/Show', [
+        return Inertia::render('Communication/Show', [
             'communication' => $comunicacao,
         ]);
     }
@@ -84,7 +84,7 @@ class ComunicacaoController extends Controller
             ->select('id', 'full_name', 'email')
             ->get();
 
-        return Inertia::render('Comunicacao/Edit', [
+        return Inertia::render('Communication/Edit', [
             'communication' => $comunicacao,
             'users' => $users,
         ]);
@@ -96,7 +96,7 @@ class ComunicacaoController extends Controller
 
         $comunicacao->update($data);
 
-        return redirect()->route('comunicacao.index')
+        return redirect()->route('communication.index')
             ->with('success', 'Comunicação atualizada com sucesso!');
     }
 
@@ -104,7 +104,7 @@ class ComunicacaoController extends Controller
     {
         $comunicacao->delete();
 
-        return redirect()->route('comunicacao.index')
+        return redirect()->route('communication.index')
             ->with('success', 'Comunicação eliminada com sucesso!');
     }
 
@@ -135,7 +135,7 @@ class ComunicacaoController extends Controller
                 'total_falhados' => 0,
             ]);
 
-            return redirect()->route('comunicacao.index')
+            return redirect()->route('communication.index')
                 ->with('success', 'Comunicação enviada com sucesso!');
         } else {
             // Schedule for later
@@ -143,7 +143,7 @@ class ComunicacaoController extends Controller
                 'estado' => 'agendada',
             ]);
 
-            return redirect()->route('comunicacao.index')
+            return redirect()->route('communication.index')
                 ->with('success', 'Comunicação agendada com sucesso!');
         }
     }

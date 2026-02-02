@@ -24,10 +24,10 @@ const mainMenuItems: MenuItem[] = [
     { name: 'Membros', href: '/membros', icon: Users },
     { name: 'Desportivo', href: '/desportivo', icon: Trophy },
     { name: 'Eventos', href: '/eventos', icon: Calendar },
-    { name: 'Financeiro', href: '/financeiro', icon: CurrencyDollar },
+    { name: 'Financial', href: '/financial', icon: CurrencyDollar },
     { name: 'Loja', href: '/loja', icon: ShoppingCart },
-    { name: 'Patrocínios', href: '/patrocinios', icon: Handshake },
-    { name: 'Comunicação', href: '/comunicacao', icon: EnvelopeSimple },
+    { name: 'Sponsorships', href: '/sponsorships', icon: Handshake },
+    { name: 'Communication', href: '/communication', icon: EnvelopeSimple },
     { name: 'Marketing', href: '/marketing', icon: Megaphone },
 ];
 

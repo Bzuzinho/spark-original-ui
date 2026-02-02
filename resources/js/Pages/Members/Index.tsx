@@ -18,12 +18,12 @@ import {
 
 interface User {
     id: string;
-    numero_socio: string;
-    nome_completo: string;
+    member_number: string;
+    full_name: string;
     email_utilizador?: string;
     foto_perfil?: string;
     estado: string;
-    tipo_membro: string[];
+    member_type: string[];
 }
 
 interface Props {
@@ -43,12 +43,12 @@ export default function MembrosIndex({ members, userTypes, ageGroups }: Props) {
     const filteredUsers = useMemo(() => {
         return members.filter(user => {
             const matchesSearch = 
-                user.nome_completo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                user.numero_socio.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                user.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                user.member_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 user.email_utilizador?.toLowerCase().includes(searchTerm.toLowerCase());
             
-            const matchesStatus = statusFilter === 'all' || user.estado === statusFilter;
-            const matchesType = typeFilter === 'all' || user.tipo_membro.includes(typeFilter as any);
+            const matchesStatus = statusFilter === 'all' || user.status === statusFilter;
+            const matchesType = typeFilter === 'all' || user.member_type.includes(typeFilter as any);
             
             return matchesSearch && matchesStatus && matchesType;
         });
@@ -71,7 +71,7 @@ export default function MembrosIndex({ members, userTypes, ageGroups }: Props) {
 
     const confirmDelete = () => {
         if (userToDelete) {
-            router.delete(route('membros.destroy', userToDelete.id), {
+            router.delete(route('members.destroy', userToDelete.id), {
                 onSuccess: () => {
                     setDeleteDialogOpen(false);
                     setUserToDelete(null);
@@ -120,7 +120,7 @@ export default function MembrosIndex({ members, userTypes, ageGroups }: Props) {
                         </Button>
                     </div>
 
-                    <Link href={route('membros.create')}>
+                    <Link href={route('members.create')}>
                         <Button size="sm" className="h-8 text-xs">
                             <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -187,7 +187,7 @@ export default function MembrosIndex({ members, userTypes, ageGroups }: Props) {
                 {viewMode === 'card' ? (
                     <div className="grid gap-2 sm:gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                         {filteredUsers.map(user => (
-                            <Link key={user.id} href={route('membros.show', user.id)}>
+                            <Link key={user.id} href={route('members.show', user.id)}>
                                 <Card className="p-2.5 sm:p-3 cursor-pointer transition-all hover:shadow-md hover:border-primary/50">
                                     <div className="flex items-start gap-2 sm:gap-3">
                                         <Avatar className="h-10 w-10 sm:h-12 sm:w-12">
@@ -198,19 +198,19 @@ export default function MembrosIndex({ members, userTypes, ageGroups }: Props) {
                                         </Avatar>
                                         <div className="flex-1 min-w-0">
                                             <h3 className="font-semibold text-sm truncate">{getUserDisplayName(user)}</h3>
-                                            <p className="text-xs text-muted-foreground">Nº {user.numero_socio}</p>
+                                            <p className="text-xs text-muted-foreground">Nº {user.member_number}</p>
                                             <div className="flex flex-wrap gap-1 mt-1.5">
-                                                <Badge variant="outline" className={`${getStatusColor(user.estado)} text-xs px-1.5 py-0`}>
-                                                    {getStatusLabel(user.estado)}
+                                                <Badge variant="outline" className={`${getStatusColor(user.status)} text-xs px-1.5 py-0`}>
+                                                    {getStatusLabel(user.status)}
                                                 </Badge>
-                                                {user.tipo_membro.slice(0, 2).map(type => (
+                                                {user.member_type.slice(0, 2).map(type => (
                                                     <Badge key={type} variant="secondary" className="text-xs px-1.5 py-0">
                                                         {getMemberTypeLabel(type)}
                                                     </Badge>
                                                 ))}
-                                                {user.tipo_membro.length > 2 && (
+                                                {user.member_type.length > 2 && (
                                                     <Badge variant="secondary" className="text-xs px-1.5 py-0">
-                                                        +{user.tipo_membro.length - 2}
+                                                        +{user.member_type.length - 2}
                                                     </Badge>
                                                 )}
                                             </div>
@@ -251,7 +251,7 @@ export default function MembrosIndex({ members, userTypes, ageGroups }: Props) {
                                     <TableRow 
                                         key={user.id}
                                         className="cursor-pointer hover:bg-muted/50"
-                                        onClick={() => router.visit(route('membros.show', user.id))}
+                                        onClick={() => router.visit(route('members.show', user.id))}
                                     >
                                         <TableCell>
                                             <Avatar className="h-8 w-8">
@@ -262,23 +262,23 @@ export default function MembrosIndex({ members, userTypes, ageGroups }: Props) {
                                             </Avatar>
                                         </TableCell>
                                         <TableCell className="font-medium">{getUserDisplayName(user)}</TableCell>
-                                        <TableCell>{user.numero_socio}</TableCell>
+                                        <TableCell>{user.member_number}</TableCell>
                                         <TableCell className="text-muted-foreground">{user.email_utilizador || '-'}</TableCell>
                                         <TableCell>
-                                            <Badge variant="outline" className={`${getStatusColor(user.estado)} text-xs`}>
-                                                {getStatusLabel(user.estado)}
+                                            <Badge variant="outline" className={`${getStatusColor(user.status)} text-xs`}>
+                                                {getStatusLabel(user.status)}
                                             </Badge>
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex flex-wrap gap-1">
-                                                {user.tipo_membro.slice(0, 2).map(type => (
+                                                {user.member_type.slice(0, 2).map(type => (
                                                     <Badge key={type} variant="secondary" className="text-xs">
                                                         {getMemberTypeLabel(type)}
                                                     </Badge>
                                                 ))}
-                                                {user.tipo_membro.length > 2 && (
+                                                {user.member_type.length > 2 && (
                                                     <Badge variant="secondary" className="text-xs">
-                                                        +{user.tipo_membro.length - 2}
+                                                        +{user.member_type.length - 2}
                                                     </Badge>
                                                 )}
                                             </div>
@@ -307,7 +307,7 @@ export default function MembrosIndex({ members, userTypes, ageGroups }: Props) {
                         <AlertDialogHeader>
                             <AlertDialogTitle>Confirmar eliminação</AlertDialogTitle>
                             <AlertDialogDescription>
-                                Tem a certeza que deseja apagar o membro <strong>{userToDelete?.nome_completo}</strong>?
+                                Tem a certeza que deseja apagar o membro <strong>{userToDelete?.full_name}</strong>?
                                 Esta ação não pode ser revertida.
                             </AlertDialogDescription>
                         </AlertDialogHeader>
@@ -330,7 +330,7 @@ export default function MembrosIndex({ members, userTypes, ageGroups }: Props) {
                             <p className="text-muted-foreground mb-3 text-sm">
                                 Tente ajustar os filtros ou criar um novo membro.
                             </p>
-                            <Link href={route('membros.create')}>
+                            <Link href={route('members.create')}>
                                 <Button size="sm" className="h-8 text-xs">
                                     <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />

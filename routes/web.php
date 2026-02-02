@@ -2,19 +2,19 @@
 
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\MembrosController;
+use App\Http\Controllers\MembersController;
 use App\Http\Controllers\MemberDocumentController;
 use App\Http\Controllers\MemberRelationshipController;
-use App\Http\Controllers\EventosController;
-use App\Http\Controllers\DesportivoController;
-use App\Http\Controllers\FinanceiroController;
+use App\Http\Controllers\EventsController;
+use App\Http\Controllers\SportsController;
+use App\Http\Controllers\FinancialController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\MembershipFeeController;
 use App\Http\Controllers\FinancialCategoryController;
 use App\Http\Controllers\FinancialReportController;
-use App\Http\Controllers\LojaController;
-use App\Http\Controllers\PatrociniosController;
-use App\Http\Controllers\ComunicacaoController;
+use App\Http\Controllers\ShopController;
+use App\Http\Controllers\SponsorshipsController;
+use App\Http\Controllers\CommunicationController;
 use App\Http\Controllers\MarketingCampaignController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\TeamController;
@@ -34,33 +34,33 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     
     // Resource routes
-    Route::resource('membros', MembrosController::class);
+    Route::resource('members', MembersController::class);
     
     // Member documents and relationships
-    Route::prefix('membros/{member}')->group(function() {
-        Route::get('documents', [MemberDocumentController::class, 'index'])->name('membros.documents.index');
-        Route::post('documents', [MemberDocumentController::class, 'store'])->name('membros.documents.store');
-        Route::delete('documents/{document}', [MemberDocumentController::class, 'destroy'])->name('membros.documents.destroy');
+    Route::prefix('members/{member}')->group(function() {
+        Route::get('documents', [MemberDocumentController::class, 'index'])->name('members.documents.index');
+        Route::post('documents', [MemberDocumentController::class, 'store'])->name('members.documents.store');
+        Route::delete('documents/{document}', [MemberDocumentController::class, 'destroy'])->name('members.documents.destroy');
         
-        Route::get('relationships', [MemberRelationshipController::class, 'index'])->name('membros.relationships.index');
-        Route::post('relationships', [MemberRelationshipController::class, 'store'])->name('membros.relationships.store');
-        Route::delete('relationships/{relationship}', [MemberRelationshipController::class, 'destroy'])->name('membros.relationships.destroy');
+        Route::get('relationships', [MemberRelationshipController::class, 'index'])->name('members.relationships.index');
+        Route::post('relationships', [MemberRelationshipController::class, 'store'])->name('members.relationships.store');
+        Route::delete('relationships/{relationship}', [MemberRelationshipController::class, 'destroy'])->name('members.relationships.destroy');
     });
     
-    Route::resource('eventos', EventosController::class);
+    Route::resource('events', EventsController::class);
     
     // Event participant management routes
-    Route::post('eventos/{evento}/participants', [EventosController::class, 'addParticipant'])->name('eventos.participants.add');
-    Route::delete('eventos/{evento}/participants/{user}', [EventosController::class, 'removeParticipant'])->name('eventos.participants.remove');
-    Route::put('eventos/{evento}/participants/{user}', [EventosController::class, 'updateParticipantStatus'])->name('eventos.participants.update');
-    Route::get('eventos-stats', [EventosController::class, 'stats'])->name('eventos.stats');
+    Route::post('events/{event}/participants', [EventsController::class, 'addParticipant'])->name('events.participants.add');
+    Route::delete('events/{event}/participants/{user}', [EventsController::class, 'removeParticipant'])->name('events.participants.remove');
+    Route::put('events/{event}/participants/{user}', [EventsController::class, 'updateParticipantStatus'])->name('events.participants.update');
+    Route::get('events-stats', [EventsController::class, 'stats'])->name('events.stats');
     
-    Route::resource('desportivo', DesportivoController::class);
-    Route::resource('financeiro', FinanceiroController::class);
-    Route::resource('loja', LojaController::class);
-    Route::resource('patrocinios', PatrociniosController::class);
-    Route::resource('comunicacao', ComunicacaoController::class);
-    Route::post('/comunicacao/{comunicacao}/send', [ComunicacaoController::class, 'send'])->name('comunicacao.send');
+    Route::resource('sports', SportsController::class);
+    Route::resource('financial', FinancialController::class);
+    Route::resource('shop', ShopController::class);
+    Route::resource('sponsorships', SponsorshipsController::class);
+    Route::resource('communication', CommunicationController::class);
+    Route::post('/communication/{communication}/send', [CommunicationController::class, 'send'])->name('communication.send');
     Route::resource('marketing', MarketingController::class);
     Route::resource('marketing', MarketingCampaignController::class);
     
@@ -87,7 +87,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('training-sessions', TrainingSessionController::class);
     Route::resource('call-ups', CallUpController::class);
     // Financial module routes
-    Route::prefix('financeiro')->group(function () {
+    Route::prefix('financial')->group(function () {
         // Transactions
         Route::get('/transactions', [TransactionController::class, 'index'])->name('transactions.index');
         Route::post('/transactions', [TransactionController::class, 'store'])->name('transactions.store');
