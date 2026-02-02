@@ -39,8 +39,8 @@ class DesportivoController extends Controller
             ->where('data_hora', '<=', $now)
             ->count();
             
-        $upcomingEvents = Event::where('data_inicio', '>=', $now)
-            ->where('data_inicio', '<=', $thirtyDaysAhead)
+        $upcomingEvents = Event::where('start_date', '>=', $now)
+            ->where('start_date', '<=', $thirtyDaysAhead)
             ->count();
 
         return Inertia::render('Desportivo/Index', [
@@ -60,8 +60,8 @@ class DesportivoController extends Controller
                 ->take(20)
                 ->get(),
             'athletes' => $athletes,
-            'events' => Event::where('data_inicio', '>=', $now)
-                ->orderBy('data_inicio')
+            'events' => Event::where('start_date', '>=', $now)
+                ->orderBy('start_date')
                 ->take(10)
                 ->get(),
         ]);

@@ -26,19 +26,19 @@ class EventosController extends Controller
         $endOfMonth = $now->copy()->endOfMonth();
         
         $stats = [
-            'upcomingEvents' => Event::where('data_inicio', '>=', $now)
-                ->where('estado', '!=', 'cancelado')
+            'upcomingEvents' => Event::where('start_date', '>=', $now)
+                ->where('status', '!=', 'cancelado')
                 ->count(),
             'monthParticipants' => EventConvocation::whereBetween('created_at', [$startOfMonth, $endOfMonth])
                 ->count(),
-            'completedEvents' => Event::where('estado', 'concluido')
-                ->whereYear('data_inicio', $now->year)
+            'completedEvents' => Event::where('status', 'concluido')
+                ->whereYear('start_date', $now->year)
                 ->count(),
         ];
 
         return Inertia::render('Eventos/Index', [
-            'eventos' => Event::with(['criador', 'convocations.atleta', 'attendances.atleta'])
-                ->orderBy('data_inicio', 'desc')
+            'eventos' => Event::with(['creator', 'convocations.atleta', 'attendances.atleta'])
+                ->orderBy('start_date', 'desc')
                 ->get(),
             'stats' => $stats,
             'users' => User::where('estado', 'ativo')->get(['id', 'nome', 'tipo_utilizador']),
@@ -56,11 +56,11 @@ class EventosController extends Controller
     public function store(StoreEventRequest $request): RedirectResponse
     {
         $data = $request->validated();
-        $data['criado_por'] = auth()->id();
+        $data['created_by'] = auth()->id();
         
         // Set default estado if not provided
-        if (!isset($data['estado'])) {
-            $data['estado'] = 'rascunho';
+        if (!isset($data['status'])) {
+            $data['status'] = 'rascunho';
         }
         
         $event = Event::create($data);
@@ -209,13 +209,13 @@ class EventosController extends Controller
         $endOfMonth = $now->copy()->endOfMonth();
         
         return response()->json([
-            'upcomingEvents' => Event::where('data_inicio', '>=', $now)
-                ->where('estado', '!=', 'cancelado')
+            'upcomingEvents' => Event::where('start_date', '>=', $now)
+                ->where('status', '!=', 'cancelado')
                 ->count(),
             'monthParticipants' => EventConvocation::whereBetween('created_at', [$startOfMonth, $endOfMonth])
                 ->count(),
-            'completedEvents' => Event::where('estado', 'concluido')
-                ->whereYear('data_inicio', $now->year)
+            'completedEvents' => Event::where('status', 'concluido')
+                ->whereYear('start_date', $now->year)
                 ->count(),
         ]);
     }
