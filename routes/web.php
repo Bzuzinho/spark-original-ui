@@ -80,6 +80,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('/settings/event-types/{eventType}', [SettingsController::class, 'updateEventType'])->name('settings.event-types.update');
     Route::delete('/settings/event-types/{eventType}', [SettingsController::class, 'destroyEventType'])->name('settings.event-types.destroy');
     
+    Route::put('/settings/club', [SettingsController::class, 'updateClubSettings'])->name('settings.club.update');
     // Sports module routes
     Route::resource('teams', TeamController::class);
     Route::resource('team-members', TeamMemberController::class)->except(['index', 'create', 'show', 'edit']);
