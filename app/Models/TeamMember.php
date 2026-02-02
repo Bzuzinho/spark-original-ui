@@ -13,16 +13,16 @@ class TeamMember extends Model
     protected $fillable = [
         'team_id',
         'user_id',
-        'posicao',
-        'numero_camisola',
-        'data_entrada',
-        'data_saida',
+        'position',
+        'jersey_number',
+        'join_date',
+        'leave_date',
     ];
 
     protected $casts = [
-        'data_entrada' => 'date',
-        'data_saida' => 'date',
-        'numero_camisola' => 'integer',
+        'join_date' => 'date',
+        'leave_date' => 'date',
+        'jersey_number' => 'integer',
     ];
 
     public function team(): BelongsTo

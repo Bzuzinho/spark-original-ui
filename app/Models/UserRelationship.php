@@ -14,7 +14,7 @@ class UserRelationship extends Model
     protected $fillable = [
         'user_id',
         'related_user_id',
-        'tipo',
+        'type',
     ];
 
     /**

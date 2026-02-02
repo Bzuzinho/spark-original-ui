@@ -18,11 +18,11 @@ class StoreTransactionRequest extends FormRequest
             'category_id' => 'nullable|uuid|exists:financial_categories,id',
             'description' => 'required|string|max:255',
             'amount' => 'required|numeric|min:0',
-            'type' => 'required|in:receita,despesa',
+            'type' => 'required|in:income,expense',
             'date' => 'required|date',
-            'payment_method' => 'nullable|in:dinheiro,transferencia,mbway,multibanco,cartao',
+            'payment_method' => 'nullable|in:cash,transfer,mbway,atm,card',
             'receipt' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:2048',
-            'status' => 'nullable|in:paga,pendente,cancelada',
+            'status' => 'nullable|in:paid,pending,cancelled',
             'notes' => 'nullable|string',
         ];
     }

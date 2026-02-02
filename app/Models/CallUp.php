@@ -13,14 +13,14 @@ class CallUp extends Model
     protected $fillable = [
         'event_id',
         'team_id',
-        'atletas_convocados',
-        'presencas',
-        'observacoes',
+        'called_up_athletes',
+        'attendances',
+        'notes',
     ];
 
     protected $casts = [
-        'atletas_convocados' => 'array',
-        'presencas' => 'array',
+        'called_up_athletes' => 'array',
+        'attendances' => 'array',
     ];
 
     public function event(): BelongsTo

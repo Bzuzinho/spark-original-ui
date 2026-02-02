@@ -12,16 +12,16 @@ class TrainingSession extends Model
 
     protected $fillable = [
         'team_id',
-        'data_hora',
-        'duracao_minutos',
-        'local',
-        'objetivos',
-        'estado',
+        'datetime',
+        'duration_minutes',
+        'location',
+        'objectives',
+        'status',
     ];
 
     protected $casts = [
-        'data_hora' => 'datetime',
-        'duracao_minutos' => 'integer',
+        'datetime' => 'datetime',
+        'duration_minutes' => 'integer',
     ];
 
     public function team(): BelongsTo

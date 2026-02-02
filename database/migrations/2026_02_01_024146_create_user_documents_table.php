@@ -6,6 +6,8 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    public $withinTransaction = false;
+    
     /**
      * Run the migrations.
      */
@@ -14,14 +16,14 @@ return new class extends Migration
         Schema::create('user_documents', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->foreignUuid('user_id')->constrained()->onDelete('cascade');
-            $table->enum('tipo', ['cc', 'atestado', 'autorizacao', 'rgpd', 'consentimento', 'afiliacao', 'declaracao_transporte', 'outro']);
-            $table->string('nome')->nullable();
-            $table->string('ficheiro');
-            $table->date('data_validade')->nullable();
+            $table->string('type', 50);
+            $table->string('name')->nullable();
+            $table->string('file_path');
+            $table->date('expiry_date')->nullable();
             $table->timestamps();
             
             $table->index('user_id');
-            $table->index('tipo');
+            $table->index('type');
         });
     }
 

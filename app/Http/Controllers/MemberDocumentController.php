@@ -41,7 +41,7 @@ class MemberDocumentController extends Controller
         $document = $member->documents()->create([
             'type' => $validated['type'],
             'name' => $validated['name'] ?? null,
-            'file' => $path,
+            'file_path' => $path,
             'expiry_date' => $validated['expiry_date'] ?? null,
         ]);
 
@@ -64,8 +64,8 @@ class MemberDocumentController extends Controller
         }
 
         // Delete file from storage
-        if ($document->file) {
-            Storage::disk('public')->delete($document->file);
+        if ($document->file_path) {
+            Storage::disk('public')->delete($document->file_path);
         }
 
         $document->delete();

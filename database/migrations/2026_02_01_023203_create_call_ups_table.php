@@ -14,9 +14,9 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->foreignUuid('event_id')->constrained()->onDelete('cascade');
             $table->foreignUuid('team_id')->constrained()->onDelete('cascade');
-            $table->json('atletas_convocados');
-            $table->json('presencas')->nullable();
-            $table->text('observacoes')->nullable();
+            $table->json('called_up_athletes');
+            $table->json('attendances')->nullable();
+            $table->text('notes')->nullable();
             $table->timestamps();
             
             $table->index('event_id');

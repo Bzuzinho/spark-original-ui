@@ -11,22 +11,22 @@ class MarketingCampaign extends Model
     use HasUuids;
 
     protected $fillable = [
-        'nome',
-        'descricao',
-        'tipo',
-        'data_inicio',
-        'data_fim',
-        'estado',
-        'orcamento',
-        'alcance_estimado',
-        'notas',
+        'name',
+        'description',
+        'type',
+        'start_date',
+        'end_date',
+        'status',
+        'budget',
+        'estimated_reach',
+        'notes',
     ];
 
     protected $casts = [
-        'data_inicio' => 'date',
-        'data_fim' => 'date',
-        'orcamento' => 'decimal:2',
-        'alcance_estimado' => 'integer',
+        'start_date' => 'date',
+        'end_date' => 'date',
+        'budget' => 'decimal:2',
+        'estimated_reach' => 'integer',
     ];
 
     /**
@@ -34,7 +34,7 @@ class MarketingCampaign extends Model
      */
     public function scopeActive(Builder $query): Builder
     {
-        return $query->where('estado', 'ativa');
+        return $query->where('status', 'active');
     }
 
     /**
@@ -42,7 +42,7 @@ class MarketingCampaign extends Model
      */
     public function scopeCompleted(Builder $query): Builder
     {
-        return $query->where('estado', 'concluida');
+        return $query->where('status', 'completed');
     }
 
     /**
@@ -50,7 +50,7 @@ class MarketingCampaign extends Model
      */
     public function scopeOfType(Builder $query, string $type): Builder
     {
-        return $query->where('tipo', $type);
+        return $query->where('type', $type);
     }
 
     /**
@@ -58,7 +58,7 @@ class MarketingCampaign extends Model
      */
     public function scopeOfStatus(Builder $query, string $status): Builder
     {
-        return $query->where('estado', $status);
+        return $query->where('status', $status);
     }
 
     /**
@@ -71,9 +71,9 @@ class MarketingCampaign extends Model
         }
 
         return $query->where(function ($q) use ($search) {
-            $q->where('nome', 'like', "%{$search}%")
-              ->orWhere('descricao', 'like', "%{$search}%")
-              ->orWhere('notas', 'like', "%{$search}%");
+            $q->where('name', 'like', "%{$search}%")
+              ->orWhere('description', 'like', "%{$search}%")
+              ->orWhere('notes', 'like', "%{$search}%");
         });
     }
 }
