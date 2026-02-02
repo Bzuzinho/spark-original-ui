@@ -26,11 +26,6 @@ class ConvocationMovement extends Model
         'total_amount' => 'decimal:2',
     ];
 
-    public function atleta(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'athlete_id');
-    }
-
     public function convocationGroup(): BelongsTo
     {
         return $this->belongsTo(ConvocationGroup::class, 'convocation_group_id');

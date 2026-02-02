@@ -24,9 +24,9 @@ class CompetitionRegistration extends Model
         'races' => 'array',
     ];
 
-    public function prova(): BelongsTo
+    public function competition(): BelongsTo
     {
-        return $this->belongsTo(Prova::class, 'competition_id');
+        return $this->belongsTo(Competition::class, 'competition_id');
     }
 
     public function atleta(): BelongsTo

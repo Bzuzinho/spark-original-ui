@@ -33,14 +33,9 @@ class Prova extends Model
         return $this->belongsTo(Competition::class, 'competition_id');
     }
 
-    public function escalao(): BelongsTo
-    {
-        return $this->belongsTo(AgeGroup::class, 'age_group');
-    }
-
     public function registrations(): HasMany
     {
-        return $this->hasMany(CompetitionRegistration::class, 'race_id');
+        return $this->hasMany(CompetitionRegistration::class, 'competition_id');
     }
 
     public function results(): HasMany
