@@ -5,34 +5,58 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreProductRequest;
 use App\Http\Requests\UpdateProductRequest;
 use App\Models\Product;
-use App\Models\ProductCategory;
 use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class LojaController extends Controller
 {
-    public function index(): Response
+    public function index(Request $request): Response
     {
+        $query = Product::query();
+
+        // Apply filters
+        if ($request->filled('categoria')) {
+            $query->where('categoria', $request->categoria);
+        }
+
+        if ($request->filled('ativo')) {
+            $query->where('ativo', $request->boolean('ativo'));
+        }
+
+        if ($request->boolean('low_stock')) {
+            $query->lowStock();
+        }
+
+        $products = $query->latest()->get();
+
+        // Calculate stats
+        $stats = [
+            'total_produtos' => Product::count(),
+            'valor_total_stock' => Product::sum(DB::raw('preco * stock')),
+            'produtos_baixo_stock' => Product::lowStock()->count(),
+        ];
+
+        // Get unique categories
+        $categorias = Product::whereNotNull('categoria')
+            ->distinct()
+            ->pluck('categoria')
+            ->filter()
+            ->values();
+
         return Inertia::render('Loja/Index', [
-            'products' => Product::with(['category'])
-                ->latest()
-                ->paginate(15),
-            'categories' => ProductCategory::where('active', true)->get(),
-            'stats' => [
-                'totalProducts' => Product::count(),
-                'activeProducts' => Product::where('estado', 'ativo')->count(),
-                'lowStockProducts' => Product::whereColumn('quantidade_stock', '<=', 'stock_minimo')->count(),
-                'totalValue' => Product::sum(\DB::raw('preco * quantidade_stock')),
-            ],
+            'products' => $products,
+            'stats' => $stats,
+            'categorias' => $categorias,
+            'filters' => $request->only(['categoria', 'ativo', 'low_stock']),
         ]);
     }
 
     public function create(): Response
     {
-        return Inertia::render('Loja/Create', [
-            'categories' => ProductCategory::where('active', true)->get(),
-        ]);
+        return Inertia::render('Loja/Create');
     }
 
     public function store(StoreProductRequest $request): RedirectResponse
@@ -46,15 +70,14 @@ class LojaController extends Controller
     public function show(Product $loja): Response
     {
         return Inertia::render('Loja/Show', [
-            'product' => $loja->load(['category']),
+            'product' => $loja,
         ]);
     }
 
     public function edit(Product $loja): Response
     {
         return Inertia::render('Loja/Edit', [
-            'product' => $loja->load(['category']),
-            'categories' => ProductCategory::where('active', true)->get(),
+            'product' => $loja,
         ]);
     }
 

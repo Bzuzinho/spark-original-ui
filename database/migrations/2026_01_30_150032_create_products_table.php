@@ -14,16 +14,17 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->string('nome');
             $table->text('descricao')->nullable();
-            $table->string('imagem')->nullable();
-            $table->string('categoria');
+            $table->string('codigo')->unique();
+            $table->string('categoria')->nullable();
             $table->decimal('preco', 10, 2);
             $table->integer('stock')->default(0);
             $table->integer('stock_minimo')->default(0);
+            $table->string('imagem')->nullable();
             $table->boolean('ativo')->default(true);
             $table->timestamps();
             
-            $table->index('categoria');
             $table->index('ativo');
+            $table->index('categoria');
         });
     }
 
