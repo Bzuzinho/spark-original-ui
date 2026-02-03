@@ -13,25 +13,25 @@ class Mesocycle extends Model
 
 
     protected $fillable = [
-        'macrocycle_id',
-        'name',
-        'start_date',
-        'end_date',
-        'type',
+        'macrociclo_id',
+        'nome',
+        'foco',
+        'data_inicio',
+        'data_fim',
     ];
 
     protected $casts = [
-        'start_date' => 'date',
-        'end_date' => 'date',
+        'data_inicio' => 'date',
+        'data_fim' => 'date',
     ];
 
     public function macrocycle(): BelongsTo
     {
-        return $this->belongsTo(Macrocycle::class, 'macrocycle_id');
+        return $this->belongsTo(Macrocycle::class, 'macrociclo_id');
     }
 
     public function microcycles(): HasMany
     {
-        return $this->hasMany(Microcycle::class, 'mesocycle_id');
+        return $this->hasMany(Microcycle::class, 'mesociclo_id');
     }
 }
