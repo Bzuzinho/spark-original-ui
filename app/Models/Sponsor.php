@@ -11,41 +11,44 @@ class Sponsor extends Model
     use HasFactory, HasUuids;
 
     protected $fillable = [
-        'name',
-        'description',
-        'contact',
-        'type',
-        'annual_value',
-        'start_date',
-        'end_date',
-        'status',
+        'nome',
+        'descricao',
+        'logo',
+        'website',
+        'contacto',
+        'email',
+        'tipo',
+        'valor_anual',
+        'data_inicio',
+        'data_fim',
+        'estado',
     ];
 
     protected $casts = [
-        'annual_value' => 'decimal:2',
-        'start_date' => 'date',
-        'end_date' => 'date',
+        'valor_anual' => 'decimal:2',
+        'data_inicio' => 'date',
+        'data_fim' => 'date',
     ];
 
     // Scopes
     public function scopeActive($query)
     {
-        return $query->where('status', 'ativo');
+        return $query->where('estado', 'ativo');
     }
 
     public function scopeExpired($query)
     {
-        return $query->where('status', 'expirado')
+        return $query->where('estado', 'expirado')
                      ->orWhere(function($q) {
-                         $q->whereNotNull('end_date')
-                           ->where('end_date', '<', now());
+                         $q->whereNotNull('data_fim')
+                           ->where('data_fim', '<', now());
                      });
     }
 
     // Accessor
     public function getIsActiveAttribute(): bool
     {
-        return $this->status === 'ativo' && 
-               ($this->end_date === null || $this->end_date > now());
+        return $this->estado === 'ativo' && 
+               ($this->data_fim === null || $this->data_fim > now());
     }
 }
