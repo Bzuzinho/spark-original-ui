@@ -28,6 +28,33 @@ export {
   useDeleteEvent,
 } from './useEvents';
 
+// Provas Hooks
+export {
+  useProvas,
+  useProva,
+  useCreateProva,
+  useUpdateProva,
+  useDeleteProva,
+} from './useProvas';
+
+// Results Hooks
+export {
+  useResults,
+  useResult,
+  useCreateResult,
+  useUpdateResult,
+  useDeleteResult,
+} from './useResults';
+
+// Event Attendances Hooks
+export {
+  useEventAttendances,
+  useEventAttendance,
+  useCreateEventAttendance,
+  useUpdateEventAttendance,
+  useDeleteEventAttendance,
+} from './useEventAttendances';
+
 // Generic API Hooks
 export {
   useApi,

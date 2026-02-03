@@ -10,6 +10,9 @@ use App\Http\Controllers\Api\ClubSettingController;
 use App\Http\Controllers\Api\KeyValueController;
 use App\Http\Controllers\Api\UsersController;
 use App\Http\Controllers\Api\EventsController;
+use App\Http\Controllers\Api\ProvasController;
+use App\Http\Controllers\Api\ResultsController;
+use App\Http\Controllers\Api\EventAttendancesController;
 
 /*
 |--------------------------------------------------------------------------
@@ -31,6 +34,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // Resource APIs
     Route::apiResource('users', UsersController::class);
     Route::apiResource('events', EventsController::class);
+    Route::apiResource('provas', ProvasController::class);
+    Route::apiResource('results', ResultsController::class);
+    Route::apiResource('event-attendances', EventAttendancesController::class);
 
     // Settings APIs
     Route::apiResource('user-types', TiposUtilizadorController::class);
