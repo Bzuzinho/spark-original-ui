@@ -34,7 +34,7 @@ class MarketingCampaign extends Model
      */
     public function scopeActive(Builder $query): Builder
     {
-        return $query->where('status', 'active');
+        return $query->where('status', 'ativo');
     }
 
     /**
@@ -42,7 +42,7 @@ class MarketingCampaign extends Model
      */
     public function scopeCompleted(Builder $query): Builder
     {
-        return $query->where('status', 'completed');
+        return $query->where('status', 'concluido');
     }
 
     /**
