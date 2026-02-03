@@ -34,18 +34,18 @@ class UserFactory extends Factory
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
             'numero_socio' => $this->faker->unique()->numberBetween(100, 9999),
-            'full_name' => fake()->name(),
+            'nome_completo' => fake()->name(),
             'perfil' => $this->faker->randomElement(['user', 'atleta', 'admin']),
             'estado' => 'ativo',
-            'birth_date' => $birthYear . '-' . $this->faker->numberBetween(1, 12) . '-' . $this->faker->numberBetween(1, 28),
+            'data_nascimento' => $birthYear . '-' . $this->faker->numberBetween(1, 12) . '-' . $this->faker->numberBetween(1, 28),
             'menor' => $age < 18,
-            'gender' => $sexo,
+            'sexo' => $sexo,
             'tipo_membro' => [$this->faker->randomElement(['Atleta', 'Sócio', 'Treinador'])],
             'rgpd' => true,
-            'consent' => true,
+            'consentimento' => true,
             'afiliacao' => $this->faker->boolean(70),
             'declaracao_de_transporte' => $age < 18,
-            'sports_active' => $this->faker->boolean(60),
+            'ativo_desportivo' => $this->faker->boolean(60),
         ];
     }
 
@@ -67,7 +67,7 @@ class UserFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'perfil' => 'atleta',
             'tipo_membro' => ['Atleta'],
-            'sports_active' => true,
+            'ativo_desportivo' => true,
             'afiliacao' => true,
         ]);
     }
