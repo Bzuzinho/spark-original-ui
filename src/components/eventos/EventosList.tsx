@@ -539,15 +539,16 @@ export function EventosList() {
               <span className="sm:hidden">Novo</span>
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-3xl max-h-[90vh]">
+          <DialogContent className="max-w-3xl max-h-[90vh] w-[calc(100vw-2rem)] sm:w-full">
             <DialogHeader>
-              <DialogTitle>{editingEvent ? 'Editar Evento' : 'Novo Evento'}</DialogTitle>
-              <DialogDescription>
+              <DialogTitle className="text-base sm:text-lg">{editingEvent ? 'Editar Evento' : 'Novo Evento'}</DialogTitle>
+              <DialogDescription className="text-sm">
                 {editingEvent ? 'Altere os detalhes do evento' : 'Crie um novo evento desportivo ou atividade do clube'}
               </DialogDescription>
             </DialogHeader>
-            <ScrollArea className="max-h-[calc(90vh-120px)] pr-4">
-              <div className="space-y-4">
+            <ScrollArea className="max-h-[calc(90vh-120px)] pr-2 sm:pr-4">
+              <div className="space-y-4 px-1"
+>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2 md:col-span-2">
                     <Label htmlFor="titulo">Título *</Label>
@@ -1086,15 +1087,15 @@ export function EventosList() {
       )}
 
       <Dialog open={detailsDialogOpen} onOpenChange={setDetailsDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh]">
+        <DialogContent className="max-w-3xl max-h-[90vh] w-[calc(100vw-2rem)] sm:w-full">
           {selectedEvent && (
             <>
               <DialogHeader>
-                <DialogTitle className="text-lg">{selectedEvent.titulo}</DialogTitle>
-                <DialogDescription>Detalhes completos do evento</DialogDescription>
+                <DialogTitle className="text-base sm:text-lg pr-6">{selectedEvent.titulo}</DialogTitle>
+                <DialogDescription className="text-sm">Detalhes completos do evento</DialogDescription>
               </DialogHeader>
-              <ScrollArea className="max-h-[calc(90vh-120px)] pr-4">
-                <div className="space-y-4">
+              <ScrollArea className="max-h-[calc(90vh-120px)] pr-2 sm:pr-4">
+                <div className="space-y-4 px-1">
                   <div className="flex flex-wrap gap-2">
                     <Badge className={getEventTypeColor(selectedEvent.tipo)}>
                       {getEventTypeLabel(selectedEvent.tipo)}
@@ -1304,11 +1305,12 @@ export function EventosList() {
                   </div>
                 </div>
               </ScrollArea>
-              <DialogFooter className="mt-4">
+              <DialogFooter className="mt-4 flex-col sm:flex-row gap-2">
                 <Button
                   variant="destructive"
                   size="sm"
                   onClick={() => handleDeleteEvent(selectedEvent.id)}
+                  className="w-full sm:w-auto text-xs"
                 >
                   <Trash className="mr-2" size={16} />
                   Eliminar
@@ -1320,11 +1322,12 @@ export function EventosList() {
                     setDetailsDialogOpen(false);
                     openEditDialog(selectedEvent);
                   }}
+                  className="w-full sm:w-auto text-xs"
                 >
                   <Pencil className="mr-2" size={16} />
                   Editar
                 </Button>
-                <Button size="sm" onClick={() => setDetailsDialogOpen(false)}>
+                <Button size="sm" onClick={() => setDetailsDialogOpen(false)} className="w-full sm:w-auto text-xs">
                   Fechar
                 </Button>
               </DialogFooter>
@@ -1334,17 +1337,17 @@ export function EventosList() {
       </Dialog>
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className="w-[calc(100vw-2rem)] sm:max-w-lg">
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar Eliminação</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogTitle className="text-base sm:text-lg">Confirmar Eliminação</AlertDialogTitle>
+            <AlertDialogDescription className="text-sm">
               Tem certeza que deseja eliminar {selectedEventIds.length} evento{selectedEventIds.length > 1 ? 's' : ''}?
               Esta ação não pode ser revertida.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDeleteMultiple} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <AlertDialogCancel className="w-full sm:w-auto">Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteMultiple} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 w-full sm:w-auto">
               Eliminar
             </AlertDialogAction>
           </AlertDialogFooter>
