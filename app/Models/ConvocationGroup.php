@@ -50,11 +50,11 @@ class ConvocationGroup extends Model
 
     public function convocationAthletes(): HasMany
     {
-        return $this->hasMany(ConvocationAthlete::class, 'convocation_group_id');
+        return $this->hasMany(ConvocationAthlete::class, 'convocatoria_grupo_id');
     }
 
     public function convocationMovements(): HasMany
     {
-        return $this->hasMany(ConvocationMovement::class, 'convocation_group_id');
+        return $this->hasMany(ConvocationMovement::class, 'convocatoria_grupo_id');
     }
 }
