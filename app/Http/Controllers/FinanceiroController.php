@@ -15,7 +15,7 @@ use Inertia\Response;
 use Illuminate\Http\RedirectResponse;
 use Carbon\Carbon;
 
-class FinancialController extends Controller
+class FinanceiroController extends Controller
 {
     public function index(): Response
     {

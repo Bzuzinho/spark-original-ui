@@ -10,7 +10,7 @@ use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Storage;
 
-class TransactionController extends Controller
+class TransacoesController extends Controller
 {
     public function index()
     {

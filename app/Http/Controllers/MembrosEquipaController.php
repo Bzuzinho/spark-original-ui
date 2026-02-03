@@ -11,7 +11,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Http\RedirectResponse;
 
-class TeamMemberController extends Controller
+class MembrosEquipaController extends Controller
 {
     public function index(Team $team): Response
     {

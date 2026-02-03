@@ -12,7 +12,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Http\RedirectResponse;
 
-class CallUpController extends Controller
+class ConvocatoriasController extends Controller
 {
     public function index(): Response
     {

@@ -10,7 +10,7 @@ use Inertia\Response;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
-class MarketingCampaignController extends Controller
+class CampanhasMarketingController extends Controller
 {
     public function index(Request $request): Response
     {

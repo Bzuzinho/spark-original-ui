@@ -10,7 +10,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Http\RedirectResponse;
 
-class TrainingSessionController extends Controller
+class SessoesFormacaoController extends Controller
 {
     public function index(): Response
     {

@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\EventType;
 use Illuminate\Http\Request;
 
-class EventTypeController extends Controller
+class TiposEventoController extends Controller
 {
     /**
      * Display a listing of the resource.

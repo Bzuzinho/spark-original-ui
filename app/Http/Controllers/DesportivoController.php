@@ -15,7 +15,7 @@ use Inertia\Response;
 use Illuminate\Http\RedirectResponse;
 use Carbon\Carbon;
 
-class SportsController extends Controller
+class DesportivoController extends Controller
 {
     public function index(): Response
     {

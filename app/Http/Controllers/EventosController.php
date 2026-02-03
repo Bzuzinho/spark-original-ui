@@ -16,7 +16,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 
-class EventsController extends Controller
+class EventosController extends Controller
 {
     public function index(): Response
     {

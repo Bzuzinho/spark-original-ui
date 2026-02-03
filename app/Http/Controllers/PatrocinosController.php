@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
-class SponsorshipsController extends Controller
+class PatrocinosController extends Controller
 {
     public function index(Request $request): Response
     {
