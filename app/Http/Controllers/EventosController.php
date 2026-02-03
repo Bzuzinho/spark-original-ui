@@ -41,7 +41,7 @@ class EventosController extends Controller
                 ->orderBy('start_date', 'desc')
                 ->get(),
             'stats' => $stats,
-            'users' => User::where('status', 'ativo')->get(['id', 'full_name', 'user_type']),
+            'users' => User::where('status', 'ativo')->get(['id', 'nome_completo', 'user_type']),
         ]);
     }
 

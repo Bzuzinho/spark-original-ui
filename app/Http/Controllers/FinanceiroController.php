@@ -39,8 +39,8 @@ class FinanceiroController extends Controller
 
         // Get active users for generating fees
         $users = User::where('status', 'ativo')
-            ->select('id', 'full_name', 'member_number')
-            ->orderBy('full_name')
+            ->select('id', 'nome_completo', 'member_number')
+            ->orderBy('nome_completo')
             ->get();
 
         // Calculate stats

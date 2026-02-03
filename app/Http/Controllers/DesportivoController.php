@@ -25,9 +25,9 @@ class DesportivoController extends Controller
         $thirtyDaysAgo = $now->copy()->subDays(30);
         $thirtyDaysAhead = $now->copy()->addDays(30);
 
-        $athletes = User::whereJsonContains('member_type', 'atleta')
+        $athletes = User::whereJsonContains('tipo_membro', 'atleta')
             ->where('status', 'ativo')
-            ->get(['id', 'full_name']);
+            ->get(['id', 'nome_completo']);
         
         $activeTeams = Team::where('active', true)->count();
         
@@ -71,7 +71,7 @@ class DesportivoController extends Controller
     {
         return Inertia::render('Desportivo/Create', [
             'ageGroups' => AgeGroup::all(),
-            'athletes' => User::whereJsonContains('member_type', 'atleta')
+            'athletes' => User::whereJsonContains('tipo_membro', 'atleta')
                 ->where('status', 'ativo')
                 ->get(),
         ]);
@@ -101,7 +101,7 @@ class DesportivoController extends Controller
         return Inertia::render('Desportivo/Edit', [
             'training' => $sport->load(['ageGroup', 'athletes']),
             'ageGroups' => AgeGroup::all(),
-            'athletes' => User::whereJsonContains('member_type', 'atleta')
+            'athletes' => User::whereJsonContains('tipo_membro', 'atleta')
                 ->where('status', 'ativo')
                 ->get(),
         ]);

@@ -30,9 +30,9 @@ class ConvocatoriasController extends Controller
             'events' => Event::where('start_date', '>=', now())
                 ->orderBy('start_date')
                 ->get(['id', 'title', 'start_date']),
-            'athletes' => User::whereJsonContains('member_type', 'atleta')
+            'athletes' => User::whereJsonContains('tipo_membro', 'atleta')
                 ->where('status', 'ativo')
-                ->get(['id', 'full_name']),
+                ->get(['id', 'nome_completo']),
         ]);
     }
 
@@ -55,9 +55,9 @@ class ConvocatoriasController extends Controller
     {
         return Inertia::render('Desportivo/CallUps/Edit', [
             'callUp' => $callUp,
-            'athletes' => User::whereJsonContains('member_type', 'atleta')
+            'athletes' => User::whereJsonContains('tipo_membro', 'atleta')
                 ->where('status', 'ativo')
-                ->get(['id', 'full_name']),
+                ->get(['id', 'nome_completo']),
         ]);
     }
 
