@@ -4,6 +4,11 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Button } from '@/Components/ui/button';
 import { Card } from '@/Components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs';
+import { toast } from 'sonner';
+import PersonalTab from '@/Components/Members/Tabs/PersonalTab';
+import FinancialTab from '@/Components/Members/Tabs/FinancialTab';
+import SportsTab from '@/Components/Members/Tabs/SportsTab';
+import ConfigurationTab from '@/Components/Members/Tabs/ConfigurationTab';
 
 interface User {
     id: string;
@@ -40,6 +45,10 @@ export default function Show({ member, allUsers, userTypes, ageGroups }: Props) 
         router.put(route('members.update', user.id), user, {
             onSuccess: () => {
                 setHasChanges(false);
+                toast.success('Membro atualizado com sucesso!');
+            },
+            onError: () => {
+                toast.error('Erro ao atualizar membro');
             }
         });
     };
@@ -112,57 +121,42 @@ export default function Show({ member, allUsers, userTypes, ageGroups }: Props) 
                             <TabsTrigger value="configuration" className="whitespace-nowrap text-xs px-3 sm:px-2 py-1">
                                 Configuração
                             </TabsTrigger>
-                            <TabsTrigger value="documents" className="whitespace-nowrap text-xs px-3 sm:px-2 py-1">
-                                Documentos
-                            </TabsTrigger>
                         </TabsList>
                     </div>
 
                     <TabsContent value="personal" className="space-y-2 mt-2">
-                        <Card className="p-3">
-                            <h3 className="text-sm font-semibold mb-2">Tab Pessoal</h3>
-                            <p className="text-xs text-muted-foreground">
-                                Esta tab será implementada em breve com todos os campos do PersonalTab do Spark.
-                            </p>
-                        </Card>
+                        <PersonalTab 
+                            user={user}
+                            onChange={handleChange}
+                            isAdmin={true}
+                            allUsers={allUsers}
+                        />
                     </TabsContent>
 
                     <TabsContent value="financial" className="space-y-2 mt-2">
-                        <Card className="p-3">
-                            <h3 className="text-sm font-semibold mb-2">Tab Financeiro</h3>
-                            <p className="text-xs text-muted-foreground">
-                                Esta tab será implementada em breve com todos os campos do FinancialTab do Spark.
-                            </p>
-                        </Card>
+                        <FinancialTab 
+                            user={user}
+                            onChange={handleChange}
+                            isAdmin={true}
+                        />
                     </TabsContent>
 
                     {showSportsTab && (
                         <TabsContent value="sports" className="space-y-2 mt-2">
-                            <Card className="p-3">
-                                <h3 className="text-sm font-semibold mb-2">Tab Desportivo</h3>
-                                <p className="text-xs text-muted-foreground">
-                                    Esta tab será implementada em breve com todos os campos do SportsTab do Spark.
-                                </p>
-                            </Card>
+                            <SportsTab 
+                                user={user}
+                                onChange={handleChange}
+                                isAdmin={true}
+                            />
                         </TabsContent>
                     )}
 
                     <TabsContent value="configuration" className="space-y-2 mt-2">
-                        <Card className="p-3">
-                            <h3 className="text-sm font-semibold mb-2">Tab Configuração</h3>
-                            <p className="text-xs text-muted-foreground">
-                                Esta tab será implementada em breve com todos os campos do ConfigurationTab do Spark.
-                            </p>
-                        </Card>
-                    </TabsContent>
-
-                    <TabsContent value="documents" className="space-y-2 mt-2">
-                        <Card className="p-3">
-                            <h3 className="text-sm font-semibold mb-2">Tab Documentos</h3>
-                            <p className="text-xs text-muted-foreground">
-                                Esta tab será implementada em breve para upload e gestão de documentos.
-                            </p>
-                        </Card>
+                        <ConfigurationTab 
+                            user={user}
+                            onChange={handleChange}
+                            isAdmin={true}
+                        />
                     </TabsContent>
                 </Tabs>
             </Card>
