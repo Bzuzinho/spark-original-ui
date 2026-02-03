@@ -13,26 +13,31 @@ class MovementItem extends Model
     protected $table = 'movement_items';
 
     protected $fillable = [
-        'movement_id',
-        'description',
-        'quantity',
-        'unit_price',
-        'total_amount',
+        'movimento_id',
+        'descricao',
+        'valor_unitario',
+        'quantidade',
+        'imposto_percentual',
+        'total_linha',
+        'produto_id',
+        'centro_custo_id',
+        'fatura_id',
     ];
 
     protected $casts = [
-        'quantity' => 'integer',
-        'unit_price' => 'decimal:2',
-        'total_amount' => 'decimal:2',
+        'quantidade' => 'integer',
+        'valor_unitario' => 'decimal:2',
+        'imposto_percentual' => 'decimal:2',
+        'total_linha' => 'decimal:2',
     ];
 
     public function movement(): BelongsTo
     {
-        return $this->belongsTo(Movement::class, 'movement_id');
+        return $this->belongsTo(Movement::class, 'movimento_id');
     }
 
     public function centroCusto(): BelongsTo
     {
-        return $this->belongsTo(CostCenter::class, 'cost_center_id');
+        return $this->belongsTo(CostCenter::class, 'centro_custo_id');
     }
 }

@@ -21,6 +21,7 @@ class Transaction extends Model
         'payment_method',
         'receipt',
         'status',
+        'notes',
     ];
 
     protected $casts = [

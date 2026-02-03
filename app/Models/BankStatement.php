@@ -13,29 +13,31 @@ class BankStatement extends Model
     protected $table = 'bank_statements';
 
     protected $fillable = [
-        'date',
-        'description',
-        'amount',
-        'balance',
-        'type',
-        'category',
-        'reconciled',
+        'conta',
+        'data_movimento',
+        'descricao',
+        'valor',
+        'saldo',
+        'referencia',
+        'centro_custo_id',
+        'conciliado',
+        'lancamento_id',
     ];
 
     protected $casts = [
-        'date' => 'date',
-        'amount' => 'decimal:2',
-        'balance' => 'decimal:2',
-        'reconciled' => 'boolean',
+        'data_movimento' => 'date',
+        'valor' => 'decimal:2',
+        'saldo' => 'decimal:2',
+        'conciliado' => 'boolean',
     ];
 
     public function centroCusto(): BelongsTo
     {
-        return $this->belongsTo(CostCenter::class, 'cost_center_id');
+        return $this->belongsTo(CostCenter::class, 'centro_custo_id');
     }
 
     public function financialEntry(): BelongsTo
     {
-        return $this->belongsTo(FinancialEntry::class, 'financial_entry_id');
+        return $this->belongsTo(FinancialEntry::class, 'lancamento_id');
     }
 }
