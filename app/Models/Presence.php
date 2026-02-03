@@ -12,26 +12,26 @@ class Presence extends Model
 
 
     protected $fillable = [
-        'athlete_id',
-        'training_id',
-        'date',
-        'type',
-        'present',
-        'justification',
+        'user_id',
+        'data',
+        'treino_id',
+        'tipo',
+        'justificacao',
+        'presente',
     ];
 
     protected $casts = [
-        'date' => 'date',
-        'present' => 'boolean',
+        'data' => 'date',
+        'presente' => 'boolean',
     ];
 
     public function atleta(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'athlete_id');
+        return $this->belongsTo(User::class, 'user_id');
     }
 
     public function training(): BelongsTo
     {
-        return $this->belongsTo(Training::class, 'training_id');
+        return $this->belongsTo(Training::class, 'treino_id');
     }
 }

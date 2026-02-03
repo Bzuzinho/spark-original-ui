@@ -60,16 +60,16 @@ class Training extends Model
 
     public function series(): HasMany
     {
-        return $this->hasMany(TrainingSeries::class, 'training_id');
+        return $this->hasMany(TrainingSeries::class, 'treino_id');
     }
 
     public function athletes(): HasMany
     {
-        return $this->hasMany(TrainingAthlete::class, 'training_id');
+        return $this->hasMany(TrainingAthlete::class, 'treino_id');
     }
 
     public function presences(): HasMany
     {
-        return $this->hasMany(Presence::class, 'training_id');
+        return $this->hasMany(Presence::class, 'treino_id');
     }
 }

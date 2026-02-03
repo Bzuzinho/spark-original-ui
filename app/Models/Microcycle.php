@@ -13,25 +13,23 @@ class Microcycle extends Model
 
 
     protected $fillable = [
-        'mesocycle_id',
-        'name',
-        'start_date',
-        'end_date',
-        'type',
+        'mesociclo_id',
+        'semana',
+        'volume_previsto',
+        'notas',
     ];
 
     protected $casts = [
-        'start_date' => 'date',
-        'end_date' => 'date',
+        'volume_previsto' => 'integer',
     ];
 
     public function mesocycle(): BelongsTo
     {
-        return $this->belongsTo(Mesocycle::class, 'mesocycle_id');
+        return $this->belongsTo(Mesocycle::class, 'mesociclo_id');
     }
 
     public function trainings(): HasMany
     {
-        return $this->hasMany(Training::class, 'microcycle_id');
+        return $this->hasMany(Training::class, 'microciclo_id');
     }
 }
