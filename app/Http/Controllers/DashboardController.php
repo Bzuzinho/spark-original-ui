@@ -19,16 +19,16 @@ class DashboardController extends Controller
             'stats' => [
                 'totalMembers' => User::count(),
                 'activeAthletes' => User::whereJsonContains('tipo_membro', 'atleta')
-                    ->where('status', 'ativo')
+                    ->where('estado', 'ativo')
                     ->count(),
                 'guardians' => User::whereJsonContains('tipo_membro', 'encarregado_educacao')->count(),
-                'upcomingEvents' => Event::where('start_date', '>=', now())
-                    ->where('status', 'agendado')
+                'upcomingEvents' => Event::where('data_inicio', '>=', now())
+                    ->where('estado', 'agendado')
                     ->count(),
-                'monthlyRevenue' => Invoice::whereMonth('issue_date', now()->month)
-                    ->whereYear('issue_date', now()->year)
-                    ->where('payment_status', 'pago')
-                    ->sum('total_amount'),
+                'monthlyRevenue' => Invoice::whereMonth('data_emissao', now()->month)
+                    ->whereYear('data_emissao', now()->year)
+                    ->where('estado_pagamento', 'pago')
+                    ->sum('valor_total'),
                 'totalUserTypes' => UserType::count(),
                 'totalAgeGroups' => AgeGroup::count(),
             ],
@@ -61,7 +61,7 @@ class DashboardController extends Controller
         foreach ($recentEvents as $event) {
             $activities[] = [
                 'type' => 'event_created',
-                'description' => "Evento criado: {$event->title}",
+                'description' => "Evento criado: {$event->titulo}",
                 'created_at' => $event->created_at,
             ];
         }
