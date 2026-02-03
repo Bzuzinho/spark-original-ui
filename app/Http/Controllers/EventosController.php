@@ -36,7 +36,7 @@ class EventosController extends Controller
                 ->count(),
         ];
 
-        return Inertia::render('Events/Index', [
+        return Inertia::render('Eventos/Index', [
             'events' => Event::with(['creator', 'convocations.athlete', 'attendances.athlete'])
                 ->orderBy('start_date', 'desc')
                 ->get(),
@@ -47,7 +47,7 @@ class EventosController extends Controller
 
     public function create(): Response
     {
-        return Inertia::render('Events/Create', [
+        return Inertia::render('Eventos/Create', [
             'eventTypes' => EventType::where('active', true)->get(),
             'users' => User::where('status', 'ativo')->get(),
         ]);
@@ -71,7 +71,7 @@ class EventosController extends Controller
 
     public function show(Event $evento): Response
     {
-        return Inertia::render('Events/Show', [
+        return Inertia::render('Eventos/Show', [
             'event' => $evento->load([
                 'creator',
                 'eventType',
@@ -84,7 +84,7 @@ class EventosController extends Controller
 
     public function edit(Event $evento): Response
     {
-        return Inertia::render('Events/Edit', [
+        return Inertia::render('Eventos/Edit', [
             'event' => $evento->load(['eventType']),
             'eventTypes' => EventType::where('active', true)->get(),
             'users' => User::where('status', 'ativo')->get(),

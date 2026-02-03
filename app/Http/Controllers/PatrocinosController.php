@@ -34,7 +34,7 @@ class PatrocinosController extends Controller
             'valorTotal' => Sponsor::active()->sum('valor_anual'),
         ];
 
-        return Inertia::render('Sponsorships/Index', [
+        return Inertia::render('Patrocinios/Index', [
             'sponsors' => $sponsors,
             'stats' => $stats,
             'filters' => $request->only(['search', 'tipo', 'estado']),

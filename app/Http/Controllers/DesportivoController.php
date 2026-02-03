@@ -43,7 +43,7 @@ class DesportivoController extends Controller
             ->where('start_date', '<=', $thirtyDaysAhead)
             ->count();
 
-        return Inertia::render('Sports/Index', [
+        return Inertia::render('Desportivo/Index', [
             'stats' => [
                 'athletesCount' => $athletes->count(),
                 'activeTeams' => $activeTeams,
@@ -69,7 +69,7 @@ class DesportivoController extends Controller
 
     public function create(): Response
     {
-        return Inertia::render('Sports/Create', [
+        return Inertia::render('Desportivo/Create', [
             'ageGroups' => AgeGroup::all(),
             'athletes' => User::whereJsonContains('member_type', 'atleta')
                 ->where('status', 'ativo')
@@ -91,14 +91,14 @@ class DesportivoController extends Controller
 
     public function show(Training $sport): Response
     {
-        return Inertia::render('Sports/Show', [
+        return Inertia::render('Desportivo/Show', [
             'training' => $sport->load(['ageGroup', 'athletes']),
         ]);
     }
 
     public function edit(Training $sport): Response
     {
-        return Inertia::render('Sports/Edit', [
+        return Inertia::render('Desportivo/Edit', [
             'training' => $sport->load(['ageGroup', 'athletes']),
             'ageGroups' => AgeGroup::all(),
             'athletes' => User::whereJsonContains('member_type', 'atleta')

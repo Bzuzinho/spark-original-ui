@@ -15,7 +15,7 @@ class ConfiguracoesController extends Controller
 {
     public function index(): Response
     {
-        return Inertia::render('Settings/Index', [
+        return Inertia::render('Configuracoes/Index', [
             'userTypes' => UserType::all(),
             'ageGroups' => AgeGroup::all(),
             'eventTypes' => EventType::all(),

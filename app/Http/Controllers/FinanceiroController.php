@@ -105,7 +105,7 @@ class FinanceiroController extends Controller
             ];
         }
 
-        return Inertia::render('Financial/Index', [
+        return Inertia::render('Financeiro/Index', [
             'transactions' => $transactions,
             'membershipFees' => $membershipFees,
             'categories' => $categories,
@@ -124,7 +124,7 @@ class FinanceiroController extends Controller
 
     public function create(): Response
     {
-        return Inertia::render('Financial/Create', [
+        return Inertia::render('Financeiro/Create', [
             'users' => User::where('status', 'ativo')->get(),
         ]);
     }
@@ -156,14 +156,14 @@ class FinanceiroController extends Controller
 
     public function show(Invoice $financial): Response
     {
-        return Inertia::render('Financial/Show', [
+        return Inertia::render('Financeiro/Show', [
             'invoice' => $financial->load(['user', 'items']),
         ]);
     }
 
     public function edit(Invoice $financial): Response
     {
-        return Inertia::render('Financial/Edit', [
+        return Inertia::render('Financeiro/Edit', [
             'invoice' => $financial->load(['items']),
             'users' => User::where('status', 'ativo')->get(),
         ]);

@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 
-class MembersController extends Controller
+class MembrosController extends Controller
 {
     private const FIELD_MAP = [
         'email_utilizador' => 'user_email',
@@ -58,7 +58,7 @@ class MembersController extends Controller
     
     public function index(): Response
     {
-        return Inertia::render('Members/Index', [
+        return Inertia::render('Membros/Index', [
             'members' => User::with(['userTypes', 'ageGroup', 'encarregados', 'educandos'])
                 ->latest()
                 ->get(),
@@ -69,7 +69,7 @@ class MembersController extends Controller
 
     public function create(): Response
     {
-        return Inertia::render('Members/Create', [
+        return Inertia::render('Membros/Create', [
             'userTypes' => UserType::where('active', true)->get(),
             'ageGroups' => AgeGroup::all(),
             'guardians' => User::whereJsonContains('member_type', 'encarregado_educacao')->get(),
@@ -152,7 +152,7 @@ class MembersController extends Controller
 
     public function show(User $member): Response
     {
-        return Inertia::render('Members/Show', [
+        return Inertia::render('Membros/Show', [
             'member' => $member->load([
                 'userTypes',
                 'ageGroup',
@@ -171,7 +171,7 @@ class MembersController extends Controller
 
     public function edit(User $member): Response
     {
-        return Inertia::render('Members/Edit', [
+        return Inertia::render('Membros/Edit', [
             'member' => $member->load(['userTypes', 'ageGroup', 'encarregados', 'educandos']),
             'userTypes' => UserType::where('active', true)->get(),
             'ageGroups' => AgeGroup::all(),
