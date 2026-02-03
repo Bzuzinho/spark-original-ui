@@ -12,21 +12,22 @@ class Product extends Model
     use HasUuids;
 
     protected $fillable = [
-        'name',
-        'description',
-        'code',
-        'category',
-        'price',
-        'minimum_stock',
-        'image',
-        'active',
+        'nome',
+        'descricao',
+        'codigo',
+        'categoria',
+        'preco',
+        'stock',
+        'stock_minimo',
+        'imagem',
+        'ativo',
     ];
 
     protected $casts = [
-        'price' => 'decimal:2',
+        'preco' => 'decimal:2',
         'stock' => 'integer',
-        'minimum_stock' => 'integer',
-        'active' => 'boolean',
+        'stock_minimo' => 'integer',
+        'ativo' => 'boolean',
     ];
 
     protected $appends = [
@@ -36,19 +37,19 @@ class Product extends Model
     // Accessor: is_low_stock
     public function getIsLowStockAttribute(): bool
     {
-        return $this->stock <= $this->minimum_stock;
+        return $this->stock <= $this->stock_minimo;
     }
 
     // Scope: active products
     public function scopeActive(Builder $query): Builder
     {
-        return $query->where('active', true);
+        return $query->where('ativo', true);
     }
 
     // Scope: low stock products
     public function scopeLowStock(Builder $query): Builder
     {
-        return $query->whereColumn('stock', '<=', 'minimum_stock');
+        return $query->whereColumn('stock', '<=', 'stock_minimo');
     }
 
     public function sales(): HasMany
