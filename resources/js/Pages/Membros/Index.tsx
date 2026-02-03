@@ -71,7 +71,7 @@ export default function MembrosIndex({ members, userTypes, ageGroups }: Props) {
 
     const confirmDelete = () => {
         if (userToDelete) {
-            router.delete(route('members.destroy', userToDelete.id), {
+            router.delete(route('membros.destroy', userToDelete.id), {
                 onSuccess: () => {
                     setDeleteDialogOpen(false);
                     setUserToDelete(null);
@@ -120,7 +120,7 @@ export default function MembrosIndex({ members, userTypes, ageGroups }: Props) {
                         </Button>
                     </div>
 
-                    <Link href={route('members.create')}>
+                    <Link href={route('membros.create')}>
                         <Button size="sm" className="h-8 text-xs">
                             <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -187,7 +187,7 @@ export default function MembrosIndex({ members, userTypes, ageGroups }: Props) {
                 {viewMode === 'card' ? (
                     <div className="grid gap-2 sm:gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                         {filteredUsers.map(user => (
-                            <Link key={user.id} href={route('members.show', user.id)}>
+                            <Link key={user.id} href={route('membros.show', user.id)}>
                                 <Card className="p-2.5 sm:p-3 cursor-pointer transition-all hover:shadow-md hover:border-primary/50">
                                     <div className="flex items-start gap-2 sm:gap-3">
                                         <Avatar className="h-10 w-10 sm:h-12 sm:w-12">
@@ -251,7 +251,7 @@ export default function MembrosIndex({ members, userTypes, ageGroups }: Props) {
                                     <TableRow 
                                         key={user.id}
                                         className="cursor-pointer hover:bg-muted/50"
-                                        onClick={() => router.visit(route('members.show', user.id))}
+                                        onClick={() => router.visit(route('membros.show', user.id))}
                                     >
                                         <TableCell>
                                             <Avatar className="h-8 w-8">
@@ -330,7 +330,7 @@ export default function MembrosIndex({ members, userTypes, ageGroups }: Props) {
                             <p className="text-muted-foreground mb-3 text-sm">
                                 Tente ajustar os filtros ou criar um novo membro.
                             </p>
-                            <Link href={route('members.create')}>
+                            <Link href={route('membros.create')}>
                                 <Button size="sm" className="h-8 text-xs">
                                     <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />

@@ -109,14 +109,14 @@ export default function SettingsIndex({ userTypes, ageGroups, eventTypes, clubSe
 
         const routes: Record<string, string> = {
             'age-group': isEditing 
-                ? route('settings.age-groups.update', editingItem.id)
-                : route('settings.age-groups.store'),
+                ? route('configuracoes.age-groups.update', editingItem.id)
+                : route('configuracoes.age-groups.store'),
             'user-type': isEditing 
-                ? route('settings.user-types.update', editingItem.id)
-                : route('settings.user-types.store'),
+                ? route('configuracoes.user-types.update', editingItem.id)
+                : route('configuracoes.user-types.store'),
             'event-type': isEditing 
-                ? route('settings.event-types.update', editingItem.id)
-                : route('settings.event-types.store'),
+                ? route('configuracoes.event-types.update', editingItem.id)
+                : route('configuracoes.event-types.store'),
         };
 
         const options = {
@@ -142,9 +142,9 @@ export default function SettingsIndex({ userTypes, ageGroups, eventTypes, clubSe
         if (!confirm('Tem certeza que deseja eliminar este item?')) return;
 
         const routes: Record<string, string> = {
-            'age-group': route('settings.age-groups.destroy', id),
-            'user-type': route('settings.user-types.destroy', id),
-            'event-type': route('settings.event-types.destroy', id),
+            'age-group': route('configuracoes.age-groups.destroy', id),
+            'user-type': route('configuracoes.user-types.destroy', id),
+            'event-type': route('configuracoes.event-types.destroy', id),
         };
 
         router.delete(routes[type], {
@@ -155,7 +155,7 @@ export default function SettingsIndex({ userTypes, ageGroups, eventTypes, clubSe
 
     const handleSaveClubSettings: FormEventHandler = (e) => {
         e.preventDefault();
-        clubForm.put(route('settings.club.update'), {
+        clubForm.put(route('configuracoes.club.update'), {
             onSuccess: () => toast.success('Configurações do clube atualizadas com sucesso!'),
             onError: () => toast.error('Erro ao atualizar configurações.'),
         });

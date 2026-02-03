@@ -42,7 +42,7 @@ export default function Show({ member, allUsers, userTypes, ageGroups }: Props) 
 
     const handleSave: FormEventHandler = (e) => {
         e.preventDefault();
-        router.put(route('members.update', user.id), user, {
+        router.put(route('membros.update', user.id), user, {
             onSuccess: () => {
                 setHasChanges(false);
                 toast.success('Membro atualizado com sucesso!');
@@ -56,10 +56,10 @@ export default function Show({ member, allUsers, userTypes, ageGroups }: Props) 
     const handleBack = () => {
         if (hasChanges) {
             if (window.confirm('Tem alterações não guardadas. Deseja sair sem guardar?')) {
-                router.visit(route('members.index'));
+                router.visit(route('membros.index'));
             }
         } else {
-            router.visit(route('members.index'));
+            router.visit(route('membros.index'));
         }
     };
 

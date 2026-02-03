@@ -89,7 +89,7 @@ export default function Create({ allUsers, userTypes, ageGroups, guardians }: Pr
 
     const handleSave: FormEventHandler = (e) => {
         e.preventDefault();
-        router.post(route('members.store'), user, {
+        router.post(route('membros.store'), user, {
             onSuccess: () => {
                 toast.success('Membro criado com sucesso!');
             },
@@ -103,10 +103,10 @@ export default function Create({ allUsers, userTypes, ageGroups, guardians }: Pr
     const handleCancel = () => {
         if (hasChanges) {
             if (window.confirm('Tem alterações não guardadas. Deseja sair sem guardar?')) {
-                router.visit(route('members.index'));
+                router.visit(route('membros.index'));
             }
         } else {
-            router.visit(route('members.index'));
+            router.visit(route('membros.index'));
         }
     };
 
