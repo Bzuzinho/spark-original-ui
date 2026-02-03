@@ -1,11 +1,14 @@
 import { useState } from 'react';
 import { useKV } from '@github/spark/hooks';
 import { User } from '@/lib/types';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { UserList } from '@/components/UserList';
 import { UserProfile } from '@/components/UserProfile';
 import { generateMemberNumber, createEmptyUser } from '@/lib/user-helpers';
+import { MembersDashboardTab } from '@/components/tabs/members/MembersDashboardTab';
+import { ChartLineUp, Users as UsersIcon } from '@phosphor-icons/react';
 
-type View = 'list' | 'profile' | 'new';
+type View = 'dashboard' | 'list' | 'profile' | 'new';
 
 interface NavigationContext {
   eventId?: string;
@@ -19,7 +22,7 @@ interface MembersViewProps {
 
 export function MembersView({ onNavigate }: MembersViewProps) {
   const [users, setUsers] = useKV<User[]>('club-users', []);
-  const [currentView, setCurrentView] = useState<View>('list');
+  const [currentView, setCurrentView] = useState<View>('dashboard');
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [currentUser] = useKV<User | null>('authenticated-user', null);
 
@@ -149,7 +152,7 @@ export function MembersView({ onNavigate }: MembersViewProps) {
 
   const handleBack = () => {
     setSelectedUserId(null);
-    setCurrentView('list');
+    setCurrentView('dashboard');
   };
 
   const handleDeleteUser = (userId: string) => {
@@ -160,32 +163,65 @@ export function MembersView({ onNavigate }: MembersViewProps) {
   };
 
   return (
-    <>
+    <div className="container mx-auto px-2 sm:px-4 py-3 sm:py-4 max-w-7xl">
+      {currentView === 'dashboard' && (
+        <Tabs value="dashboard" onValueChange={(value) => setCurrentView(value as View)} className="w-full">
+          <div className="mb-3 sm:mb-4">
+            <h1 className="text-lg sm:text-xl font-semibold tracking-tight">Gestão de Membros</h1>
+            <p className="text-muted-foreground text-xs mt-0.5">
+              Visão geral e gestão de todos os membros do clube
+            </p>
+          </div>
+
+          <TabsList className="grid w-full grid-cols-2 h-auto gap-1">
+            <TabsTrigger value="dashboard" className="flex items-center gap-1.5 text-xs px-2 py-1.5">
+              <ChartLineUp size={14} />
+              <span>Dashboard</span>
+            </TabsTrigger>
+            <TabsTrigger value="list" className="flex items-center gap-1.5 text-xs px-2 py-1.5">
+              <UsersIcon size={14} />
+              <span>Lista de Membros</span>
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="dashboard" className="mt-3">
+            <MembersDashboardTab />
+          </TabsContent>
+
+          <TabsContent value="list" className="mt-3">
+            <UserList
+              users={usersList}
+              onSelectUser={handleSelectUser}
+              onCreateUser={handleCreateUser}
+              onDeleteUser={handleDeleteUser}
+              isAdmin={isAdmin}
+            />
+          </TabsContent>
+        </Tabs>
+      )}
+
       {currentView === 'list' && (
-        <div className="container mx-auto px-2 sm:px-4 py-3 sm:py-4 max-w-7xl">
-          <UserList
-            users={usersList}
-            onSelectUser={handleSelectUser}
-            onCreateUser={handleCreateUser}
-            onDeleteUser={handleDeleteUser}
-            isAdmin={isAdmin}
-          />
-        </div>
+        <UserList
+          users={usersList}
+          onSelectUser={handleSelectUser}
+          onCreateUser={handleCreateUser}
+          onDeleteUser={handleDeleteUser}
+          isAdmin={isAdmin}
+        />
       )}
+
       {(currentView === 'profile' || currentView === 'new') && selectedUser && (
-        <div className="container mx-auto px-2 sm:px-4 py-3 sm:py-4 max-w-7xl">
-          <UserProfile
-            key={`user-profile-${selectedUserId}`}
-            user={selectedUser}
-            allUsers={usersList}
-            onBack={handleBack}
-            onSave={handleSaveUser}
-            isAdmin={isAdmin}
-            onNavigateToUser={handleNavigateToUser}
-            onNavigate={onNavigate}
-          />
-        </div>
+        <UserProfile
+          key={`user-profile-${selectedUserId}`}
+          user={selectedUser}
+          allUsers={usersList}
+          onBack={handleBack}
+          onSave={handleSaveUser}
+          isAdmin={isAdmin}
+          onNavigateToUser={handleNavigateToUser}
+          onNavigate={onNavigate}
+        />
       )}
-    </>
+    </div>
   );
 }

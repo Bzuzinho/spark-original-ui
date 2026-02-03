@@ -44,6 +44,16 @@ interface Article {
   category: string;
 }
 
+interface Supplier {
+  id: string;
+  name: string;
+  nif: string;
+  email: string;
+  phone: string;
+  address: string;
+  category: string;
+}
+
 interface MonthlyFee {
   id: string;
   name: string;
@@ -78,6 +88,7 @@ export function SettingsView() {
   const [userTypes, setUserTypes] = useKV<UserType[]>('settings-user-types', []);
   const [permissions, setPermissions] = useKV<Permission[]>('settings-permissions', []);
   const [articles, setArticles] = useKV<Article[]>('settings-articles', []);
+  const [suppliers, setSuppliers] = useKV<Supplier[]>('settings-suppliers', []);
   const [monthlyFees, setMonthlyFees] = useKV<MonthlyFee[]>('settings-monthly-fees', []);
   const [provas, setProvas] = useKV<Prova[]>('settings-provas', []);
   const [costCenters, setCostCenters] = useKV<CentroCusto[]>('club-centros-custo', []);
@@ -251,6 +262,25 @@ export function SettingsView() {
     toast.success('Prova removida com sucesso');
   };
 
+  const handleSaveSupplier = (data: Partial<Supplier>) => {
+    if (editingItem?.id) {
+      setSuppliers((current) =>
+        (current || []).map((item) => (item.id === editingItem.id ? { ...item, ...data } : item))
+      );
+      toast.success('Fornecedor atualizado com sucesso');
+    } else {
+      setSuppliers((current) => [...(current || []), { id: crypto.randomUUID(), ...data } as Supplier]);
+      toast.success('Fornecedor adicionado com sucesso');
+    }
+    setDialogOpen(false);
+    setEditingItem(null);
+  };
+
+  const handleDeleteSupplier = (id: string) => {
+    setSuppliers((current) => (current || []).filter((item) => item.id !== id));
+    toast.success('Fornecedor removido com sucesso');
+  };
+
   const handleSaveClubInfo = () => {
     setClubInfo(clubFormData);
     toast.success('Informações do clube atualizadas com sucesso');
@@ -325,10 +355,11 @@ export function SettingsView() {
 
       <Tabs value={currentTab} onValueChange={setCurrentTab}>
         <div className="w-full overflow-x-auto -mx-2 px-2 sm:mx-0 sm:px-0">
-          <TabsList className="inline-flex w-auto sm:grid sm:w-full sm:grid-cols-5 h-9 text-sm min-w-full sm:min-w-0">
+          <TabsList className="inline-flex w-auto sm:grid sm:w-full sm:grid-cols-6 h-9 text-sm min-w-full sm:min-w-0">
             <TabsTrigger value="general" className="text-sm whitespace-nowrap px-3 sm:px-2">Geral</TabsTrigger>
             <TabsTrigger value="club" className="text-sm whitespace-nowrap px-3 sm:px-2">Clube</TabsTrigger>
             <TabsTrigger value="financial" className="text-sm whitespace-nowrap px-3 sm:px-2">Financeiro</TabsTrigger>
+            <TabsTrigger value="logistics" className="text-sm whitespace-nowrap px-3 sm:px-2">Logística</TabsTrigger>
             <TabsTrigger value="notifications" className="text-sm whitespace-nowrap px-3 sm:px-2">Notificações</TabsTrigger>
             <TabsTrigger value="database" className="text-sm whitespace-nowrap px-3 sm:px-2">Base de Dados</TabsTrigger>
           </TabsList>
@@ -650,68 +681,6 @@ export function SettingsView() {
           <div className="grid gap-4">
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-lg">Artigos</CardTitle>
-                <CardDescription className="text-sm">Gerir o catálogo de artigos do clube</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex justify-end mb-3">
-                  <Button onClick={() => openAddDialog('article')} size="sm">
-                    <Plus className="mr-2" size={16} />
-                    Adicionar Artigo
-                  </Button>
-                </div>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Código</TableHead>
-                      <TableHead>Nome</TableHead>
-                      <TableHead>Categoria</TableHead>
-                      <TableHead>Preço</TableHead>
-                      <TableHead className="text-right">Ações</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {(articles || []).length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={5} className="text-center text-muted-foreground">
-                          Nenhum artigo cadastrado
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      (articles || []).map((article) => (
-                        <TableRow key={article.id}>
-                          <TableCell className="font-medium">{article.code}</TableCell>
-                          <TableCell>{article.name}</TableCell>
-                          <TableCell>{article.category}</TableCell>
-                          <TableCell>€{article.price.toFixed(2)}</TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end gap-2">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => openEditDialog(article, 'article')}
-                              >
-                                <Pencil />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleDeleteArticle(article.id)}
-                              >
-                                <Trash />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-3">
                 <CardTitle className="text-lg">Mensalidades</CardTitle>
                 <CardDescription className="text-sm">Gerir os valores das mensalidades por escalão</CardDescription>
               </CardHeader>
@@ -820,6 +789,136 @@ export function SettingsView() {
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => handleDeleteCostCenter(center.id)}
+                              >
+                                <Trash />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="logistics" className="mt-4">
+          <div className="grid gap-4">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg">Artigos</CardTitle>
+                <CardDescription className="text-sm">Gerir o catálogo de artigos do clube</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex justify-end mb-3">
+                  <Button onClick={() => openAddDialog('article')} size="sm">
+                    <Plus className="mr-2" size={16} />
+                    Adicionar Artigo
+                  </Button>
+                </div>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Código</TableHead>
+                      <TableHead>Nome</TableHead>
+                      <TableHead>Categoria</TableHead>
+                      <TableHead>Preço</TableHead>
+                      <TableHead className="text-right">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {(articles || []).length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center text-muted-foreground">
+                          Nenhum artigo cadastrado
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      (articles || []).map((article) => (
+                        <TableRow key={article.id}>
+                          <TableCell className="font-medium">{article.code}</TableCell>
+                          <TableCell>{article.name}</TableCell>
+                          <TableCell>{article.category}</TableCell>
+                          <TableCell>€{article.price.toFixed(2)}</TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => openEditDialog(article, 'article')}
+                              >
+                                <Pencil />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleDeleteArticle(article.id)}
+                              >
+                                <Trash />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg">Fornecedores</CardTitle>
+                <CardDescription className="text-sm">Gerir fornecedores e parceiros do clube</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex justify-end mb-3">
+                  <Button onClick={() => openAddDialog('supplier')} size="sm">
+                    <Plus className="mr-2" size={16} />
+                    Adicionar Fornecedor
+                  </Button>
+                </div>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nome</TableHead>
+                      <TableHead>NIF</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Telefone</TableHead>
+                      <TableHead>Categoria</TableHead>
+                      <TableHead className="text-right">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {(suppliers || []).length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center text-muted-foreground">
+                          Nenhum fornecedor cadastrado
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      (suppliers || []).map((supplier) => (
+                        <TableRow key={supplier.id}>
+                          <TableCell className="font-medium">{supplier.name}</TableCell>
+                          <TableCell>{supplier.nif}</TableCell>
+                          <TableCell>{supplier.email}</TableCell>
+                          <TableCell>{supplier.phone}</TableCell>
+                          <TableCell>{supplier.category}</TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => openEditDialog(supplier, 'supplier')}
+                              >
+                                <Pencil />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleDeleteSupplier(supplier.id)}
                               >
                                 <Trash />
                               </Button>
@@ -991,6 +1090,7 @@ export function SettingsView() {
           'user-type': handleSaveUserType,
           'permission': handleSavePermission,
           'article': handleSaveArticle,
+          'supplier': handleSaveSupplier,
           'monthly-fee': handleSaveMonthlyFee,
           'cost-center': handleSaveCostCenter,
           'prova': handleSaveProva,
@@ -1041,6 +1141,7 @@ function EditDialog({ open, onOpenChange, editingItem, onSave, userTypes, ageGro
               {type === 'user-type' && 'Tipo de Utilizador'}
               {type === 'permission' && 'Permissão'}
               {type === 'article' && 'Artigo'}
+              {type === 'supplier' && 'Fornecedor'}
               {type === 'monthly-fee' && 'Mensalidade'}
               {type === 'cost-center' && 'Centro de Custos'}
               {type === 'prova' && 'Prova'}
@@ -1208,6 +1309,66 @@ function EditDialog({ open, onOpenChange, editingItem, onSave, userTypes, ageGro
                     step="0.01"
                     defaultValue={editingItem.price}
                     onChange={(e) => handleChange('price', parseFloat(e.target.value))}
+                    required
+                  />
+                </div>
+              </>
+            )}
+
+            {type === 'supplier' && (
+              <>
+                <div className="grid gap-2">
+                  <Label htmlFor="name">Nome</Label>
+                  <Input
+                    id="name"
+                    defaultValue={editingItem.name}
+                    onChange={(e) => handleChange('name', e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="nif">NIF</Label>
+                  <Input
+                    id="nif"
+                    defaultValue={editingItem.nif}
+                    onChange={(e) => handleChange('nif', e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    defaultValue={editingItem.email}
+                    onChange={(e) => handleChange('email', e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="phone">Telefone</Label>
+                  <Input
+                    id="phone"
+                    defaultValue={editingItem.phone}
+                    onChange={(e) => handleChange('phone', e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="address">Morada</Label>
+                  <Input
+                    id="address"
+                    defaultValue={editingItem.address}
+                    onChange={(e) => handleChange('address', e.target.value)}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="category">Categoria</Label>
+                  <Input
+                    id="category"
+                    placeholder="Ex: Material desportivo, Equipamento, Serviços"
+                    defaultValue={editingItem.category}
+                    onChange={(e) => handleChange('category', e.target.value)}
                     required
                   />
                 </div>
