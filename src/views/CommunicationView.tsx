@@ -15,7 +15,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
-import { PaperPlaneRight, Clock, CheckCircle, XCircle, Plus, Trash, Eye, Users, Envelope, CalendarBlank, Bell, GearSix, Warning } from '@phosphor-icons/react';
+import { Plus, Trash, Eye, Users, Envelope, CalendarBlank, Bell, GearSix, Warning, ChartBar, TrendUp, CheckCircle, Clock, PaperPlaneRight, XCircle } from '@phosphor-icons/react';
 import type { User } from '@/lib/types';
 import { emailService } from '@/lib/email-service';
 import { EmailConfigComponent } from '@/components/EmailConfig';
@@ -100,6 +100,38 @@ export function CommunicationView() {
     filtro_escalao: [] as string[],
     filtro_estado: 'ativo',
   });
+
+  const [activeTab, setActiveTab] = useState('dashboard');
+
+  const [stats, setStats] = useState({
+    totalEnviadas: 0,
+    agendadas: 0,
+    automaticasAtivas: 0,
+    taxaSucesso: 0,
+  });
+
+  useEffect(() => {
+    const calcularStats = () => {
+      const comunicacoesArray = comunicacoes || [];
+      const totalEnviadas = comunicacoesArray.filter(c => c.estado === 'enviada').length;
+      const agendadas = comunicacoesArray.filter(c => c.estado === 'agendada').length;
+      const automaticasAtivas = (comunicacoesAutomaticas || []).filter(c => c.ativa).length;
+      
+      const totalComEstado = comunicacoesArray.filter(c => c.estado === 'enviada' || c.estado === 'falhada').length;
+      const taxaSucesso = totalComEstado > 0 
+        ? Math.round((totalEnviadas / totalComEstado) * 100) 
+        : 0;
+
+      setStats({
+        totalEnviadas,
+        agendadas,
+        automaticasAtivas,
+        taxaSucesso,
+      });
+    };
+
+    calcularStats();
+  }, [comunicacoes, comunicacoesAutomaticas]);
 
   const [destinatariosSelecionados, setDestinatariosSelecionados] = useState<Set<string>>(new Set());
   const [isEmailConfigured, setIsEmailConfigured] = useState(false);
@@ -443,10 +475,10 @@ Cumprimentos,
   };
 
   return (
-    <div className="space-y-6">
+    <div className="container mx-auto px-2 sm:px-4 py-3 sm:py-4 max-w-7xl space-y-3 sm:space-y-4">
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Comunicação</h1>
-        <p className="text-muted-foreground mt-1">
+        <h1 className="text-lg sm:text-xl font-semibold tracking-tight">Comunicação</h1>
+        <p className="text-muted-foreground text-xs mt-0.5">
           Envie comunicações manuais ou configure alertas automáticos
         </p>
       </div>
@@ -456,31 +488,158 @@ Cumprimentos,
           <Warning className="h-4 w-4" />
           <AlertDescription>
             <div className="flex items-center justify-between">
-              <span>O serviço de email não está configurado. Configure nas definições para enviar emails.</span>
+              <span className="text-xs">O serviço de email não está configurado. Configure nas definições para enviar emails.</span>
             </div>
           </AlertDescription>
         </Alert>
       )}
 
-      <Tabs defaultValue="manual" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="manual">
-            <Envelope className="mr-2" />
-            Envios Manuais
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-3 lg:grid-cols-5 h-auto gap-1">
+          <TabsTrigger value="dashboard" className="text-xs px-2 py-1.5">
+            <ChartBar className="mr-1.5" size={16} />
+            Dashboard
           </TabsTrigger>
-          <TabsTrigger value="automaticas">
-            <Clock className="mr-2" />
+          <TabsTrigger value="manual" className="text-xs px-2 py-1.5">
+            <Envelope className="mr-1.5" size={16} />
+            Manuais
+          </TabsTrigger>
+          <TabsTrigger value="automaticas" className="text-xs px-2 py-1.5">
+            <Clock className="mr-1.5" size={16} />
             Automáticas
           </TabsTrigger>
-          <TabsTrigger value="historico">
-            <CalendarBlank className="mr-2" />
+          <TabsTrigger value="historico" className="text-xs px-2 py-1.5">
+            <CalendarBlank className="mr-1.5" size={16} />
             Histórico
           </TabsTrigger>
-          <TabsTrigger value="configuracao">
-            <GearSix className="mr-2" />
-            Configuração
+          <TabsTrigger value="configuracao" className="text-xs px-2 py-1.5">
+            <GearSix className="mr-1.5" size={16} />
+            Config
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="dashboard" className="mt-3 space-y-4">
+          <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
+            <Card className="p-3 sm:p-4">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground">Enviadas</p>
+                  <p className="text-xl sm:text-2xl font-bold mt-1">{stats.totalEnviadas}</p>
+                </div>
+                <div className="p-2 rounded-lg bg-green-50">
+                  <CheckCircle className="text-green-600" size={20} weight="bold" />
+                </div>
+              </div>
+            </Card>
+
+            <Card className="p-3 sm:p-4">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground">Agendadas</p>
+                  <p className="text-xl sm:text-2xl font-bold mt-1">{stats.agendadas}</p>
+                </div>
+                <div className="p-2 rounded-lg bg-blue-50">
+                  <Clock className="text-blue-600" size={20} weight="bold" />
+                </div>
+              </div>
+            </Card>
+
+            <Card className="p-3 sm:p-4">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground">Automáticas Ativas</p>
+                  <p className="text-xl sm:text-2xl font-bold mt-1">{stats.automaticasAtivas}</p>
+                </div>
+                <div className="p-2 rounded-lg bg-purple-50">
+                  <Bell className="text-purple-600" size={20} weight="bold" />
+                </div>
+              </div>
+            </Card>
+
+            <Card className="p-3 sm:p-4">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground">Taxa Sucesso</p>
+                  <p className="text-xl sm:text-2xl font-bold mt-1">{stats.taxaSucesso}%</p>
+                </div>
+                <div className="p-2 rounded-lg bg-orange-50">
+                  <TrendUp className="text-orange-600" size={20} weight="bold" />
+                </div>
+              </div>
+            </Card>
+          </div>
+
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <PaperPlaneRight size={20} className="text-primary" weight="bold" />
+              <h3 className="text-sm font-semibold">Últimas Comunicações</h3>
+            </div>
+            
+            {(comunicacoes || []).filter(c => c.estado === 'enviada').length === 0 ? (
+              <Card className="p-6 text-center">
+                <p className="text-sm text-muted-foreground">
+                  Nenhuma comunicação enviada
+                </p>
+              </Card>
+            ) : (
+              <div className="grid gap-2 grid-cols-1 md:grid-cols-2">
+                {(comunicacoes || [])
+                  .filter(c => c.estado === 'enviada')
+                  .sort((a, b) => new Date(b.data_envio).getTime() - new Date(a.data_envio).getTime())
+                  .slice(0, 4)
+                  .map((com) => (
+                    <Card key={com.id} className="p-3">
+                      <div className="space-y-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <h4 className="font-semibold text-sm line-clamp-1">{com.assunto}</h4>
+                          <Badge variant="outline" className="text-xs">
+                            {com.tipo === 'manual' ? 'Manual' : 'Auto'}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <span>{com.destinatarios.length} destinatários</span>
+                          <span>{new Date(com.data_envio).toLocaleDateString('pt-PT')}</span>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+              </div>
+            )}
+          </div>
+
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <Bell size={20} className="text-primary" weight="bold" />
+              <h3 className="text-sm font-semibold">Comunicações Automáticas</h3>
+            </div>
+            
+            {(comunicacoesAutomaticas || []).filter(c => c.ativa).length === 0 ? (
+              <Card className="p-6 text-center">
+                <p className="text-sm text-muted-foreground">
+                  Nenhuma comunicação automática configurada
+                </p>
+              </Card>
+            ) : (
+              <div className="grid gap-2 grid-cols-1 md:grid-cols-3">
+                {(comunicacoesAutomaticas || [])
+                  .filter(c => c.ativa)
+                  .map((auto) => (
+                    <Card key={auto.id} className="p-3">
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <h4 className="font-semibold text-sm line-clamp-1">{auto.nome}</h4>
+                          <Badge className="bg-green-100 text-green-800 text-xs">Ativa</Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground line-clamp-2">
+                          {getTipoLabel(auto.tipo)}
+                        </p>
+                      </div>
+                    </Card>
+                  ))}
+              </div>
+            )}
+          </div>
+        </TabsContent>
 
         <TabsContent value="manual" className="space-y-4">
           <div className="flex justify-between items-center">

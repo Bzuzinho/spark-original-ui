@@ -10,7 +10,7 @@ use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
-class MembershipFeeController extends Controller
+class TaxasController extends Controller
 {
     public function index()
     {

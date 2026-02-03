@@ -4,11 +4,11 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Button } from '@/Components/ui/button';
 import { Card } from '@/Components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs';
-// ADICIONA ESTAS IMPORTAÇÕES:
-import { PersonalTab } from '@/Components/Members/Tabs/PersonalTab';
-import { FinancialTab } from '@/Components/Members/Tabs/FinancialTab';
-import { SportsTab } from '@/Components/Members/Tabs/SportsTab';
-import { ConfigurationTab } from '@/Components/Members/Tabs/ConfigurationTab';
+import { toast } from 'sonner';
+import PersonalTab from '@/Components/Members/Tabs/PersonalTab';
+import FinancialTab from '@/Components/Members/Tabs/FinancialTab';
+import SportsTab from '@/Components/Members/Tabs/SportsTab';
+import ConfigurationTab from '@/Components/Members/Tabs/ConfigurationTab';
 
 interface User {
     id: string;
@@ -17,41 +17,11 @@ interface User {
     email_utilizador?: string;
     foto_perfil?: string;
     estado: string;
-    member_type: string[]; // ARRAY de tipos
+    member_type: string[];
     data_nascimento: string;
     perfil: string;
-    sexo?: string;
-    menor?: boolean;
-    nif?: string;
-    morada?: string;
-    codigo_postal?: string;
-    localidade?: string;
-    contacto?: string;
-    telemovel?: string;
-    // ... adiciona todos os outros campos necessários
-    tipo_mensalidade?: string;
-    centro_custo?: string[];
-    num_federacao?: string;
-    numero_pmb?: string;
-    data_inscricao?: string;
-    escalao?: string[];
-    data_atestado_medico?: string;
-    arquivo_atestado_medico?: string[];
-    informacoes_medicas?: string;
-    ativo_desportivo?: boolean;
-    rgpd?: boolean;
-    data_rgpd?: string;
-    arquivo_rgpd?: string;
-    consentimento?: boolean;
-    data_consentimento?: string;
-    arquivo_consentimento?: string;
-    afiliacao?: boolean;
-    data_afiliacao?: string;
-    arquivo_afiliacao?: string;
-    declaracao_de_transporte?: boolean;
-    declaracao_transporte?: string;
-    encarregado_educacao?: string[];
-    educandos?: string[];
+    // ... other fields
+    [key: string]: any;
 }
 
 interface Props {
@@ -66,37 +36,19 @@ export default function Show({ member, allUsers, userTypes, ageGroups }: Props) 
     const [hasChanges, setHasChanges] = useState(false);
 
     const handleChange = (field: keyof User, value: any) => {
-        console.log(`🔄 Mudança no campo '${field}':`, value); // DEBUG
         setUser(prev => ({ ...prev, [field]: value }));
         setHasChanges(true);
     };
 
     const handleSave: FormEventHandler = (e) => {
         e.preventDefault();
-        
-        console.log('💾 A guardar dados:', user); // DEBUG
-        
-        // Validação client-side
-        if (!user.full_name?.trim()) {
-            alert('Nome é obrigatório');
-            return;
-        }
-        if (!user.email_utilizador?.trim()) {
-            alert('Email de utilizador é obrigatório');
-            return;
-        }
-        if (user.member_type.length === 0) {
-            alert('Selecione pelo menos um tipo de membro');
-            return;
-        }
-        
-        router.put(route('members.update', user.id), user, {
+        router.put(route('membros.update', user.id), user, {
             onSuccess: () => {
-                console.log('✅ Guardado com sucesso!');
                 setHasChanges(false);
+                toast.success('Membro atualizado com sucesso!');
             },
-            onError: (errors) => {
-                console.error('❌ Erros de validação:', errors);
+            onError: () => {
+                toast.error('Erro ao atualizar membro');
             }
         });
     };
@@ -104,10 +56,10 @@ export default function Show({ member, allUsers, userTypes, ageGroups }: Props) 
     const handleBack = () => {
         if (hasChanges) {
             if (window.confirm('Tem alterações não guardadas. Deseja sair sem guardar?')) {
-                router.visit(route('members.index'));
+                router.visit(route('membros.index'));
             }
         } else {
-            router.visit(route('members.index'));
+            router.visit(route('membros.index'));
         }
     };
 
@@ -143,18 +95,18 @@ export default function Show({ member, allUsers, userTypes, ageGroups }: Props) 
                             <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                             </svg>
-                            A guardar...
+                            Guardar
                         </Button>
                     </div>
                 </div>
             }
         >
-            <Head title={`Editar ${user.full_name}`} />
+            <Head title={`Membro - ${user.full_name}`} />
 
-            <div className="space-y-2 sm:space-y-3 p-2 sm:p-4">
+            <Card className="p-2 sm:p-3">
                 <Tabs defaultValue="personal" className="space-y-2">
                     <div className="w-full overflow-x-auto -mx-2 px-2 sm:mx-0 sm:px-0 pb-1">
-                        <TabsList className="inline-flex w-auto min-w-full sm:min-w-0 h-9">
+                        <TabsList className="inline-flex w-auto min-w-full sm:min-w-0 h-9 sm:h-8">
                             <TabsTrigger value="personal" className="whitespace-nowrap text-xs px-3 sm:px-2 py-1">
                                 Pessoal
                             </TabsTrigger>
@@ -172,18 +124,15 @@ export default function Show({ member, allUsers, userTypes, ageGroups }: Props) 
                         </TabsList>
                     </div>
 
-                    {/* TAB PESSOAL - AGORA COM COMPONENTE COMPLETO */}
                     <TabsContent value="personal" className="space-y-2 mt-2">
                         <PersonalTab 
                             user={user}
-                            allUsers={allUsers}
                             onChange={handleChange}
-                            isAdmin={true} // ou passar auth.user.perfil === 'admin'
-                            userTypes={userTypes}
+                            isAdmin={true}
+                            allUsers={allUsers}
                         />
                     </TabsContent>
 
-                    {/* TAB FINANCEIRO */}
                     <TabsContent value="financial" className="space-y-2 mt-2">
                         <FinancialTab 
                             user={user}
@@ -192,19 +141,16 @@ export default function Show({ member, allUsers, userTypes, ageGroups }: Props) 
                         />
                     </TabsContent>
 
-                    {/* TAB DESPORTIVO (só se atleta) */}
                     {showSportsTab && (
                         <TabsContent value="sports" className="space-y-2 mt-2">
                             <SportsTab 
                                 user={user}
                                 onChange={handleChange}
                                 isAdmin={true}
-                                ageGroups={ageGroups}
                             />
                         </TabsContent>
                     )}
 
-                    {/* TAB CONFIGURAÇÃO */}
                     <TabsContent value="configuration" className="space-y-2 mt-2">
                         <ConfigurationTab 
                             user={user}
@@ -213,7 +159,13 @@ export default function Show({ member, allUsers, userTypes, ageGroups }: Props) 
                         />
                     </TabsContent>
                 </Tabs>
-            </div>
+            </Card>
+
+            {hasChanges && (
+                <div className="fixed bottom-2 right-2 sm:bottom-4 sm:right-4 bg-accent text-accent-foreground p-2 rounded-lg shadow-lg border">
+                    <p className="text-xs font-medium">Alterações não guardadas</p>
+                </div>
+            )}
         </AuthenticatedLayout>
     );
 }

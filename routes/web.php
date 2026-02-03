@@ -3,24 +3,24 @@
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MembrosController;
-use App\Http\Controllers\MemberDocumentController;
-use App\Http\Controllers\MemberRelationshipController;
+use App\Http\Controllers\DocumentosMembrosController;
+use App\Http\Controllers\RelacoesMembroController;
 use App\Http\Controllers\EventosController;
 use App\Http\Controllers\DesportivoController;
 use App\Http\Controllers\FinanceiroController;
-use App\Http\Controllers\TransactionController;
-use App\Http\Controllers\MembershipFeeController;
-use App\Http\Controllers\FinancialCategoryController;
-use App\Http\Controllers\FinancialReportController;
+use App\Http\Controllers\TransacoesController;
+use App\Http\Controllers\TaxasController;
+use App\Http\Controllers\CategoriasFinanceirasController;
+use App\Http\Controllers\RelatoriosFinanceirosController;
 use App\Http\Controllers\LojaController;
-use App\Http\Controllers\PatrociniosController;
+use App\Http\Controllers\PatrocinosController;
 use App\Http\Controllers\ComunicacaoController;
-use App\Http\Controllers\MarketingCampaignController;
-use App\Http\Controllers\SettingsController;
-use App\Http\Controllers\TeamController;
-use App\Http\Controllers\TeamMemberController;
-use App\Http\Controllers\TrainingSessionController;
-use App\Http\Controllers\CallUpController;
+use App\Http\Controllers\CampanhasMarketingController;
+use App\Http\Controllers\ConfiguracoesController;
+use App\Http\Controllers\EquipasController;
+use App\Http\Controllers\MembrosEquipaController;
+use App\Http\Controllers\SessoesFormacaoController;
+use App\Http\Controllers\ConvocatoriasController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -38,80 +38,103 @@ Route::middleware(['auth', 'verified'])->group(function () {
     
     // Member documents and relationships
     Route::prefix('membros/{member}')->group(function() {
-        Route::get('documents', [MemberDocumentController::class, 'index'])->name('membros.documents.index');
-        Route::post('documents', [MemberDocumentController::class, 'store'])->name('membros.documents.store');
-        Route::delete('documents/{document}', [MemberDocumentController::class, 'destroy'])->name('membros.documents.destroy');
+        Route::get('documentos', [DocumentosMembrosController::class, 'index'])->name('membros.documentos.index');
+        Route::post('documentos', [DocumentosMembrosController::class, 'store'])->name('membros.documentos.store');
+        Route::delete('documentos/{document}', [DocumentosMembrosController::class, 'destroy'])->name('membros.documentos.destroy');
         
-        Route::get('relationships', [MemberRelationshipController::class, 'index'])->name('membros.relationships.index');
-        Route::post('relationships', [MemberRelationshipController::class, 'store'])->name('membros.relationships.store');
-        Route::delete('relationships/{relationship}', [MemberRelationshipController::class, 'destroy'])->name('membros.relationships.destroy');
+        Route::get('relacoes', [RelacoesMembroController::class, 'index'])->name('membros.relacoes.index');
+        Route::post('relacoes', [RelacoesMembroController::class, 'store'])->name('membros.relacoes.store');
+        Route::delete('relacoes/{relationship}', [RelacoesMembroController::class, 'destroy'])->name('membros.relacoes.destroy');
     });
     
     Route::resource('eventos', EventosController::class);
     
     // Event participant management routes
-    Route::post('eventos/{evento}/participants', [EventosController::class, 'addParticipant'])->name('eventos.participants.add');
-    Route::delete('eventos/{evento}/participants/{user}', [EventosController::class, 'removeParticipant'])->name('eventos.participants.remove');
-    Route::put('eventos/{evento}/participants/{user}', [EventosController::class, 'updateParticipantStatus'])->name('eventos.participants.update');
+    Route::post('eventos/{event}/participantes', [EventosController::class, 'addParticipant'])->name('eventos.participantes.add');
+    Route::delete('eventos/{event}/participantes/{user}', [EventosController::class, 'removeParticipant'])->name('eventos.participantes.remove');
+    Route::put('eventos/{event}/participantes/{user}', [EventosController::class, 'updateParticipantStatus'])->name('eventos.participantes.update');
     Route::get('eventos-stats', [EventosController::class, 'stats'])->name('eventos.stats');
     
     Route::resource('desportivo', DesportivoController::class);
     Route::resource('financeiro', FinanceiroController::class);
     Route::resource('loja', LojaController::class);
-    Route::resource('patrocinios', PatrociniosController::class);
+    Route::resource('patrocinios', PatrocinosController::class);
     Route::resource('comunicacao', ComunicacaoController::class);
-    Route::post('/comunicacao/{comunicacao}/send', [ComunicacaoController::class, 'send'])->name('comunicacao.send');
-    Route::resource('marketing', MarketingController::class);
-    Route::resource('marketing', MarketingCampaignController::class);
+    Route::post('/comunicacao/{communication}/enviar', [ComunicacaoController::class, 'send'])->name('comunicacao.enviar');
+    Route::resource('campanhas-marketing', CampanhasMarketingController::class);
     
     // Settings routes
-    Route::get('/settings', [SettingsController::class, 'index'])->name('settings');
+    Route::get('/configuracoes', [ConfiguracoesController::class, 'index'])->name('configuracoes');
     
     // Settings CRUD sub-routes
-    Route::post('/settings/user-types', [SettingsController::class, 'storeUserType'])->name('settings.user-types.store');
-    Route::put('/settings/user-types/{userType}', [SettingsController::class, 'updateUserType'])->name('settings.user-types.update');
-    Route::delete('/settings/user-types/{userType}', [SettingsController::class, 'destroyUserType'])->name('settings.user-types.destroy');
+    Route::post('/configuracoes/tipos-utilizador', [ConfiguracoesController::class, 'storeUserType'])->name('configuracoes.tipos-utilizador.store');
+    Route::put('/configuracoes/tipos-utilizador/{userType}', [ConfiguracoesController::class, 'updateUserType'])->name('configuracoes.tipos-utilizador.update');
+    Route::delete('/configuracoes/tipos-utilizador/{userType}', [ConfiguracoesController::class, 'destroyUserType'])->name('configuracoes.tipos-utilizador.destroy');
     
-    Route::post('/settings/age-groups', [SettingsController::class, 'storeAgeGroup'])->name('settings.age-groups.store');
-    Route::put('/settings/age-groups/{ageGroup}', [SettingsController::class, 'updateAgeGroup'])->name('settings.age-groups.update');
-    Route::delete('/settings/age-groups/{ageGroup}', [SettingsController::class, 'destroyAgeGroup'])->name('settings.age-groups.destroy');
+    Route::post('/configuracoes/escaloes', [ConfiguracoesController::class, 'storeAgeGroup'])->name('configuracoes.escaloes.store');
+    Route::put('/configuracoes/escaloes/{ageGroup}', [ConfiguracoesController::class, 'updateAgeGroup'])->name('configuracoes.escaloes.update');
+    Route::delete('/configuracoes/escaloes/{ageGroup}', [ConfiguracoesController::class, 'destroyAgeGroup'])->name('configuracoes.escaloes.destroy');
     
-    Route::post('/settings/event-types', [SettingsController::class, 'storeEventType'])->name('settings.event-types.store');
-    Route::put('/settings/event-types/{eventType}', [SettingsController::class, 'updateEventType'])->name('settings.event-types.update');
-    Route::delete('/settings/event-types/{eventType}', [SettingsController::class, 'destroyEventType'])->name('settings.event-types.destroy');
+    Route::post('/configuracoes/tipos-evento', [ConfiguracoesController::class, 'storeEventType'])->name('configuracoes.tipos-evento.store');
+    Route::put('/configuracoes/tipos-evento/{eventType}', [ConfiguracoesController::class, 'updateEventType'])->name('configuracoes.tipos-evento.update');
+    Route::delete('/configuracoes/tipos-evento/{eventType}', [ConfiguracoesController::class, 'destroyEventType'])->name('configuracoes.tipos-evento.destroy');
     
-    Route::put('/settings/club', [SettingsController::class, 'updateClubSettings'])->name('settings.club.update');
+    Route::put('/configuracoes/clube', [ConfiguracoesController::class, 'updateClubSettings'])->name('configuracoes.clube.update');
     // Sports module routes
-    Route::resource('teams', TeamController::class);
-    Route::resource('team-members', TeamMemberController::class)->except(['index', 'create', 'show', 'edit']);
-    Route::resource('training-sessions', TrainingSessionController::class);
-    Route::resource('call-ups', CallUpController::class);
+    Route::resource('equipas', EquipasController::class);
+    Route::resource('membros-equipa', MembrosEquipaController::class)->except(['index', 'create', 'show', 'edit']);
+    Route::resource('sessoes-formacao', SessoesFormacaoController::class);
+    Route::resource('convocatorias', ConvocatoriasController::class);
     // Financial module routes
     Route::prefix('financeiro')->group(function () {
         // Transactions
-        Route::get('/transactions', [TransactionController::class, 'index'])->name('transactions.index');
-        Route::post('/transactions', [TransactionController::class, 'store'])->name('transactions.store');
-        Route::put('/transactions/{transaction}', [TransactionController::class, 'update'])->name('transactions.update');
-        Route::delete('/transactions/{transaction}', [TransactionController::class, 'destroy'])->name('transactions.destroy');
+        Route::get('/transacoes', [TransacoesController::class, 'index'])->name('transacoes.index');
+        Route::post('/transacoes', [TransacoesController::class, 'store'])->name('transacoes.store');
+        Route::put('/transacoes/{transaction}', [TransacoesController::class, 'update'])->name('transacoes.update');
+        Route::delete('/transacoes/{transaction}', [TransacoesController::class, 'destroy'])->name('transacoes.destroy');
         
         // Membership Fees
-        Route::get('/membership-fees', [MembershipFeeController::class, 'index'])->name('membership-fees.index');
-        Route::post('/membership-fees', [MembershipFeeController::class, 'store'])->name('membership-fees.store');
-        Route::put('/membership-fees/{membershipFee}', [MembershipFeeController::class, 'update'])->name('membership-fees.update');
-        Route::delete('/membership-fees/{membershipFee}', [MembershipFeeController::class, 'destroy'])->name('membership-fees.destroy');
-        Route::post('/membership-fees/generate', [MembershipFeeController::class, 'generate'])->name('membership-fees.generate');
-        Route::post('/membership-fees/{membershipFee}/mark-as-paid', [MembershipFeeController::class, 'markAsPaid'])->name('membership-fees.mark-as-paid');
+        Route::get('/taxas', [TaxasController::class, 'index'])->name('taxas.index');
+        Route::post('/taxas', [TaxasController::class, 'store'])->name('taxas.store');
+        Route::put('/taxas/{membershipFee}', [TaxasController::class, 'update'])->name('taxas.update');
+        Route::delete('/taxas/{membershipFee}', [TaxasController::class, 'destroy'])->name('taxas.destroy');
+        Route::post('/taxas/gerar', [TaxasController::class, 'generate'])->name('taxas.gerar');
+        Route::post('/taxas/{membershipFee}/marcar-pago', [TaxasController::class, 'markAsPaid'])->name('taxas.marcar-pago');
         
         // Categories
-        Route::get('/categories', [FinancialCategoryController::class, 'index'])->name('financial-categories.index');
-        Route::post('/categories', [FinancialCategoryController::class, 'store'])->name('financial-categories.store');
-        Route::put('/categories/{category}', [FinancialCategoryController::class, 'update'])->name('financial-categories.update');
-        Route::delete('/categories/{category}', [FinancialCategoryController::class, 'destroy'])->name('financial-categories.destroy');
+        Route::get('/categorias', [CategoriasFinanceirasController::class, 'index'])->name('categorias-financeiras.index');
+        Route::post('/categorias', [CategoriasFinanceirasController::class, 'store'])->name('categorias-financeiras.store');
+        Route::put('/categorias/{category}', [CategoriasFinanceirasController::class, 'update'])->name('categorias-financeiras.update');
+        Route::delete('/categorias/{category}', [CategoriasFinanceirasController::class, 'destroy'])->name('categorias-financeiras.destroy');
         
         // Reports
-        Route::get('/reports', [FinancialReportController::class, 'index'])->name('financial-reports.index');
+        Route::get('/relatorios', [RelatoriosFinanceirosController::class, 'index'])->name('relatorios-financeiros.index');
     });
 });
+
+// Backward compatibility redirects (English → Portuguese)
+// These redirects help with transition period and maintain old bookmarks
+Route::redirect('/members', '/membros', 301);
+Route::redirect('/members/{id}', '/membros/{id}', 301);
+Route::redirect('/events', '/eventos', 301);
+Route::redirect('/events/{id}', '/eventos/{id}', 301);
+Route::redirect('/sports', '/desportivo', 301);
+Route::redirect('/sports/{id}', '/desportivo/{id}', 301);
+Route::redirect('/financial', '/financeiro', 301);
+Route::redirect('/shop', '/loja', 301);
+Route::redirect('/shop/{id}', '/loja/{id}', 301);
+Route::redirect('/sponsorships', '/patrocinios', 301);
+Route::redirect('/sponsorships/{id}', '/patrocinios/{id}', 301);
+Route::redirect('/communication', '/comunicacao', 301);
+Route::redirect('/communication/{id}', '/comunicacao/{id}', 301);
+Route::redirect('/marketing', '/campanhas-marketing', 301);
+Route::redirect('/marketing/{id}', '/campanhas-marketing/{id}', 301);
+Route::redirect('/settings', '/configuracoes', 301);
+Route::redirect('/teams', '/equipas', 301);
+Route::redirect('/teams/{id}', '/equipas/{id}', 301);
+Route::redirect('/team-members', '/membros-equipa', 301);
+Route::redirect('/training-sessions', '/sessoes-formacao', 301);
+Route::redirect('/call-ups', '/convocatorias', 301);
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

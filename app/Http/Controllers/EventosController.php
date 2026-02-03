@@ -37,11 +37,11 @@ class EventosController extends Controller
         ];
 
         return Inertia::render('Eventos/Index', [
-            'eventos' => Event::with(['creator', 'convocations.athlete', 'attendances.athlete'])
+            'events' => Event::with(['creator', 'convocations.athlete', 'attendances.athlete'])
                 ->orderBy('start_date', 'desc')
                 ->get(),
             'stats' => $stats,
-            'users' => User::where('status', 'ativo')->get(['id', 'full_name', 'user_type']),
+            'users' => User::where('status', 'ativo')->get(['id', 'nome_completo', 'user_type']),
         ]);
     }
 
@@ -65,7 +65,7 @@ class EventosController extends Controller
         
         $event = Event::create($data);
 
-        return redirect()->route('eventos.index')
+        return redirect()->route('events.index')
             ->with('success', 'Evento criado com sucesso!');
     }
 
@@ -95,7 +95,7 @@ class EventosController extends Controller
     {
         $evento->update($request->validated());
 
-        return redirect()->route('eventos.index')
+        return redirect()->route('events.index')
             ->with('success', 'Evento atualizado com sucesso!');
     }
 
@@ -103,7 +103,7 @@ class EventosController extends Controller
     {
         $evento->delete();
 
-        return redirect()->route('eventos.index')
+        return redirect()->route('events.index')
             ->with('success', 'Evento eliminado com sucesso!');
     }
 

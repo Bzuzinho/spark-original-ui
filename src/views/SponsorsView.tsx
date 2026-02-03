@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useKV } from '@github/spark/hooks';
 import { Sponsor } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -11,14 +11,51 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Plus, Handshake } from '@phosphor-icons/react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Plus, Handshake, TrendUp, CurrencyEur, Calendar as CalendarIcon, ChartBar } from '@phosphor-icons/react';
 import { format } from 'date-fns';
 import { pt } from 'date-fns/locale';
 import { toast } from 'sonner';
 
 export function SponsorsView() {
   const [sponsors, setSponsors] = useKV<Sponsor[]>('club-sponsors', []);
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [dialogOpen, setDialogOpen] = useState(false);
+  
+  const [stats, setStats] = useState({
+    totalPatrocinadores: 0,
+    patrocinadorAtivos: 0,
+    valorAnualTotal: 0,
+    contratosACaducar: 0,
+  });
+
+  useEffect(() => {
+    const calcularStats = () => {
+      const sponsorsArray = sponsors || [];
+      const totalPatrocinadores = sponsorsArray.length;
+      const patrocinadorAtivos = sponsorsArray.filter(s => s.ativo).length;
+      const valorAnualTotal = sponsorsArray
+        .filter(s => s.ativo && s.valor_anual)
+        .reduce((acc, s) => acc + (s.valor_anual || 0), 0);
+
+      const now = new Date();
+      const proximosMeses = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
+      const contratosACaducar = sponsorsArray.filter(s => {
+        if (!s.contrato_fim || !s.ativo) return false;
+        const dataFim = new Date(s.contrato_fim);
+        return dataFim >= now && dataFim <= proximosMeses;
+      }).length;
+
+      setStats({
+        totalPatrocinadores,
+        patrocinadorAtivos,
+        valorAnualTotal,
+        contratosACaducar,
+      });
+    };
+
+    calcularStats();
+  }, [sponsors]);
   
   const [formData, setFormData] = useState({
     nome: '',
@@ -77,23 +114,167 @@ export function SponsorsView() {
   };
 
   return (
-    <div className="container mx-auto px-2 sm:px-4 py-3 sm:py-4 max-w-7xl space-y-2 sm:space-y-3">
-      <div className="flex flex-col gap-2 sm:gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-lg sm:text-xl font-semibold tracking-tight">Gestão de Patrocínios</h1>
-          <p className="text-muted-foreground text-xs mt-0.5">
-            {sponsors?.length || 0} patrocinadores
-          </p>
-        </div>
-        
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={resetForm} className="h-8 text-xs">
-              <Plus className="mr-1.5 sm:mr-2" size={16} />
-              <span className="hidden sm:inline">Novo Patrocinador</span>
-              <span className="sm:hidden">Novo</span>
-            </Button>
-          </DialogTrigger>
+    <div className="container mx-auto px-2 sm:px-4 py-3 sm:py-4 max-w-7xl space-y-3 sm:space-y-4">
+      <div>
+        <h1 className="text-lg sm:text-xl font-semibold tracking-tight">Gestão de Patrocínios</h1>
+        <p className="text-muted-foreground text-xs mt-0.5">
+          Gestão de patrocinadores e contratos
+        </p>
+      </div>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-2 h-auto gap-1">
+          <TabsTrigger value="dashboard" className="text-xs px-2 py-1.5">
+            Dashboard
+          </TabsTrigger>
+          <TabsTrigger value="patrocinadores" className="text-xs px-2 py-1.5">
+            Patrocinadores
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="dashboard" className="mt-3 space-y-4">
+          <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
+            <Card className="p-3 sm:p-4">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground">Total Patrocinadores</p>
+                  <p className="text-xl sm:text-2xl font-bold mt-1">{stats.totalPatrocinadores}</p>
+                </div>
+                <div className="p-2 rounded-lg bg-blue-50">
+                  <Handshake className="text-blue-600" size={20} weight="bold" />
+                </div>
+              </div>
+            </Card>
+
+            <Card className="p-3 sm:p-4">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground">Ativos</p>
+                  <p className="text-xl sm:text-2xl font-bold mt-1">{stats.patrocinadorAtivos}</p>
+                </div>
+                <div className="p-2 rounded-lg bg-green-50">
+                  <TrendUp className="text-green-600" size={20} weight="bold" />
+                </div>
+              </div>
+            </Card>
+
+            <Card className="p-3 sm:p-4">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground">Valor Anual Total</p>
+                  <p className="text-xl sm:text-2xl font-bold mt-1">€{stats.valorAnualTotal.toFixed(0)}</p>
+                </div>
+                <div className="p-2 rounded-lg bg-purple-50">
+                  <CurrencyEur className="text-purple-600" size={20} weight="bold" />
+                </div>
+              </div>
+            </Card>
+
+            <Card className="p-3 sm:p-4">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground">Contratos a Caducar</p>
+                  <p className="text-xl sm:text-2xl font-bold mt-1">{stats.contratosACaducar}</p>
+                </div>
+                <div className="p-2 rounded-lg bg-orange-50">
+                  <CalendarIcon className="text-orange-600" size={20} weight="bold" />
+                </div>
+              </div>
+            </Card>
+          </div>
+
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <ChartBar size={20} className="text-primary" weight="bold" />
+              <h3 className="text-sm font-semibold">Distribuição por Tipo</h3>
+            </div>
+            
+            {(sponsors || []).length === 0 ? (
+              <Card className="p-6 text-center">
+                <p className="text-sm text-muted-foreground">
+                  Nenhum patrocinador registado
+                </p>
+              </Card>
+            ) : (
+              <div className="grid gap-3 grid-cols-1 md:grid-cols-3">
+                {[
+                  { tipo: 'principal', label: 'Principal', color: 'purple' },
+                  { tipo: 'secundario', label: 'Secundário', color: 'blue' },
+                  { tipo: 'apoio', label: 'Apoio', color: 'green' },
+                ].map(({ tipo, label, color }) => {
+                  const count = (sponsors || []).filter(s => s.tipo === tipo && s.ativo).length;
+                  const valor = (sponsors || [])
+                    .filter(s => s.tipo === tipo && s.ativo && s.valor_anual)
+                    .reduce((acc, s) => acc + (s.valor_anual || 0), 0);
+                  
+                  return (
+                    <Card key={tipo} className="p-4">
+                      <div>
+                        <h4 className="text-sm font-semibold mb-3">{label}</h4>
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-muted-foreground">Quantidade:</span>
+                            <span className={`text-sm font-bold text-${color}-600`}>
+                              {count}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-muted-foreground">Valor total:</span>
+                            <span className={`text-sm font-bold text-${color}-600`}>
+                              €{valor.toFixed(0)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {stats.contratosACaducar > 0 && (
+            <div>
+              <h3 className="text-sm font-semibold mb-3">Contratos a Caducar (próximos 90 dias)</h3>
+              <div className="grid gap-2 grid-cols-1 md:grid-cols-2">
+                {(sponsors || [])
+                  .filter(s => {
+                    if (!s.contrato_fim || !s.ativo) return false;
+                    const now = new Date();
+                    const proximosMeses = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
+                    const dataFim = new Date(s.contrato_fim);
+                    return dataFim >= now && dataFim <= proximosMeses;
+                  })
+                  .map(sponsor => (
+                    <Card key={sponsor.id} className="p-3 border-orange-200">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-sm">{sponsor.nome}</h4>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Caduca em: {format(new Date(sponsor.contrato_fim!), 'PPP', { locale: pt })}
+                          </p>
+                        </div>
+                        <Badge className="bg-orange-100 text-orange-800 text-xs">
+                          {sponsor.tipo}
+                        </Badge>
+                      </div>
+                    </Card>
+                  ))}
+              </div>
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="patrocinadores" className="mt-3 space-y-3">
+          <div className="flex justify-end">
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <DialogTrigger asChild>
+                <Button onClick={resetForm} className="h-8 text-xs">
+                  <Plus className="mr-1.5 sm:mr-2" size={16} />
+                  <span className="hidden sm:inline">Novo Patrocinador</span>
+                  <span className="sm:hidden">Novo</span>
+                </Button>
+              </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Novo Patrocinador</DialogTitle>
@@ -238,60 +419,62 @@ export function SponsorsView() {
               </div>
             </div>
           </DialogContent>
-        </Dialog>
-      </div>
-
-      <div className="grid gap-2 sm:gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-        {(sponsors || []).map(sponsor => (
-          <Card key={sponsor.id} className="p-2.5 sm:p-3 transition-all hover:shadow-md">
-            <div className="space-y-2">
-              <div className="flex items-start justify-between gap-2">
-                <h3 className="font-semibold text-sm sm:text-base line-clamp-2 flex-1">{sponsor.nome}</h3>
-                <Badge className={`${getTipoColor(sponsor.tipo)} text-xs flex-shrink-0`}>
-                  {sponsor.tipo}
-                </Badge>
-              </div>
-
-              {sponsor.valor_anual && (
-                <div className="text-lg sm:text-xl font-bold text-primary">
-                  €{sponsor.valor_anual.toFixed(2)}/ano
-                </div>
-              )}
-
-              <div className="space-y-0.5 text-xs text-muted-foreground">
-                <p className="truncate">Início: {format(new Date(sponsor.contrato_inicio), 'PPP', { locale: pt })}</p>
-                {sponsor.contrato_fim && (
-                  <p className="truncate">Fim: {format(new Date(sponsor.contrato_fim), 'PPP', { locale: pt })}</p>
-                )}
-              </div>
-
-              {(sponsor.contacto_nome || sponsor.contacto_email || sponsor.contacto_telefone) && (
-                <div className="border-t pt-1.5 space-y-0.5 text-xs">
-                  {sponsor.contacto_nome && <p className="font-medium truncate">{sponsor.contacto_nome}</p>}
-                  {sponsor.contacto_email && <p className="text-muted-foreground truncate">{sponsor.contacto_email}</p>}
-                  {sponsor.contacto_telefone && <p className="text-muted-foreground truncate">{sponsor.contacto_telefone}</p>}
-                </div>
-              )}
-
-              <Badge variant={sponsor.ativo ? 'default' : 'secondary'} className="text-xs">
-                {sponsor.ativo ? 'Ativo' : 'Inativo'}
-              </Badge>
-            </div>
-          </Card>
-        ))}
-      </div>
-
-      {(!sponsors || sponsors.length === 0) && (
-        <Card className="p-6 sm:p-8">
-          <div className="text-center">
-            <Handshake className="mx-auto text-muted-foreground mb-2 sm:mb-3" size={40} weight="thin" />
-            <h3 className="font-semibold text-sm mb-0.5">Nenhum patrocinador registado</h3>
-            <p className="text-muted-foreground text-xs">
-              Adicione os seus patrocinadores e gerencie os contratos.
-            </p>
+            </Dialog>
           </div>
-        </Card>
-      )}
+
+          <div className="grid gap-2 sm:gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+            {(sponsors || []).map(sponsor => (
+              <Card key={sponsor.id} className="p-2.5 sm:p-3 transition-all hover:shadow-md">
+                <div className="space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="font-semibold text-sm sm:text-base line-clamp-2 flex-1">{sponsor.nome}</h3>
+                    <Badge className={`${getTipoColor(sponsor.tipo)} text-xs flex-shrink-0`}>
+                      {sponsor.tipo}
+                    </Badge>
+                  </div>
+
+                  {sponsor.valor_anual && (
+                    <div className="text-lg sm:text-xl font-bold text-primary">
+                      €{sponsor.valor_anual.toFixed(2)}/ano
+                    </div>
+                  )}
+
+                  <div className="space-y-0.5 text-xs text-muted-foreground">
+                    <p className="truncate">Início: {format(new Date(sponsor.contrato_inicio), 'PPP', { locale: pt })}</p>
+                    {sponsor.contrato_fim && (
+                      <p className="truncate">Fim: {format(new Date(sponsor.contrato_fim), 'PPP', { locale: pt })}</p>
+                    )}
+                  </div>
+
+                  {(sponsor.contacto_nome || sponsor.contacto_email || sponsor.contacto_telefone) && (
+                    <div className="border-t pt-1.5 space-y-0.5 text-xs">
+                      {sponsor.contacto_nome && <p className="font-medium truncate">{sponsor.contacto_nome}</p>}
+                      {sponsor.contacto_email && <p className="text-muted-foreground truncate">{sponsor.contacto_email}</p>}
+                      {sponsor.contacto_telefone && <p className="text-muted-foreground truncate">{sponsor.contacto_telefone}</p>}
+                    </div>
+                  )}
+
+                  <Badge variant={sponsor.ativo ? 'default' : 'secondary'} className="text-xs">
+                    {sponsor.ativo ? 'Ativo' : 'Inativo'}
+                  </Badge>
+                </div>
+              </Card>
+            ))}
+          </div>
+
+          {(!sponsors || sponsors.length === 0) && (
+            <Card className="p-6 sm:p-8">
+              <div className="text-center">
+                <Handshake className="mx-auto text-muted-foreground mb-2 sm:mb-3" size={40} weight="thin" />
+                <h3 className="font-semibold text-sm mb-0.5">Nenhum patrocinador registado</h3>
+                <p className="text-muted-foreground text-xs">
+                  Adicione os seus patrocinadores e gerencie os contratos.
+                </p>
+              </div>
+            </Card>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
 import { useKV } from '@github/spark/hooks';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface UserListProps {
   users: User[];
@@ -28,6 +29,7 @@ interface UserListProps {
 }
 
 export function UserList({ users, onSelectUser, onCreateUser, onDeleteUser, isAdmin }: UserListProps) {
+  const isMobile = useIsMobile();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
@@ -557,15 +559,17 @@ export function UserList({ users, onSelectUser, onCreateUser, onDeleteUser, isAd
           </p>
         </div>
         <div className="flex gap-2">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="h-8 w-8 p-0"
-            onClick={() => setViewMode(viewMode === 'card' ? 'table' : 'card')}
-            title={viewMode === 'card' ? 'Ver em tabela' : 'Ver em cards'}
-          >
-            {viewMode === 'card' ? <ListBullets size={14} /> : <SquaresFour size={14} />}
-          </Button>
+          {!isMobile && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="h-8 w-8 p-0"
+              onClick={() => setViewMode(viewMode === 'card' ? 'table' : 'card')}
+              title={viewMode === 'card' ? 'Ver em modo compacto' : 'Ver em modo tabela'}
+            >
+              {viewMode === 'card' ? <SquaresFour size={14} /> : <ListBullets size={14} />}
+            </Button>
+          )}
           <Dialog open={dialogImportOpen} onOpenChange={setDialogImportOpen}>
             <DialogTrigger asChild>
               <Button variant="outline" size="sm" onClick={resetImportData} className="h-8 text-xs">
@@ -573,23 +577,23 @@ export function UserList({ users, onSelectUser, onCreateUser, onDeleteUser, isAd
                 <span className="hidden sm:inline">Importar</span>
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col w-[calc(100vw-2rem)] sm:w-full">
               <DialogHeader>
-                <DialogTitle>Importar Membros</DialogTitle>
+                <DialogTitle className="text-base sm:text-lg">Importar Membros</DialogTitle>
               </DialogHeader>
-              <div className="space-y-4 flex-1 overflow-y-auto">
+              <div className="space-y-4 flex-1 overflow-y-auto px-1">
                 <div className="space-y-2">
-                  <Label>Ficheiro de Membros (XLS, XLSX, CSV) *</Label>
+                  <Label className="text-sm">Ficheiro de Membros (XLS, XLSX, CSV) *</Label>
                   <div className="flex gap-2">
                     <Input
                       type="file"
                       accept=".xls,.xlsx,.ods,.csv"
                       onChange={handleFileSelect}
-                      className="flex-1"
+                      className="flex-1 text-sm"
                     />
                   </div>
                   {importFile && (
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-xs sm:text-sm text-muted-foreground truncate">
                       Ficheiro selecionado: {importFile.name}
                     </p>
                   )}
@@ -635,7 +639,7 @@ export function UserList({ users, onSelectUser, onCreateUser, onDeleteUser, isAd
                         <div className="space-y-4">
                           <div>
                             <h3 className="text-sm font-bold text-primary mb-3 pb-2 border-b">📋 Dados Pessoais</h3>
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                               <div className="space-y-2">
                             <Label className="text-xs font-semibold">Nome Completo *</Label>
                             <Select 
@@ -910,7 +914,7 @@ export function UserList({ users, onSelectUser, onCreateUser, onDeleteUser, isAd
 
                       <div>
                         <h3 className="text-sm font-bold text-primary mb-3 pb-2 border-b">👤 Utilizador & Configuração</h3>
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <div className="space-y-2">
                             <Label className="text-xs font-semibold">Senha / Password</Label>
                             <Select 
@@ -969,7 +973,7 @@ export function UserList({ users, onSelectUser, onCreateUser, onDeleteUser, isAd
 
                       <div>
                         <h3 className="text-sm font-bold text-primary mb-3 pb-2 border-b">💰 Financeiro</h3>
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <div className="space-y-2">
                             <Label className="text-xs font-semibold">Tipo Mensalidade</Label>
                             <Select 
@@ -1010,7 +1014,7 @@ export function UserList({ users, onSelectUser, onCreateUser, onDeleteUser, isAd
 
                       <div>
                         <h3 className="text-sm font-bold text-primary mb-3 pb-2 border-b">⚽ Desportivo</h3>
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <div className="space-y-2">
                             <Label className="text-xs font-semibold">Nº Federação</Label>
                             <Select 
@@ -1164,7 +1168,79 @@ export function UserList({ users, onSelectUser, onCreateUser, onDeleteUser, isAd
         </div>
       </Card>
 
-      {viewMode === 'card' ? (
+      {viewMode === 'card' && !isMobile ? (
+        <Card className="overflow-hidden">
+          <ScrollArea className="w-full">
+            <div className="min-w-full inline-block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[60px] sticky left-0 bg-card z-10"></TableHead>
+                    <TableHead className="min-w-[200px] sticky left-[60px] bg-card z-10">Nome</TableHead>
+                    <TableHead className="min-w-[120px]">Nº Sócio</TableHead>
+                    <TableHead className="min-w-[200px]">Email</TableHead>
+                    <TableHead className="min-w-[100px]">Estado</TableHead>
+                    <TableHead className="min-w-[150px]">Tipo de Membro</TableHead>
+                    {isAdmin && <TableHead className="w-[60px]"></TableHead>}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredUsers.map(user => (
+                    <TableRow 
+                      key={user.id}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => onSelectUser(user.id)}
+                    >
+                      <TableCell className="sticky left-0 bg-card z-10">
+                        <Avatar className="h-9 w-9">
+                          <AvatarImage src={user.foto_perfil} />
+                          <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                            {getInitials(getUserDisplayName(user))}
+                          </AvatarFallback>
+                        </Avatar>
+                      </TableCell>
+                      <TableCell className="font-semibold sticky left-[60px] bg-card z-10">{getUserDisplayName(user)}</TableCell>
+                      <TableCell className="text-sm">{user.numero_socio}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{user.email_utilizador || '-'}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={`${getStatusColor(user.estado)} text-xs`}>
+                          {getStatusLabel(user.estado)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1">
+                          {user.tipo_membro.slice(0, 2).map(type => (
+                            <Badge key={type} variant="secondary" className="text-xs">
+                              {getMemberTypeLabel(type)}
+                            </Badge>
+                          ))}
+                          {user.tipo_membro.length > 2 && (
+                            <Badge variant="secondary" className="text-xs">
+                              +{user.tipo_membro.length - 2}
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      {isAdmin && (
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive"
+                            onClick={(e) => handleDeleteClick(user, e)}
+                          >
+                            <Trash size={16} />
+                          </Button>
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </ScrollArea>
+        </Card>
+      ) : (
         <div className="grid gap-2 sm:gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {filteredUsers.map(user => (
             <Card
@@ -1215,88 +1291,20 @@ export function UserList({ users, onSelectUser, onCreateUser, onDeleteUser, isAd
             </Card>
           ))}
         </div>
-      ) : (
-        <Card className="overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[50px]"></TableHead>
-                <TableHead>Nome</TableHead>
-                <TableHead>Nº Sócio</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead>Tipo de Membro</TableHead>
-                {isAdmin && <TableHead className="w-[50px]"></TableHead>}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredUsers.map(user => (
-                <TableRow 
-                  key={user.id}
-                  className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => onSelectUser(user.id)}
-                >
-                  <TableCell>
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={user.foto_perfil} />
-                      <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                        {getInitials(getUserDisplayName(user))}
-                      </AvatarFallback>
-                    </Avatar>
-                  </TableCell>
-                  <TableCell className="font-medium">{getUserDisplayName(user)}</TableCell>
-                  <TableCell>{user.numero_socio}</TableCell>
-                  <TableCell className="text-muted-foreground">{user.email_utilizador || '-'}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className={`${getStatusColor(user.estado)} text-xs`}>
-                      {getStatusLabel(user.estado)}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1">
-                      {user.tipo_membro.slice(0, 2).map(type => (
-                        <Badge key={type} variant="secondary" className="text-xs">
-                          {getMemberTypeLabel(type)}
-                        </Badge>
-                      ))}
-                      {user.tipo_membro.length > 2 && (
-                        <Badge variant="secondary" className="text-xs">
-                          +{user.tipo_membro.length - 2}
-                        </Badge>
-                      )}
-                    </div>
-                  </TableCell>
-                  {isAdmin && (
-                    <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 w-7 p-0 hover:bg-destructive/10 hover:text-destructive"
-                        onClick={(e) => handleDeleteClick(user, e)}
-                      >
-                        <Trash size={16} />
-                      </Button>
-                    </TableCell>
-                  )}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </Card>
       )}
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className="w-[calc(100vw-2rem)] sm:max-w-lg">
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar eliminação</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogTitle className="text-base sm:text-lg">Confirmar eliminação</AlertDialogTitle>
+            <AlertDialogDescription className="text-sm">
               Tem a certeza que deseja apagar o membro <strong>{userToDelete?.nome_completo}</strong>?
               Esta ação não pode ser revertida.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setUserToDelete(null)}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive hover:bg-destructive/90">
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <AlertDialogCancel onClick={() => setUserToDelete(null)} className="w-full sm:w-auto">Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive hover:bg-destructive/90 w-full sm:w-auto">
               Apagar
             </AlertDialogAction>
           </AlertDialogFooter>

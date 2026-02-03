@@ -8,7 +8,8 @@ import { EventosCalendar } from '@/components/eventos/EventosCalendar';
 import { EventosTipos } from '@/components/eventos/EventosTipos';
 import { EventosResultados } from '@/components/eventos/EventosResultados';
 import { EventosRelatorios } from '@/components/eventos/EventosRelatorios';
-import { ListChecks, CalendarBlank, PaperPlaneTilt, ClipboardText, Gear, ChartBar, Trophy } from '@phosphor-icons/react';
+import { EventosDashboard } from '@/components/eventos/EventosDashboard';
+import { ChartLineUp, ListChecks, CalendarBlank, PaperPlaneTilt, ClipboardText, Gear, ChartBar, Trophy } from '@phosphor-icons/react';
 import { useEventStatusSync } from '@/hooks/use-event-status-sync';
 import { Event } from '@/lib/types';
 
@@ -24,7 +25,7 @@ interface EventsViewProps {
 }
 
 export function EventsView({ navigationContext, onClearContext }: EventsViewProps) {
-  const [activeTab, setActiveTab] = useState('calendario');
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [events, setEvents] = useKV<Event[]>('club-events', []);
   
   useEventStatusSync(events, setEvents);
@@ -48,7 +49,11 @@ export function EventsView({ navigationContext, onClearContext }: EventsViewProp
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-3">
-        <TabsList className="grid grid-cols-7 w-full h-auto p-1">
+        <TabsList className="grid grid-cols-4 lg:grid-cols-8 w-full h-auto p-1">
+          <TabsTrigger value="dashboard" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-2 px-1 text-xs">
+            <ChartLineUp size={16} className="flex-shrink-0" />
+            <span className="hidden sm:inline">Dashboard</span>
+          </TabsTrigger>
           <TabsTrigger value="calendario" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-2 px-1 text-xs">
             <CalendarBlank size={16} className="flex-shrink-0" />
             <span className="hidden sm:inline">Calendário</span>
@@ -78,6 +83,10 @@ export function EventsView({ navigationContext, onClearContext }: EventsViewProp
             <span className="hidden sm:inline">Config</span>
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="dashboard" className="space-y-3">
+          <EventosDashboard />
+        </TabsContent>
 
         <TabsContent value="calendario" className="space-y-3">
           <EventosCalendar />

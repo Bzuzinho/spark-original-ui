@@ -59,7 +59,7 @@ class PerformanceTest extends TestCase
         User::factory()->count(200)->create();
 
         $start = microtime(true);
-        $response = $this->get('/membros');
+        $response = $this->get('/members');
         $duration = microtime(true) - $start;
 
         $response->assertStatus(200);
@@ -92,7 +92,7 @@ class PerformanceTest extends TestCase
         }
 
         $start = microtime(true);
-        $response = $this->get('/eventos');
+        $response = $this->get('/events');
         $duration = microtime(true) - $start;
 
         $response->assertStatus(200);
@@ -126,7 +126,7 @@ class PerformanceTest extends TestCase
         }
 
         $start = microtime(true);
-        $response = $this->get('/financeiro');
+        $response = $this->get('/financial');
         $duration = microtime(true) - $start;
 
         $response->assertStatus(200);

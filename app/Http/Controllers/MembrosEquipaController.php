@@ -11,16 +11,16 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Http\RedirectResponse;
 
-class TeamMemberController extends Controller
+class MembrosEquipaController extends Controller
 {
     public function index(Team $team): Response
     {
         return Inertia::render('Desportivo/TeamMembers/Index', [
             'team' => $team->load('members.user'),
-            'availableAthletes' => User::whereJsonContains('member_type', 'atleta')
+            'availableAthletes' => User::whereJsonContains('tipo_membro', 'atleta')
                 ->where('status', 'ativo')
                 ->whereNotIn('id', $team->members()->pluck('user_id'))
-                ->get(['id', 'full_name']),
+                ->get(['id', 'nome_completo']),
         ]);
     }
 

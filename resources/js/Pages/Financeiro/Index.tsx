@@ -281,7 +281,7 @@ function MensalidadesTab({ membershipFees, users }: { membershipFees: Membership
                             <tbody>
                                 {membershipFees.map((fee) => (
                                     <tr key={fee.id} className="border-b hover:bg-muted/50">
-                                        <td className="p-2">{fee.user?.nome_completo || 'N/A'}</td>
+                                        <td className="p-2">{fee.user?.full_name || 'N/A'}</td>
                                         <td className="p-2">{fee.mes}/{fee.ano}</td>
                                         <td className="text-right p-2">€{fee.valor.toFixed(2)}</td>
                                         <td className="text-center p-2">

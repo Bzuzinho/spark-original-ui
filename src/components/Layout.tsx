@@ -36,7 +36,7 @@ const mainMenuItems = [
   { id: 'sports', label: 'Desportivo', icon: Trophy },
   { id: 'events', label: 'Eventos', icon: CalendarBlank },
   { id: 'financial', label: 'Financeiro', icon: CurrencyCircleDollar },
-  { id: 'inventory', label: 'Inventário', icon: ShoppingCart },
+  { id: 'loja', label: 'Loja', icon: ShoppingCart },
   { id: 'sponsors', label: 'Patrocínios', icon: Handshake },
   { id: 'communication', label: 'Comunicação', icon: Envelope },
   { id: 'marketing', label: 'Marketing', icon: MegaphoneSimple },

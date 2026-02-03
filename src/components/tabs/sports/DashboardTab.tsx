@@ -45,13 +45,17 @@ export function DashboardTab() {
   useEffect(() => {
     const calcularStats = () => {
       const now = new Date();
+      now.setHours(23, 59, 59, 999);
       const umaSemanaAtras = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      umaSemanaAtras.setHours(0, 0, 0, 0);
       const umMesAtras = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      umMesAtras.setHours(0, 0, 0, 0);
       const trintaDiasFrente = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
 
       const atletasAtivos = (dadosDesportivos || []).filter(d => d.ativo).length;
 
       const proximasComps = (competicoes || []).filter(c => {
+        if (!c.data_inicio) return false;
         const dataInicio = new Date(c.data_inicio);
         return dataInicio >= now && dataInicio <= trintaDiasFrente;
       }).length;
@@ -64,15 +68,31 @@ export function DashboardTab() {
         return now >= trintaDiasAntes && now <= umAnoDepois;
       }).length;
 
-      const treinos7Dias = (treinos || []).filter(t => {
+      const treinosArray = treinos || [];
+      const treinosValidos = treinosArray.filter(t => t.data);
+      console.log('=== DASHBOARD DESPORTIVO DEBUG ===');
+      console.log('Total de treinos na base de dados:', treinosArray.length);
+      console.log('Treinos válidos (com data):', treinosValidos.length);
+      
+      if (treinosArray.length > 0) {
+        console.log('Exemplo de treino completo:', JSON.stringify(treinosArray[0], null, 2));
+        console.log('Campos do treino:', Object.keys(treinosArray[0]));
+      }
+      
+      const treinos7Dias = treinosValidos.filter(t => {
         const dataTreino = new Date(t.data);
+        dataTreino.setHours(0, 0, 0, 0);
         return dataTreino >= umaSemanaAtras && dataTreino <= now;
       }).length;
 
-      const treinos30Dias = (treinos || []).filter(t => {
+      const treinos30Dias = treinosValidos.filter(t => {
         const dataTreino = new Date(t.data);
+        dataTreino.setHours(0, 0, 0, 0);
         return dataTreino >= umMesAtras && dataTreino <= now;
       }).length;
+
+      console.log('Treinos últimos 7 dias:', treinos7Dias);
+      console.log('Treinos últimos 30 dias:', treinos30Dias);
 
       setStats({
         atletasAtivos,
@@ -83,33 +103,79 @@ export function DashboardTab() {
       });
 
       const metricsMap = new Map<string, { semana: number; mes: number }>();
+      const escaloesArray = escaloes || [];
 
-      (escaloes || []).forEach(escalao => {
+      console.log('Escalões configurados:', escaloesArray.length);
+      if (escaloesArray.length > 0) {
+        console.log('Exemplo de escalão:', JSON.stringify(escaloesArray[0], null, 2));
+      }
+
+      escaloesArray.forEach(escalao => {
         metricsMap.set(escalao.id, { semana: 0, mes: 0 });
       });
 
-      (treinos || []).forEach(treino => {
-        const dataTreino = new Date(treino.data);
-        const metros = treino.volume_planeado_m || 0;
+      let treinosProcessados = 0;
+      let treinosSemEscaloes = 0;
+      let treinosSemMetros = 0;
 
-        (treino.escaloes || []).forEach(escalaoId => {
+      treinosValidos.forEach(treino => {
+        if (!treino.data) return;
+        
+        const dataTreino = new Date(treino.data);
+        dataTreino.setHours(0, 0, 0, 0);
+        const metros = Number(treino.volume_planeado_m) || 0;
+
+        const escaloesDoTreino = treino.escaloes || [];
+        
+        console.log(`Treino ${treino.numero_treino || treino.id}:`, {
+          data: treino.data,
+          escaloes: escaloesDoTreino,
+          metros: metros,
+          dentroSemana: dataTreino >= umaSemanaAtras && dataTreino <= now,
+          dentroMes: dataTreino >= umMesAtras && dataTreino <= now
+        });
+        
+        if (escaloesDoTreino.length === 0) {
+          treinosSemEscaloes++;
+          console.log(`  ⚠ Treino sem escalões`);
+          return;
+        }
+
+        if (metros === 0) {
+          treinosSemMetros++;
+          console.log(`  ⚠ Treino sem metros`);
+          return;
+        }
+
+        treinosProcessados++;
+
+        escaloesDoTreino.forEach(escalaoId => {
+          if (!escalaoId) return;
+          
           const current = metricsMap.get(escalaoId) || { semana: 0, mes: 0 };
 
           if (dataTreino >= umaSemanaAtras && dataTreino <= now) {
             current.semana += metros;
+            console.log(`  ✓ Adicionados ${metros}m ao escalão ${escalaoId} (semana)`);
           }
 
           if (dataTreino >= umMesAtras && dataTreino <= now) {
             current.mes += metros;
+            console.log(`  ✓ Adicionados ${metros}m ao escalão ${escalaoId} (mês)`);
           }
 
           metricsMap.set(escalaoId, current);
         });
       });
 
+      console.log('Treinos processados com sucesso:', treinosProcessados);
+      console.log('Treinos sem escalões:', treinosSemEscaloes);
+      console.log('Treinos sem metros:', treinosSemMetros);
+      console.log('Mapa de métricas:', Array.from(metricsMap.entries()));
+
       const metricsArray: EscalaoMetrics[] = Array.from(metricsMap.entries())
         .map(([escalaoId, metrics]) => {
-          const escalao = (escaloes || []).find(e => e.id === escalaoId);
+          const escalao = escaloesArray.find(e => e.id === escalaoId);
           return {
             escalaoId,
             escalaoName: escalao?.name || 'Desconhecido',
@@ -119,6 +185,10 @@ export function DashboardTab() {
         })
         .filter(m => m.metrosSemana > 0 || m.metrosMes > 0)
         .sort((a, b) => b.metrosMes - a.metrosMes);
+
+      console.log('Métricas finais calculadas:', metricsArray.length, 'escalões com dados');
+      console.log('Métricas detalhadas:', JSON.stringify(metricsArray, null, 2));
+      console.log('=== FIM DEBUG ===');
 
       setEscaloesMetrics(metricsArray);
     };
@@ -195,9 +265,21 @@ export function DashboardTab() {
         
         {escaloesMetrics.length === 0 ? (
           <Card className="p-6 text-center">
-            <p className="text-sm text-muted-foreground">
-              Nenhum treino registado nos últimos 30 dias
+            <p className="text-sm text-muted-foreground mb-2">
+              Nenhum treino com metros registado nos últimos 30 dias
             </p>
+            <div className="text-xs text-muted-foreground space-y-1 mt-3">
+              <p><strong>Total de treinos:</strong> {(treinos || []).length}</p>
+              <p><strong>Escalões configurados:</strong> {(escaloes || []).length}</p>
+              <p className="mt-2 text-blue-600 font-medium">
+                Para ver dados aqui, crie treinos com:
+              </p>
+              <ul className="text-left max-w-xs mx-auto mt-2 space-y-1">
+                <li>✓ Data de realização</li>
+                <li>✓ Escalão(ões) selecionado(s)</li>
+                <li>✓ Metros totais preenchidos</li>
+              </ul>
+            </div>
           </Card>
         ) : (
           <div className="grid gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">

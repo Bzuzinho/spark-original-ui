@@ -11,11 +11,11 @@ use Inertia\Response;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
-class SettingsController extends Controller
+class ConfiguracoesController extends Controller
 {
     public function index(): Response
     {
-        return Inertia::render('Settings/Index', [
+        return Inertia::render('Configuracoes/Index', [
             'userTypes' => UserType::all(),
             'ageGroups' => AgeGroup::all(),
             'eventTypes' => EventType::all(),

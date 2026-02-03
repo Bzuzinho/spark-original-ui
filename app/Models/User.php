@@ -4,8 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -16,12 +16,18 @@ class User extends Authenticatable
 {
     use HasFactory, Notifiable, HasApiTokens, HasUuids;
 
+
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array<int, string>
+     */
     protected $fillable = [
+        // Core Laravel fields (keep in English as per framework convention)
         'name',
         'email',
         'password',
-        'email_verified_at',
-        // Spark fields (português)
+        // All fields in Portuguese
         'numero_socio',
         'nome_completo',
         'perfil',
@@ -39,25 +45,22 @@ class User extends Authenticatable
         'morada',
         'codigo_postal',
         'localidade',
-        'telefone',
+        'contacto',
         'telemovel',
         'nif',
-        'numero_cartao_cidadao',
-        'validade_cartao_cidadao',
+        'cc',
+        'data_validade_cc',
         'numero_utente',
         'contacto_emergencia_nome',
         'contacto_emergencia_telefone',
         'contacto_emergencia_relacao',
-        // Extended fields
         'foto_perfil',
-        'cc',
         'nacionalidade',
         'estado_civil',
         'ocupacao',
         'empresa',
         'escola',
         'numero_irmaos',
-        'contacto',
         'email_secundario',
         'encarregado_educacao',
         'educandos',
@@ -84,12 +87,22 @@ class User extends Authenticatable
         'senha',
     ];
 
+    /**
+     * The attributes that should be hidden for serialization.
+     *
+     * @var array<int, string>
+     */
     protected $hidden = [
         'password',
         'remember_token',
-        'senha',
+        'user_password',
     ];
 
+    /**
+     * Get the attributes that should be cast.
+     *
+     * @return array<string, string>
+     */
     protected function casts(): array
     {
         return [
@@ -97,7 +110,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             // Dates
             'data_nascimento' => 'date',
-            'validade_cartao_cidadao' => 'date',
+            'data_validade_cc' => 'date',
             'data_inscricao' => 'date',
             'data_atestado_medico' => 'date',
             'data_rgpd' => 'date',
@@ -119,168 +132,159 @@ class User extends Authenticatable
             'arquivo_atestado_medico' => 'array',
             // Decimals
             'conta_corrente' => 'decimal:2',
+            // Integers
+            'numero_irmaos' => 'integer',
         ];
     }
 
-    // ===================================
-    // RELATIONSHIPS
-    // ===================================
-
-    /**
-     * Many-to-Many: User <-> UserType
-     */
-    public function userTypes(): BelongsToMany
+    // Relationships
+    public function athleteSportsData(): HasOne
     {
-        return $this->belongsToMany(UserType::class, 'user_user_type', 'user_id', 'user_type_id')
-            ->withTimestamps();
+        return $this->hasOne(AthleteSportsData::class, 'athlete_id');
     }
 
-    /**
-     * BelongsTo: User -> AgeGroup (escalão)
-     * Nota: A coluna 'escalao' é JSON, mas pode haver também 'escalao_id' para primary
-     */
-    public function ageGroup(): BelongsTo
+    public function createdEvents(): HasMany
     {
-        return $this->belongsTo(AgeGroup::class, 'escalao_id');
+        return $this->hasMany(Event::class, 'created_by');
     }
 
-    /**
-     * Self-referencing Many-to-Many: Encarregados (guardians)
-     * Tabela pivot: user_relationships (type = 'encarregado')
-     * ✅ CORRIGIDO: relationship_type → type
-     */
-    public function encarregados(): BelongsToMany
+    public function convocations(): HasMany
     {
-        return $this->belongsToMany(
-            User::class,
-            'user_relationships',
-            'user_id',
-            'related_user_id'
-        )
-        ->wherePivot('type', 'encarregado')  // ✅ CORRIGIDO
-        ->withPivot('type')
-        ->withTimestamps();
+        return $this->hasMany(EventConvocation::class, 'athlete_id');
     }
 
-    /**
-     * Self-referencing Many-to-Many: Educandos (dependents)
-     * Inverso da relação encarregados
-     * ✅ CORRIGIDO: relationship_type → type
-     */
-    public function educandos(): BelongsToMany
+    public function givenConvocations(): HasMany
     {
-        return $this->belongsToMany(
-            User::class,
-            'user_relationships',
-            'related_user_id',
-            'user_id'
-        )
-        ->wherePivot('type', 'encarregado')  // ✅ CORRIGIDO
-        ->withPivot('type')
-        ->withTimestamps();
+        return $this->hasMany(EventConvocation::class, 'called_up_by');
     }
 
-    /**
-     * HasMany: User -> Event (creator)
-     */
-    public function eventsCreated(): HasMany
+    public function eventAttendances(): HasMany
     {
-        return $this->hasMany(Event::class, 'criado_por');
+        return $this->hasMany(EventAttendance::class, 'athlete_id');
     }
 
-    /**
-     * Many-to-Many: User <-> Event (attendance/participation)
-     */
-    public function eventAttendances(): BelongsToMany
+    public function eventResults(): HasMany
     {
-        return $this->belongsToMany(Event::class, 'event_participants', 'user_id', 'event_id')
-            ->withPivot(['status', 'notes'])
-            ->withTimestamps();
+        return $this->hasMany(EventResult::class, 'athlete_id');
     }
 
-    /**
-     * HasMany: User -> MemberDocument
-     */
-    public function documents(): HasMany
+    public function resultProvas(): HasMany
     {
-        return $this->hasMany(MemberDocument::class, 'member_id');
+        return $this->hasMany(ResultProva::class, 'athlete_id');
     }
 
-    /**
-     * HasMany: User -> MemberRelationship (custom relationships)
-     */
-    public function relationships(): HasMany
+    public function createdTrainings(): HasMany
     {
-        return $this->hasMany(MemberRelationship::class, 'user_id');
+        return $this->hasMany(Training::class, 'created_by');
     }
 
-    /**
-     * HasMany: User -> Invoice
-     */
+    public function trainingAthletes(): HasMany
+    {
+        return $this->hasMany(TrainingAthlete::class, 'athlete_id');
+    }
+
+    public function presences(): HasMany
+    {
+        return $this->hasMany(Presence::class, 'athlete_id');
+    }
+
+    public function competitionRegistrations(): HasMany
+    {
+        return $this->hasMany(CompetitionRegistration::class, 'athlete_id');
+    }
+
+    public function results(): HasMany
+    {
+        return $this->hasMany(Result::class, 'athlete_id');
+    }
+
     public function invoices(): HasMany
     {
         return $this->hasMany(Invoice::class, 'user_id');
     }
 
-    /**
-     * HasMany: User -> MembershipFee
-     */
-    public function membershipFees(): HasMany
+    public function movements(): HasMany
     {
-        return $this->hasMany(MembershipFee::class, 'user_id');
+        return $this->hasMany(Movement::class, 'user_id');
     }
 
-    /**
-     * HasOne: User -> AthleteSportsData
-     */
-    public function athleteSportsData(): HasOne
+    public function convocationMovements(): HasMany
     {
-        return $this->hasOne(AthleteSportsData::class, 'user_id');
+        return $this->hasMany(ConvocationMovement::class, 'athlete_id');
     }
 
-    /**
-     * Many-to-Many: User <-> Team
-     */
-    public function teams(): BelongsToMany
+    public function financialEntries(): HasMany
     {
-        return $this->belongsToMany(Team::class, 'team_members', 'user_id', 'team_id')
-            ->withPivot(['position', 'jersey_number', 'join_date', 'leave_date'])
-            ->withTimestamps();
+        return $this->hasMany(FinancialEntry::class, 'user_id');
     }
 
-    // ===================================
-    // ACCESSORS & SCOPES
-    // ===================================
-
-    /**
-     * Accessor: Get display name (nome_completo ou name)
-     */
-    public function getDisplayNameAttribute(): string
+    public function purchases(): HasMany
     {
-        return $this->nome_completo ?? $this->name ?? 'Sem nome';
+        return $this->hasMany(Sale::class, 'user_id');
     }
 
-    /**
-     * Scope: Active members only
-     */
-    public function scopeActive($query)
+    public function salesMade(): HasMany
     {
-        return $query->where('estado', 'ativo');
+        return $this->hasMany(Sale::class, 'seller_id');
     }
 
-    /**
-     * Scope: Athletes only
-     */
-    public function scopeAthletes($query)
+    public function newsItems(): HasMany
     {
-        return $query->whereRaw("tipo_membro::jsonb @> ?", [json_encode('atleta')]);
+        return $this->hasMany(NewsItem::class, 'author_id');
     }
 
-    /**
-     * Scope: Guardians only
-     */
-    public function scopeGuardians($query)
+    public function sentCommunications(): HasMany
     {
-        return $query->whereRaw("tipo_membro::jsonb @> ?", [json_encode('encarregado_educacao')]);
+        return $this->hasMany(Communication::class, 'sender_id');
+    }
+
+    public function createdConvocationGroups(): HasMany
+    {
+        return $this->hasMany(ConvocationGroup::class, 'created_by');
+    }
+
+    public function convocationAthletes(): HasMany
+    {
+        return $this->hasMany(ConvocationAthlete::class, 'athlete_id');
+    }
+
+    public function documents(): HasMany
+    {
+        return $this->hasMany(UserDocument::class);
+    }
+
+    public function relationships(): HasMany
+    {
+        return $this->hasMany(UserRelationship::class);
+    }
+
+    public function relatedToMe(): HasMany
+    {
+        return $this->hasMany(UserRelationship::class, 'related_user_id');
+    }
+
+    public function userTypes(): BelongsToMany
+    {
+        return $this->belongsToMany(UserType::class, 'user_user_type', 'user_id', 'user_type_id');
+    }
+
+    public function ageGroup(): BelongsTo
+    {
+        return $this->belongsTo(AgeGroup::class, 'age_group_id');
+    }
+
+    public function encarregados(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'user_guardian', 'user_id', 'guardian_id');
+    }
+
+    public function educandos(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'user_guardian', 'guardian_id', 'user_id');
+    }
+
+    public function eventsCreated(): HasMany
+    {
+        return $this->hasMany(Event::class, 'created_by');
     }
 }

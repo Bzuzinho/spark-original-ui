@@ -25,9 +25,9 @@ class DesportivoTestSeeder extends Seeder
             'name' => 'João Silva',
             'email' => 'joao.silva@test.com',
             'password' => bcrypt('password'),
-            'nome_completo' => 'João Silva',
-            'tipo_membro' => json_encode(['treinador']),
-            'estado' => 'ativo',
+            'full_name' => 'João Silva',
+            'member_type' => json_encode(['treinador']),
+            'status' => 'active',
         ]);
 
         $athletes = [];
@@ -36,9 +36,9 @@ class DesportivoTestSeeder extends Seeder
                 'name' => "Atleta $i",
                 'email' => "atleta$i@test.com",
                 'password' => bcrypt('password'),
-                'nome_completo' => "Atleta Teste $i",
-                'tipo_membro' => json_encode(['atleta']),
-                'estado' => 'ativo',
+                'full_name' => "Atleta Teste $i",
+                'member_type' => json_encode(['atleta']),
+                'status' => 'active',
             ]);
         }
 
@@ -88,7 +88,7 @@ class DesportivoTestSeeder extends Seeder
                 'duracao_minutos' => [60, 90, 120][rand(0, 2)],
                 'local' => ['Piscina Municipal', 'Piscina Clube', 'Centro Desportivo'][rand(0, 2)],
                 'objetivos' => 'Treino técnico e resistência',
-                'estado' => $i < 5 ? 'agendado' : (rand(0, 1) ? 'realizado' : 'cancelado'),
+                'status' => $i < 5 ? 'agendado' : (rand(0, 1) ? 'realizado' : 'cancelado'),
             ]);
         }
 

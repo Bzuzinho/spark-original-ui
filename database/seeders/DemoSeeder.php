@@ -90,10 +90,10 @@ class DemoSeeder extends Seeder
                 'name' => 'Admin User',
                 'email_verified_at' => now(),
                 'password' => Hash::make('password'),
-                'numero_socio' => '001',
-                'nome_completo' => 'Administrador do Sistema',
+                'member_number' => '001',
+                'full_name' => 'Administrador do Sistema',
                 'perfil' => 'admin',
-                'estado' => 'ativo',
+                'status' => 'active',
                 'data_nascimento' => '1990-01-01',
                 'menor' => false,
                 'sexo' => 'masculino',
@@ -121,14 +121,14 @@ class DemoSeeder extends Seeder
                 'email' => "user{$i}@test.com",
                 'email_verified_at' => now(),
                 'password' => Hash::make('password'),
-                'numero_socio' => str_pad($i, 3, '0', STR_PAD_LEFT),
-                'nome_completo' => "$firstName $lastName",
+                'member_number' => str_pad($i, 3, '0', STR_PAD_LEFT),
+                'full_name' => "$firstName $lastName",
                 'perfil' => $isAthlete ? 'atleta' : ($i <= 80 ? 'user' : 'admin'),
-                'estado' => 'ativo',
+                'status' => 'active',
                 'data_nascimento' => "{$birthYear}-" . rand(1, 12) . "-" . rand(1, 28),
                 'menor' => $age < 18,
                 'sexo' => $sexo,
-                'tipo_membro' => [$isAthlete ? 'Atleta' : 'Sócio'],
+                'member_type' => [$isAthlete ? 'Atleta' : 'Sócio'],
                 'rgpd' => true,
                 'consentimento' => true,
                 'afiliacao' => $isAthlete,
@@ -171,7 +171,7 @@ class DemoSeeder extends Seeder
                     EventAttendance::create([
                         'evento_id' => $event->id,
                         'user_id' => $athlete->id,
-                        'estado' => rand(0, 10) > 2 ? 'presente' : 'ausente', // 80% presence rate
+                        'status' => rand(0, 10) > 2 ? 'presente' : 'ausente', // 80% presence rate
                         'registado_por' => User::first()->id,
                         'registado_em' => $date->format('Y-m-d H:i:s'),
                     ]);
@@ -217,7 +217,7 @@ class DemoSeeder extends Seeder
                 'contrato_inicio' => Carbon::now()->subMonths(rand(1, 12))->format('Y-m-d'),
                 'contrato_fim' => Carbon::now()->addYear()->format('Y-m-d'),
                 'contacto_email' => strtolower(str_replace(' ', '', $sponsorData[0])) . '@example.com',
-                'ativo' => true,
+                'active' => true,
             ]);
         }
 
@@ -248,7 +248,7 @@ class DemoSeeder extends Seeder
                 'descricao' => 'Artigo oficial do clube - ' . $productData[0],
                 'preco' => $productData[2],
                 'stock' => $productData[3],
-                'ativo' => true,
+                'active' => true,
             ]);
         }
 
@@ -291,7 +291,7 @@ class DemoSeeder extends Seeder
                     'mes' => $dueDate->month,
                     'ano' => $dueDate->year,
                     'valor' => 50.00,
-                    'estado' => $isPaid ? 'pago' : 'pendente',
+                    'status' => $isPaid ? 'pago' : 'pendente',
                     'data_vencimento' => $dueDate->format('Y-m-d'),
                     'data_pagamento' => $isPaid ? $dueDate->addDays(rand(1, 10))->format('Y-m-d') : null,
                 ]);

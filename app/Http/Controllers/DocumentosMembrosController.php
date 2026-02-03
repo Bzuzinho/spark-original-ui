@@ -9,7 +9,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
-class MemberDocumentController extends Controller
+class DocumentosMembrosController extends Controller
 {
     /**
      * Display a listing of the member's documents.

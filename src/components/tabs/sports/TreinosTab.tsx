@@ -63,6 +63,9 @@ export function TreinosTab({ onNavigate }: TreinosTabProps) {
       return;
     }
 
+    console.log('=== CRIAÇÃO/EDIÇÃO DE TREINO ===');
+    console.log('Dados do formulário:', formData);
+
     if (isEditMode && editingTreinoId) {
       const treinoExistente = (treinos || []).find(t => t.id === editingTreinoId);
       
@@ -79,6 +82,8 @@ export function TreinosTab({ onNavigate }: TreinosTabProps) {
         descricao_treino: formData.descricao_treino || undefined,
         atualizado_em: new Date().toISOString(),
       };
+
+      console.log('Treino atualizado:', treinoAtualizado);
 
       await setTreinos((current = []) =>
         current.map(t => t.id === editingTreinoId ? treinoAtualizado : t)
@@ -106,7 +111,10 @@ export function TreinosTab({ onNavigate }: TreinosTabProps) {
       }
 
       toast.success('Treino atualizado com sucesso!');
+      console.log('=== FIM EDIÇÃO ===');
     } else {
+      const volumeMetros = formData.volume_planeado_m ? parseInt(formData.volume_planeado_m) : undefined;
+      
       const novoTreino: Treino = {
         id: crypto.randomUUID(),
         numero_treino: formData.numero_treino,
@@ -116,11 +124,15 @@ export function TreinosTab({ onNavigate }: TreinosTabProps) {
         local: formData.local,
         escaloes: formData.escaloes,
         tipo_treino: formData.tipo_treino,
-        volume_planeado_m: formData.volume_planeado_m ? parseInt(formData.volume_planeado_m) : undefined,
+        volume_planeado_m: volumeMetros,
         descricao_treino: formData.descricao_treino || undefined,
         criado_por: 'admin',
         created_at: new Date().toISOString(),
       };
+
+      console.log('Novo treino criado:', JSON.stringify(novoTreino, null, 2));
+      console.log('Escalões:', formData.escaloes);
+      console.log('Volume metros:', volumeMetros, 'tipo:', typeof volumeMetros);
 
       const eventoData = new Date(formData.data);
       const now = new Date();
@@ -149,10 +161,17 @@ export function TreinosTab({ onNavigate }: TreinosTabProps) {
 
       novoTreino.evento_id = eventoTreino.id;
 
-      await setTreinos((current = []) => [...current, novoTreino]);
+      console.log('Salvando treino...');
+      await setTreinos((current = []) => {
+        const newArray = [...current, novoTreino];
+        console.log('Total de treinos após salvar:', newArray.length);
+        return newArray;
+      });
+      
       await setEvents((current = []) => [...current, eventoTreino]);
 
       toast.success('Treino criado e adicionado ao calendário!');
+      console.log('=== FIM CRIAÇÃO ===');
     }
 
     resetForm();

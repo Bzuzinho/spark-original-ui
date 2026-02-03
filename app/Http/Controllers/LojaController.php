@@ -63,7 +63,7 @@ class LojaController extends Controller
     {
         Product::create($request->validated());
 
-        return redirect()->route('loja.index')
+        return redirect()->route('shop.index')
             ->with('success', 'Produto criado com sucesso!');
     }
 
@@ -85,7 +85,7 @@ class LojaController extends Controller
     {
         $loja->update($request->validated());
 
-        return redirect()->route('loja.index')
+        return redirect()->route('shop.index')
             ->with('success', 'Produto atualizado com sucesso!');
     }
 
@@ -93,7 +93,7 @@ class LojaController extends Controller
     {
         $loja->delete();
 
-        return redirect()->route('loja.index')
+        return redirect()->route('shop.index')
             ->with('success', 'Produto eliminado com sucesso!');
     }
 }
