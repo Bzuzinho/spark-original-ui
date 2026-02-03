@@ -7,7 +7,6 @@ import { Calendar } from '@/Components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/Components/ui/popover';
 import { format } from 'date-fns';
 import { pt } from 'date-fns/locale';
-import { Key } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import { FileUpload } from '@/Components/FileUpload';
 
@@ -15,9 +14,10 @@ interface ConfigurationTabProps {
   user: any;
   onChange: (field: string, value: any) => void;
   isAdmin: boolean;
+  isCreating?: boolean; // Flag to show password field for new members
 }
 
-export function ConfigurationTab({ user, onChange, isAdmin }: ConfigurationTabProps) {
+export function ConfigurationTab({ user, onChange, isAdmin, isCreating = false }: ConfigurationTabProps) {
   const handlePasswordReset = () => {
     toast.success('Email de recuperação enviado com sucesso!', {
       description: `Email enviado para ${user.email_utilizador}`
@@ -69,9 +69,30 @@ export function ConfigurationTab({ user, onChange, isAdmin }: ConfigurationTabPr
           </div>
         </div>
 
-        {isAdmin && (
+        {/* Password field - only shown when creating new member */}
+        {isCreating && (
+          <div className="space-y-1">
+            <Label htmlFor="password" className="text-xs">Password *</Label>
+            <Input
+              id="password"
+              type="password"
+              value={user.password || ''}
+              onChange={(e) => onChange('password', e.target.value)}
+              disabled={!isAdmin}
+              placeholder="Mínimo 8 caracteres"
+              className="h-7 text-xs"
+            />
+            <p className="text-xs text-muted-foreground">
+              Password inicial para acesso à plataforma
+            </p>
+          </div>
+        )}
+
+        {isAdmin && !isCreating && (
           <Button variant="outline" size="sm" onClick={handlePasswordReset} className="w-full h-7 text-xs">
-            <Key className="mr-1" size={12} />
+            <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+            </svg>
             Reenviar Recuperação de Password
           </Button>
         )}
