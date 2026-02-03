@@ -12,7 +12,6 @@ use Inertia\Response;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 
@@ -136,24 +135,9 @@ class MembersController extends Controller
                 $member->userTypes()->sync($data['user_types']);
             }
             
-            // Bidirectional sync of guardian relationship
+            // Sync guardian relationship
             if (isset($data['encarregado_educacao']) && is_array($data['encarregado_educacao'])) {
                 $member->encarregados()->sync($data['encarregado_educacao']);
-                
-                // Batch operation: Add member to all guardians' educandos in one query
-                if (!empty($data['encarregado_educacao'])) {
-                    $pivotData = [];
-                    foreach ($data['encarregado_educacao'] as $guardianId) {
-                        $pivotData[] = [
-                            'guardian_id' => $guardianId,
-                            'user_id' => $member->id,
-                        ];
-                    }
-                    
-                    // Use insert ignore to avoid duplicates
-                    \DB::table('user_guardian')
-                        ->insertOrIgnore($pivotData);
-                }
             }
 
             return redirect()->route('members.index')
@@ -209,9 +193,6 @@ class MembersController extends Controller
                 }
             }
             
-            // Get old guardian IDs before update
-            $oldGuardianIds = $member->encarregados()->pluck('id')->toArray();
-            
             // Auto-calculate menor field if data_nascimento changes
             if (isset($data['data_nascimento'])) {
                 $birthDate = Carbon::parse($data['data_nascimento']);
@@ -264,33 +245,9 @@ class MembersController extends Controller
                 $member->userTypes()->sync($data['user_types']);
             }
             
-            // Bidirectional sync of guardian relationships
-            $newGuardianIds = $data['encarregado_educacao'] ?? [];
-            
-            if (is_array($newGuardianIds)) {
-                $member->encarregados()->sync($newGuardianIds);
-                
-                // Batch operations to optimize database queries
-                $guardianIdsToRemove = array_diff($oldGuardianIds, $newGuardianIds);
-                if (!empty($guardianIdsToRemove)) {
-                    \DB::table('user_guardian')
-                        ->where('user_id', $member->id)
-                        ->whereIn('guardian_id', $guardianIdsToRemove)
-                        ->delete();
-                }
-                
-                if (!empty($newGuardianIds)) {
-                    $pivotData = [];
-                    foreach ($newGuardianIds as $guardianId) {
-                        $pivotData[] = [
-                            'guardian_id' => $guardianId,
-                            'user_id' => $member->id,
-                        ];
-                    }
-                    
-                    \DB::table('user_guardian')
-                        ->insertOrIgnore($pivotData);
-                }
+            // Sync guardian relationship
+            if (isset($data['encarregado_educacao']) && is_array($data['encarregado_educacao'])) {
+                $member->encarregados()->sync($data['encarregado_educacao']);
             }
 
             return redirect()->route('members.index')
