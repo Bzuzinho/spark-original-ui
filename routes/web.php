@@ -7,16 +7,16 @@ use App\Http\Controllers\MemberDocumentController;
 use App\Http\Controllers\MemberRelationshipController;
 use App\Http\Controllers\EventsController;
 use App\Http\Controllers\SportsController;
-use App\Http\Controllers\FinancialController;
+use App\Http\Controllers\FinanceiroController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\MembershipFeeController;
 use App\Http\Controllers\FinancialCategoryController;
 use App\Http\Controllers\FinancialReportController;
-use App\Http\Controllers\ShopController;
-use App\Http\Controllers\SponsorshipsController;
-use App\Http\Controllers\CommunicationController;
+use App\Http\Controllers\InventarioController;
+use App\Http\Controllers\PatrociniosController;
+use App\Http\Controllers\ComunicacaoController;
 use App\Http\Controllers\MarketingCampaignController;
-use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\ConfiguracoesController;
 use App\Http\Controllers\TeamController;
 use App\Http\Controllers\TeamMemberController;
 use App\Http\Controllers\TrainingSessionController;
@@ -56,31 +56,30 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('events-stats', [EventsController::class, 'stats'])->name('events.stats');
     
     Route::resource('sports', SportsController::class);
-    Route::resource('financial', FinancialController::class);
-    Route::resource('shop', ShopController::class);
-    Route::resource('sponsorships', SponsorshipsController::class);
-    Route::resource('communication', CommunicationController::class);
-    Route::post('/communication/{communication}/send', [CommunicationController::class, 'send'])->name('communication.send');
-    Route::resource('marketing', MarketingController::class);
+    Route::resource('financeiro', FinanceiroController::class);
+    Route::resource('inventario', InventarioController::class);
+    Route::resource('patrocinios', PatrociniosController::class);
+    Route::resource('comunicacao', ComunicacaoController::class);
+    Route::post('/comunicacao/{comunicacao}/send', [ComunicacaoController::class, 'send'])->name('comunicacao.send');
     Route::resource('marketing', MarketingCampaignController::class);
     
-    // Settings routes
-    Route::get('/settings', [SettingsController::class, 'index'])->name('settings');
+    // Configurações routes
+    Route::get('/configuracoes', [ConfiguracoesController::class, 'index'])->name('configuracoes');
     
-    // Settings CRUD sub-routes
-    Route::post('/settings/user-types', [SettingsController::class, 'storeUserType'])->name('settings.user-types.store');
-    Route::put('/settings/user-types/{userType}', [SettingsController::class, 'updateUserType'])->name('settings.user-types.update');
-    Route::delete('/settings/user-types/{userType}', [SettingsController::class, 'destroyUserType'])->name('settings.user-types.destroy');
+    // Configurações CRUD sub-routes
+    Route::post('/configuracoes/user-types', [ConfiguracoesController::class, 'storeUserType'])->name('configuracoes.user-types.store');
+    Route::put('/configuracoes/user-types/{userType}', [ConfiguracoesController::class, 'updateUserType'])->name('configuracoes.user-types.update');
+    Route::delete('/configuracoes/user-types/{userType}', [ConfiguracoesController::class, 'destroyUserType'])->name('configuracoes.user-types.destroy');
     
-    Route::post('/settings/age-groups', [SettingsController::class, 'storeAgeGroup'])->name('settings.age-groups.store');
-    Route::put('/settings/age-groups/{ageGroup}', [SettingsController::class, 'updateAgeGroup'])->name('settings.age-groups.update');
-    Route::delete('/settings/age-groups/{ageGroup}', [SettingsController::class, 'destroyAgeGroup'])->name('settings.age-groups.destroy');
+    Route::post('/configuracoes/age-groups', [ConfiguracoesController::class, 'storeAgeGroup'])->name('configuracoes.age-groups.store');
+    Route::put('/configuracoes/age-groups/{ageGroup}', [ConfiguracoesController::class, 'updateAgeGroup'])->name('configuracoes.age-groups.update');
+    Route::delete('/configuracoes/age-groups/{ageGroup}', [ConfiguracoesController::class, 'destroyAgeGroup'])->name('configuracoes.age-groups.destroy');
     
-    Route::post('/settings/event-types', [SettingsController::class, 'storeEventType'])->name('settings.event-types.store');
-    Route::put('/settings/event-types/{eventType}', [SettingsController::class, 'updateEventType'])->name('settings.event-types.update');
-    Route::delete('/settings/event-types/{eventType}', [SettingsController::class, 'destroyEventType'])->name('settings.event-types.destroy');
+    Route::post('/configuracoes/event-types', [ConfiguracoesController::class, 'storeEventType'])->name('configuracoes.event-types.store');
+    Route::put('/configuracoes/event-types/{eventType}', [ConfiguracoesController::class, 'updateEventType'])->name('configuracoes.event-types.update');
+    Route::delete('/configuracoes/event-types/{eventType}', [ConfiguracoesController::class, 'destroyEventType'])->name('configuracoes.event-types.destroy');
     
-    Route::put('/settings/club', [SettingsController::class, 'updateClubSettings'])->name('settings.club.update');
+    Route::put('/configuracoes/club', [ConfiguracoesController::class, 'updateClubSettings'])->name('configuracoes.club.update');
     // Sports module routes
     Route::resource('teams', TeamController::class);
     Route::resource('team-members', TeamMemberController::class)->except(['index', 'create', 'show', 'edit']);
