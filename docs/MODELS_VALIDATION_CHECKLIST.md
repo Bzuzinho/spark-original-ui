@@ -66,7 +66,7 @@
 - [x] **MarketingCampaign** - ✅ Normalizado (inclui scopes)
 - [x] **CostCenter** - ✅ Confirmado correto
 - [x] **AgeGroup** - ✅ Confirmado correto
-- [x] **UserType** - ✅ Confirmado correcto
+- [x] **UserType** - ✅ Confirmado correto
 - [x] **UserDocument** - ✅ Confirmado correto
 - [x] **UserRelationship** - ✅ Confirmado correto
 - [x] **ClubSetting** - ✅ Confirmado correto

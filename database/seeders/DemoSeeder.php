@@ -217,7 +217,7 @@ class DemoSeeder extends Seeder
                 'data_inicio' => Carbon::now()->subMonths(rand(1, 12))->format('Y-m-d'),
                 'data_fim' => Carbon::now()->addYear()->format('Y-m-d'),
                 'contacto_email' => strtolower(str_replace(' ', '', $sponsorData[0])) . '@example.com',
-                'ativo' => true,
+                'estado' => 'ativo',
             ]);
         }
 

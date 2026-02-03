@@ -3,8 +3,8 @@
 ## ⚠️ Configuração BD
 - **Tipo**: PostgreSQL 14+
 - **Schema**: Normalizado para **PORTUGUÊS** ✅
-- **Models**: Atualmente em **INGLÊS** (precisa normalizar) ❌
-- **Problema**: Mismatch causa erros SQLSTATE[42703]
+- **Models**: Normalizados para **PORTUGUÊS** ✅
+- **Problema Original**: Mismatch causava erros SQLSTATE[42703] - **RESOLVIDO** ✅
 
 ---
 
