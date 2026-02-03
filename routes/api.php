@@ -8,6 +8,8 @@ use App\Http\Controllers\Api\TiposEventoController;
 use App\Http\Controllers\Api\CentrosCustoController;
 use App\Http\Controllers\Api\ClubSettingController;
 use App\Http\Controllers\Api\KeyValueController;
+use App\Http\Controllers\Api\UsersController;
+use App\Http\Controllers\Api\EventsController;
 
 /*
 |--------------------------------------------------------------------------
@@ -25,6 +27,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/kv/{key}', [KeyValueController::class, 'show']);
     Route::put('/kv/{key}', [KeyValueController::class, 'update']);
     Route::delete('/kv/{key}', [KeyValueController::class, 'destroy']);
+
+    // Resource APIs
+    Route::apiResource('users', UsersController::class);
+    Route::apiResource('events', EventsController::class);
 
     // Settings APIs
     Route::apiResource('user-types', TiposUtilizadorController::class);
