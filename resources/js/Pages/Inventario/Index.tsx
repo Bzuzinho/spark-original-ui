@@ -41,7 +41,7 @@ interface Props {
     };
 }
 
-export default function LojaIndex({ products, stats, categorias, filters }: Props) {
+export default function InventarioIndex({ products, stats, categorias, filters }: Props) {
     const [dialogOpen, setDialogOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
     
@@ -74,14 +74,14 @@ export default function LojaIndex({ products, stats, categorias, filters }: Prop
         e.preventDefault();
         
         if (editingProduct) {
-            router.put(`/loja/${editingProduct.id}`, formData, {
+            router.put(`/inventario/${editingProduct.id}`, formData, {
                 onSuccess: () => {
                     setDialogOpen(false);
                     resetForm();
                 },
             });
         } else {
-            router.post('/loja', formData, {
+            router.post('/inventario', formData, {
                 onSuccess: () => {
                     setDialogOpen(false);
                     resetForm();
@@ -107,7 +107,7 @@ export default function LojaIndex({ products, stats, categorias, filters }: Prop
 
     const handleDelete = (id: string) => {
         if (confirm('Tem certeza que deseja eliminar este produto?')) {
-            router.delete(`/loja/${id}`);
+            router.delete(`/inventario/${id}`);
         }
     };
 
