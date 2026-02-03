@@ -157,7 +157,7 @@ class FinanceiroController extends Controller
             }
         }
 
-        return redirect()->route('financial.index')
+        return redirect()->route('financeiro.index')
             ->with('success', 'Fatura criada com sucesso!');
     }
 
@@ -197,7 +197,7 @@ class FinanceiroController extends Controller
             }
         }
 
-        return redirect()->route('financial.index')
+        return redirect()->route('financeiro.index')
             ->with('success', 'Fatura atualizada com sucesso!');
     }
 
@@ -205,7 +205,7 @@ class FinanceiroController extends Controller
     {
         $financial->delete();
 
-        return redirect()->route('financial.index')
+        return redirect()->route('financeiro.index')
             ->with('success', 'Fatura eliminada com sucesso!');
     }
 
