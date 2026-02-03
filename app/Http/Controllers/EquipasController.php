@@ -10,7 +10,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Http\RedirectResponse;
 
-class TeamController extends Controller
+class EquipasController extends Controller
 {
     public function index(): Response
     {
@@ -24,9 +24,9 @@ class TeamController extends Controller
     public function create(): Response
     {
         return Inertia::render('Desportivo/Teams/Create', [
-            'treinadores' => User::whereJsonContains('member_type', 'treinador')
+            'treinadores' => User::whereJsonContains('tipo_membro', 'treinador')
                 ->where('status', 'ativo')
-                ->get(['id', 'full_name']),
+                ->get(['id', 'nome_completo']),
         ]);
     }
 
@@ -49,9 +49,9 @@ class TeamController extends Controller
     {
         return Inertia::render('Desportivo/Teams/Edit', [
             'team' => $team,
-            'treinadores' => User::whereJsonContains('member_type', 'treinador')
+            'treinadores' => User::whereJsonContains('tipo_membro', 'treinador')
                 ->where('status', 'ativo')
-                ->get(['id', 'full_name']),
+                ->get(['id', 'nome_completo']),
         ]);
     }
 

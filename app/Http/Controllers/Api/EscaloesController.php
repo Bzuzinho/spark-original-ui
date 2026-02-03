@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AgeGroup;
 use Illuminate\Http\Request;
 
-class AgeGroupController extends Controller
+class EscaloesController extends Controller
 {
     /**
      * Display a listing of the resource.

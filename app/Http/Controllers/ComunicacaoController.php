@@ -33,7 +33,7 @@ class CommunicationController extends Controller
             ? round(($totalEnviados / ($totalEnviados + $totalFalhados)) * 100, 1)
             : 0;
 
-        return Inertia::render('Communication/Index', [
+        return Inertia::render('Comunicacao/Index', [
             'communications' => $communications,
             'stats' => [
                 'totalCommunications' => $totalCommunications,
@@ -48,10 +48,10 @@ class CommunicationController extends Controller
     public function create(): Response
     {
         $users = User::where('status', 'ativo')
-            ->select('id', 'full_name', 'email')
+            ->select('id', 'nome_completo', 'email')
             ->get();
 
-        return Inertia::render('Communication/Create', [
+        return Inertia::render('Comunicacao/Create', [
             'users' => $users,
         ]);
     }
@@ -73,7 +73,7 @@ class CommunicationController extends Controller
 
     public function show(Communication $comunicacao): Response
     {
-        return Inertia::render('Communication/Show', [
+        return Inertia::render('Comunicacao/Show', [
             'communication' => $comunicacao,
         ]);
     }
@@ -81,10 +81,10 @@ class CommunicationController extends Controller
     public function edit(Communication $comunicacao): Response
     {
         $users = User::where('status', 'ativo')
-            ->select('id', 'full_name', 'email')
+            ->select('id', 'nome_completo', 'email')
             ->get();
 
-        return Inertia::render('Communication/Edit', [
+        return Inertia::render('Comunicacao/Edit', [
             'communication' => $comunicacao,
             'users' => $users,
         ]);

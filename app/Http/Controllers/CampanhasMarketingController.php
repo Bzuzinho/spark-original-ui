@@ -10,7 +10,7 @@ use Inertia\Response;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
-class MarketingCampaignController extends Controller
+class CampanhasMarketingController extends Controller
 {
     public function index(Request $request): Response
     {
@@ -40,7 +40,7 @@ class MarketingCampaignController extends Controller
             'completed_campaigns' => MarketingCampaign::completed()->count(),
         ];
 
-        return Inertia::render('Marketing/Index', [
+        return Inertia::render('CampanhasMarketing/Index', [
             'campaigns' => $campaigns,
             'stats' => $stats,
             'filters' => [
@@ -53,7 +53,7 @@ class MarketingCampaignController extends Controller
 
     public function create(): Response
     {
-        return Inertia::render('Marketing/Create');
+        return Inertia::render('CampanhasMarketing/Create');
     }
 
     public function store(StoreCampaignRequest $request): RedirectResponse
@@ -66,14 +66,14 @@ class MarketingCampaignController extends Controller
 
     public function show(MarketingCampaign $marketing): Response
     {
-        return Inertia::render('Marketing/Show', [
+        return Inertia::render('CampanhasMarketing/Show', [
             'campaign' => $marketing,
         ]);
     }
 
     public function edit(MarketingCampaign $marketing): Response
     {
-        return Inertia::render('Marketing/Edit', [
+        return Inertia::render('CampanhasMarketing/Edit', [
             'campaign' => $marketing,
         ]);
     }

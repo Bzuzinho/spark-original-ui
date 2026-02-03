@@ -24,11 +24,11 @@ const mainMenuItems: MenuItem[] = [
     { name: 'Membros', href: '/membros', icon: Users },
     { name: 'Desportivo', href: '/desportivo', icon: Trophy },
     { name: 'Eventos', href: '/eventos', icon: Calendar },
-    { name: 'Financial', href: '/financial', icon: CurrencyDollar },
+    { name: 'Financeiro', href: '/financeiro', icon: CurrencyDollar },
     { name: 'Loja', href: '/loja', icon: ShoppingCart },
-    { name: 'Sponsorships', href: '/sponsorships', icon: Handshake },
-    { name: 'Communication', href: '/communication', icon: EnvelopeSimple },
-    { name: 'Marketing', href: '/marketing', icon: Megaphone },
+    { name: 'Patrocínios', href: '/patrocinios', icon: Handshake },
+    { name: 'Comunicação', href: '/comunicacao', icon: EnvelopeSimple },
+    { name: 'Marketing', href: '/campanhas-marketing', icon: Megaphone },
 ];
 
 export default function Sidebar() {
@@ -85,11 +85,11 @@ export default function Sidebar() {
             <div className="border-t border-gray-200">
                 {/* Configurações */}
                 <Link
-                    href="/settings"
+                    href="/configuracoes"
                     className={`
                         flex items-center gap-3 px-7 py-3
                         transition-colors duration-200
-                        ${isActive('/settings')
+                        ${isActive('/configuracoes')
                             ? 'bg-blue-600 text-white'
                             : 'text-gray-700 hover:bg-gray-100'
                         }

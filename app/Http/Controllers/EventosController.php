@@ -16,7 +16,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 
-class EventsController extends Controller
+class EventosController extends Controller
 {
     public function index(): Response
     {
@@ -36,18 +36,18 @@ class EventsController extends Controller
                 ->count(),
         ];
 
-        return Inertia::render('Events/Index', [
+        return Inertia::render('Eventos/Index', [
             'events' => Event::with(['creator', 'convocations.athlete', 'attendances.athlete'])
                 ->orderBy('start_date', 'desc')
                 ->get(),
             'stats' => $stats,
-            'users' => User::where('status', 'ativo')->get(['id', 'full_name', 'user_type']),
+            'users' => User::where('status', 'ativo')->get(['id', 'nome_completo', 'user_type']),
         ]);
     }
 
     public function create(): Response
     {
-        return Inertia::render('Events/Create', [
+        return Inertia::render('Eventos/Create', [
             'eventTypes' => EventType::where('active', true)->get(),
             'users' => User::where('status', 'ativo')->get(),
         ]);
@@ -71,7 +71,7 @@ class EventsController extends Controller
 
     public function show(Event $evento): Response
     {
-        return Inertia::render('Events/Show', [
+        return Inertia::render('Eventos/Show', [
             'event' => $evento->load([
                 'creator',
                 'eventType',
@@ -84,7 +84,7 @@ class EventsController extends Controller
 
     public function edit(Event $evento): Response
     {
-        return Inertia::render('Events/Edit', [
+        return Inertia::render('Eventos/Edit', [
             'event' => $evento->load(['eventType']),
             'eventTypes' => EventType::where('active', true)->get(),
             'users' => User::where('status', 'ativo')->get(),

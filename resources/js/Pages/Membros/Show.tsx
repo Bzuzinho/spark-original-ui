@@ -11,8 +11,8 @@ import SportsTab from '@/Components/Members/Tabs/SportsTab';
 import ConfigurationTab from '@/Components/Members/Tabs/ConfigurationTab';
 
 interface User {
-    id?: string;
-    member_number?: string;
+    id: string;
+    member_number: string;
     full_name: string;
     email_utilizador?: string;
     foto_perfil?: string;
@@ -20,66 +20,19 @@ interface User {
     member_type: string[];
     data_nascimento: string;
     perfil: string;
-    sexo: string;
-    rgpd: boolean;
-    consentimento: boolean;
-    afiliacao: boolean;
-    declaracao_de_transporte: boolean;
-    password?: string;
+    // ... other fields
     [key: string]: any;
 }
 
 interface Props {
+    member: User;
     allUsers: User[];
     userTypes: any[];
     ageGroups: any[];
-    guardians?: User[];
 }
 
-export default function Create({ allUsers, userTypes, ageGroups, guardians }: Props) {
-    const [user, setUser] = useState<User>({
-        full_name: '',
-        email_utilizador: '',
-        sexo: 'masculino',
-        perfil: 'atleta',
-        estado: 'ativo',
-        member_type: [],
-        data_nascimento: '',
-        rgpd: false,
-        consentimento: false,
-        afiliacao: false,
-        declaracao_de_transporte: false,
-        password: '',
-        contacto_telefonico: '',
-        contacto_emergencia: '',
-        numero_cartao_cidadao: '',
-        numero_cartao_cidadao_validade: '',
-        numero_utente_saude: '',
-        numero_contribuinte: '',
-        foto_perfil: '',
-        observacoes_individuais: '',
-        morada: '',
-        codigo_postal: '',
-        localidade: '',
-        pais: 'Portugal',
-        iban: '',
-        banco: '',
-        titular_conta: '',
-        sepa_mandate: false,
-        sepa_mandate_data: '',
-        quota_mensal: 0,
-        quota_estado: 'nao_paga',
-        taxa_inscricao: 0,
-        taxa_inscricao_estado: 'nao_paga',
-        tipo_atleta: '',
-        escalao: '',
-        equipa: '',
-        numero_camisola: '',
-        posicao: '',
-        data_entrada: '',
-        data_saida: '',
-        notas_desportivas: '',
-    });
+export default function Show({ member, allUsers, userTypes, ageGroups }: Props) {
+    const [user, setUser] = useState<User>(member);
     const [hasChanges, setHasChanges] = useState(false);
 
     const handleChange = (field: keyof User, value: any) => {
@@ -89,24 +42,24 @@ export default function Create({ allUsers, userTypes, ageGroups, guardians }: Pr
 
     const handleSave: FormEventHandler = (e) => {
         e.preventDefault();
-        router.post(route('members.store'), user, {
+        router.put(route('membros.update', user.id), user, {
             onSuccess: () => {
-                toast.success('Membro criado com sucesso!');
+                setHasChanges(false);
+                toast.success('Membro atualizado com sucesso!');
             },
-            onError: (errors) => {
-                toast.error('Erro ao criar membro');
-                console.error(errors);
+            onError: () => {
+                toast.error('Erro ao atualizar membro');
             }
         });
     };
 
-    const handleCancel = () => {
+    const handleBack = () => {
         if (hasChanges) {
             if (window.confirm('Tem alterações não guardadas. Deseja sair sem guardar?')) {
-                router.visit(route('members.index'));
+                router.visit(route('membros.index'));
             }
         } else {
-            router.visit(route('members.index'));
+            router.visit(route('membros.index'));
         }
     };
 
@@ -117,38 +70,38 @@ export default function Create({ allUsers, userTypes, ageGroups, guardians }: Pr
             header={
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="icon" onClick={handleCancel} className="h-8 w-8">
+                        <Button variant="ghost" size="icon" onClick={handleBack} className="h-8 w-8">
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                             </svg>
                         </Button>
                         <div>
                             <h1 className="text-base sm:text-lg font-semibold tracking-tight">
-                                Novo Membro
+                                {user.full_name || 'Novo Membro'}
                             </h1>
                             <p className="text-muted-foreground text-xs">
-                                Nº de Sócio: (Auto)
+                                Nº de Sócio: {user.member_number}
                             </p>
                         </div>
                     </div>
                     <div className="flex gap-2">
-                        <Button variant="outline" size="sm" onClick={handleCancel} className="h-8 text-xs">
+                        <Button variant="outline" size="sm" onClick={handleBack} className="h-8 text-xs">
                             <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                             </svg>
                             Cancelar
                         </Button>
-                        <Button size="sm" onClick={handleSave} className="h-8 text-xs">
+                        <Button size="sm" onClick={handleSave} disabled={!hasChanges} className="h-8 text-xs">
                             <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                             </svg>
-                            Criar Membro
+                            Guardar
                         </Button>
                     </div>
                 </div>
             }
         >
-            <Head title="Novo Membro" />
+            <Head title={`Membro - ${user.full_name}`} />
 
             <Card className="p-2 sm:p-3">
                 <Tabs defaultValue="personal" className="space-y-2">
@@ -203,7 +156,6 @@ export default function Create({ allUsers, userTypes, ageGroups, guardians }: Pr
                             user={user}
                             onChange={handleChange}
                             isAdmin={true}
-                            isCreating={true}
                         />
                     </TabsContent>
                 </Tabs>

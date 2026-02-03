@@ -15,50 +15,11 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 
-class MembersController extends Controller
+class MembrosController extends Controller
 {
-    private const FIELD_MAP = [
-        'email_utilizador' => 'user_email',
-        'sexo' => 'gender',
-        'perfil' => 'profile',
-        'estado' => 'status',
-        'morada' => 'address',
-        'codigo_postal' => 'postal_code',
-        'localidade' => 'city',
-        'contacto' => 'contact',
-        'contacto_telefonico' => 'phone_contact',
-        'telemovel' => 'mobile',
-        'ocupacao' => 'occupation',
-        'empresa' => 'company',
-        'escola' => 'school',
-        'numero_irmaos' => 'siblings_count',
-        'email_secundario' => 'secondary_email',
-        'tipo_mensalidade' => 'membership_fee_type',
-        'centro_custo' => 'cost_centers',
-        'num_federacao' => 'federation_number',
-        'numero_pmb' => 'pmb_number',
-        'data_inscricao' => 'registration_date',
-        'inscricao' => 'registration_file',
-        'escalao' => 'age_groups',
-        'data_atestado_medico' => 'medical_certificate_date',
-        'arquivo_atestado_medico' => 'medical_certificate_files',
-        'informacoes_medicas' => 'medical_information',
-        'ativo_desportivo' => 'sports_active',
-        'data_rgpd' => 'gdpr_date',
-        'rgpd' => 'gdpr_consent',
-        'data_consentimento' => 'consent_date',
-        'data_afiliacao' => 'affiliation_date',
-        'declaracao_de_transporte' => 'transport_declaration',
-        'numero_utente' => 'health_number',
-        'nacionalidade' => 'nationality',
-        'estado_civil' => 'marital_status',
-        'cc' => 'id_card_number',
-        'numero_socio' => 'member_number',
-    ];
-    
     public function index(): Response
     {
-        return Inertia::render('Members/Index', [
+        return Inertia::render('Membros/Index', [
             'members' => User::with(['userTypes', 'ageGroup', 'encarregados', 'educandos'])
                 ->latest()
                 ->get(),
@@ -69,10 +30,10 @@ class MembersController extends Controller
 
     public function create(): Response
     {
-        return Inertia::render('Members/Create', [
+        return Inertia::render('Membros/Create', [
             'userTypes' => UserType::where('active', true)->get(),
             'ageGroups' => AgeGroup::all(),
-            'guardians' => User::whereJsonContains('member_type', 'encarregado_educacao')->get(),
+            'guardians' => User::whereJsonContains('tipo_membro', 'encarregado_educacao')->get(),
         ]);
     }
 
@@ -81,23 +42,15 @@ class MembersController extends Controller
         try {
             $data = $request->validated();
             
-            // Map Portuguese fields to English column names first
-            foreach (self::FIELD_MAP as $portuguese => $english) {
-                if (isset($data[$portuguese])) {
-                    $data[$english] = $data[$portuguese];
-                }
-            }
-            
-            // Auto-generate member_number if not provided
-            if (empty($data['member_number'])) {
-                $data['member_number'] = $this->generateMemberNumber();
+            // Auto-generate numero_socio if not provided
+            if (empty($data['numero_socio'])) {
+                $data['numero_socio'] = $this->generateMemberNumber();
             }
             
             // Auto-calculate menor field (age < 18)
             if (isset($data['data_nascimento'])) {
                 $birthDate = Carbon::parse($data['data_nascimento']);
                 $data['menor'] = $birthDate->age < 18;
-                $data['birth_date'] = $data['data_nascimento'];
             }
             
             // Hash password
@@ -105,27 +58,27 @@ class MembersController extends Controller
             
             // Handle file uploads
             if (isset($data['foto_perfil']) && $this->isBase64($data['foto_perfil'])) {
-                $data['profile_photo'] = $this->storeBase64Image($data['foto_perfil'], 'members/photos');
+                $data['foto_perfil'] = $this->storeBase64Image($data['foto_perfil'], 'members/photos');
             }
             
             if (isset($data['cartao_federacao']) && $this->isBase64($data['cartao_federacao'])) {
-                $data['federation_card'] = $this->storeFile($data['cartao_federacao'], 'members/federation_cards');
+                $data['cartao_federacao'] = $this->storeFile($data['cartao_federacao'], 'members/federation_cards');
             }
             
             if (isset($data['arquivo_rgpd']) && $this->isBase64($data['arquivo_rgpd'])) {
-                $data['gdpr_file'] = $this->storeFile($data['arquivo_rgpd'], 'members/gdpr');
+                $data['arquivo_rgpd'] = $this->storeFile($data['arquivo_rgpd'], 'members/gdpr');
             }
             
             if (isset($data['arquivo_consentimento']) && $this->isBase64($data['arquivo_consentimento'])) {
-                $data['consent_file'] = $this->storeFile($data['arquivo_consentimento'], 'members/consent');
+                $data['arquivo_consentimento'] = $this->storeFile($data['arquivo_consentimento'], 'members/consent');
             }
             
             if (isset($data['arquivo_afiliacao']) && $this->isBase64($data['arquivo_afiliacao'])) {
-                $data['affiliation_file'] = $this->storeFile($data['arquivo_afiliacao'], 'members/affiliation');
+                $data['arquivo_afiliacao'] = $this->storeFile($data['arquivo_afiliacao'], 'members/affiliation');
             }
             
             if (isset($data['declaracao_transporte']) && $this->isBase64($data['declaracao_transporte'])) {
-                $data['transport_declaration_file'] = $this->storeFile($data['declaracao_transporte'], 'members/transport');
+                $data['declaracao_transporte'] = $this->storeFile($data['declaracao_transporte'], 'members/transport');
             }
             
             $member = User::create($data);
@@ -140,7 +93,7 @@ class MembersController extends Controller
                 $member->encarregados()->sync($data['encarregado_educacao']);
             }
 
-            return redirect()->route('members.index')
+            return redirect()->route('membros.index')
                 ->with('success', 'Membro criado com sucesso!');
                 
         } catch (\Exception $e) {
@@ -152,7 +105,7 @@ class MembersController extends Controller
 
     public function show(User $member): Response
     {
-        return Inertia::render('Members/Show', [
+        return Inertia::render('Membros/Show', [
             'member' => $member->load([
                 'userTypes',
                 'ageGroup',
@@ -163,7 +116,7 @@ class MembersController extends Controller
                 'documents',
                 'relationships.relatedUser',
             ]),
-            'allUsers' => User::select('id', 'full_name', 'member_number', 'member_type')->get(),
+            'allUsers' => User::select('id', 'nome_completo', 'numero_socio', 'tipo_membro')->get(),
             'userTypes' => UserType::where('active', true)->get(),
             'ageGroups' => AgeGroup::all(),
         ]);
@@ -171,11 +124,11 @@ class MembersController extends Controller
 
     public function edit(User $member): Response
     {
-        return Inertia::render('Members/Edit', [
+        return Inertia::render('Membros/Edit', [
             'member' => $member->load(['userTypes', 'ageGroup', 'encarregados', 'educandos']),
             'userTypes' => UserType::where('active', true)->get(),
             'ageGroups' => AgeGroup::all(),
-            'guardians' => User::whereJsonContains('member_type', 'encarregado_educacao')
+            'guardians' => User::whereJsonContains('tipo_membro', 'encarregado_educacao')
                 ->where('id', '!=', $member->id)
                 ->get(),
         ]);
@@ -186,18 +139,10 @@ class MembersController extends Controller
         try {
             $data = $request->validated();
             
-            // Map Portuguese fields to English column names first
-            foreach (self::FIELD_MAP as $portuguese => $english) {
-                if (isset($data[$portuguese])) {
-                    $data[$english] = $data[$portuguese];
-                }
-            }
-            
             // Auto-calculate menor field if data_nascimento changes
             if (isset($data['data_nascimento'])) {
                 $birthDate = Carbon::parse($data['data_nascimento']);
                 $data['menor'] = $birthDate->age < 18;
-                $data['birth_date'] = $data['data_nascimento'];
             }
             
             // Hash password only if provided
@@ -209,33 +154,33 @@ class MembersController extends Controller
             
             // Handle file uploads
             if (isset($data['foto_perfil']) && $this->isBase64($data['foto_perfil'])) {
-                $this->deleteFile($member->profile_photo);
-                $data['profile_photo'] = $this->storeBase64Image($data['foto_perfil'], 'members/photos');
+                $this->deleteFile($member->foto_perfil);
+                $data['foto_perfil'] = $this->storeBase64Image($data['foto_perfil'], 'members/photos');
             }
             
             if (isset($data['cartao_federacao']) && $this->isBase64($data['cartao_federacao'])) {
-                $this->deleteFile($member->federation_card);
-                $data['federation_card'] = $this->storeFile($data['cartao_federacao'], 'members/federation_cards');
+                $this->deleteFile($member->cartao_federacao);
+                $data['cartao_federacao'] = $this->storeFile($data['cartao_federacao'], 'members/federation_cards');
             }
             
             if (isset($data['arquivo_rgpd']) && $this->isBase64($data['arquivo_rgpd'])) {
-                $this->deleteFile($member->gdpr_file);
-                $data['gdpr_file'] = $this->storeFile($data['arquivo_rgpd'], 'members/gdpr');
+                $this->deleteFile($member->arquivo_rgpd);
+                $data['arquivo_rgpd'] = $this->storeFile($data['arquivo_rgpd'], 'members/gdpr');
             }
             
             if (isset($data['arquivo_consentimento']) && $this->isBase64($data['arquivo_consentimento'])) {
-                $this->deleteFile($member->consent_file);
-                $data['consent_file'] = $this->storeFile($data['arquivo_consentimento'], 'members/consent');
+                $this->deleteFile($member->arquivo_consentimento);
+                $data['arquivo_consentimento'] = $this->storeFile($data['arquivo_consentimento'], 'members/consent');
             }
             
             if (isset($data['arquivo_afiliacao']) && $this->isBase64($data['arquivo_afiliacao'])) {
-                $this->deleteFile($member->affiliation_file);
-                $data['affiliation_file'] = $this->storeFile($data['arquivo_afiliacao'], 'members/affiliation');
+                $this->deleteFile($member->arquivo_afiliacao);
+                $data['arquivo_afiliacao'] = $this->storeFile($data['arquivo_afiliacao'], 'members/affiliation');
             }
             
             if (isset($data['declaracao_transporte']) && $this->isBase64($data['declaracao_transporte'])) {
-                $this->deleteFile($member->transport_declaration_file);
-                $data['transport_declaration_file'] = $this->storeFile($data['declaracao_transporte'], 'members/transport');
+                $this->deleteFile($member->declaracao_transporte);
+                $data['declaracao_transporte'] = $this->storeFile($data['declaracao_transporte'], 'members/transport');
             }
             
             $member->update($data);
@@ -250,7 +195,7 @@ class MembersController extends Controller
                 $member->encarregados()->sync($data['encarregado_educacao']);
             }
 
-            return redirect()->route('members.index')
+            return redirect()->route('membros.index')
                 ->with('success', 'Membro atualizado com sucesso!');
                 
         } catch (\Exception $e) {
@@ -268,16 +213,16 @@ class MembersController extends Controller
             $member->educandos()->detach();
             
             // Delete all associated files
-            $this->deleteFile($member->profile_photo);
-            $this->deleteFile($member->federation_card);
-            $this->deleteFile($member->gdpr_file);
-            $this->deleteFile($member->consent_file);
-            $this->deleteFile($member->affiliation_file);
-            $this->deleteFile($member->transport_declaration_file);
+            $this->deleteFile($member->foto_perfil);
+            $this->deleteFile($member->cartao_federacao);
+            $this->deleteFile($member->arquivo_rgpd);
+            $this->deleteFile($member->arquivo_consentimento);
+            $this->deleteFile($member->arquivo_afiliacao);
+            $this->deleteFile($member->declaracao_transporte);
             
             $member->delete();
 
-            return redirect()->route('members.index')
+            return redirect()->route('membros.index')
                 ->with('success', 'Membro eliminado com sucesso!');
                 
         } catch (\Exception $e) {
@@ -398,13 +343,13 @@ class MembersController extends Controller
      */
     private function generateMemberNumber(): string
     {
-        $lastMember = User::whereNotNull('member_number')
-            ->where('member_number', 'REGEXP', '^[0-9]+$')
-            ->orderBy('member_number', 'desc')
+        $lastMember = User::whereNotNull('numero_socio')
+            ->where('numero_socio', 'REGEXP', '^[0-9]+$')
+            ->orderBy('numero_socio', 'desc')
             ->first();
         
-        if ($lastMember && $lastMember->member_number) {
-            $lastNumber = (int) $lastMember->member_number;
+        if ($lastMember && $lastMember->numero_socio) {
+            $lastNumber = (int) $lastMember->numero_socio;
             $nextNumber = $lastNumber + 1;
         } else {
             $nextNumber = 1;

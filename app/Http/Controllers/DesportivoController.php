@@ -15,7 +15,7 @@ use Inertia\Response;
 use Illuminate\Http\RedirectResponse;
 use Carbon\Carbon;
 
-class SportsController extends Controller
+class DesportivoController extends Controller
 {
     public function index(): Response
     {
@@ -25,9 +25,9 @@ class SportsController extends Controller
         $thirtyDaysAgo = $now->copy()->subDays(30);
         $thirtyDaysAhead = $now->copy()->addDays(30);
 
-        $athletes = User::whereJsonContains('member_type', 'atleta')
+        $athletes = User::whereJsonContains('tipo_membro', 'atleta')
             ->where('status', 'ativo')
-            ->get(['id', 'full_name']);
+            ->get(['id', 'nome_completo']);
         
         $activeTeams = Team::where('active', true)->count();
         
@@ -43,7 +43,7 @@ class SportsController extends Controller
             ->where('start_date', '<=', $thirtyDaysAhead)
             ->count();
 
-        return Inertia::render('Sports/Index', [
+        return Inertia::render('Desportivo/Index', [
             'stats' => [
                 'athletesCount' => $athletes->count(),
                 'activeTeams' => $activeTeams,
@@ -69,9 +69,9 @@ class SportsController extends Controller
 
     public function create(): Response
     {
-        return Inertia::render('Sports/Create', [
+        return Inertia::render('Desportivo/Create', [
             'ageGroups' => AgeGroup::all(),
-            'athletes' => User::whereJsonContains('member_type', 'atleta')
+            'athletes' => User::whereJsonContains('tipo_membro', 'atleta')
                 ->where('status', 'ativo')
                 ->get(),
         ]);
@@ -91,17 +91,17 @@ class SportsController extends Controller
 
     public function show(Training $sport): Response
     {
-        return Inertia::render('Sports/Show', [
+        return Inertia::render('Desportivo/Show', [
             'training' => $sport->load(['ageGroup', 'athletes']),
         ]);
     }
 
     public function edit(Training $sport): Response
     {
-        return Inertia::render('Sports/Edit', [
+        return Inertia::render('Desportivo/Edit', [
             'training' => $sport->load(['ageGroup', 'athletes']),
             'ageGroups' => AgeGroup::all(),
-            'athletes' => User::whereJsonContains('member_type', 'atleta')
+            'athletes' => User::whereJsonContains('tipo_membro', 'atleta')
                 ->where('status', 'ativo')
                 ->get(),
         ]);

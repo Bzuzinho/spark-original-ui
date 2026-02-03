@@ -6,7 +6,7 @@ use App\Models\Transaction;
 use App\Models\MembershipFee;
 use Carbon\Carbon;
 
-class FinancialReportController extends Controller
+class RelatoriosFinanceirosController extends Controller
 {
     public function index()
     {

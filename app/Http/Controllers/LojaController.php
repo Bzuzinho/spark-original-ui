@@ -11,7 +11,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
-class ShopController extends Controller
+class LojaController extends Controller
 {
     public function index(Request $request): Response
     {
@@ -46,7 +46,7 @@ class ShopController extends Controller
             ->filter()
             ->values();
 
-        return Inertia::render('Shop/Index', [
+        return Inertia::render('Loja/Index', [
             'products' => $products,
             'stats' => $stats,
             'categorias' => $categorias,
@@ -56,7 +56,7 @@ class ShopController extends Controller
 
     public function create(): Response
     {
-        return Inertia::render('Shop/Create');
+        return Inertia::render('Loja/Create');
     }
 
     public function store(StoreProductRequest $request): RedirectResponse
@@ -69,14 +69,14 @@ class ShopController extends Controller
 
     public function show(Product $loja): Response
     {
-        return Inertia::render('Shop/Show', [
+        return Inertia::render('Loja/Show', [
             'product' => $loja,
         ]);
     }
 
     public function edit(Product $loja): Response
     {
-        return Inertia::render('Shop/Edit', [
+        return Inertia::render('Loja/Edit', [
             'product' => $loja,
         ]);
     }

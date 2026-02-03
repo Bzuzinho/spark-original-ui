@@ -7,7 +7,7 @@ use App\Http\Requests\UpdateFinancialCategoryRequest;
 use App\Models\FinancialCategory;
 use Illuminate\Http\RedirectResponse;
 
-class FinancialCategoryController extends Controller
+class CategoriasFinanceirasController extends Controller
 {
     public function index()
     {

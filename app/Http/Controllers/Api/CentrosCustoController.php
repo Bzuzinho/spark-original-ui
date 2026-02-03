@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\CostCenter;
 use Illuminate\Http\Request;
 
-class CostCenterController extends Controller
+class CentrosCustoController extends Controller
 {
     /**
      * Display a listing of the resource.
