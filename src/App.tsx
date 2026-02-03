@@ -7,7 +7,7 @@ import { MembersView } from '@/views/MembersView';
 import { SportsView } from '@/views/SportsView';
 import { EventsView } from '@/views/EventsView';
 import { FinancialView } from '@/views/FinancialView';
-import { InventoryView } from '@/views/InventoryView';
+import { LojaView } from '@/views/LojaView';
 import { SponsorsView } from '@/views/SponsorsView';
 import { MarketingView } from '@/views/MarketingView';
 import { CommunicationView } from '@/views/CommunicationView';
@@ -25,7 +25,7 @@ declare const spark: {
   };
 };
 
-type ViewType = 'home' | 'members' | 'sports' | 'events' | 'financial' | 'inventory' | 'sponsors' | 'marketing' | 'communication' | 'settings';
+type ViewType = 'home' | 'members' | 'sports' | 'events' | 'financial' | 'loja' | 'sponsors' | 'marketing' | 'communication' | 'settings';
 
 interface NavigationContext {
   eventId?: string;
@@ -307,8 +307,8 @@ function App() {
         return <EventsView navigationContext={navigationContext} onClearContext={() => setNavigationContext({})} />;
       case 'financial':
         return <FinancialView />;
-      case 'inventory':
-        return <InventoryView />;
+      case 'loja':
+        return <LojaView />;
       case 'sponsors':
         return <SponsorsView />;
       case 'marketing':
