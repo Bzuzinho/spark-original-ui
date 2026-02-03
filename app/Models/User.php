@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -85,6 +87,61 @@ class User extends Authenticatable
         'transport_declaration_file',
         'user_email',
         'user_password',
+        // Portuguese field names
+        'numero_socio',
+        'nome_completo',
+        'perfil',
+        'tipo_membro',
+        'estado',
+        'data_nascimento',
+        'menor',
+        'sexo',
+        'escalao',
+        'rgpd',
+        'consentimento',
+        'afiliacao',
+        'declaracao_de_transporte',
+        'ativo_desportivo',
+        'morada',
+        'codigo_postal',
+        'localidade',
+        'contacto',
+        'telemovel',
+        'numero_utente',
+        'contacto_emergencia_nome',
+        'contacto_emergencia_telefone',
+        'contacto_emergencia_relacao',
+        'foto_perfil',
+        'nacionalidade',
+        'estado_civil',
+        'ocupacao',
+        'empresa',
+        'escola',
+        'numero_irmaos',
+        'email_secundario',
+        'encarregado_educacao',
+        'educandos',
+        'contacto_telefonico',
+        'tipo_mensalidade',
+        'conta_corrente',
+        'centro_custo',
+        'num_federacao',
+        'cartao_federacao',
+        'numero_pmb',
+        'data_inscricao',
+        'inscricao',
+        'data_atestado_medico',
+        'arquivo_atestado_medico',
+        'informacoes_medicas',
+        'data_rgpd',
+        'arquivo_rgpd',
+        'data_consentimento',
+        'arquivo_consentimento',
+        'data_afiliacao',
+        'arquivo_afiliacao',
+        'declaracao_transporte',
+        'email_utilizador',
+        'senha',
     ];
 
     /**
@@ -261,5 +318,30 @@ class User extends Authenticatable
     public function relatedToMe(): HasMany
     {
         return $this->hasMany(UserRelationship::class, 'related_user_id');
+    }
+
+    public function userTypes(): BelongsToMany
+    {
+        return $this->belongsToMany(UserType::class, 'user_user_type', 'user_id', 'user_type_id');
+    }
+
+    public function ageGroup(): BelongsTo
+    {
+        return $this->belongsTo(AgeGroup::class, 'age_group_id');
+    }
+
+    public function encarregados(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'user_guardian', 'user_id', 'guardian_id');
+    }
+
+    public function educandos(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'user_guardian', 'guardian_id', 'user_id');
+    }
+
+    public function eventsCreated(): HasMany
+    {
+        return $this->hasMany(Event::class, 'created_by');
     }
 }
