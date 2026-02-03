@@ -5,10 +5,10 @@ import { Button } from '@/Components/ui/button';
 import { Card } from '@/Components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs';
 import { toast } from 'sonner';
-import PersonalTab from '@/Components/Members/Tabs/PersonalTab';
-import FinancialTab from '@/Components/Members/Tabs/FinancialTab';
-import SportsTab from '@/Components/Members/Tabs/SportsTab';
-import ConfigurationTab from '@/Components/Members/Tabs/ConfigurationTab';
+import { PersonalTab } from '@/Components/Members/Tabs/PersonalTab';
+import { FinancialTab } from '@/Components/Members/Tabs/FinancialTab';
+import { SportsTab } from '@/Components/Members/Tabs/SportsTab';
+import { ConfigurationTab } from '@/Components/Members/Tabs/ConfigurationTab';
 
 interface User {
     id?: string;

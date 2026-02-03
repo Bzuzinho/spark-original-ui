@@ -11,7 +11,7 @@ use Inertia\Response;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
-class CommunicationController extends Controller
+class ComunicacaoController extends Controller
 {
     public function index(): Response
     {
