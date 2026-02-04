@@ -14,24 +14,25 @@ class Movement extends Model
 
     protected $fillable = [
         'user_id',
-        'manual_name',
-        'manual_tax_id',
-        'manual_address',
-        'classification',
-        'issue_date',
-        'due_date',
-        'total_amount',
-        'payment_status',
-        'receipt_number',
-        'payment_reference',
-        'type',
-        'notes',
+        'nome_manual',
+        'nif_manual',
+        'morada_manual',
+        'classificacao',
+        'data_emissao',
+        'data_vencimento',
+        'valor_total',
+        'estado_pagamento',
+        'numero_recibo',
+        'referencia_pagamento',
+        'centro_custo_id',
+        'tipo',
+        'observacoes',
     ];
 
     protected $casts = [
-        'issue_date' => 'date',
-        'due_date' => 'date',
-        'total_amount' => 'decimal:2',
+        'data_emissao' => 'date',
+        'data_vencimento' => 'date',
+        'valor_total' => 'decimal:2',
     ];
 
     public function user(): BelongsTo
@@ -41,11 +42,11 @@ class Movement extends Model
 
     public function centroCusto(): BelongsTo
     {
-        return $this->belongsTo(CostCenter::class, 'cost_center_id');
+        return $this->belongsTo(CostCenter::class, 'centro_custo_id');
     }
 
     public function items(): HasMany
     {
-        return $this->hasMany(MovementItem::class, 'movement_id');
+        return $this->hasMany(MovementItem::class, 'movimento_id');
     }
 }

@@ -11,21 +11,21 @@ class Communication extends Model
     use HasUuids;
 
     protected $fillable = [
-        'subject',
-        'message',
-        'type',
-        'recipients',
-        'status',
-        'scheduled_for',
-        'sent_at',
-        'total_sent',
-        'total_failed',
+        'assunto',
+        'mensagem',
+        'tipo',
+        'destinatarios',
+        'estado',
+        'agendado_para',
+        'enviado_em',
+        'total_enviados',
+        'total_falhados',
     ];
 
     protected $casts = [
-        'recipients' => 'array',
-        'scheduled_for' => 'datetime',
-        'sent_at' => 'datetime',
+        'destinatarios' => 'array',
+        'agendado_para' => 'datetime',
+        'enviado_em' => 'datetime',
     ];
 
     /**
@@ -33,7 +33,7 @@ class Communication extends Model
      */
     public function scopeSent(Builder $query): Builder
     {
-        return $query->where('status', 'enviada');
+        return $query->where('estado', 'enviada');
     }
 
     /**
@@ -41,7 +41,7 @@ class Communication extends Model
      */
     public function scopeScheduled(Builder $query): Builder
     {
-        return $query->where('status', 'agendada');
+        return $query->where('estado', 'agendada');
     }
 
     /**
@@ -49,7 +49,7 @@ class Communication extends Model
      */
     public function scopeDraft(Builder $query): Builder
     {
-        return $query->where('status', 'rascunho');
+        return $query->where('estado', 'rascunho');
     }
 
     /**
@@ -57,6 +57,6 @@ class Communication extends Model
      */
     public function scopeFailed(Builder $query): Builder
     {
-        return $query->where('status', 'falhou');
+        return $query->where('estado', 'falhou');
     }
 }

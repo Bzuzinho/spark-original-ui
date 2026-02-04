@@ -13,63 +13,63 @@ class Training extends Model
 
 
     protected $fillable = [
-        'training_number',
-        'date',
-        'start_time',
-        'end_time',
-        'location',
-        'season_id',
-        'microcycle_id',
-        'age_group_id',
-        'age_groups',
-        'training_type',
-        'planned_volume_m',
-        'general_notes',
-        'description',
-        'created_by',
-        'event_id',
-        'updated_at_custom',
+        'numero_treino',
+        'data',
+        'hora_inicio',
+        'hora_fim',
+        'local',
+        'epoca_id',
+        'microciclo_id',
+        'grupo_escalao_id',
+        'escaloes',
+        'tipo_treino',
+        'volume_planeado_m',
+        'notas_gerais',
+        'descricao_treino',
+        'criado_por',
+        'evento_id',
+        'atualizado_em',
     ];
 
     protected $casts = [
-        'date' => 'date',
-        'age_groups' => 'array',
-        'planned_volume_m' => 'integer',
-        'updated_at_custom' => 'datetime',
+        'data' => 'date',
+        'escaloes' => 'array',
+        'volume_planeado_m' => 'integer',
+        'atualizado_em' => 'datetime',
     ];
 
     public function season(): BelongsTo
     {
-        return $this->belongsTo(Season::class, 'season_id');
+        return $this->belongsTo(Season::class, 'epoca_id');
     }
 
     public function microcycle(): BelongsTo
     {
-        return $this->belongsTo(Microcycle::class, 'microcycle_id');
+        return $this->belongsTo(Microcycle::class, 'microciclo_id');
     }
 
     public function creator(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'created_by');
+        return $this->belongsTo(User::class, 'criado_por');
     }
 
     public function event(): BelongsTo
     {
-        return $this->belongsTo(Event::class, 'event_id');
+        return $this->belongsTo(Event::class, 'evento_id');
     }
 
     public function series(): HasMany
     {
-        return $this->hasMany(TrainingSeries::class, 'training_id');
+        return $this->hasMany(TrainingSeries::class, 'treino_id');
     }
 
     public function athletes(): HasMany
     {
-        return $this->hasMany(TrainingAthlete::class, 'training_id');
+        return $this->hasMany(TrainingAthlete::class, 'treino_id');
     }
 
     public function presences(): HasMany
     {
-        return $this->hasMany(Presence::class, 'training_id');
+        return $this->hasMany(Presence::class, 'treino_id');
     }
 }

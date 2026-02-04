@@ -13,27 +13,27 @@ class EventResult extends Model
     protected $table = 'event_results';
 
     protected $fillable = [
-        'event_id',
+        'evento_id',
         'user_id',
-        'race',
-        'time',
-        'classification',
-        'pool',
-        'age_group',
-        'notes',
-        'season',
-        'registered_by',
-        'registered_at',
+        'prova',
+        'tempo',
+        'classificacao',
+        'piscina',
+        'escalao',
+        'observacoes',
+        'epoca',
+        'registado_por',
+        'registado_em',
     ];
 
     protected $casts = [
-        'classification' => 'integer',
-        'registered_at' => 'datetime',
+        'classificacao' => 'integer',
+        'registado_em' => 'datetime',
     ];
 
     public function event(): BelongsTo
     {
-        return $this->belongsTo(Event::class, 'event_id');
+        return $this->belongsTo(Event::class, 'evento_id');
     }
 
     public function athlete(): BelongsTo
@@ -43,6 +43,6 @@ class EventResult extends Model
 
     public function registeredBy(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'registered_by');
+        return $this->belongsTo(User::class, 'registado_por');
     }
 }

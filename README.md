@@ -33,6 +33,26 @@ See [docs/SETUP.md](docs/SETUP.md) for detailed setup instructions.
 - **Cache/Sessions:** Redis 7 (production) / File (local)
 - **Styling:** Tailwind CSS
 
+## Naming Conventions
+
+This project uses **100% Portuguese naming** for:
+- ✅ PostgreSQL database column names
+- ✅ Laravel Models (`$fillable`, `$casts`)
+- ✅ Eloquent relationships (foreign key names)
+- ✅ Database migrations
+- ✅ Controllers (queries)
+
+**Examples:**
+- ✅ `data_inicio` (not `start_date`)
+- ✅ `estado` (not `status`)
+- ✅ `titulo` (not `title`)
+- ✅ `criado_por` (not `created_by`)
+
+**Exception:** Core Laravel framework fields remain in English:
+- `name`, `email`, `password` (authentication)
+- `created_at`, `updated_at` (timestamps)
+- `remember_token` (sessions)
+
 ## Development
 
 ```bash

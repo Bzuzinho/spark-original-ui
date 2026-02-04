@@ -13,20 +13,13 @@ class MonthlyFee extends Model
     protected $table = 'monthly_fees';
 
     protected $fillable = [
-        'month',
-        'year',
-        'base_amount',
-        'discounts',
-        'final_amount',
-        'active',
+        'designacao',
+        'valor',
+        'ativo',
     ];
 
     protected $casts = [
-        'month' => 'integer',
-        'year' => 'integer',
-        'base_amount' => 'decimal:2',
-        'discounts' => 'decimal:2',
-        'final_amount' => 'decimal:2',
-        'active' => 'boolean',
+        'valor' => 'decimal:2',
+        'ativo' => 'boolean',
     ];
 }

@@ -13,28 +13,26 @@ class Competition extends Model
 
 
     protected $fillable = [
-        'event_id',
-        'name',
-        'location',
-        'start_date',
-        'end_date',
-        'type',
-        'level',
-        'notes',
+        'nome',
+        'local',
+        'data_inicio',
+        'data_fim',
+        'tipo',
+        'evento_id',
     ];
 
     protected $casts = [
-        'start_date' => 'date',
-        'end_date' => 'date',
+        'data_inicio' => 'date',
+        'data_fim' => 'date',
     ];
 
     public function evento(): BelongsTo
     {
-        return $this->belongsTo(Event::class, 'event_id');
+        return $this->belongsTo(Event::class, 'evento_id');
     }
 
     public function provas(): HasMany
     {
-        return $this->hasMany(Prova::class, 'competition_id');
+        return $this->hasMany(Prova::class, 'competicao_id');
     }
 }

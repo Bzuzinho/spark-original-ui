@@ -14,24 +14,26 @@ class FinancialEntry extends Model
     protected $table = 'financial_entries';
 
     protected $fillable = [
-        'date',
-        'type',
-        'category',
-        'description',
-        'amount',
-        'invoice_id',
-        'payment_method',
-        'receipt',
+        'data',
+        'tipo',
+        'categoria',
+        'descricao',
+        'valor',
+        'centro_custo_id',
+        'user_id',
+        'fatura_id',
+        'metodo_pagamento',
+        'comprovativo',
     ];
 
     protected $casts = [
-        'date' => 'date',
-        'amount' => 'decimal:2',
+        'data' => 'date',
+        'valor' => 'decimal:2',
     ];
 
     public function centroCusto(): BelongsTo
     {
-        return $this->belongsTo(CostCenter::class, 'cost_center_id');
+        return $this->belongsTo(CostCenter::class, 'centro_custo_id');
     }
 
     public function usuario(): BelongsTo
@@ -41,6 +43,6 @@ class FinancialEntry extends Model
 
     public function bankStatements(): HasMany
     {
-        return $this->hasMany(BankStatement::class, 'financial_entry_id');
+        return $this->hasMany(BankStatement::class, 'lancamento_id');
     }
 }
