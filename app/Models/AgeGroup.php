@@ -12,22 +12,22 @@ class AgeGroup extends Model
 
 
     protected $fillable = [
-        'name',
-        'description',
-        'min_age',
-        'max_age',
-        'min_year',
-        'max_year',
+        'nome',
+        'descricao',
+        'idade_minima',
+        'idade_maxima',
+        'ano_minimo',
+        'ano_maximo',
         'sexo',
-        'active',
+        'ativo',
     ];
 
     protected $casts = [
-        'min_age' => 'integer',
-        'max_age' => 'integer',
-        'min_year' => 'integer',
-        'max_year' => 'integer',
-        'active' => 'boolean',
+        'idade_minima' => 'integer',
+        'idade_maxima' => 'integer',
+        'ano_minimo' => 'integer',
+        'ano_maximo' => 'integer',
+        'ativo' => 'boolean',
     ];
 
     public function provas(): HasMany

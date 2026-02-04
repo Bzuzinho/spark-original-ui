@@ -1,0 +1,185 @@
+
+  Dropping all tables ................................................................................................. 1s DONE
+
+   INFO  Preparing database.  
+
+  Creating migration table ...................................................................................... 241.57ms DONE
+
+   INFO  Running migrations.  
+
+  0001_01_01_000000_create_users_table ................................................................................ 2s DONE
+  0001_01_01_000001_create_cache_table .......................................................................... 973.29ms DONE
+  0001_01_01_000002_create_jobs_table ................................................................................. 1s DONE
+  2026_01_29_163055_add_spark_fields_to_users_table ................................................................... 7s DONE
+  2026_01_29_163144_create_age_groups_table ........................................................................... 1s DONE
+  2026_01_29_163144_create_user_types_table ..................................................................... 948.06ms DONE
+  2026_01_29_163145_create_club_settings_table .................................................................. 241.90ms DONE
+  2026_01_29_163145_create_cost_centers_table ......................................................................... 1s DONE
+  2026_01_29_163145_create_event_types_table .......................................................................... 1s DONE
+  2026_01_29_163654_create_personal_access_tokens_table ......................................................... 981.76ms DONE
+  2026_01_30_150000_extend_users_table_complete ....................................................................... 8s DONE
+  2026_01_30_150001_create_event_type_configs_table ............................................................. 709.17ms DONE
+  2026_01_30_150002_create_events_table ............................................................................... 2s DONE
+  2026_01_30_150003_create_event_convocations_table ................................................................... 1s DONE
+  2026_01_30_150004_create_convocation_groups_table ................................................................... 1s DONE
+  2026_01_30_150005_create_convocation_athletes_table ................................................................. 1s DONE
+  2026_01_30_150006_create_event_attendances_table .................................................................... 2s DONE
+  2026_01_30_150007_create_event_results_table ........................................................................ 1s DONE
+  2026_01_30_150008_create_result_provas_table ........................................................................ 1s DONE
+  2026_01_30_150009_create_seasons_table .............................................................................. 1s DONE
+  2026_01_30_150010_create_macrocycles_table .......................................................................... 1s DONE
+  2026_01_30_150011_create_mesocycles_table ........................................................................... 1s DONE
+  2026_01_30_150012_create_microcycles_table .................................................................... 952.81ms DONE
+  2026_01_30_150013_create_trainings_table ............................................................................ 2s DONE
+  2026_01_30_150014_create_training_series_table ...................................................................... 1s DONE
+  2026_01_30_150015_create_training_athletes_table .................................................................... 2s DONE
+  2026_01_30_150016_create_athlete_sports_data_table .................................................................. 1s DONE
+  2026_01_30_150017_create_presences_table ............................................................................ 2s DONE
+  2026_01_30_150018_create_competitions_table ......................................................................... 1s DONE
+  2026_01_30_150019_create_provas_table ............................................................................... 1s DONE
+  2026_01_30_150020_create_competition_registrations_table ............................................................ 1s DONE
+  2026_01_30_150021_create_results_table .............................................................................. 1s DONE
+  2026_01_30_150022_create_result_splits_table .................................................................. 953.11ms DONE
+  2026_01_30_150023_create_monthly_fees_table ................................................................... 729.08ms DONE
+  2026_01_30_150024_create_invoices_table ............................................................................. 1s DONE
+  2026_01_30_150025_create_invoice_items_table ........................................................................ 1s DONE
+  2026_01_30_150026_create_movements_table ............................................................................ 2s DONE
+  2026_01_30_150027_create_movement_items_table ....................................................................... 1s DONE
+  2026_01_30_150028_create_convocation_movements_table ................................................................ 2s DONE
+  2026_01_30_150029_create_convocation_movement_items_table ..................................................... 947.15ms DONE
+  2026_01_30_150030_create_financial_entries_table .................................................................... 1s DONE
+  2026_01_30_150031_create_bank_statements_table ...................................................................... 1s DONE
+  2026_01_30_150032_create_products_table ............................................................................. 1s DONE
+  2026_01_30_150033_create_sales_table ................................................................................ 2s DONE
+  2026_01_30_150034_create_sponsors_table ....................................................................... 956.54ms DONE
+  2026_01_30_150035_create_news_items_table ........................................................................... 1s DONE
+  2026_01_30_150036_create_communications_table ....................................................................... 1s DONE
+  2026_01_30_150037_create_automated_communications_table ....................................................... 964.19ms DONE
+  2026_02_01_000000_create_marketing_campaigns_table ............................................................ 949.60ms DONE
+  2026_02_01_020000_create_financial_categories_table ........................................................... 948.36ms DONE
+  2026_02_01_020001_create_transactions_table ......................................................................... 2s DONE
+  2026_02_01_020002_create_membership_fees_table ...................................................................... 1s DONE
+  2026_02_01_023200_create_teams_table ................................................................................ 1s DONE
+  2026_02_01_023201_create_team_members_table ......................................................................... 1s DONE
+  2026_02_01_023202_create_training_sessions_table .................................................................... 1s DONE
+  2026_02_01_023203_create_call_ups_table ............................................................................. 1s DONE
+  2026_02_01_024146_create_user_documents_table ....................................................................... 1s DONE
+  2026_02_01_024147_create_user_relationships_table ................................................................... 1s DONE
+  2026_02_02_000000_normalize_events_columns_to_english ............................................................... 7s DONE
+  2026_02_02_170430_create_user_user_type_pivot_table ................................................................. 1s DONE
+  2026_02_02_170506_create_event_participants_pivot_table ............................................................. 1s DONE
+  2026_02_03_164235_create_key_value_store_table ................................................................ 472.81ms FAIL
+
+In Connection.php line 825:
+                                                                                                                                
+  [Illuminate\Database\QueryException (25P02)]                                                                                  
+  SQLSTATE[25P02]: In failed sql transaction: 7 ERROR:  current transaction is aborted, commands ignored until end of transact  
+  ion block (Connection: pgsql, SQL: alter table "key_value_store" add constraint "key_value_store_key_user_id_unique" unique   
+  ("key", "user_id"))                                                                                                           
+                                                                                                                                
+
+Exception trace:
+  at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Database/Connection.php:825
+ Illuminate\Database\Connection->runQueryCallback() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Database/Connection.php:779
+ Illuminate\Database\Connection->run() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Database/Connection.php:560
+ Illuminate\Database\Connection->statement() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Database/Schema/Blueprint.php:118
+ Illuminate\Database\Schema\Blueprint->build() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Database/Schema/Builder.php:564
+ Illuminate\Database\Schema\Builder->build() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Database/Schema/Builder.php:418
+ Illuminate\Database\Schema\Builder->create() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Support/Facades/Facade.php:361
+ Illuminate\Support\Facades\Facade::__callStatic() at /workspaces/spark-original-ui/database/migrations/2026_02_03_164235_create_key_value_store_table.php:11
+ Illuminate\Database\Migrations\Migration@anonymous\/workspaces/spark-original-ui/database/migrations/2026_02_03_164235_create_key_value_store_table.php:7$169->up() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php:507
+ Illuminate\Database\Migrations\Migrator->runMethod() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php:432
+ Illuminate\Database\Migrations\Migrator->Illuminate\Database\Migrations\{closure}() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Database/Concerns/ManagesTransactions.php:32
+ Illuminate\Database\Connection->transaction() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php:440
+ Illuminate\Database\Migrations\Migrator->runMigration() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php:244
+ Illuminate\Database\Migrations\Migrator->Illuminate\Database\Migrations\{closure}() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Console/View/Components/Task.php:40
+ Illuminate\Console\View\Components\Task->render() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php:798
+ Illuminate\Database\Migrations\Migrator->write() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php:244
+ Illuminate\Database\Migrations\Migrator->runUp() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php:211
+ Illuminate\Database\Migrations\Migrator->runPending() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php:138
+ Illuminate\Database\Migrations\Migrator->run() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php:117
+ Illuminate\Database\Console\Migrations\MigrateCommand->Illuminate\Database\Console\Migrations\{closure}() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php:658
+ Illuminate\Database\Migrations\Migrator->usingConnection() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php:110
+ Illuminate\Database\Console\Migrations\MigrateCommand->runMigrations() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php:89
+ Illuminate\Database\Console\Migrations\MigrateCommand->handle() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Container/BoundMethod.php:36
+ Illuminate\Container\BoundMethod::Illuminate\Container\{closure}() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Container/Util.php:43
+ Illuminate\Container\Util::unwrapIfClosure() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Container/BoundMethod.php:95
+ Illuminate\Container\BoundMethod::callBoundMethod() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Container/BoundMethod.php:35
+ Illuminate\Container\BoundMethod::call() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Container/Container.php:696
+ Illuminate\Container\Container->call() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Console/Command.php:213
+ Illuminate\Console\Command->execute() at /workspaces/spark-original-ui/vendor/symfony/console/Command/Command.php:341
+ Symfony\Component\Console\Command\Command->run() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Console/Command.php:182
+ Illuminate\Console\Command->run() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Console/Concerns/CallsCommands.php:68
+ Illuminate\Console\Command->runCommand() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Console/Concerns/CallsCommands.php:29
+ Illuminate\Console\Command->call() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Database/Console/Migrations/FreshCommand.php:82
+ Illuminate\Database\Console\Migrations\FreshCommand->handle() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Container/BoundMethod.php:36
+ Illuminate\Container\BoundMethod::Illuminate\Container\{closure}() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Container/Util.php:43
+ Illuminate\Container\Util::unwrapIfClosure() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Container/BoundMethod.php:95
+ Illuminate\Container\BoundMethod::callBoundMethod() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Container/BoundMethod.php:35
+ Illuminate\Container\BoundMethod::call() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Container/Container.php:696
+ Illuminate\Container\Container->call() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Console/Command.php:213
+ Illuminate\Console\Command->execute() at /workspaces/spark-original-ui/vendor/symfony/console/Command/Command.php:341
+ Symfony\Component\Console\Command\Command->run() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Console/Command.php:182
+ Illuminate\Console\Command->run() at /workspaces/spark-original-ui/vendor/symfony/console/Application.php:1102
+ Symfony\Component\Console\Application->doRunCommand() at /workspaces/spark-original-ui/vendor/symfony/console/Application.php:356
+ Symfony\Component\Console\Application->doRun() at /workspaces/spark-original-ui/vendor/symfony/console/Application.php:195
+ Symfony\Component\Console\Application->run() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Foundation/Console/Kernel.php:198
+ Illuminate\Foundation\Console\Kernel->handle() at /workspaces/spark-original-ui/artisan:14
+
+In Connection.php line 571:
+                                                                                                                                
+  [PDOException (25P02)]                                                                                                        
+  SQLSTATE[25P02]: In failed sql transaction: 7 ERROR:  current transaction is aborted, commands ignored until end of transact  
+  ion block                                                                                                                     
+                                                                                                                                
+
+Exception trace:
+  at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Database/Connection.php:571
+ PDOStatement->execute() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Database/Connection.php:571
+ Illuminate\Database\Connection->Illuminate\Database\{closure}() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Database/Connection.php:812
+ Illuminate\Database\Connection->runQueryCallback() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Database/Connection.php:779
+ Illuminate\Database\Connection->run() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Database/Connection.php:560
+ Illuminate\Database\Connection->statement() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Database/Schema/Blueprint.php:118
+ Illuminate\Database\Schema\Blueprint->build() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Database/Schema/Builder.php:564
+ Illuminate\Database\Schema\Builder->build() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Database/Schema/Builder.php:418
+ Illuminate\Database\Schema\Builder->create() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Support/Facades/Facade.php:361
+ Illuminate\Support\Facades\Facade::__callStatic() at /workspaces/spark-original-ui/database/migrations/2026_02_03_164235_create_key_value_store_table.php:11
+ Illuminate\Database\Migrations\Migration@anonymous\/workspaces/spark-original-ui/database/migrations/2026_02_03_164235_create_key_value_store_table.php:7$169->up() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php:507
+ Illuminate\Database\Migrations\Migrator->runMethod() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php:432
+ Illuminate\Database\Migrations\Migrator->Illuminate\Database\Migrations\{closure}() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Database/Concerns/ManagesTransactions.php:32
+ Illuminate\Database\Connection->transaction() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php:440
+ Illuminate\Database\Migrations\Migrator->runMigration() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php:244
+ Illuminate\Database\Migrations\Migrator->Illuminate\Database\Migrations\{closure}() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Console/View/Components/Task.php:40
+ Illuminate\Console\View\Components\Task->render() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php:798
+ Illuminate\Database\Migrations\Migrator->write() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php:244
+ Illuminate\Database\Migrations\Migrator->runUp() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php:211
+ Illuminate\Database\Migrations\Migrator->runPending() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php:138
+ Illuminate\Database\Migrations\Migrator->run() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php:117
+ Illuminate\Database\Console\Migrations\MigrateCommand->Illuminate\Database\Console\Migrations\{closure}() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php:658
+ Illuminate\Database\Migrations\Migrator->usingConnection() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php:110
+ Illuminate\Database\Console\Migrations\MigrateCommand->runMigrations() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php:89
+ Illuminate\Database\Console\Migrations\MigrateCommand->handle() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Container/BoundMethod.php:36
+ Illuminate\Container\BoundMethod::Illuminate\Container\{closure}() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Container/Util.php:43
+ Illuminate\Container\Util::unwrapIfClosure() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Container/BoundMethod.php:95
+ Illuminate\Container\BoundMethod::callBoundMethod() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Container/BoundMethod.php:35
+ Illuminate\Container\BoundMethod::call() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Container/Container.php:696
+ Illuminate\Container\Container->call() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Console/Command.php:213
+ Illuminate\Console\Command->execute() at /workspaces/spark-original-ui/vendor/symfony/console/Command/Command.php:341
+ Symfony\Component\Console\Command\Command->run() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Console/Command.php:182
+ Illuminate\Console\Command->run() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Console/Concerns/CallsCommands.php:68
+ Illuminate\Console\Command->runCommand() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Console/Concerns/CallsCommands.php:29
+ Illuminate\Console\Command->call() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Database/Console/Migrations/FreshCommand.php:82
+ Illuminate\Database\Console\Migrations\FreshCommand->handle() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Container/BoundMethod.php:36
+ Illuminate\Container\BoundMethod::Illuminate\Container\{closure}() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Container/Util.php:43
+ Illuminate\Container\Util::unwrapIfClosure() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Container/BoundMethod.php:95
+ Illuminate\Container\BoundMethod::callBoundMethod() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Container/BoundMethod.php:35
+ Illuminate\Container\BoundMethod::call() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Container/Container.php:696
+ Illuminate\Container\Container->call() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Console/Command.php:213
+ Illuminate\Console\Command->execute() at /workspaces/spark-original-ui/vendor/symfony/console/Command/Command.php:341
+ Symfony\Component\Console\Command\Command->run() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Console/Command.php:182
+ Illuminate\Console\Command->run() at /workspaces/spark-original-ui/vendor/symfony/console/Application.php:1102
+ Symfony\Component\Console\Application->doRunCommand() at /workspaces/spark-original-ui/vendor/symfony/console/Application.php:356
+ Symfony\Component\Console\Application->doRun() at /workspaces/spark-original-ui/vendor/symfony/console/Application.php:195
+ Symfony\Component\Console\Application->run() at /workspaces/spark-original-ui/vendor/laravel/framework/src/Illuminate/Foundation/Console/Kernel.php:198
+ Illuminate\Foundation\Console\Kernel->handle() at /workspaces/spark-original-ui/artisan:14
+

@@ -13,11 +13,11 @@ class Sale extends Model
 
     protected $fillable = [
         'produto_id',
+        'cliente_id',
+        'vendedor_id',
         'quantidade',
         'preco_unitario',
         'total',
-        'cliente_id',
-        'vendedor_id',
         'data',
         'metodo_pagamento',
     ];

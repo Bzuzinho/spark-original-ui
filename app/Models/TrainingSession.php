@@ -11,21 +11,21 @@ class TrainingSession extends Model
     use HasUuids;
 
     protected $fillable = [
-        'team_id',
-        'datetime',
-        'duration_minutes',
-        'location',
-        'objectives',
-        'status',
+        'equipa_id',
+        'data_hora',
+        'duracao_minutos',
+        'local',
+        'objetivos',
+        'estado',
     ];
 
     protected $casts = [
-        'datetime' => 'datetime',
-        'duration_minutes' => 'integer',
+        'data_hora' => 'datetime',
+        'duracao_minutos' => 'integer',
     ];
 
     public function team(): BelongsTo
     {
-        return $this->belongsTo(Team::class);
+        return $this->belongsTo(Team::class, 'equipa_id');
     }
 }

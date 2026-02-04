@@ -37,7 +37,7 @@ class DashboardController extends Controller
                 ->take(5)
                 ->get(),
             'recentActivity' => $this->getRecentActivity(),
-            'userTypes' => UserType::where('active', true)->get(),
+            'userTypes' => UserType::where('ativo', true)->get(),
             'ageGroups' => AgeGroup::all(),
         ]);
     }

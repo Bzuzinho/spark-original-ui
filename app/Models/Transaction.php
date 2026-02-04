@@ -14,19 +14,19 @@ class Transaction extends Model
     protected $fillable = [
         'user_id',
         'category_id',
-        'description',
-        'amount',
-        'type',
-        'date',
-        'payment_method',
-        'receipt',
-        'status',
-        'notes',
+        'descricao',
+        'valor',
+        'tipo',
+        'data',
+        'metodo_pagamento',
+        'recibo',
+        'estado',
+        'observacoes',
     ];
 
     protected $casts = [
-        'date' => 'date',
-        'amount' => 'decimal:2',
+        'data' => 'date',
+        'valor' => 'decimal:2',
     ];
 
     public function user(): BelongsTo

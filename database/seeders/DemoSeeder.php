@@ -34,53 +34,53 @@ class DemoSeeder extends Seeder
     {
         // Create User Types
         $userTypes = [
-            ['name' => 'Atleta', 'description' => 'Atleta do clube', 'active' => true],
-            ['name' => 'Treinador', 'description' => 'Treinador/Staff', 'active' => true],
-            ['name' => 'Sócio', 'description' => 'Sócio do clube', 'active' => true],
-            ['name' => 'Encarregado de Educação', 'description' => 'Encarregado de educação', 'active' => true],
+            ['nome' => 'Atleta', 'descricao' => 'Atleta do clube', 'ativo' => true],
+            ['nome' => 'Treinador', 'descricao' => 'Treinador/Staff', 'ativo' => true],
+            ['nome' => 'Sócio', 'descricao' => 'Sócio do clube', 'ativo' => true],
+            ['nome' => 'Encarregado de Educação', 'descricao' => 'Encarregado de educação', 'ativo' => true],
         ];
 
         foreach ($userTypes as $type) {
-            UserType::firstOrCreate(['name' => $type['name']], $type);
+            UserType::firstOrCreate(['nome' => $type['nome']], $type);
         }
 
         // Create Age Groups
         $ageGroups = [
-            ['name' => 'Sub-10', 'description' => 'Até 10 anos', 'min_age' => 0, 'max_age' => 10, 'active' => true],
-            ['name' => 'Sub-12', 'description' => '11-12 anos', 'min_age' => 11, 'max_age' => 12, 'active' => true],
-            ['name' => 'Infantis', 'description' => '13-14 anos', 'min_age' => 13, 'max_age' => 14, 'active' => true],
-            ['name' => 'Juvenis', 'description' => '15-16 anos', 'min_age' => 15, 'max_age' => 16, 'active' => true],
-            ['name' => 'Juniores', 'description' => '17-19 anos', 'min_age' => 17, 'max_age' => 19, 'active' => true],
-            ['name' => 'Seniores', 'description' => '20+ anos', 'min_age' => 20, 'max_age' => null, 'active' => true],
+            ['nome' => 'Sub-10', 'descricao' => 'Até 10 anos', 'idade_minima' => 0, 'idade_maxima' => 10, 'ativo' => true],
+            ['nome' => 'Sub-12', 'descricao' => '11-12 anos', 'idade_minima' => 11, 'idade_maxima' => 12, 'ativo' => true],
+            ['nome' => 'Infantis', 'descricao' => '13-14 anos', 'idade_minima' => 13, 'idade_maxima' => 14, 'ativo' => true],
+            ['nome' => 'Juvenis', 'descricao' => '15-16 anos', 'idade_minima' => 15, 'idade_maxima' => 16, 'ativo' => true],
+            ['nome' => 'Juniores', 'descricao' => '17-19 anos', 'idade_minima' => 17, 'idade_maxima' => 19, 'ativo' => true],
+            ['nome' => 'Seniores', 'descricao' => '20+ anos', 'idade_minima' => 20, 'idade_maxima' => null, 'ativo' => true],
         ];
 
         foreach ($ageGroups as $group) {
-            AgeGroup::firstOrCreate(['name' => $group['name']], $group);
+            AgeGroup::firstOrCreate(['nome' => $group['nome']], $group);
         }
 
         // Create Event Types
         $eventTypes = [
-            ['name' => 'Treino', 'description' => 'Sessão de treino', 'active' => true],
-            ['name' => 'Competição', 'description' => 'Evento competitivo', 'active' => true],
-            ['name' => 'Prova', 'description' => 'Prova desportiva', 'active' => true],
-            ['name' => 'Estágio', 'description' => 'Estágio/concentração', 'active' => true],
-            ['name' => 'Reunião', 'description' => 'Reunião geral', 'active' => true],
+            ['nome' => 'Treino', 'descricao' => 'Sessão de treino', 'ativo' => true],
+            ['nome' => 'Competição', 'descricao' => 'Evento competitivo', 'ativo' => true],
+            ['nome' => 'Prova', 'descricao' => 'Prova desportiva', 'ativo' => true],
+            ['nome' => 'Estágio', 'descricao' => 'Estágio/concentração', 'ativo' => true],
+            ['nome' => 'Reunião', 'descricao' => 'Reunião geral', 'ativo' => true],
         ];
 
         foreach ($eventTypes as $type) {
-            EventType::firstOrCreate(['name' => $type['name']], $type);
+            EventType::firstOrCreate(['nome' => $type['nome']], $type);
         }
 
         // Create Cost Centers
         $costCenters = [
-            ['code' => 'FMD', 'name' => 'Formação Desportiva', 'description' => 'Custos de formação', 'active' => true],
-            ['code' => 'ADM', 'name' => 'Administrativo', 'description' => 'Custos administrativos', 'active' => true],
-            ['code' => 'EQP', 'name' => 'Equipamentos', 'description' => 'Material desportivo', 'active' => true],
-            ['code' => 'EVT', 'name' => 'Eventos', 'description' => 'Organização de eventos', 'active' => true],
+            ['codigo' => 'FMD', 'nome' => 'Formação Desportiva', 'descricao' => 'Custos de formação', 'ativo' => true],
+            ['codigo' => 'ADM', 'nome' => 'Administrativo', 'descricao' => 'Custos administrativos', 'ativo' => true],
+            ['codigo' => 'EQP', 'nome' => 'Equipamentos', 'descricao' => 'Material desportivo', 'ativo' => true],
+            ['codigo' => 'EVT', 'nome' => 'Eventos', 'descricao' => 'Organização de eventos', 'ativo' => true],
         ];
 
         foreach ($costCenters as $center) {
-            CostCenter::firstOrCreate(['code' => $center['code']], $center);
+            CostCenter::firstOrCreate(['codigo' => $center['codigo']], $center);
         }
 
         // Create Admin User

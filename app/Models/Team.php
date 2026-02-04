@@ -12,21 +12,21 @@ class Team extends Model
     use HasUuids;
 
     protected $fillable = [
-        'name',
-        'age_group',
-        'coach_id',
-        'founding_year',
-        'active',
+        'nome',
+        'escalao',
+        'treinador_id',
+        'ano_fundacao',
+        'ativo',
     ];
 
     protected $casts = [
-        'active' => 'boolean',
-        'founding_year' => 'integer',
+        'ativo' => 'boolean',
+        'ano_fundacao' => 'integer',
     ];
 
     public function coach(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'coach_id');
+        return $this->belongsTo(User::class, 'treinador_id');
     }
 
     public function members(): HasMany

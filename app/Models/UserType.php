@@ -11,12 +11,12 @@ class UserType extends Model
 
 
     protected $fillable = [
-        'name',
-        'description',
-        'active',
+        'nome',
+        'descricao',
+        'ativo',
     ];
 
     protected $casts = [
-        'active' => 'boolean',
+        'ativo' => 'boolean',
     ];
 }

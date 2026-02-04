@@ -11,14 +11,14 @@ class EventType extends Model
 
 
     protected $fillable = [
-        'name',
-        'description',
-        'category',
-        'color',
-        'active',
+        'nome',
+        'descricao',
+        'categoria',
+        'cor',
+        'ativo',
     ];
 
     protected $casts = [
-        'active' => 'boolean',
+        'ativo' => 'boolean',
     ];
 }
