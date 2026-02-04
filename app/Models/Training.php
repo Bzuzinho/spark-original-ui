@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Training extends Model
@@ -63,7 +64,18 @@ class Training extends Model
         return $this->hasMany(TrainingSeries::class, 'treino_id');
     }
 
-    public function athletes(): HasMany
+    public function athletes()
+    {
+        return $this->belongsToMany(
+            User::class,
+            'training_athletes',
+            'treino_id',
+            'user_id'
+        )->withTimestamps()
+         ->withPivot(['presente', 'estado', 'volume_real_m', 'rpe', 'observacoes_tecnicas', 'registado_por', 'registado_em']);
+    }
+
+    public function athleteRecords(): HasMany
     {
         return $this->hasMany(TrainingAthlete::class, 'treino_id');
     }
