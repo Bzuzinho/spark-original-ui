@@ -22,8 +22,8 @@ class DashboardController extends Controller
                     ->where('estado', 'ativo')
                     ->count(),
                 'guardians' => User::whereJsonContains('tipo_membro', 'encarregado_educacao')->count(),
-                'upcomingEvents' => Event::where('data_inicio', '>=', now())
-                    ->where('estado', 'agendado')
+                'upcomingEvents' => Event::where('start_date', '>=', now())
+                    ->where('status', 'scheduled')
                     ->count(),
                 'monthlyRevenue' => Invoice::whereMonth('data_emissao', now()->month)
                     ->whereYear('data_emissao', now()->year)

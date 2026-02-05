@@ -16,27 +16,27 @@ import { toast } from 'sonner';
 
 interface AgeGroup {
     id: string;
-    name: string;
-    description?: string;
-    min_age: number;
-    max_age: number;
-    active: boolean;
+    nome: string;
+    descricao?: string;
+    idade_minima: number;
+    idade_maxima: number;
+    ativo: boolean;
 }
 
 interface UserType {
     id: string;
-    name: string;
-    description?: string;
-    active: boolean;
+    nome: string;
+    descricao?: string;
+    ativo: boolean;
 }
 
 interface EventType {
     id: string;
-    name: string;
-    description?: string;
-    category?: string;
-    color?: string;
-    active: boolean;
+    nome: string;
+    descricao?: string;
+    categoria?: string;
+    cor?: string;
+    ativo: boolean;
 }
 
 interface ClubSettings {
@@ -109,14 +109,14 @@ export default function SettingsIndex({ userTypes, ageGroups, eventTypes, clubSe
 
         const routes: Record<string, string> = {
             'age-group': isEditing 
-                ? route('configuracoes.age-groups.update', editingItem.id)
-                : route('configuracoes.age-groups.store'),
+                ? route('configuracoes.escaloes.update', editingItem.id)
+                : route('configuracoes.escaloes.store'),
             'user-type': isEditing 
-                ? route('configuracoes.user-types.update', editingItem.id)
-                : route('configuracoes.user-types.store'),
+                ? route('configuracoes.tipos-utilizador.update', editingItem.id)
+                : route('configuracoes.tipos-utilizador.store'),
             'event-type': isEditing 
-                ? route('configuracoes.event-types.update', editingItem.id)
-                : route('configuracoes.event-types.store'),
+                ? route('configuracoes.tipos-evento.update', editingItem.id)
+                : route('configuracoes.tipos-evento.store'),
         };
 
         const options = {
@@ -142,9 +142,9 @@ export default function SettingsIndex({ userTypes, ageGroups, eventTypes, clubSe
         if (!confirm('Tem certeza que deseja eliminar este item?')) return;
 
         const routes: Record<string, string> = {
-            'age-group': route('configuracoes.age-groups.destroy', id),
-            'user-type': route('configuracoes.user-types.destroy', id),
-            'event-type': route('configuracoes.event-types.destroy', id),
+            'age-group': route('configuracoes.escaloes.destroy', id),
+            'user-type': route('configuracoes.tipos-utilizador.destroy', id),
+            'event-type': route('configuracoes.tipos-evento.destroy', id),
         };
 
         router.delete(routes[type], {
@@ -242,9 +242,9 @@ export default function SettingsIndex({ userTypes, ageGroups, eventTypes, clubSe
                                         ) : (
                                             ageGroups.map((group) => (
                                                 <TableRow key={group.id}>
-                                                    <TableCell className="font-medium">{group.name}</TableCell>
-                                                    <TableCell>{group.min_age} anos</TableCell>
-                                                    <TableCell>{group.max_age} anos</TableCell>
+                                                    <TableCell className="font-medium">{group.nome}</TableCell>
+                                                    <TableCell>{group.idade_minima} anos</TableCell>
+                                                    <TableCell>{group.idade_maxima} anos</TableCell>
                                                     <TableCell className="text-right">
                                                         <div className="flex justify-end gap-2">
                                                             <Button
@@ -304,8 +304,8 @@ export default function SettingsIndex({ userTypes, ageGroups, eventTypes, clubSe
                                         ) : (
                                             userTypes.map((type) => (
                                                 <TableRow key={type.id}>
-                                                    <TableCell className="font-medium">{type.name}</TableCell>
-                                                    <TableCell>{type.description || '-'}</TableCell>
+                                                    <TableCell className="font-medium">{type.nome}</TableCell>
+                                                    <TableCell>{type.descricao || '-'}</TableCell>
                                                     <TableCell className="text-right">
                                                         <div className="flex justify-end gap-2">
                                                             <Button
@@ -366,8 +366,8 @@ export default function SettingsIndex({ userTypes, ageGroups, eventTypes, clubSe
                                         ) : (
                                             eventTypes.map((type) => (
                                                 <TableRow key={type.id}>
-                                                    <TableCell className="font-medium">{type.name}</TableCell>
-                                                    <TableCell>{type.description || '-'}</TableCell>
+                                                    <TableCell className="font-medium">{type.nome}</TableCell>
+                                                    <TableCell>{type.categoria || '-'}</TableCell>
                                                     <TableCell>{type.category || '-'}</TableCell>
                                                     <TableCell className="text-right">
                                                         <div className="flex justify-end gap-2">
@@ -570,44 +570,44 @@ export default function SettingsIndex({ userTypes, ageGroups, eventTypes, clubSe
                             {editingItem?.type === 'age-group' && (
                                 <>
                                     <div className="space-y-2">
-                                        <Label htmlFor="name">Nome *</Label>
+                                        <Label htmlFor="nome">Nome *</Label>
                                         <Input
-                                            id="name"
-                                            value={data.name || ''}
-                                            onChange={e => setData('name', e.target.value)}
+                                            id="nome"
+                                            value={data.nome || ''}
+                                            onChange={e => setData('nome', e.target.value)}
                                             required
                                         />
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-2">
-                                            <Label htmlFor="min_age">Idade Mínima *</Label>
+                                            <Label htmlFor="idade_minima">Idade Mínima *</Label>
                                             <Input
-                                                id="min_age"
+                                                id="idade_minima"
                                                 type="number"
                                                 min="0"
-                                                value={data.min_age || ''}
-                                                onChange={e => setData('min_age', e.target.value ? parseInt(e.target.value, 10) : '')}
+                                                value={data.idade_minima || ''}
+                                                onChange={e => setData('idade_minima', e.target.value ? parseInt(e.target.value, 10) : '')}
                                                 required
                                             />
                                         </div>
                                         <div className="space-y-2">
-                                            <Label htmlFor="max_age">Idade Máxima *</Label>
+                                            <Label htmlFor="idade_maxima">Idade Máxima *</Label>
                                             <Input
-                                                id="max_age"
+                                                id="idade_maxima"
                                                 type="number"
                                                 min="0"
-                                                value={data.max_age || ''}
-                                                onChange={e => setData('max_age', e.target.value ? parseInt(e.target.value, 10) : '')}
+                                                value={data.idade_maxima || ''}
+                                                onChange={e => setData('idade_maxima', e.target.value ? parseInt(e.target.value, 10) : '')}
                                                 required
                                             />
                                         </div>
                                     </div>
                                     <div className="space-y-2">
-                                        <Label htmlFor="description">Descrição</Label>
+                                        <Label htmlFor="descricao">Descrição</Label>
                                         <Textarea
-                                            id="description"
-                                            value={data.description || ''}
-                                            onChange={e => setData('description', e.target.value)}
+                                            id="descricao"
+                                            value={data.descricao || ''}
+                                            onChange={e => setData('descricao', e.target.value)}
                                         />
                                     </div>
                                 </>
@@ -616,29 +616,29 @@ export default function SettingsIndex({ userTypes, ageGroups, eventTypes, clubSe
                             {editingItem?.type === 'user-type' && (
                                 <>
                                     <div className="space-y-2">
-                                        <Label htmlFor="name">Nome *</Label>
+                                        <Label htmlFor="nome">Nome *</Label>
                                         <Input
-                                            id="name"
-                                            value={data.name || ''}
-                                            onChange={e => setData('name', e.target.value)}
+                                            id="nome"
+                                            value={data.nome || ''}
+                                            onChange={e => setData('nome', e.target.value)}
                                             required
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label htmlFor="description">Descrição</Label>
+                                        <Label htmlFor="descricao">Descrição</Label>
                                         <Textarea
-                                            id="description"
-                                            value={data.description || ''}
-                                            onChange={e => setData('description', e.target.value)}
+                                            id="descricao"
+                                            value={data.descricao || ''}
+                                            onChange={e => setData('descricao', e.target.value)}
                                         />
                                     </div>
                                     <div className="flex items-center space-x-2">
                                         <Switch
-                                            id="active"
-                                            checked={data.active ?? true}
-                                            onCheckedChange={checked => setData('active', checked)}
+                                            id="ativo"
+                                            checked={data.ativo ?? true}
+                                            onCheckedChange={checked => setData('ativo', checked)}
                                         />
-                                        <Label htmlFor="active">Ativo</Label>
+                                        <Label htmlFor="ativo">Ativo</Label>
                                     </div>
                                 </>
                             )}
@@ -646,47 +646,47 @@ export default function SettingsIndex({ userTypes, ageGroups, eventTypes, clubSe
                             {editingItem?.type === 'event-type' && (
                                 <>
                                     <div className="space-y-2">
-                                        <Label htmlFor="name">Nome *</Label>
+                                        <Label htmlFor="nome">Nome *</Label>
                                         <Input
-                                            id="name"
-                                            value={data.name || ''}
-                                            onChange={e => setData('name', e.target.value)}
+                                            id="nome"
+                                            value={data.nome || ''}
+                                            onChange={e => setData('nome', e.target.value)}
                                             required
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label htmlFor="description">Descrição</Label>
+                                        <Label htmlFor="descricao">Descrição</Label>
                                         <Textarea
-                                            id="description"
-                                            value={data.description || ''}
-                                            onChange={e => setData('description', e.target.value)}
+                                            id="descricao"
+                                            value={data.descricao || ''}
+                                            onChange={e => setData('descricao', e.target.value)}
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label htmlFor="category">Categoria</Label>
+                                        <Label htmlFor="categoria">Categoria</Label>
                                         <Input
-                                            id="category"
-                                            value={data.category || ''}
-                                            onChange={e => setData('category', e.target.value)}
+                                            id="categoria"
+                                            value={data.categoria || ''}
+                                            onChange={e => setData('categoria', e.target.value)}
                                             placeholder="ex: treino, competição, evento"
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label htmlFor="color">Cor (Hex)</Label>
+                                        <Label htmlFor="cor">Cor (Hex)</Label>
                                         <Input
-                                            id="color"
-                                            value={data.color || ''}
-                                            onChange={e => setData('color', e.target.value)}
+                                            id="cor"
+                                            value={data.cor || ''}
+                                            onChange={e => setData('cor', e.target.value)}
                                             placeholder="#000000"
                                         />
                                     </div>
                                     <div className="flex items-center space-x-2">
                                         <Switch
-                                            id="active"
-                                            checked={data.active ?? true}
-                                            onCheckedChange={checked => setData('active', checked)}
+                                            id="ativo"
+                                            checked={data.ativo ?? true}
+                                            onCheckedChange={checked => setData('ativo', checked)}
                                         />
-                                        <Label htmlFor="active">Ativo</Label>
+                                        <Label htmlFor="ativo">Ativo</Label>
                                     </div>
                                 </>
                             )}

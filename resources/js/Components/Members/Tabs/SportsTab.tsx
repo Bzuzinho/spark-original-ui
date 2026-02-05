@@ -21,7 +21,7 @@ interface SportsTabProps {
 }
 
 export function SportsTab({ user, onChange, isAdmin, onNavigate }: SportsTabProps) {
-  if (!user.tipo_membro.includes('atleta')) {
+  if (!user.tipo_membro?.includes('atleta')) {
     return (
       <div className="p-12 text-center">
         <p className="text-muted-foreground">

@@ -18,7 +18,6 @@ npm run dev & php artisan serve
 ```bash
 cp .env.local.example .env
 php artisan key:generate
-touch database/database.sqlite
 php artisan migrate:fresh
 npm run dev & php artisan serve
 ```
@@ -29,7 +28,7 @@ See [docs/SETUP.md](docs/SETUP.md) for detailed setup instructions.
 
 - **Backend:** Laravel 11 + PHP 8.3
 - **Frontend:** React 18 + Inertia.js + Vite
-- **Database:** PostgreSQL 16 (production) / SQLite (local)
+- **Database:** PostgreSQL 16
 - **Cache/Sessions:** Redis 7 (production) / File (local)
 - **Styling:** Tailwind CSS
 
@@ -108,7 +107,7 @@ Migrado de **Spark** (React SPA com key-value storage) para **Laravel 11** com b
 - Composer
 - Node.js >= 18
 - NPM ou Yarn
-- SQLite (dev) ou PostgreSQL (prod)
+- PostgreSQL 16
 
 ### Passo a Passo
 
@@ -124,8 +123,8 @@ composer install
 cp .env.example .env
 php artisan key:generate
 
-# 4. Configurar base de dados (SQLite para desenvolvimento)
-touch database/database.sqlite
+# 4. Configurar base de dados PostgreSQL
+# Configurar variáveis no .env com credenciais PostgreSQL
 
 # 5. Executar migrações
 php artisan migrate --seed
@@ -227,7 +226,7 @@ Este script verifica:
 
 ### Backend
 - **Framework:** Laravel 11
-- **Database:** PostgreSQL (prod) / SQLite (dev)
+- **Database:** PostgreSQL (prod)
 - **Authentication:** Laravel Breeze + Sanctum
 - **API:** RESTful com Inertia.js
 

@@ -26,28 +26,28 @@ class ConfiguracoesController extends Controller
     public function storeUserType(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'active' => 'boolean',
+            'nome' => 'required|string|max:255',
+            'descricao' => 'nullable|string',
+            'ativo' => 'boolean',
         ]);
 
         UserType::create($data);
 
-        return redirect()->route('settings')
+        return redirect()->route('configuracoes')
             ->with('success', 'Tipo de utilizador criado com sucesso!');
     }
 
     public function updateUserType(Request $request, UserType $userType): RedirectResponse
     {
         $data = $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'active' => 'boolean',
+            'nome' => 'required|string|max:255',
+            'descricao' => 'nullable|string',
+            'ativo' => 'boolean',
         ]);
 
         $userType->update($data);
 
-        return redirect()->route('settings')
+        return redirect()->route('configuracoes')
             ->with('success', 'Tipo de utilizador atualizado com sucesso!');
     }
 
@@ -55,37 +55,37 @@ class ConfiguracoesController extends Controller
     {
         $userType->delete();
 
-        return redirect()->route('settings')
+        return redirect()->route('configuracoes')
             ->with('success', 'Tipo de utilizador eliminado com sucesso!');
     }
 
     public function storeAgeGroup(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'name' => 'required|string|max:255',
-            'min_age' => 'required|integer|min:0',
-            'max_age' => 'required|integer|min:0',
-            'description' => 'nullable|string',
+            'nome' => 'required|string|max:255',
+            'idade_minima' => 'required|integer|min:0',
+            'idade_maxima' => 'required|integer|min:0',
+            'descricao' => 'nullable|string',
         ]);
 
         AgeGroup::create($data);
 
-        return redirect()->route('settings')
+        return redirect()->route('configuracoes')
             ->with('success', 'Escalão etário criado com sucesso!');
     }
 
     public function updateAgeGroup(Request $request, AgeGroup $ageGroup): RedirectResponse
     {
         $data = $request->validate([
-            'name' => 'required|string|max:255',
-            'min_age' => 'required|integer|min:0',
-            'max_age' => 'required|integer|min:0',
-            'description' => 'nullable|string',
+            'nome' => 'required|string|max:255',
+            'idade_minima' => 'required|integer|min:0',
+            'idade_maxima' => 'required|integer|min:0',
+            'descricao' => 'nullable|string',
         ]);
 
         $ageGroup->update($data);
 
-        return redirect()->route('settings')
+        return redirect()->route('configuracoes')
             ->with('success', 'Escalão etário atualizado com sucesso!');
     }
 
@@ -93,39 +93,39 @@ class ConfiguracoesController extends Controller
     {
         $ageGroup->delete();
 
-        return redirect()->route('settings')
+        return redirect()->route('configuracoes')
             ->with('success', 'Escalão etário eliminado com sucesso!');
     }
 
     public function storeEventType(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'category' => 'nullable|string',
-            'color' => 'nullable|string',
-            'active' => 'boolean',
+            'nome' => 'required|string|max:255',
+            'descricao' => 'nullable|string',
+            'categoria' => 'nullable|string',
+            'cor' => 'nullable|string',
+            'ativo' => 'boolean',
         ]);
 
         EventType::create($data);
 
-        return redirect()->route('settings')
+        return redirect()->route('configuracoes')
             ->with('success', 'Tipo de evento criado com sucesso!');
     }
 
     public function updateEventType(Request $request, EventType $eventType): RedirectResponse
     {
         $data = $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'category' => 'nullable|string',
-            'color' => 'nullable|string',
-            'active' => 'boolean',
+            'nome' => 'required|string|max:255',
+            'descricao' => 'nullable|string',
+            'categoria' => 'nullable|string',
+            'cor' => 'nullable|string',
+            'ativo' => 'boolean',
         ]);
 
         $eventType->update($data);
 
-        return redirect()->route('settings')
+        return redirect()->route('configuracoes')
             ->with('success', 'Tipo de evento atualizado com sucesso!');
     }
 
@@ -133,22 +133,22 @@ class ConfiguracoesController extends Controller
     {
         $eventType->delete();
 
-        return redirect()->route('settings')
+        return redirect()->route('configuracoes')
             ->with('success', 'Tipo de evento eliminado com sucesso!');
     }
 
     public function updateClubSettings(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'club_name' => 'required|string|max:255',
-            'abbreviation' => 'nullable|string|max:10',
-            'address' => 'nullable|string',
-            'postal_code' => 'nullable|string|max:20',
-            'city' => 'nullable|string|max:100',
-            'phone' => 'nullable|string|max:20',
+            'nome_clube' => 'required|string|max:255',
+            'sigla' => 'nullable|string|max:10',
+            'morada' => 'nullable|string',
+            'codigo_postal' => 'nullable|string|max:20',
+            'localidade' => 'nullable|string|max:100',
+            'telefone' => 'nullable|string|max:20',
             'email' => 'nullable|email|max:255',
             'website' => 'nullable|url|max:255',
-            'tax_id' => 'nullable|string|max:20',
+            'nif' => 'nullable|string|max:20',
             'iban' => 'nullable|string|max:34',
         ]);
 
@@ -160,7 +160,7 @@ class ConfiguracoesController extends Controller
             ClubSetting::create($data);
         }
 
-        return redirect()->route('settings')
+        return redirect()->route('configuracoes')
             ->with('success', 'Configurações do clube atualizadas com sucesso!');
     }
 }

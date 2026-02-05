@@ -151,7 +151,7 @@ export default function EventosIndex({ eventos = [], stats, users = [] }: Props)
         >
             <Head title="Gestão de Eventos" />
 
-            <div className="w-full px-2 sm:px-4 py-2 sm:py-3 space-y-2 sm:space-y-3">
+            <div className="container mx-auto px-2 sm:px-4 py-3 sm:py-4 max-w-7xl space-y-2 sm:space-y-3">
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-3">
                     <TabsList className="grid grid-cols-7 w-full h-auto p-1">
                         <TabsTrigger value="calendario" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-2 px-1 text-xs">

@@ -15,7 +15,7 @@ import { MagnifyingGlass, Plus, UserCircle, FileArrowUp, Trash, SquaresFour, Lis
 import { getStatusColor, getStatusLabel, getMemberTypeLabel, getUserDisplayName } from '@/lib/user-helpers';
 import { generateMemberNumber } from '@/lib/user-helpers';
 import { toast } from 'sonner';
-import * as XLSX from 'xlsx';
+import { utils, read, write } from 'xlsx';
 import { format } from 'date-fns';
 import { useKV } from '@github/spark/hooks';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -142,9 +142,9 @@ export function UserList({ users, onSelectUser, onCreateUser, onDeleteUser, isAd
     reader.onload = (e) => {
       try {
         const data = e.target?.result;
-        const workbook = XLSX.read(data, { type: 'binary' });
+        const workbook = read(data, { type: 'binary' });
         const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-        const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+        const jsonData = utils.sheet_to_json(firstSheet, { header: 1 });
 
         const preview = jsonData.slice(0, 6);
         setImportPreview(preview);
@@ -238,9 +238,9 @@ export function UserList({ users, onSelectUser, onCreateUser, onDeleteUser, isAd
     reader.onload = (e) => {
       try {
         const data = e.target?.result;
-        const workbook = XLSX.read(data, { type: 'binary' });
+        const workbook = read(data, { type: 'binary' });
         const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-        const jsonData: any[] = XLSX.utils.sheet_to_json(firstSheet);
+        const jsonData: any[] = utils.sheet_to_json(firstSheet);
 
         if (jsonData.length === 0) {
           toast.error('O ficheiro está vazio');

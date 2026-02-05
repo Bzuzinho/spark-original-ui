@@ -2,11 +2,16 @@
 
 export function generateMemberNumber(existingUsers: any[]): string {
   const currentYear = new Date().getFullYear();
+  
+  if (!existingUsers || !Array.isArray(existingUsers)) {
+    return `${currentYear}-0001`;
+  }
+  
   const existingNumbers = existingUsers
-    .map(u => u.member_number)
-    .filter(n => n && n.startsWith(currentYear.toString()))
+    .map(u => u?.numero_socio)
+    .filter(n => n && typeof n === 'string' && n.startsWith(currentYear.toString()))
     .map(n => parseInt(n.split('-')[1] || '0'))
-    .filter(n => !isNaN(n));
+    .filter(n => !isNaN(n) && n > 0);
   
   const nextNumber = existingNumbers.length > 0 
     ? Math.max(...existingNumbers) + 1 
@@ -15,8 +20,26 @@ export function generateMemberNumber(existingUsers: any[]): string {
   return `${currentYear}-${nextNumber.toString().padStart(4, '0')}`;
 }
 
+export function createEmptyUser(): any {
+  return {
+    nome_completo: '',
+    data_nascimento: '',
+    menor: false,
+    sexo: 'masculino',
+    tipo_membro: [],
+    estado: 'ativo',
+    perfil: 'atleta',
+    rgpd: false,
+    consentimento: false,
+    afiliacao: false,
+    declaracao_de_transporte: false,
+    email_utilizador: '',
+    ativo_desportivo: false,
+  };
+}
+
 export function getUserDisplayName(user: any): string {
-  return user.full_name || 'Sem nome';
+  return user?.nome_completo || user?.name || 'Sem nome';
 }
 
 export function getUserAge(birthDate: string): number | null {
@@ -37,11 +60,14 @@ export function isMinor(birthDate: string): boolean {
 }
 
 export function getStatusColor(status: string): string {
-  switch (status) {
+  switch (status?.toLowerCase()) {
+    case 'ativo':
     case 'active':
       return 'bg-green-100 text-green-800 border-green-200';
+    case 'inativo':
     case 'inactive':
       return 'bg-gray-100 text-gray-800 border-gray-200';
+    case 'suspenso':
     case 'suspended':
       return 'bg-red-100 text-red-800 border-red-200';
     default:
@@ -50,11 +76,15 @@ export function getStatusColor(status: string): string {
 }
 
 export function getStatusLabel(status: string): string {
-  switch (status) {
+  if (!status) return 'Desconhecido';
+  switch (status.toLowerCase()) {
+    case 'ativo':
     case 'active':
       return 'Ativo';
+    case 'inativo':
     case 'inactive':
       return 'Inativo';
+    case 'suspenso':
     case 'suspended':
       return 'Suspenso';
     default:

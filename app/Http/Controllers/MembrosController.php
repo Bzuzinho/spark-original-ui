@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\StoreMemberRequest;
+use App\Http\Requests\StoreMembroRequest;
 use App\Http\Requests\UpdateMemberRequest;
 use App\Models\User;
 use App\Models\UserType;
@@ -19,25 +19,103 @@ class MembrosController extends Controller
 {
     public function index(): Response
     {
+        $users = User::with(['userTypes', 'ageGroup', 'encarregados', 'educandos'])->get();
+        $userTypes = UserType::where('ativo', true)->get();
+        $ageGroups = AgeGroup::all();
+
+        // Calculate statistics
+        $totalMembros = $users->count();
+        $membrosAtivos = $users->where('estado', 'ativo')->count();
+        $membrosInativos = $users->where('estado', 'inativo')->count();
+        
+        $totalAtletas = $users->filter(function ($user) {
+            return is_array($user->tipo_membro) && in_array('atleta', $user->tipo_membro);
+        })->count();
+        
+        $atletasAtivos = $users->filter(function ($user) {
+            return is_array($user->tipo_membro) && 
+                   in_array('atleta', $user->tipo_membro) && 
+                   $user->ativo_desportivo == true;
+        })->count();
+        
+        $encarregados = $users->filter(function ($user) {
+            return is_array($user->tipo_membro) && in_array('encarregado_educacao', $user->tipo_membro);
+        })->count();
+        
+        $treinadores = $users->filter(function ($user) {
+            return is_array($user->tipo_membro) && in_array('treinador', $user->tipo_membro);
+        })->count();
+
+        $novosUltimos30Dias = $users->filter(function ($user) {
+            return $user->created_at && $user->created_at->isAfter(now()->subDays(30));
+        })->count();
+
+        // Count members by type
+        $tipoMembrosStats = [];
+        foreach ($userTypes as $tipo) {
+            $count = $users->filter(function ($user) use ($tipo) {
+                return is_array($user->tipo_membro) && in_array($tipo->id, $user->tipo_membro);
+            })->count();
+            
+            if ($count > 0) {
+                $tipoMembrosStats[] = [
+                    'tipo' => $tipo->nome,
+                    'count' => $count
+                ];
+            }
+        }
+
+        // Count athletes by age group
+        $escaloesStats = [];
+        foreach ($ageGroups as $escalao) {
+            $count = $users->filter(function ($user) use ($escalao) {
+                return is_array($user->tipo_membro) && 
+                       in_array('atleta', $user->tipo_membro) && 
+                       $user->escalao_id == $escalao->id;
+            })->count();
+            
+            if ($count > 0) {
+                $escaloesStats[] = [
+                    'escalao' => $escalao->nome,
+                    'count' => $count
+                ];
+            }
+        }
+
         return Inertia::render('Membros/Index', [
-            'members' => User::with(['userTypes', 'ageGroup', 'encarregados', 'educandos'])
-                ->latest()
-                ->get(),
-            'userTypes' => UserType::where('active', true)->get(),
-            'ageGroups' => AgeGroup::all(),
+            'members' => $users->values(),
+            'userTypes' => $userTypes,
+            'ageGroups' => $ageGroups,
+            'stats' => [
+                'totalMembros' => $totalMembros,
+                'membrosAtivos' => $membrosAtivos,
+                'membrosInativos' => $membrosInativos,
+                'totalAtletas' => $totalAtletas,
+                'atletasAtivos' => $atletasAtivos,
+                'encarregados' => $encarregados,
+                'treinadores' => $treinadores,
+                'novosUltimos30Dias' => $novosUltimos30Dias,
+                'atestadosACaducar' => 0, // TODO: implement when health data is available
+            ],
+            'tipoMembrosStats' => $tipoMembrosStats,
+            'escaloesStats' => $escaloesStats,
         ]);
     }
 
     public function create(): Response
     {
+        $allUsers = User::with(['userTypes', 'ageGroup'])->get();
+        $userTypes = UserType::where('ativo', true)->get();
+        $ageGroups = AgeGroup::all();
+        
         return Inertia::render('Membros/Create', [
-            'userTypes' => UserType::where('active', true)->get(),
-            'ageGroups' => AgeGroup::all(),
-            'guardians' => User::whereJsonContains('tipo_membro', 'encarregado_educacao')->get(),
+            'allUsers' => $allUsers,
+            'userTypes' => $userTypes,
+            'ageGroups' => $ageGroups,
         ]);
     }
 
-    public function store(StoreMemberRequest $request): RedirectResponse
+    public function store(StoreMembroRequest $request): RedirectResponse
     {
         try {
             $data = $request->validated();
@@ -117,7 +195,7 @@ class MembrosController extends Controller
                 'relationships.relatedUser',
             ]),
             'allUsers' => User::select('id', 'nome_completo', 'numero_socio', 'tipo_membro')->get(),
-            'userTypes' => UserType::where('active', true)->get(),
+            'userTypes' => UserType::where('ativo', true)->get(),
             'ageGroups' => AgeGroup::all(),
         ]);
     }
@@ -126,7 +204,7 @@ class MembrosController extends Controller
     {
         return Inertia::render('Membros/Edit', [
             'member' => $member->load(['userTypes', 'ageGroup', 'encarregados', 'educandos']),
-            'userTypes' => UserType::where('active', true)->get(),
+            'userTypes' => UserType::where('ativo', true)->get(),
             'ageGroups' => AgeGroup::all(),
             'guardians' => User::whereJsonContains('tipo_membro', 'encarregado_educacao')
                 ->where('id', '!=', $member->id)

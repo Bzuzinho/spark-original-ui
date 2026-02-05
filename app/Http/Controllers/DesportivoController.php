@@ -29,7 +29,7 @@ class DesportivoController extends Controller
             ->where('status', 'ativo')
             ->get(['id', 'nome_completo']);
         
-        $activeTeams = Team::where('active', true)->count();
+        $activeTeams = Team::where('ativo', true)->count();
         
         $trainings7Days = TrainingSession::where('datetime', '>=', $sevenDaysAgo)
             ->where('datetime', '<=', $now)
@@ -52,7 +52,7 @@ class DesportivoController extends Controller
                 'upcomingEvents' => $upcomingEvents,
             ],
             'teams' => Team::with(['coach', 'members'])
-                ->where('active', true)
+                ->where('ativo', true)
                 ->get(),
             'trainingSessions' => TrainingSession::with('team')
                 ->where('datetime', '>=', $thirtyDaysAgo)

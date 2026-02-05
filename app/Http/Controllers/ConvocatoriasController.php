@@ -26,12 +26,12 @@ class ConvocatoriasController extends Controller
     public function create(): Response
     {
         return Inertia::render('Desportivo/CallUps/Create', [
-            'teams' => Team::where('active', true)->get(['id', 'name']),
-            'events' => Event::where('start_date', '>=', now())
-                ->orderBy('start_date')
-                ->get(['id', 'title', 'start_date']),
+            'teams' => Team::where('ativo', true)->get(['id', 'nome']),
+            'events' => Event::where('data_inicio', '>=', now())
+                ->orderBy('data_inicio')
+                ->get(['id', 'titulo', 'data_inicio']),
             'athletes' => User::whereJsonContains('tipo_membro', 'atleta')
-                ->where('status', 'ativo')
+                ->where('estado', 'ativo')
                 ->get(['id', 'nome_completo']),
         ]);
     }

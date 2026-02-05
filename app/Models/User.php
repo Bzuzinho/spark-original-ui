@@ -140,7 +140,7 @@ class User extends Authenticatable
     // Relationships
     public function athleteSportsData(): HasOne
     {
-        return $this->hasOne(AthleteSportsData::class, 'athlete_id');
+        return $this->hasOne(AthleteSportsData::class, 'user_id');
     }
 
     public function createdEvents(): HasMany
@@ -150,7 +150,7 @@ class User extends Authenticatable
 
     public function convocations(): HasMany
     {
-        return $this->hasMany(EventConvocation::class, 'athlete_id');
+        return $this->hasMany(EventConvocation::class, 'user_id');
     }
 
     public function givenConvocations(): HasMany
@@ -160,17 +160,17 @@ class User extends Authenticatable
 
     public function eventAttendances(): HasMany
     {
-        return $this->hasMany(EventAttendance::class, 'athlete_id');
+        return $this->hasMany(EventAttendance::class, 'user_id');
     }
 
     public function eventResults(): HasMany
     {
-        return $this->hasMany(EventResult::class, 'athlete_id');
+        return $this->hasMany(EventResult::class, 'user_id');
     }
 
     public function resultProvas(): HasMany
     {
-        return $this->hasMany(ResultProva::class, 'athlete_id');
+        return $this->hasMany(ResultProva::class, 'user_id');
     }
 
     public function createdTrainings(): HasMany
@@ -180,22 +180,22 @@ class User extends Authenticatable
 
     public function trainingAthletes(): HasMany
     {
-        return $this->hasMany(TrainingAthlete::class, 'athlete_id');
+        return $this->hasMany(TrainingAthlete::class, 'user_id');
     }
 
     public function presences(): HasMany
     {
-        return $this->hasMany(Presence::class, 'athlete_id');
+        return $this->hasMany(Presence::class, 'user_id');
     }
 
     public function competitionRegistrations(): HasMany
     {
-        return $this->hasMany(CompetitionRegistration::class, 'athlete_id');
+        return $this->hasMany(CompetitionRegistration::class, 'user_id');
     }
 
     public function results(): HasMany
     {
-        return $this->hasMany(Result::class, 'athlete_id');
+        return $this->hasMany(Result::class, 'user_id');
     }
 
     public function invoices(): HasMany
@@ -210,7 +210,7 @@ class User extends Authenticatable
 
     public function convocationMovements(): HasMany
     {
-        return $this->hasMany(ConvocationMovement::class, 'athlete_id');
+        return $this->hasMany(ConvocationMovement::class, 'user_id');
     }
 
     public function financialEntries(): HasMany
@@ -245,7 +245,7 @@ class User extends Authenticatable
 
     public function convocationAthletes(): HasMany
     {
-        return $this->hasMany(ConvocationAthlete::class, 'athlete_id');
+        return $this->hasMany(ConvocationAthlete::class, 'user_id');
     }
 
     public function documents(): HasMany

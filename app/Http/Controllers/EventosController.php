@@ -48,8 +48,8 @@ class EventosController extends Controller
     public function create(): Response
     {
         return Inertia::render('Eventos/Create', [
-            'eventTypes' => EventType::where('active', true)->get(),
-            'users' => User::where('status', 'ativo')->get(),
+            'eventTypes' => EventType::where('ativo', true)->get(),
+            'users' => User::where('estado', 'ativo')->get(),
         ]);
     }
 
@@ -86,8 +86,8 @@ class EventosController extends Controller
     {
         return Inertia::render('Eventos/Edit', [
             'event' => $evento->load(['eventType']),
-            'eventTypes' => EventType::where('active', true)->get(),
-            'users' => User::where('status', 'ativo')->get(),
+            'eventTypes' => EventType::where('ativo', true)->get(),
+            'users' => User::where('estado', 'ativo')->get(),
         ]);
     }
 

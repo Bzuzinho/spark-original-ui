@@ -82,6 +82,7 @@ export function PersonalTab({ user, allUsers, onChange, isAdmin, userTypes = [],
 
   const availableGuardians = allUsers.filter(u => {
     if (u.id === user.id) return false;
+    if (!u.tipo_membro || !Array.isArray(u.tipo_membro)) return false;
     
     return u.tipo_membro.some((tipo: string) => {
       const normalized = tipo.toLowerCase()
@@ -98,13 +99,13 @@ export function PersonalTab({ user, allUsers, onChange, isAdmin, userTypes = [],
     return u.menor;
   });
 
-  const isGuardian = user.tipo_membro.some((tipo: string) => {
+  const isGuardian = user.tipo_membro?.some((tipo: string) => {
     const normalized = tipo.toLowerCase()
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
       .replace(/[\s_-]+/g, '_');
     return normalized.includes('encarregado') && normalized.includes('educacao');
-  });
+  }) || false;
 
   const userAge = user.data_nascimento ? getUserAge(user.data_nascimento) : null;
 
@@ -432,9 +433,9 @@ export function PersonalTab({ user, allUsers, onChange, isAdmin, userTypes = [],
                     <input
                       type="checkbox"
                       id={`tipo_${tipo.id}`}
-                      checked={user.tipo_membro.includes(tipoValue as any)}
+                      checked={user.tipo_membro?.includes(tipoValue as any) || false}
                       onChange={(e) => {
-                        const currentTypes = user.tipo_membro;
+                        const currentTypes = user.tipo_membro || [];
                         if (e.target.checked) {
                           onChange('tipo_membro', [...currentTypes, tipoValue]);
                         } else {

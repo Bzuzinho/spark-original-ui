@@ -57,10 +57,8 @@ export default function DesportivoIndex({
         <AuthenticatedLayout
             header={
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-800">
-                        Gestão Desportiva
-                    </h1>
-                    <p className="text-sm text-gray-600 mt-1">
+                    <h1 className="text-lg sm:text-xl font-semibold tracking-tight">Gestão Desportiva</h1>
+                    <p className="text-muted-foreground text-xs mt-0.5">
                         Planeamento de treinos, eventos e acompanhamento de atletas
                     </p>
                 </div>

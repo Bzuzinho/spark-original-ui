@@ -19,11 +19,11 @@ class LojaController extends Controller
 
         // Apply filters
         if ($request->filled('category')) {
-            $query->where('category', $request->category);
+            $query->where('categoria', $request->category);
         }
 
         if ($request->filled('active')) {
-            $query->where('active', $request->boolean('active'));
+            $query->where('ativo', $request->boolean('active'));
         }
 
         if ($request->boolean('low_stock')) {

@@ -18,14 +18,14 @@ class SessoesFormacaoController extends Controller
             'trainingSessions' => TrainingSession::with('team')
                 ->latest('datetime')
                 ->paginate(15),
-            'teams' => Team::where('active', true)->get(['id', 'name']),
+            'teams' => Team::where('ativo', true)->get(['id', 'nome']),
         ]);
     }
 
     public function create(): Response
     {
         return Inertia::render('Desportivo/TrainingSessions/Create', [
-            'teams' => Team::where('active', true)->get(['id', 'name']),
+            'teams' => Team::where('ativo', true)->get(['id', 'nome']),
         ]);
     }
 
@@ -48,7 +48,7 @@ class SessoesFormacaoController extends Controller
     {
         return Inertia::render('Desportivo/TrainingSessions/Edit', [
             'trainingSession' => $trainingSession,
-            'teams' => Team::where('active', true)->get(['id', 'name']),
+            'teams' => Team::where('ativo', true)->get(['id', 'nome']),
         ]);
     }
 

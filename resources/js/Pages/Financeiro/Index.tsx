@@ -88,7 +88,7 @@ export default function FinanceiroIndex({
     return (
         <AuthenticatedLayout
             header={
-                <div className="mb-3 sm:mb-4">
+                <div>
                     <h1 className="text-lg sm:text-xl font-semibold tracking-tight">Módulo Financeiro</h1>
                     <p className="text-muted-foreground text-xs mt-0.5">
                         Gestão completa das finanças do clube
