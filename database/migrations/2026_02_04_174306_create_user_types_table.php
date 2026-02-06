@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasTable('user_types')) {
+            return;
+        }
+
         Schema::create('user_types', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->string('nome');

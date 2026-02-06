@@ -1,4 +1,4 @@
-import { useState, FormEventHandler } from 'react';
+import { useState, useEffect, FormEventHandler } from 'react';
 import { Head, router, useForm } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/Components/ui/card';
@@ -11,7 +11,9 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Switch } from '@/Components/ui/switch';
 import { Separator } from '@/Components/ui/separator';
 import { Textarea } from '@/Components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select';
 import { Plus, PencilSimple, Trash, FloppyDisk } from '@phosphor-icons/react';
+import { FileUpload } from '@/Components/FileUpload';
 import { toast } from 'sonner';
 
 interface AgeGroup {
@@ -43,7 +45,11 @@ interface Permission {
     id: string;
     user_type_id: string;
     modulo: string;
+    submodulo?: string | null;
+    separador?: string | null;
+    campo?: string | null;
     pode_ver: boolean;
+    pode_criar: boolean;
     pode_editar: boolean;
     pode_eliminar: boolean;
 }
@@ -122,8 +128,248 @@ interface ClubSettings {
     email?: string;
     website?: string;
     nif?: string;
+    logo_url?: string;
     iban?: string;
 }
+
+const permissionCatalog = [
+    {
+        value: 'dashboard',
+        label: 'Dashboard',
+        submodules: [],
+    },
+    {
+        value: 'membros',
+        label: 'Membros',
+        submodules: [
+            {
+                value: 'lista',
+                label: 'Lista',
+                separators: [
+                    { value: 'tabela', label: 'Tabela', fields: ['nome_completo', 'numero_socio', 'email_utilizador', 'estado'] },
+                ],
+            },
+            {
+                value: 'perfil',
+                label: 'Perfil',
+                separators: [
+                    { value: 'dados_pessoais', label: 'Dados pessoais', fields: ['nome_completo', 'nif', 'cc', 'morada'] },
+                    { value: 'contactos', label: 'Contactos', fields: ['telefone', 'email_utilizador'] },
+                ],
+            },
+            {
+                value: 'desportivo',
+                label: 'Desportivo',
+                separators: [
+                    { value: 'treinos', label: 'Treinos', fields: ['frequencia', 'grupo'] },
+                    { value: 'competicoes', label: 'Competições', fields: ['resultado', 'posicao'] },
+                ],
+            },
+            {
+                value: 'financeiro',
+                label: 'Financeiro',
+                separators: [
+                    { value: 'mensalidades', label: 'Mensalidades', fields: ['tipo_mensalidade', 'valor'] },
+                    { value: 'faturas', label: 'Faturas', fields: ['estado_pagamento', 'valor_total'] },
+                ],
+            },
+        ],
+    },
+    {
+        value: 'eventos',
+        label: 'Eventos',
+        submodules: [
+            {
+                value: 'calendario',
+                label: 'Calendário',
+                separators: [
+                    { value: 'lista', label: 'Lista', fields: ['titulo', 'data', 'local'] },
+                ],
+            },
+            {
+                value: 'convocatorias',
+                label: 'Convocatórias',
+                separators: [
+                    { value: 'atletas', label: 'Atletas', fields: ['presenca', 'estado'] },
+                ],
+            },
+            {
+                value: 'resultados',
+                label: 'Resultados',
+                separators: [
+                    { value: 'provas', label: 'Provas', fields: ['tempo', 'posicao'] },
+                ],
+            },
+        ],
+    },
+    {
+        value: 'desportivo',
+        label: 'Desportivo',
+        submodules: [
+            {
+                value: 'treinos',
+                label: 'Treinos',
+                separators: [
+                    { value: 'planeamento', label: 'Planeamento', fields: ['data', 'objetivo'] },
+                ],
+            },
+            {
+                value: 'competicoes',
+                label: 'Competições',
+                separators: [
+                    { value: 'eventos', label: 'Eventos', fields: ['nome', 'data'] },
+                ],
+            },
+        ],
+    },
+    {
+        value: 'financeiro',
+        label: 'Financeiro',
+        submodules: [
+            {
+                value: 'faturas',
+                label: 'Faturas',
+                separators: [
+                    { value: 'lista', label: 'Lista', fields: ['estado_pagamento', 'valor_total'] },
+                ],
+            },
+            {
+                value: 'movimentos',
+                label: 'Movimentos',
+                separators: [
+                    { value: 'entradas', label: 'Entradas', fields: ['valor', 'descricao'] },
+                    { value: 'saidas', label: 'Saídas', fields: ['valor', 'descricao'] },
+                ],
+            },
+            {
+                value: 'mensalidades',
+                label: 'Mensalidades',
+                separators: [
+                    { value: 'config', label: 'Config', fields: ['designacao', 'valor'] },
+                ],
+            },
+        ],
+    },
+    {
+        value: 'loja',
+        label: 'Loja',
+        submodules: [
+            {
+                value: 'artigos',
+                label: 'Artigos',
+                separators: [
+                    { value: 'catalogo', label: 'Catálogo', fields: ['codigo', 'nome', 'preco'] },
+                ],
+            },
+            {
+                value: 'vendas',
+                label: 'Vendas',
+                separators: [
+                    { value: 'registos', label: 'Registos', fields: ['valor', 'data'] },
+                ],
+            },
+        ],
+    },
+    {
+        value: 'patrocinios',
+        label: 'Patrocínios',
+        submodules: [
+            {
+                value: 'sponsors',
+                label: 'Patrocinadores',
+                separators: [
+                    { value: 'lista', label: 'Lista', fields: ['nome', 'valor'] },
+                ],
+            },
+        ],
+    },
+    {
+        value: 'comunicacao',
+        label: 'Comunicação',
+        submodules: [
+            {
+                value: 'mensagens',
+                label: 'Mensagens',
+                separators: [
+                    { value: 'lista', label: 'Lista', fields: ['assunto', 'estado'] },
+                ],
+            },
+        ],
+    },
+    {
+        value: 'marketing',
+        label: 'Marketing',
+        submodules: [
+            {
+                value: 'campanhas',
+                label: 'Campanhas',
+                separators: [
+                    { value: 'lista', label: 'Lista', fields: ['nome', 'estado'] },
+                ],
+            },
+        ],
+    },
+    {
+        value: 'configuracoes',
+        label: 'Configurações',
+        submodules: [
+            {
+                value: 'geral',
+                label: 'Geral',
+                separators: [
+                    { value: 'escaloes', label: 'Escalões', fields: ['nome', 'idade_minima', 'idade_maxima'] },
+                    { value: 'tipos_utilizador', label: 'Tipos de Utilizador', fields: ['nome', 'descricao'] },
+                    { value: 'permissoes', label: 'Permissões', fields: ['modulo', 'submodulo'] },
+                    { value: 'provas', label: 'Provas', fields: ['nome', 'distancia', 'modalidade'] },
+                ],
+            },
+            {
+                value: 'clube',
+                label: 'Clube',
+                separators: [
+                    { value: 'info', label: 'Info', fields: ['nome_clube', 'nif', 'morada', 'telefone'] },
+                ],
+            },
+            {
+                value: 'financeiro',
+                label: 'Financeiro',
+                separators: [
+                    { value: 'mensalidades', label: 'Mensalidades', fields: ['designacao', 'valor'] },
+                    { value: 'centros_custo', label: 'Centros de Custo', fields: ['nome', 'orcamento'] },
+                ],
+            },
+            {
+                value: 'logistica',
+                label: 'Logística',
+                separators: [
+                    { value: 'artigos', label: 'Artigos', fields: ['codigo', 'nome', 'preco'] },
+                    { value: 'fornecedores', label: 'Fornecedores', fields: ['nome', 'nif'] },
+                ],
+            },
+            {
+                value: 'notificacoes',
+                label: 'Notificações',
+                separators: [
+                    { value: 'preferencias', label: 'Preferências', fields: ['email_notificacoes', 'alertas_pagamento', 'alertas_atividade'] },
+                ],
+            },
+            {
+                value: 'base_dados',
+                label: 'Base de Dados',
+                separators: [
+                    { value: 'utilizadores', label: 'Utilizadores', fields: ['nome_completo', 'email_utilizador', 'estado'] },
+                ],
+            },
+        ],
+    },
+];
+
+const customValue = '__custom__';
+
+const buildOptions = (values: Array<{ value: string; label: string }>) => [
+    ...values,
+    { value: customValue, label: 'Personalizado' },
+];
 
 interface Props {
     userTypes: UserType[];
@@ -163,6 +409,33 @@ export default function SettingsIndex({
         alertas_atividade: initialNotificationPrefs?.alertas_atividade ?? true,
     });
 
+    // Generic form for CRUD operations
+    const { data, setData, post, put, delete: destroy, reset, processing } = useForm<any>({});
+
+    const moduleOptions = buildOptions(
+        permissionCatalog.map((item) => ({ value: item.value, label: item.label }))
+    );
+
+    const selectedModule = permissionCatalog.find((item) => item.value === data.modulo);
+    const submoduleOptions = buildOptions(
+        (selectedModule?.submodules || []).map((item) => ({ value: item.value, label: item.label }))
+    );
+
+    const selectedSubmodule = selectedModule?.submodules.find((item) => item.value === data.submodulo);
+    const separatorOptions = buildOptions(
+        (selectedSubmodule?.separators || []).map((item) => ({ value: item.value, label: item.label }))
+    );
+
+    const selectedSeparator = selectedSubmodule?.separators.find((item) => item.value === data.separador);
+    const fieldOptions = buildOptions(
+        (selectedSeparator?.fields || []).map((item) => ({ value: item, label: item }))
+    );
+
+    const getSelectValue = (value: string | undefined | null, options: Array<{ value: string }>) => {
+        if (!value) return '';
+        return options.some((option) => option.value === value) ? value : customValue;
+    };
+
     // Club settings form
     const clubForm = useForm({
         nome_clube: clubSettings?.nome_clube || '',
@@ -174,11 +447,18 @@ export default function SettingsIndex({
         email: clubSettings?.email || '',
         website: clubSettings?.website || '',
         nif: clubSettings?.nif || '',
+        logo_url: clubSettings?.logo_url || '',
         iban: clubSettings?.iban || '',
+        logo: null as File | null,
     });
 
-    // Generic form for CRUD operations
-    const { data, setData, post, put, delete: destroy, reset, processing } = useForm<any>({});
+    const [logoPreview, setLogoPreview] = useState<string | null>(clubSettings?.logo_url || null);
+
+    useEffect(() => {
+        if (clubSettings?.logo_url) {
+            setLogoPreview(clubSettings.logo_url);
+        }
+    }, [clubSettings?.logo_url]);
 
     const openAddDialog = (type: string) => {
         reset();
@@ -272,7 +552,8 @@ export default function SettingsIndex({
 
     const handleSaveClubSettings: FormEventHandler = (e) => {
         e.preventDefault();
-        clubForm.put(route('configuracoes.club.update'), {
+        clubForm.put('/configuracoes/clube', {
+            forceFormData: true,
             onSuccess: () => toast.success('Configurações do clube atualizadas com sucesso!'),
             onError: () => toast.error('Erro ao atualizar configurações.'),
         });
@@ -558,7 +839,11 @@ export default function SettingsIndex({
                                         <TableRow>
                                             <TableHead>Tipo de Utilizador</TableHead>
                                             <TableHead>Módulo</TableHead>
+                                            <TableHead>Submódulo</TableHead>
+                                            <TableHead>Separador</TableHead>
+                                            <TableHead>Campo</TableHead>
                                             <TableHead>Ver</TableHead>
+                                            <TableHead>Criar</TableHead>
                                             <TableHead>Editar</TableHead>
                                             <TableHead>Eliminar</TableHead>
                                             <TableHead className="text-right">Ações</TableHead>
@@ -567,7 +852,7 @@ export default function SettingsIndex({
                                     <TableBody>
                                         {permissions.length === 0 ? (
                                             <TableRow>
-                                                <TableCell colSpan={6} className="text-center text-muted-foreground">
+                                                <TableCell colSpan={10} className="text-center text-muted-foreground">
                                                     Nenhuma permissão cadastrada
                                                 </TableCell>
                                             </TableRow>
@@ -578,7 +863,11 @@ export default function SettingsIndex({
                                                     <TableRow key={permission.id}>
                                                         <TableCell className="font-medium">{userType?.nome || '-'}</TableCell>
                                                         <TableCell>{permission.modulo}</TableCell>
+                                                        <TableCell>{permission.submodulo || '-'}</TableCell>
+                                                        <TableCell>{permission.separador || '-'}</TableCell>
+                                                        <TableCell>{permission.campo || '-'}</TableCell>
                                                         <TableCell>{permission.pode_ver ? '✓' : '✗'}</TableCell>
+                                                        <TableCell>{permission.pode_criar ? '✓' : '✗'}</TableCell>
                                                         <TableCell>{permission.pode_editar ? '✓' : '✗'}</TableCell>
                                                         <TableCell>{permission.pode_eliminar ? '✓' : '✗'}</TableCell>
                                                         <TableCell className="text-right">
@@ -736,6 +1025,28 @@ export default function SettingsIndex({
                                                 value={clubForm.data.website}
                                                 onChange={e => clubForm.setData('website', e.target.value)}
                                             />
+                                        </div>
+                                        <div className="space-y-2 md:col-span-2">
+                                            <Label htmlFor="logo_url">Logotipo do Clube</Label>
+                                            <input
+                                                id="logo_url"
+                                                type="file"
+                                                accept="image/*"
+                                                onChange={(e) => {
+                                                    const file = e.target.files?.[0] || null;
+                                                    clubForm.setData('logo', file);
+                                                    if (file) {
+                                                        setLogoPreview(URL.createObjectURL(file));
+                                                    }
+                                                }}
+                                            />
+                                            {logoPreview && (
+                                                <img
+                                                    src={logoPreview}
+                                                    alt="Logotipo do clube"
+                                                    className="h-16 w-auto rounded-md border"
+                                                />
+                                            )}
                                         </div>
                                         <div className="space-y-2 md:col-span-2">
                                             <Label htmlFor="morada">Morada</Label>
@@ -1319,12 +1630,141 @@ export default function SettingsIndex({
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="modulo">Módulo *</Label>
-                                        <Input
-                                            id="modulo"
-                                            value={data.modulo || ''}
-                                            onChange={e => setData('modulo', e.target.value)}
-                                            required
-                                        />
+                                        <Select
+                                            value={getSelectValue(data.modulo, moduleOptions)}
+                                            onValueChange={(value) => {
+                                                if (value === customValue) {
+                                                    setData('modulo', '');
+                                                } else {
+                                                    setData('modulo', value);
+                                                }
+                                                setData('submodulo', '');
+                                                setData('separador', '');
+                                                setData('campo', '');
+                                            }}
+                                        >
+                                            <SelectTrigger id="modulo">
+                                                <SelectValue placeholder="Selecionar" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {moduleOptions.map((option) => (
+                                                    <SelectItem key={option.value} value={option.value}>
+                                                        {option.label}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        {getSelectValue(data.modulo, moduleOptions) === customValue && (
+                                            <Input
+                                                id="modulo_custom"
+                                                value={data.modulo || ''}
+                                                onChange={e => setData('modulo', e.target.value)}
+                                                placeholder="Introduzir módulo"
+                                                required
+                                            />
+                                        )}
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="submodulo">Submódulo</Label>
+                                        <Select
+                                            value={getSelectValue(data.submodulo, submoduleOptions)}
+                                            onValueChange={(value) => {
+                                                if (value === customValue) {
+                                                    setData('submodulo', '');
+                                                } else {
+                                                    setData('submodulo', value);
+                                                }
+                                                setData('separador', '');
+                                                setData('campo', '');
+                                            }}
+                                            disabled={!data.modulo}
+                                        >
+                                            <SelectTrigger id="submodulo">
+                                                <SelectValue placeholder="Selecionar" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {submoduleOptions.map((option) => (
+                                                    <SelectItem key={option.value} value={option.value}>
+                                                        {option.label}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        {getSelectValue(data.submodulo, submoduleOptions) === customValue && (
+                                            <Input
+                                                id="submodulo_custom"
+                                                value={data.submodulo || ''}
+                                                onChange={e => setData('submodulo', e.target.value)}
+                                                placeholder="ex: atletas, faturas"
+                                            />
+                                        )}
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="separador">Separador</Label>
+                                        <Select
+                                            value={getSelectValue(data.separador, separatorOptions)}
+                                            onValueChange={(value) => {
+                                                if (value === customValue) {
+                                                    setData('separador', '');
+                                                } else {
+                                                    setData('separador', value);
+                                                }
+                                                setData('campo', '');
+                                            }}
+                                            disabled={!data.submodulo}
+                                        >
+                                            <SelectTrigger id="separador">
+                                                <SelectValue placeholder="Selecionar" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {separatorOptions.map((option) => (
+                                                    <SelectItem key={option.value} value={option.value}>
+                                                        {option.label}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        {getSelectValue(data.separador, separatorOptions) === customValue && (
+                                            <Input
+                                                id="separador_custom"
+                                                value={data.separador || ''}
+                                                onChange={e => setData('separador', e.target.value)}
+                                                placeholder="ex: geral, financeiro"
+                                            />
+                                        )}
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="campo">Campo</Label>
+                                        <Select
+                                            value={getSelectValue(data.campo, fieldOptions)}
+                                            onValueChange={(value) => {
+                                                if (value === customValue) {
+                                                    setData('campo', '');
+                                                } else {
+                                                    setData('campo', value);
+                                                }
+                                            }}
+                                            disabled={!data.separador}
+                                        >
+                                            <SelectTrigger id="campo">
+                                                <SelectValue placeholder="Selecionar" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {fieldOptions.map((option) => (
+                                                    <SelectItem key={option.value} value={option.value}>
+                                                        {option.label}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        {getSelectValue(data.campo, fieldOptions) === customValue && (
+                                            <Input
+                                                id="campo_custom"
+                                                value={data.campo || ''}
+                                                onChange={e => setData('campo', e.target.value)}
+                                                placeholder="ex: email, valor"
+                                            />
+                                        )}
                                     </div>
                                     <div className="grid grid-cols-3 gap-4">
                                         <div className="flex items-center space-x-2">
@@ -1337,20 +1777,28 @@ export default function SettingsIndex({
                                         </div>
                                         <div className="flex items-center space-x-2">
                                             <Switch
+                                                id="pode_criar"
+                                                checked={data.pode_criar ?? false}
+                                                onCheckedChange={checked => setData('pode_criar', checked)}
+                                            />
+                                            <Label htmlFor="pode_criar">Criar</Label>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <Switch
                                                 id="pode_editar"
                                                 checked={data.pode_editar ?? false}
                                                 onCheckedChange={checked => setData('pode_editar', checked)}
                                             />
                                             <Label htmlFor="pode_editar">Editar</Label>
                                         </div>
-                                        <div className="flex items-center space-x-2">
-                                            <Switch
-                                                id="pode_eliminar"
-                                                checked={data.pode_eliminar ?? false}
-                                                onCheckedChange={checked => setData('pode_eliminar', checked)}
-                                            />
-                                            <Label htmlFor="pode_eliminar">Eliminar</Label>
-                                        </div>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <Switch
+                                            id="pode_eliminar"
+                                            checked={data.pode_eliminar ?? false}
+                                            onCheckedChange={checked => setData('pode_eliminar', checked)}
+                                        />
+                                        <Label htmlFor="pode_eliminar">Eliminar</Label>
                                     </div>
                                 </>
                             )}

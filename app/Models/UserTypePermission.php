@@ -13,13 +13,18 @@ class UserTypePermission extends Model
     protected $fillable = [
         'user_type_id',
         'modulo',
+        'submodulo',
+        'separador',
+        'campo',
         'pode_ver',
+        'pode_criar',
         'pode_editar',
         'pode_eliminar',
     ];
 
     protected $casts = [
         'pode_ver' => 'boolean',
+        'pode_criar' => 'boolean',
         'pode_editar' => 'boolean',
         'pode_eliminar' => 'boolean',
     ];

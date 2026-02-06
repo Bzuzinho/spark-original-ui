@@ -18,6 +18,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class ConfiguracoesController extends Controller
@@ -167,7 +168,16 @@ class ConfiguracoesController extends Controller
             'website' => 'nullable|url|max:255',
             'nif' => 'nullable|string|max:20',
             'iban' => 'nullable|string|max:34',
+            'logo_url' => 'nullable|string',
+            'logo' => 'nullable|image|max:2048',
         ]);
+
+        if ($request->hasFile('logo')) {
+            $path = $request->file('logo')->store('club-logos', 'public');
+            $data['logo_url'] = Storage::url($path);
+        }
+
+        unset($data['logo']);
 
         $clubSettings = ClubSetting::first();
         
@@ -186,7 +196,11 @@ class ConfiguracoesController extends Controller
         $data = $request->validate([
             'user_type_id' => 'required|exists:user_types,id',
             'modulo' => 'required|string|max:100',
+            'submodulo' => 'nullable|string|max:100',
+            'separador' => 'nullable|string|max:100',
+            'campo' => 'nullable|string|max:100',
             'pode_ver' => 'boolean',
+            'pode_criar' => 'boolean',
             'pode_editar' => 'boolean',
             'pode_eliminar' => 'boolean',
         ]);
@@ -202,7 +216,11 @@ class ConfiguracoesController extends Controller
         $data = $request->validate([
             'user_type_id' => 'required|exists:user_types,id',
             'modulo' => 'required|string|max:100',
+            'submodulo' => 'nullable|string|max:100',
+            'separador' => 'nullable|string|max:100',
+            'campo' => 'nullable|string|max:100',
             'pode_ver' => 'boolean',
+            'pode_criar' => 'boolean',
             'pode_editar' => 'boolean',
             'pode_eliminar' => 'boolean',
         ]);

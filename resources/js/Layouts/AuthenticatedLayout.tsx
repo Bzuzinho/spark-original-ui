@@ -30,6 +30,11 @@ interface PageProps {
     auth: {
         user: User;
     };
+    clubSettings?: {
+        nome_clube?: string | null;
+        sigla?: string | null;
+        logo_url?: string | null;
+    };
 }
 
 const mainMenuItems = [
@@ -52,7 +57,7 @@ export default function AuthenticatedLayout({
     header, 
     children 
 }: PropsWithChildren<{ header?: ReactNode }>) {
-    const { auth } = usePage<PageProps>().props;
+    const { auth, clubSettings } = usePage<PageProps>().props;
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const currentRoute = route().current();
 
@@ -93,12 +98,14 @@ export default function AuthenticatedLayout({
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
                                 <img 
-                                    src="/images/logo-cutout.png"
-                                    alt="Logo BSCN" 
+                                    src={clubSettings?.logo_url || '/images/logo-cutout.png'}
+                                    alt={clubSettings?.nome_clube || 'Logo do clube'}
                                     className="h-12 w-12 object-contain"
                                 />
                                 <div>
-                                    <h2 className="text-xl font-semibold text-sidebar-foreground">BSCN</h2>
+                                    <h2 className="text-xl font-semibold text-sidebar-foreground">
+                                        {clubSettings?.sigla || 'BSCN'}
+                                    </h2>
                                     <p className="text-sm text-muted-foreground mt-1">Gestão de Clube</p>
                                 </div>
                             </div>

@@ -32,7 +32,7 @@ const mainMenuItems: MenuItem[] = [
 ];
 
 export default function Sidebar() {
-    const { url, auth } = usePage<any>().props;
+    const { url, auth, clubSettings } = usePage<any>().props;
     const currentPath = url;
 
     const isActive = (href: string) => currentPath === href;
@@ -42,11 +42,21 @@ export default function Sidebar() {
             {/* Logo Section */}
             <div className="p-6 border-b border-gray-200">
                 <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-yellow-400 rounded-full flex items-center justify-center">
-                        <span className="text-gray-900 font-bold text-xl">BC</span>
+                    <div className="w-12 h-12 rounded-full flex items-center justify-center overflow-hidden border border-gray-200 bg-white">
+                        {clubSettings?.logo_url ? (
+                            <img
+                                src={clubSettings.logo_url}
+                                alt={clubSettings?.nome_clube || 'Logo do clube'}
+                                className="h-full w-full object-contain"
+                            />
+                        ) : (
+                            <span className="text-gray-900 font-bold text-xl">BC</span>
+                        )}
                     </div>
                     <div>
-                        <div className="font-bold text-lg text-gray-900">BSCN</div>
+                        <div className="font-bold text-lg text-gray-900">
+                            {clubSettings?.sigla || 'BSCN'}
+                        </div>
                         <div className="text-sm text-gray-500">Gestão de Clube</div>
                     </div>
                 </div>

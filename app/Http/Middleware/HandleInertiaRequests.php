@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\ClubSetting;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -40,6 +41,7 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user(),
             ],
+            'clubSettings' => ClubSetting::select('nome_clube', 'sigla', 'logo_url')->first(),
         ];
     }
 }
