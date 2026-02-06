@@ -107,11 +107,13 @@ class MembrosController extends Controller
         $allUsers = User::with(['userTypes', 'ageGroup'])->get();
         $userTypes = UserType::where('ativo', true)->get();
         $ageGroups = AgeGroup::all();
+        $nextMemberNumber = $this->generateMemberNumber();
         
         return Inertia::render('Membros/Create', [
             'allUsers' => $allUsers,
             'userTypes' => $userTypes,
             'ageGroups' => $ageGroups,
+            'nextMemberNumber' => $nextMemberNumber,
         ]);
     }
 
@@ -123,6 +125,16 @@ class MembrosController extends Controller
             // Auto-generate numero_socio if not provided
             if (empty($data['numero_socio'])) {
                 $data['numero_socio'] = $this->generateMemberNumber();
+            }
+
+            // Ensure core auth fields exist
+            if (empty($data['name'])) {
+                $data['name'] = $data['nome_completo'] ?? 'Membro';
+            }
+
+            if (empty($data['email'])) {
+                $baseEmail = $data['email_utilizador'] ?? null;
+                $data['email'] = $baseEmail ?: ('member+' . Str::uuid() . '@local.test');
             }
             
             // Auto-calculate menor field (age < 18)
@@ -137,6 +149,8 @@ class MembrosController extends Controller
             // Handle file uploads
             if (isset($data['foto_perfil']) && $this->isBase64($data['foto_perfil'])) {
                 $data['foto_perfil'] = $this->storeBase64Image($data['foto_perfil'], 'members/photos');
+            } elseif (array_key_exists('foto_perfil', $data)) {
+                unset($data['foto_perfil']);
             }
             
             if (isset($data['cartao_federacao']) && $this->isBase64($data['cartao_federacao'])) {
@@ -166,9 +180,14 @@ class MembrosController extends Controller
                 $member->userTypes()->sync($data['user_types']);
             }
             
-            // Sync guardian relationship
-            if (isset($data['encarregado_educacao']) && is_array($data['encarregado_educacao'])) {
-                $member->encarregados()->sync($data['encarregado_educacao']);
+            // Sync guardian relationship (with reciprocal update)
+            if (array_key_exists('encarregado_educacao', $data) && is_array($data['encarregado_educacao'])) {
+                $this->syncGuardianRelations($member, $data['encarregado_educacao']);
+            }
+
+            // Sync educandos relationship (with reciprocal update)
+            if (array_key_exists('educandos', $data) && is_array($data['educandos'])) {
+                $this->syncEducandoRelations($member, $data['educandos']);
             }
 
             return redirect()->route('membros.index')
@@ -183,18 +202,34 @@ class MembrosController extends Controller
 
     public function show(User $member): Response
     {
+        $member->load([
+            'userTypes',
+            'ageGroup',
+            'encarregados',
+            'educandos',
+            'eventsCreated',
+            'eventAttendances',
+            'documents',
+            'relationships.relatedUser',
+        ]);
+
+        $memberData = $member->toArray();
+        if ($member->data_nascimento) {
+            $memberData['data_nascimento'] = $member->data_nascimento->format('Y-m-d');
+        }
+        $allUsers = User::select(
+            'id',
+            'nome_completo',
+            'numero_socio',
+            'tipo_membro',
+            'foto_perfil',
+            'menor',
+            'data_nascimento'
+        )->get();
+
         return Inertia::render('Membros/Show', [
-            'member' => $member->load([
-                'userTypes',
-                'ageGroup',
-                'encarregados',
-                'educandos',
-                'eventsCreated',
-                'eventAttendances',
-                'documents',
-                'relationships.relatedUser',
-            ]),
-            'allUsers' => User::select('id', 'nome_completo', 'numero_socio', 'tipo_membro')->get(),
+            'member' => $memberData,
+            'allUsers' => $allUsers,
             'userTypes' => UserType::where('ativo', true)->get(),
             'ageGroups' => AgeGroup::all(),
         ]);
@@ -202,6 +237,9 @@ class MembrosController extends Controller
 
     public function edit(User $member): Response
     {
+        if ($member->data_nascimento) {
+            $member->data_nascimento = $member->data_nascimento->format('Y-m-d');
+        }
         return Inertia::render('Membros/Edit', [
             'member' => $member->load(['userTypes', 'ageGroup', 'encarregados', 'educandos']),
             'userTypes' => UserType::where('ativo', true)->get(),
@@ -234,6 +272,8 @@ class MembrosController extends Controller
             if (isset($data['foto_perfil']) && $this->isBase64($data['foto_perfil'])) {
                 $this->deleteFile($member->foto_perfil);
                 $data['foto_perfil'] = $this->storeBase64Image($data['foto_perfil'], 'members/photos');
+            } elseif (array_key_exists('foto_perfil', $data)) {
+                unset($data['foto_perfil']);
             }
             
             if (isset($data['cartao_federacao']) && $this->isBase64($data['cartao_federacao'])) {
@@ -268,9 +308,14 @@ class MembrosController extends Controller
                 $member->userTypes()->sync($data['user_types']);
             }
             
-            // Sync guardian relationship
-            if (isset($data['encarregado_educacao']) && is_array($data['encarregado_educacao'])) {
-                $member->encarregados()->sync($data['encarregado_educacao']);
+            // Sync guardian relationship (with reciprocal update)
+            if (array_key_exists('encarregado_educacao', $data) && is_array($data['encarregado_educacao'])) {
+                $this->syncGuardianRelations($member, $data['encarregado_educacao']);
+            }
+
+            // Sync educandos relationship (with reciprocal update)
+            if (array_key_exists('educandos', $data) && is_array($data['educandos'])) {
+                $this->syncEducandoRelations($member, $data['educandos']);
             }
 
             return redirect()->route('membros.index')
@@ -310,6 +355,82 @@ class MembrosController extends Controller
     }
     
     // Helper methods
+
+    /**
+     * Normalize relation ids to a unique string array.
+     */
+    private function normalizeRelationIds(?array $ids): array
+    {
+        $normalized = array_map('strval', $ids ?? []);
+        $normalized = array_filter($normalized, fn ($id) => $id !== '');
+        return array_values(array_unique($normalized));
+    }
+
+    /**
+     * Sync guardians and mirror the relationship on each guardian.
+     */
+    private function syncGuardianRelations(User $member, array $guardianIds): void
+    {
+        $guardianIds = $this->normalizeRelationIds($guardianIds);
+        $currentGuardianIds = $this->normalizeRelationIds(
+            $member->encarregados()->pluck('users.id')->all()
+        );
+
+        $member->encarregados()->sync($guardianIds);
+
+        $added = array_diff($guardianIds, $currentGuardianIds);
+        $removed = array_diff($currentGuardianIds, $guardianIds);
+
+        if (!empty($added) || !empty($removed)) {
+            $affectedIds = array_values(array_unique(array_merge($added, $removed)));
+            $guardians = User::whereIn('id', $affectedIds)->get()->keyBy('id');
+
+            foreach ($added as $guardianId) {
+                if ($guardians->has($guardianId)) {
+                    $guardians[$guardianId]->educandos()->syncWithoutDetaching([$member->id]);
+                }
+            }
+
+            foreach ($removed as $guardianId) {
+                if ($guardians->has($guardianId)) {
+                    $guardians[$guardianId]->educandos()->detach($member->id);
+                }
+            }
+        }
+    }
+
+    /**
+     * Sync educandos and mirror the relationship on each educando.
+     */
+    private function syncEducandoRelations(User $member, array $educandoIds): void
+    {
+        $educandoIds = $this->normalizeRelationIds($educandoIds);
+        $currentEducandoIds = $this->normalizeRelationIds(
+            $member->educandos()->pluck('users.id')->all()
+        );
+
+        $member->educandos()->sync($educandoIds);
+
+        $added = array_diff($educandoIds, $currentEducandoIds);
+        $removed = array_diff($currentEducandoIds, $educandoIds);
+
+        if (!empty($added) || !empty($removed)) {
+            $affectedIds = array_values(array_unique(array_merge($added, $removed)));
+            $educandos = User::whereIn('id', $affectedIds)->get()->keyBy('id');
+
+            foreach ($added as $educandoId) {
+                if ($educandos->has($educandoId)) {
+                    $educandos[$educandoId]->encarregados()->syncWithoutDetaching([$member->id]);
+                }
+            }
+
+            foreach ($removed as $educandoId) {
+                if ($educandos->has($educandoId)) {
+                    $educandos[$educandoId]->encarregados()->detach($member->id);
+                }
+            }
+        }
+    }
     
     /**
      * Check if string is base64 encoded data
@@ -326,12 +447,15 @@ class MembrosController extends Controller
     private function storeBase64Image(string $base64, string $path): string
     {
         // Extract the base64 data
-        if (preg_match('/^data:image\/(\w+);base64,/', $base64, $type)) {
+        if (preg_match('/^data:image\/([a-zA-Z0-9\+\-\.]+);base64,/', $base64, $type)) {
             $base64 = substr($base64, strpos($base64, ',') + 1);
             $extension = strtolower($type[1]);
+            if ($extension === 'svg+xml') {
+                $extension = 'svg';
+            }
             
             // Validate image type
-            $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+            $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'];
             if (!in_array($extension, $allowedExtensions)) {
                 throw new \InvalidArgumentException('Tipo de imagem inválido. Permitidos: ' . implode(', ', $allowedExtensions));
             }
@@ -411,8 +535,21 @@ class MembrosController extends Controller
      */
     private function deleteFile(?string $path): void
     {
-        if ($path && Storage::disk('public')->exists($path)) {
-            Storage::disk('public')->delete($path);
+        if (!$path) {
+            return;
+        }
+
+        $normalizedPath = $path;
+        if (str_starts_with($normalizedPath, 'http')) {
+            $parsed = parse_url($normalizedPath, PHP_URL_PATH);
+            $normalizedPath = $parsed ? $parsed : $normalizedPath;
+        }
+        if (str_starts_with($normalizedPath, '/storage/')) {
+            $normalizedPath = substr($normalizedPath, strlen('/storage/'));
+        }
+
+        if (Storage::disk('public')->exists($normalizedPath)) {
+            Storage::disk('public')->delete($normalizedPath);
         }
     }
     
@@ -421,19 +558,34 @@ class MembrosController extends Controller
      */
     private function generateMemberNumber(): string
     {
-        $lastMember = User::whereNotNull('numero_socio')
-            ->where('numero_socio', 'REGEXP', '^[0-9]+$')
-            ->orderBy('numero_socio', 'desc')
-            ->first();
-        
-        if ($lastMember && $lastMember->numero_socio) {
-            $lastNumber = (int) $lastMember->numero_socio;
-            $nextNumber = $lastNumber + 1;
-        } else {
-            $nextNumber = 1;
+        $currentYear = now()->format('Y');
+        $yearPrefix = $currentYear . '-';
+
+        $yearNumbers = User::whereNotNull('numero_socio')
+            ->where('numero_socio', 'like', $yearPrefix . '%')
+            ->pluck('numero_socio');
+
+        $maxYearSuffix = 0;
+        foreach ($yearNumbers as $numero) {
+            if (preg_match('/^' . $currentYear . '-(\d+)$/', $numero, $matches)) {
+                $maxYearSuffix = max($maxYearSuffix, (int) $matches[1]);
+            }
         }
-        
-        // Use 4 digits to support up to 9999 members
-        return str_pad($nextNumber, 4, '0', STR_PAD_LEFT);
+
+        if ($yearNumbers->isNotEmpty()) {
+            $nextSuffix = $maxYearSuffix + 1;
+            return $currentYear . '-' . str_pad((string) $nextSuffix, 4, '0', STR_PAD_LEFT);
+        }
+
+        $lastNumeric = User::whereNotNull('numero_socio')
+            ->where('numero_socio', 'not like', '%-%')
+            ->orderByRaw('CAST(numero_socio as INTEGER) desc')
+            ->first();
+
+        $nextNumber = $lastNumeric && $lastNumeric->numero_socio
+            ? ((int) $lastNumeric->numero_socio) + 1
+            : 0;
+
+        return $currentYear . '-' . str_pad((string) $nextNumber, 4, '0', STR_PAD_LEFT);
     }
 }

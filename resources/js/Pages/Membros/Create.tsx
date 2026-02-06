@@ -29,16 +29,18 @@ interface Props {
     allUsers: User[];
     userTypes: any[];
     ageGroups: any[];
+    nextMemberNumber?: string;
 }
 
-export default function Create({ allUsers, userTypes, ageGroups }: Props) {
+export default function Create({ allUsers, userTypes, ageGroups, nextMemberNumber }: Props) {
     // Create new user with defaults
     const [user, setUser] = useState<User>(() => {
         const emptyUser = createEmptyUser();
+        const generatedNumber = nextMemberNumber || generateMemberNumber(allUsers);
         return {
             ...emptyUser,
             id: crypto.randomUUID(),
-            numero_socio: generateMemberNumber(allUsers),
+            numero_socio: generatedNumber,
         } as User;
     });
     const [hasChanges, setHasChanges] = useState(false);
@@ -140,6 +142,7 @@ export default function Create({ allUsers, userTypes, ageGroups }: Props) {
                             onChange={handleChange}
                             isAdmin={true}
                             allUsers={allUsers}
+                            userTypes={userTypes}
                         />
                     </TabsContent>
 

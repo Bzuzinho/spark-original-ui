@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Support\Facades\Storage;
 
 class User extends Authenticatable
 {
@@ -135,6 +136,19 @@ class User extends Authenticatable
             // Integers
             'numero_irmaos' => 'integer',
         ];
+    }
+
+    public function getFotoPerfilAttribute($value): ?string
+    {
+        if (!$value) {
+            return null;
+        }
+
+        if (str_starts_with($value, 'http') || str_starts_with($value, '/storage/')) {
+            return $value;
+        }
+
+        return Storage::url($value);
     }
 
     // Relationships

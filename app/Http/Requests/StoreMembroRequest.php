@@ -47,6 +47,8 @@ class StoreMembroRequest extends FormRequest
             // Encarregados de educação
             'encarregado_educacao' => ['nullable', 'array'],
             'encarregado_educacao.*' => ['exists:users,id'],
+            'educandos' => ['nullable', 'array'],
+            'educandos.*' => ['exists:users,id'],
             
             // RGPD e documentos
             'rgpd' => ['boolean'],

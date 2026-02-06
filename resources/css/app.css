@@ -17,6 +17,29 @@
 }
 
 :root {
+  --page-max-width: 1280px;
+}
+
+.spark-container {
+  width: 100%;
+  max-width: var(--page-max-width);
+  margin: 0 auto;
+  padding: 0 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .spark-container {
+    padding: 0 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .spark-container {
+    padding: 0 2rem;
+  }
+}
+
+:root {
   --radius: 0.625rem;
   
   /* Dashboard background - BRANCO PURO */

@@ -107,7 +107,7 @@ export default function Dashboard({ stats, recentEvents = [], recentActivity = [
         >
             <Head title="Dashboard" />
 
-            <div className="w-full px-2 sm:px-4 py-2 sm:py-3 space-y-2 sm:space-y-3">
+            <div className="space-y-2 sm:space-y-3">
                 {/* Stats Cards - 5 cards */}
                 <div className="grid gap-2 grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
                     {statsConfig.map((stat) => {

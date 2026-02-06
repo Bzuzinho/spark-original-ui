@@ -39,6 +39,78 @@ interface EventType {
     ativo: boolean;
 }
 
+interface Permission {
+    id: string;
+    user_type_id: string;
+    modulo: string;
+    pode_ver: boolean;
+    pode_editar: boolean;
+    pode_eliminar: boolean;
+}
+
+interface MonthlyFee {
+    id: string;
+    designacao: string;
+    valor: number;
+    age_group_id?: string | null;
+    ativo: boolean;
+}
+
+interface CostCenter {
+    id: string;
+    codigo: string;
+    nome: string;
+    tipo?: string | null;
+    descricao?: string | null;
+    orcamento?: number | null;
+    ativo: boolean;
+}
+
+interface Product {
+    id: string;
+    codigo: string;
+    nome: string;
+    categoria?: string | null;
+    preco: number;
+    ativo: boolean;
+}
+
+interface Supplier {
+    id: string;
+    nome: string;
+    nif?: string | null;
+    email?: string | null;
+    telefone?: string | null;
+    morada?: string | null;
+    categoria?: string | null;
+    ativo: boolean;
+}
+
+interface ProvaTipo {
+    id: string;
+    nome: string;
+    distancia: number;
+    unidade: string;
+    modalidade: string;
+    ativo: boolean;
+}
+
+interface NotificationPrefs {
+    id?: string;
+    email_notificacoes: boolean;
+    alertas_pagamento: boolean;
+    alertas_atividade: boolean;
+}
+
+interface DbUser {
+    id: string;
+    numero_socio?: string | null;
+    nome_completo?: string | null;
+    email_utilizador?: string | null;
+    perfil?: string | null;
+    estado?: string | null;
+}
+
 interface ClubSettings {
     id?: number;
     nome_clube: string;
@@ -57,17 +129,38 @@ interface Props {
     userTypes: UserType[];
     ageGroups: AgeGroup[];
     eventTypes: EventType[];
+    permissions: Permission[];
+    monthlyFees: MonthlyFee[];
+    costCenters: CostCenter[];
+    products: Product[];
+    suppliers: Supplier[];
+    provaTipos: ProvaTipo[];
+    notificationPrefs?: NotificationPrefs | null;
+    users: DbUser[];
     clubSettings?: ClubSettings;
 }
 
-export default function SettingsIndex({ userTypes, ageGroups, eventTypes, clubSettings }: Props) {
+export default function SettingsIndex({
+    userTypes,
+    ageGroups,
+    eventTypes,
+    permissions,
+    monthlyFees,
+    costCenters,
+    products,
+    suppliers,
+    provaTipos,
+    notificationPrefs: initialNotificationPrefs,
+    users,
+    clubSettings,
+}: Props) {
     const [currentTab, setCurrentTab] = useState('geral');
     const [dialogOpen, setDialogOpen] = useState(false);
     const [editingItem, setEditingItem] = useState<any>(null);
-    const [notificationPrefs, setNotificationPrefs] = useState({
-        emailNotifications: true,
-        paymentAlerts: true,
-        activityAlerts: true,
+    const [notificationPrefs, setNotificationPrefs] = useState<NotificationPrefs>({
+        email_notificacoes: initialNotificationPrefs?.email_notificacoes ?? true,
+        alertas_pagamento: initialNotificationPrefs?.alertas_pagamento ?? true,
+        alertas_atividade: initialNotificationPrefs?.alertas_atividade ?? true,
     });
 
     // Club settings form
@@ -117,6 +210,24 @@ export default function SettingsIndex({ userTypes, ageGroups, eventTypes, clubSe
             'event-type': isEditing 
                 ? route('configuracoes.tipos-evento.update', editingItem.id)
                 : route('configuracoes.tipos-evento.store'),
+            'permission': isEditing
+                ? route('configuracoes.permissoes.update', editingItem.id)
+                : route('configuracoes.permissoes.store'),
+            'monthly-fee': isEditing
+                ? route('configuracoes.mensalidades.update', editingItem.id)
+                : route('configuracoes.mensalidades.store'),
+            'cost-center': isEditing
+                ? route('configuracoes.centros-custo.update', editingItem.id)
+                : route('configuracoes.centros-custo.store'),
+            'product': isEditing
+                ? route('configuracoes.artigos.update', editingItem.id)
+                : route('configuracoes.artigos.store'),
+            'supplier': isEditing
+                ? route('configuracoes.fornecedores.update', editingItem.id)
+                : route('configuracoes.fornecedores.store'),
+            'prova-tipo': isEditing
+                ? route('configuracoes.provas.update', editingItem.id)
+                : route('configuracoes.provas.store'),
         };
 
         const options = {
@@ -145,6 +256,12 @@ export default function SettingsIndex({ userTypes, ageGroups, eventTypes, clubSe
             'age-group': route('configuracoes.escaloes.destroy', id),
             'user-type': route('configuracoes.tipos-utilizador.destroy', id),
             'event-type': route('configuracoes.tipos-evento.destroy', id),
+            'permission': route('configuracoes.permissoes.destroy', id),
+            'monthly-fee': route('configuracoes.mensalidades.destroy', id),
+            'cost-center': route('configuracoes.centros-custo.destroy', id),
+            'product': route('configuracoes.artigos.destroy', id),
+            'supplier': route('configuracoes.fornecedores.destroy', id),
+            'prova-tipo': route('configuracoes.provas.destroy', id),
         };
 
         router.delete(routes[type], {
@@ -161,14 +278,31 @@ export default function SettingsIndex({ userTypes, ageGroups, eventTypes, clubSe
         });
     };
 
-    const handleNotificationToggle = (field: keyof typeof notificationPrefs) => {
-        setNotificationPrefs(prev => ({
-            ...prev,
-            [field]: !prev[field],
-        }));
-        // Note: Notification preferences are stored locally for demo purposes
-        // In a real implementation, these would be saved to the backend
-        toast.info('Preferência atualizada (apenas localmente)');
+    const handleNotificationToggle = (field: keyof NotificationPrefs) => {
+        const updated = {
+            ...notificationPrefs,
+            [field]: !notificationPrefs[field],
+        };
+
+        setNotificationPrefs(updated);
+
+        router.put(route('configuracoes.notificacoes.update'), updated, {
+            preserveScroll: true,
+            onSuccess: () => toast.success('Preferência atualizada'),
+            onError: () => toast.error('Erro ao atualizar preferências'),
+        });
+    };
+
+    const handleExportUsers = () => {
+        const dataStr = JSON.stringify(users, null, 2);
+        const dataBlob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(dataBlob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `users-export-${new Date().toISOString()}.json`;
+        link.click();
+        URL.revokeObjectURL(url);
+        toast.success('Dados exportados com sucesso');
     };
 
     return (
@@ -193,15 +327,24 @@ export default function SettingsIndex({ userTypes, ageGroups, eventTypes, clubSe
             <div className="py-6">
                 <Tabs value={currentTab} onValueChange={setCurrentTab}>
                     <div className="w-full overflow-x-auto -mx-2 px-2 sm:mx-0 sm:px-0">
-                        <TabsList className="inline-flex w-auto sm:grid sm:w-full sm:grid-cols-3 h-9 text-sm min-w-full sm:min-w-0">
+                        <TabsList className="inline-flex w-auto sm:grid sm:w-full sm:grid-cols-6 h-9 text-sm min-w-full sm:min-w-0">
                             <TabsTrigger value="geral" className="text-sm whitespace-nowrap px-3 sm:px-2">
                                 Geral
                             </TabsTrigger>
                             <TabsTrigger value="clube" className="text-sm whitespace-nowrap px-3 sm:px-2">
                                 Clube
                             </TabsTrigger>
+                            <TabsTrigger value="financeiro" className="text-sm whitespace-nowrap px-3 sm:px-2">
+                                Financeiro
+                            </TabsTrigger>
+                            <TabsTrigger value="logistica" className="text-sm whitespace-nowrap px-3 sm:px-2">
+                                Logistica
+                            </TabsTrigger>
                             <TabsTrigger value="notificacoes" className="text-sm whitespace-nowrap px-3 sm:px-2">
                                 Notificações
+                            </TabsTrigger>
+                            <TabsTrigger value="base-dados" className="text-sm whitespace-nowrap px-3 sm:px-2">
+                                Base de Dados
                             </TabsTrigger>
                         </TabsList>
                     </div>
@@ -351,7 +494,7 @@ export default function SettingsIndex({ userTypes, ageGroups, eventTypes, clubSe
                                     <TableHeader>
                                         <TableRow>
                                             <TableHead>Nome</TableHead>
-                                            <TableHead>Descrição</TableHead>
+                                            <TableHead>Descricao</TableHead>
                                             <TableHead>Categoria</TableHead>
                                             <TableHead className="text-right">Ações</TableHead>
                                         </TableRow>
@@ -367,8 +510,8 @@ export default function SettingsIndex({ userTypes, ageGroups, eventTypes, clubSe
                                             eventTypes.map((type) => (
                                                 <TableRow key={type.id}>
                                                     <TableCell className="font-medium">{type.nome}</TableCell>
+                                                    <TableCell>{type.descricao || '-'}</TableCell>
                                                     <TableCell>{type.categoria || '-'}</TableCell>
-                                                    <TableCell>{type.category || '-'}</TableCell>
                                                     <TableCell className="text-right">
                                                         <div className="flex justify-end gap-2">
                                                             <Button
@@ -382,6 +525,141 @@ export default function SettingsIndex({ userTypes, ageGroups, eventTypes, clubSe
                                                                 variant="ghost"
                                                                 size="sm"
                                                                 onClick={() => handleDelete(type.id, 'event-type')}
+                                                            >
+                                                                <Trash size={16} />
+                                                            </Button>
+                                                        </div>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </CardContent>
+                        </Card>
+
+                        {/* Permissions */}
+                        <Card>
+                            <CardHeader className="pb-3">
+                                <CardTitle className="text-lg">Permissões por Tipo de Utilizador</CardTitle>
+                                <CardDescription className="text-sm">
+                                    Definir permissões de acesso para cada tipo de utilizador
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="flex justify-end mb-3">
+                                    <Button onClick={() => openAddDialog('permission')} size="sm">
+                                        <Plus className="mr-2" size={16} />
+                                        Adicionar Permissão
+                                    </Button>
+                                </div>
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Tipo de Utilizador</TableHead>
+                                            <TableHead>Módulo</TableHead>
+                                            <TableHead>Ver</TableHead>
+                                            <TableHead>Editar</TableHead>
+                                            <TableHead>Eliminar</TableHead>
+                                            <TableHead className="text-right">Ações</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {permissions.length === 0 ? (
+                                            <TableRow>
+                                                <TableCell colSpan={6} className="text-center text-muted-foreground">
+                                                    Nenhuma permissão cadastrada
+                                                </TableCell>
+                                            </TableRow>
+                                        ) : (
+                                            permissions.map((permission) => {
+                                                const userType = userTypes.find((type) => type.id === permission.user_type_id);
+                                                return (
+                                                    <TableRow key={permission.id}>
+                                                        <TableCell className="font-medium">{userType?.nome || '-'}</TableCell>
+                                                        <TableCell>{permission.modulo}</TableCell>
+                                                        <TableCell>{permission.pode_ver ? '✓' : '✗'}</TableCell>
+                                                        <TableCell>{permission.pode_editar ? '✓' : '✗'}</TableCell>
+                                                        <TableCell>{permission.pode_eliminar ? '✓' : '✗'}</TableCell>
+                                                        <TableCell className="text-right">
+                                                            <div className="flex justify-end gap-2">
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    onClick={() => openEditDialog(permission, 'permission')}
+                                                                >
+                                                                    <PencilSimple size={16} />
+                                                                </Button>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    onClick={() => handleDelete(permission.id, 'permission')}
+                                                                >
+                                                                    <Trash size={16} />
+                                                                </Button>
+                                                            </div>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                );
+                                            })
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </CardContent>
+                        </Card>
+
+                        {/* Provas */}
+                        <Card>
+                            <CardHeader className="pb-3">
+                                <CardTitle className="text-lg">Provas</CardTitle>
+                                <CardDescription className="text-sm">
+                                    Gerir as provas disponiveis para registo
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="flex justify-end mb-3">
+                                    <Button onClick={() => openAddDialog('prova-tipo')} size="sm">
+                                        <Plus className="mr-2" size={16} />
+                                        Adicionar Prova
+                                    </Button>
+                                </div>
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Nome</TableHead>
+                                            <TableHead>Distancia</TableHead>
+                                            <TableHead>Modalidade</TableHead>
+                                            <TableHead className="text-right">Ações</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {provaTipos.length === 0 ? (
+                                            <TableRow>
+                                                <TableCell colSpan={4} className="text-center text-muted-foreground">
+                                                    Nenhuma prova cadastrada
+                                                </TableCell>
+                                            </TableRow>
+                                        ) : (
+                                            provaTipos.map((prova) => (
+                                                <TableRow key={prova.id}>
+                                                    <TableCell className="font-medium">{prova.nome}</TableCell>
+                                                    <TableCell>
+                                                        {prova.distancia} {prova.unidade === 'metros' ? 'm' : 'km'}
+                                                    </TableCell>
+                                                    <TableCell>{prova.modalidade}</TableCell>
+                                                    <TableCell className="text-right">
+                                                        <div className="flex justify-end gap-2">
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                onClick={() => openEditDialog(prova, 'prova-tipo')}
+                                                            >
+                                                                <PencilSimple size={16} />
+                                                            </Button>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                onClick={() => handleDelete(prova.id, 'prova-tipo')}
                                                             >
                                                                 <Trash size={16} />
                                                             </Button>
@@ -497,6 +775,269 @@ export default function SettingsIndex({ userTypes, ageGroups, eventTypes, clubSe
                         </Card>
                     </TabsContent>
 
+                    {/* Tab: Financeiro */}
+                    <TabsContent value="financeiro" className="mt-4 space-y-4">
+                        <Card>
+                            <CardHeader className="pb-3">
+                                <CardTitle className="text-lg">Mensalidades</CardTitle>
+                                <CardDescription className="text-sm">
+                                    Gerir os valores das mensalidades por escalao
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="flex justify-end mb-3">
+                                    <Button onClick={() => openAddDialog('monthly-fee')} size="sm">
+                                        <Plus className="mr-2" size={16} />
+                                        Adicionar Mensalidade
+                                    </Button>
+                                </div>
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Nome</TableHead>
+                                            <TableHead>Escalao</TableHead>
+                                            <TableHead>Valor</TableHead>
+                                            <TableHead className="text-right">Ações</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {monthlyFees.length === 0 ? (
+                                            <TableRow>
+                                                <TableCell colSpan={4} className="text-center text-muted-foreground">
+                                                    Nenhuma mensalidade cadastrada
+                                                </TableCell>
+                                            </TableRow>
+                                        ) : (
+                                            monthlyFees.map((fee) => {
+                                                const ageGroup = ageGroups.find((group) => group.id === fee.age_group_id);
+                                                return (
+                                                    <TableRow key={fee.id}>
+                                                        <TableCell className="font-medium">{fee.designacao}</TableCell>
+                                                        <TableCell>{ageGroup?.nome || '-'}</TableCell>
+                                                        <TableCell>€{Number(fee.valor).toFixed(2)}</TableCell>
+                                                        <TableCell className="text-right">
+                                                            <div className="flex justify-end gap-2">
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    onClick={() => openEditDialog(fee, 'monthly-fee')}
+                                                                >
+                                                                    <PencilSimple size={16} />
+                                                                </Button>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    onClick={() => handleDelete(fee.id, 'monthly-fee')}
+                                                                >
+                                                                    <Trash size={16} />
+                                                                </Button>
+                                                            </div>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                );
+                                            })
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </CardContent>
+                        </Card>
+
+                        <Card>
+                            <CardHeader className="pb-3">
+                                <CardTitle className="text-lg">Centros de Custos</CardTitle>
+                                <CardDescription className="text-sm">
+                                    Gerir centros de custos para controlo financeiro
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="flex justify-end mb-3">
+                                    <Button onClick={() => openAddDialog('cost-center')} size="sm">
+                                        <Plus className="mr-2" size={16} />
+                                        Adicionar Centro de Custos
+                                    </Button>
+                                </div>
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Nome</TableHead>
+                                            <TableHead>Tipo</TableHead>
+                                            <TableHead>Descricao</TableHead>
+                                            <TableHead className="text-right">Ações</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {costCenters.length === 0 ? (
+                                            <TableRow>
+                                                <TableCell colSpan={4} className="text-center text-muted-foreground">
+                                                    Nenhum centro de custos cadastrado
+                                                </TableCell>
+                                            </TableRow>
+                                        ) : (
+                                            costCenters.map((center) => (
+                                                <TableRow key={center.id}>
+                                                    <TableCell className="font-medium">{center.nome}</TableCell>
+                                                    <TableCell>{center.tipo || '-'}</TableCell>
+                                                    <TableCell>{center.descricao || '-'}</TableCell>
+                                                    <TableCell className="text-right">
+                                                        <div className="flex justify-end gap-2">
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                onClick={() => openEditDialog(center, 'cost-center')}
+                                                            >
+                                                                <PencilSimple size={16} />
+                                                            </Button>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                onClick={() => handleDelete(center.id, 'cost-center')}
+                                                            >
+                                                                <Trash size={16} />
+                                                            </Button>
+                                                        </div>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+
+                    {/* Tab: Logistica */}
+                    <TabsContent value="logistica" className="mt-4 space-y-4">
+                        <Card>
+                            <CardHeader className="pb-3">
+                                <CardTitle className="text-lg">Artigos</CardTitle>
+                                <CardDescription className="text-sm">
+                                    Gerir o catalogo de artigos do clube
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="flex justify-end mb-3">
+                                    <Button onClick={() => openAddDialog('product')} size="sm">
+                                        <Plus className="mr-2" size={16} />
+                                        Adicionar Artigo
+                                    </Button>
+                                </div>
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Codigo</TableHead>
+                                            <TableHead>Nome</TableHead>
+                                            <TableHead>Categoria</TableHead>
+                                            <TableHead>Preco</TableHead>
+                                            <TableHead className="text-right">Ações</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {products.length === 0 ? (
+                                            <TableRow>
+                                                <TableCell colSpan={5} className="text-center text-muted-foreground">
+                                                    Nenhum artigo cadastrado
+                                                </TableCell>
+                                            </TableRow>
+                                        ) : (
+                                            products.map((product) => (
+                                                <TableRow key={product.id}>
+                                                    <TableCell className="font-medium">{product.codigo}</TableCell>
+                                                    <TableCell>{product.nome}</TableCell>
+                                                    <TableCell>{product.categoria || '-'}</TableCell>
+                                                    <TableCell>€{Number(product.preco).toFixed(2)}</TableCell>
+                                                    <TableCell className="text-right">
+                                                        <div className="flex justify-end gap-2">
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                onClick={() => openEditDialog(product, 'product')}
+                                                            >
+                                                                <PencilSimple size={16} />
+                                                            </Button>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                onClick={() => handleDelete(product.id, 'product')}
+                                                            >
+                                                                <Trash size={16} />
+                                                            </Button>
+                                                        </div>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </CardContent>
+                        </Card>
+
+                        <Card>
+                            <CardHeader className="pb-3">
+                                <CardTitle className="text-lg">Fornecedores</CardTitle>
+                                <CardDescription className="text-sm">
+                                    Gerir fornecedores e parceiros do clube
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="flex justify-end mb-3">
+                                    <Button onClick={() => openAddDialog('supplier')} size="sm">
+                                        <Plus className="mr-2" size={16} />
+                                        Adicionar Fornecedor
+                                    </Button>
+                                </div>
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Nome</TableHead>
+                                            <TableHead>NIF</TableHead>
+                                            <TableHead>Email</TableHead>
+                                            <TableHead>Telefone</TableHead>
+                                            <TableHead>Categoria</TableHead>
+                                            <TableHead className="text-right">Ações</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {suppliers.length === 0 ? (
+                                            <TableRow>
+                                                <TableCell colSpan={6} className="text-center text-muted-foreground">
+                                                    Nenhum fornecedor cadastrado
+                                                </TableCell>
+                                            </TableRow>
+                                        ) : (
+                                            suppliers.map((supplier) => (
+                                                <TableRow key={supplier.id}>
+                                                    <TableCell className="font-medium">{supplier.nome}</TableCell>
+                                                    <TableCell>{supplier.nif || '-'}</TableCell>
+                                                    <TableCell>{supplier.email || '-'}</TableCell>
+                                                    <TableCell>{supplier.telefone || '-'}</TableCell>
+                                                    <TableCell>{supplier.categoria || '-'}</TableCell>
+                                                    <TableCell className="text-right">
+                                                        <div className="flex justify-end gap-2">
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                onClick={() => openEditDialog(supplier, 'supplier')}
+                                                            >
+                                                                <PencilSimple size={16} />
+                                                            </Button>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                onClick={() => handleDelete(supplier.id, 'supplier')}
+                                                            >
+                                                                <Trash size={16} />
+                                                            </Button>
+                                                        </div>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+
                     {/* Tab: Notificações */}
                     <TabsContent value="notificacoes" className="mt-4">
                         <Card>
@@ -516,8 +1057,8 @@ export default function SettingsIndex({ userTypes, ageGroups, eventTypes, clubSe
                                     </div>
                                     <Switch
                                         id="email-notifications"
-                                        checked={notificationPrefs.emailNotifications}
-                                        onCheckedChange={() => handleNotificationToggle('emailNotifications')}
+                                        checked={notificationPrefs.email_notificacoes}
+                                        onCheckedChange={() => handleNotificationToggle('email_notificacoes')}
                                     />
                                 </div>
                                 <Separator />
@@ -530,8 +1071,8 @@ export default function SettingsIndex({ userTypes, ageGroups, eventTypes, clubSe
                                     </div>
                                     <Switch
                                         id="payment-alerts"
-                                        checked={notificationPrefs.paymentAlerts}
-                                        onCheckedChange={() => handleNotificationToggle('paymentAlerts')}
+                                        checked={notificationPrefs.alertas_pagamento}
+                                        onCheckedChange={() => handleNotificationToggle('alertas_pagamento')}
                                     />
                                 </div>
                                 <Separator />
@@ -544,9 +1085,68 @@ export default function SettingsIndex({ userTypes, ageGroups, eventTypes, clubSe
                                     </div>
                                     <Switch
                                         id="activity-alerts"
-                                        checked={notificationPrefs.activityAlerts}
-                                        onCheckedChange={() => handleNotificationToggle('activityAlerts')}
+                                        checked={notificationPrefs.alertas_atividade}
+                                        onCheckedChange={() => handleNotificationToggle('alertas_atividade')}
                                     />
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+
+                    {/* Tab: Base de Dados */}
+                    <TabsContent value="base-dados" className="mt-4">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Utilizadores na Base de Dados</CardTitle>
+                                <CardDescription>
+                                    Verificação da persistência dos dados de utilizadores
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="flex gap-2 mb-3">
+                                    <Button onClick={handleExportUsers} variant="outline" size="sm">
+                                        <FloppyDisk className="mr-2" size={16} />
+                                        Exportar Utilizadores
+                                    </Button>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <div>
+                                        <Label className="text-sm font-medium">
+                                            Total de utilizadores: {users.length}
+                                        </Label>
+                                    </div>
+
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Nº Sócio</TableHead>
+                                                <TableHead>Nome</TableHead>
+                                                <TableHead>Email</TableHead>
+                                                <TableHead>Perfil</TableHead>
+                                                <TableHead>Estado</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {users.length === 0 ? (
+                                                <TableRow>
+                                                    <TableCell colSpan={5} className="text-center text-muted-foreground">
+                                                        Nenhum utilizador encontrado na base de dados
+                                                    </TableCell>
+                                                </TableRow>
+                                            ) : (
+                                                users.map((user) => (
+                                                    <TableRow key={user.id}>
+                                                        <TableCell className="font-medium">{user.numero_socio || '-'}</TableCell>
+                                                        <TableCell>{user.nome_completo || '-'}</TableCell>
+                                                        <TableCell>{user.email_utilizador || '-'}</TableCell>
+                                                        <TableCell>{user.perfil || '-'}</TableCell>
+                                                        <TableCell>{user.estado || '-'}</TableCell>
+                                                    </TableRow>
+                                                ))
+                                            )}
+                                        </TableBody>
+                                    </Table>
                                 </div>
                             </CardContent>
                         </Card>
@@ -563,6 +1163,12 @@ export default function SettingsIndex({ userTypes, ageGroups, eventTypes, clubSe
                             {editingItem?.type === 'age-group' && 'Escalão'}
                             {editingItem?.type === 'user-type' && 'Tipo de Utilizador'}
                             {editingItem?.type === 'event-type' && 'Tipo de Evento'}
+                            {editingItem?.type === 'permission' && 'Permissão'}
+                            {editingItem?.type === 'monthly-fee' && 'Mensalidade'}
+                            {editingItem?.type === 'cost-center' && 'Centro de Custos'}
+                            {editingItem?.type === 'product' && 'Artigo'}
+                            {editingItem?.type === 'supplier' && 'Fornecedor'}
+                            {editingItem?.type === 'prova-tipo' && 'Prova'}
                         </DialogTitle>
                     </DialogHeader>
                     <form onSubmit={handleSubmit}>
@@ -678,6 +1284,353 @@ export default function SettingsIndex({ userTypes, ageGroups, eventTypes, clubSe
                                             value={data.cor || ''}
                                             onChange={e => setData('cor', e.target.value)}
                                             placeholder="#000000"
+                                        />
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <Switch
+                                            id="ativo"
+                                            checked={data.ativo ?? true}
+                                            onCheckedChange={checked => setData('ativo', checked)}
+                                        />
+                                        <Label htmlFor="ativo">Ativo</Label>
+                                    </div>
+                                </>
+                            )}
+
+                            {editingItem?.type === 'permission' && (
+                                <>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="user_type_id">Tipo de Utilizador *</Label>
+                                        <Select
+                                            value={data.user_type_id || ''}
+                                            onValueChange={(value) => setData('user_type_id', value)}
+                                        >
+                                            <SelectTrigger id="user_type_id">
+                                                <SelectValue placeholder="Selecionar" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {userTypes.map((type) => (
+                                                    <SelectItem key={type.id} value={type.id}>
+                                                        {type.nome}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="modulo">Módulo *</Label>
+                                        <Input
+                                            id="modulo"
+                                            value={data.modulo || ''}
+                                            onChange={e => setData('modulo', e.target.value)}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-4">
+                                        <div className="flex items-center space-x-2">
+                                            <Switch
+                                                id="pode_ver"
+                                                checked={data.pode_ver ?? true}
+                                                onCheckedChange={checked => setData('pode_ver', checked)}
+                                            />
+                                            <Label htmlFor="pode_ver">Ver</Label>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <Switch
+                                                id="pode_editar"
+                                                checked={data.pode_editar ?? false}
+                                                onCheckedChange={checked => setData('pode_editar', checked)}
+                                            />
+                                            <Label htmlFor="pode_editar">Editar</Label>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <Switch
+                                                id="pode_eliminar"
+                                                checked={data.pode_eliminar ?? false}
+                                                onCheckedChange={checked => setData('pode_eliminar', checked)}
+                                            />
+                                            <Label htmlFor="pode_eliminar">Eliminar</Label>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+
+                            {editingItem?.type === 'monthly-fee' && (
+                                <>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="designacao">Nome *</Label>
+                                        <Input
+                                            id="designacao"
+                                            value={data.designacao || ''}
+                                            onChange={e => setData('designacao', e.target.value)}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="age_group_id">Escalão</Label>
+                                        <Select
+                                            value={data.age_group_id || ''}
+                                            onValueChange={(value) => setData('age_group_id', value)}
+                                        >
+                                            <SelectTrigger id="age_group_id">
+                                                <SelectValue placeholder="Selecionar" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {ageGroups.map((group) => (
+                                                    <SelectItem key={group.id} value={group.id}>
+                                                        {group.nome}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="valor">Valor (€) *</Label>
+                                        <Input
+                                            id="valor"
+                                            type="number"
+                                            step="0.01"
+                                            value={data.valor ?? ''}
+                                            onChange={e => setData('valor', e.target.value ? parseFloat(e.target.value) : '')}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <Switch
+                                            id="ativo"
+                                            checked={data.ativo ?? true}
+                                            onCheckedChange={checked => setData('ativo', checked)}
+                                        />
+                                        <Label htmlFor="ativo">Ativo</Label>
+                                    </div>
+                                </>
+                            )}
+
+                            {editingItem?.type === 'cost-center' && (
+                                <>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="codigo">Codigo</Label>
+                                        <Input
+                                            id="codigo"
+                                            value={data.codigo || ''}
+                                            onChange={e => setData('codigo', e.target.value)}
+                                            placeholder="CC-0001"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="nome">Nome *</Label>
+                                        <Input
+                                            id="nome"
+                                            value={data.nome || ''}
+                                            onChange={e => setData('nome', e.target.value)}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="tipo">Tipo</Label>
+                                        <Input
+                                            id="tipo"
+                                            value={data.tipo || ''}
+                                            onChange={e => setData('tipo', e.target.value)}
+                                            placeholder="departamento"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="descricao">Descricao</Label>
+                                        <Textarea
+                                            id="descricao"
+                                            value={data.descricao || ''}
+                                            onChange={e => setData('descricao', e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="orcamento">Orcamento (€)</Label>
+                                        <Input
+                                            id="orcamento"
+                                            type="number"
+                                            step="0.01"
+                                            value={data.orcamento ?? ''}
+                                            onChange={e => setData('orcamento', e.target.value ? parseFloat(e.target.value) : '')}
+                                        />
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <Switch
+                                            id="ativo"
+                                            checked={data.ativo ?? true}
+                                            onCheckedChange={checked => setData('ativo', checked)}
+                                        />
+                                        <Label htmlFor="ativo">Ativo</Label>
+                                    </div>
+                                </>
+                            )}
+
+                            {editingItem?.type === 'product' && (
+                                <>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="codigo">Codigo *</Label>
+                                        <Input
+                                            id="codigo"
+                                            value={data.codigo || ''}
+                                            onChange={e => setData('codigo', e.target.value)}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="nome">Nome *</Label>
+                                        <Input
+                                            id="nome"
+                                            value={data.nome || ''}
+                                            onChange={e => setData('nome', e.target.value)}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="categoria">Categoria</Label>
+                                        <Input
+                                            id="categoria"
+                                            value={data.categoria || ''}
+                                            onChange={e => setData('categoria', e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="preco">Preco (€) *</Label>
+                                        <Input
+                                            id="preco"
+                                            type="number"
+                                            step="0.01"
+                                            value={data.preco ?? ''}
+                                            onChange={e => setData('preco', e.target.value ? parseFloat(e.target.value) : '')}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="descricao">Descricao</Label>
+                                        <Textarea
+                                            id="descricao"
+                                            value={data.descricao || ''}
+                                            onChange={e => setData('descricao', e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <Switch
+                                            id="ativo"
+                                            checked={data.ativo ?? true}
+                                            onCheckedChange={checked => setData('ativo', checked)}
+                                        />
+                                        <Label htmlFor="ativo">Ativo</Label>
+                                    </div>
+                                </>
+                            )}
+
+                            {editingItem?.type === 'supplier' && (
+                                <>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="nome">Nome *</Label>
+                                        <Input
+                                            id="nome"
+                                            value={data.nome || ''}
+                                            onChange={e => setData('nome', e.target.value)}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="nif">NIF</Label>
+                                        <Input
+                                            id="nif"
+                                            value={data.nif || ''}
+                                            onChange={e => setData('nif', e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="email">Email</Label>
+                                        <Input
+                                            id="email"
+                                            type="email"
+                                            value={data.email || ''}
+                                            onChange={e => setData('email', e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="telefone">Telefone</Label>
+                                        <Input
+                                            id="telefone"
+                                            value={data.telefone || ''}
+                                            onChange={e => setData('telefone', e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="morada">Morada</Label>
+                                        <Input
+                                            id="morada"
+                                            value={data.morada || ''}
+                                            onChange={e => setData('morada', e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="categoria">Categoria</Label>
+                                        <Input
+                                            id="categoria"
+                                            value={data.categoria || ''}
+                                            onChange={e => setData('categoria', e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <Switch
+                                            id="ativo"
+                                            checked={data.ativo ?? true}
+                                            onCheckedChange={checked => setData('ativo', checked)}
+                                        />
+                                        <Label htmlFor="ativo">Ativo</Label>
+                                    </div>
+                                </>
+                            )}
+
+                            {editingItem?.type === 'prova-tipo' && (
+                                <>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="nome">Nome *</Label>
+                                        <Input
+                                            id="nome"
+                                            value={data.nome || ''}
+                                            onChange={e => setData('nome', e.target.value)}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="distancia">Distancia *</Label>
+                                            <Input
+                                                id="distancia"
+                                                type="number"
+                                                min="0"
+                                                value={data.distancia ?? ''}
+                                                onChange={e => setData('distancia', e.target.value ? parseInt(e.target.value, 10) : '')}
+                                                required
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="unidade">Unidade *</Label>
+                                            <Select
+                                                value={data.unidade || ''}
+                                                onValueChange={(value) => setData('unidade', value)}
+                                            >
+                                                <SelectTrigger id="unidade">
+                                                    <SelectValue placeholder="Selecionar" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="metros">Metros</SelectItem>
+                                                    <SelectItem value="quilometros">Quilometros</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="modalidade">Modalidade *</Label>
+                                        <Input
+                                            id="modalidade"
+                                            value={data.modalidade || ''}
+                                            onChange={e => setData('modalidade', e.target.value)}
+                                            required
                                         />
                                     </div>
                                     <div className="flex items-center space-x-2">

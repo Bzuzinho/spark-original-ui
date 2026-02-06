@@ -4,25 +4,23 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class UserType extends Model
+class ProvaTipo extends Model
 {
     use HasUuids;
 
+    protected $table = 'prova_tipos';
 
     protected $fillable = [
         'nome',
-        'descricao',
+        'distancia',
+        'unidade',
+        'modalidade',
         'ativo',
     ];
 
     protected $casts = [
+        'distancia' => 'integer',
         'ativo' => 'boolean',
     ];
-
-    public function permissions(): HasMany
-    {
-        return $this->hasMany(UserTypePermission::class, 'user_type_id');
-    }
 }

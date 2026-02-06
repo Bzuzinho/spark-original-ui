@@ -1,4 +1,5 @@
 import { useRef } from 'react';
+import { usePage } from '@inertiajs/react';
 import { Label } from '@/Components/ui/label';
 import { Input } from '@/Components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select';
@@ -20,10 +21,19 @@ interface PersonalTabProps {
   onNavigateToUser?: (userId: string) => void;
 }
 
+const extractDateString = (value: any): string => {
+  if (!value) return '';
+  if (typeof value === 'string') return value;
+  if (value?.date && typeof value.date === 'string') return value.date;
+  if (value instanceof Date) return value.toISOString();
+  return '';
+};
+
 const getUserAge = (birthDate: string): number | null => {
   if (!birthDate) return null;
+  const normalized = birthDate.includes('T') ? birthDate.split('T')[0] : birthDate;
   const today = new Date();
-  const birth = new Date(birthDate);
+  const birth = new Date(normalized);
   let age = today.getFullYear() - birth.getFullYear();
   const monthDiff = today.getMonth() - birth.getMonth();
   if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
@@ -32,7 +42,26 @@ const getUserAge = (birthDate: string): number | null => {
   return age;
 };
 
+const formatDateForInput = (value?: any): string => {
+  const raw = extractDateString(value);
+  if (!raw) return '';
+    if (raw.includes('T')) return raw.split('T')[0];
+    if (raw.includes(' ')) return raw.split(' ')[0];
+    return raw;
+};
+
+const formatDateForDisplay = (value?: string): string => {
+  if (!value) return '';
+  const [year, month, day] = value.split('-');
+  if (!year || !month || !day) return value;
+  return `${day}-${month}-${year}`;
+};
+
 export function PersonalTab({ user, allUsers, onChange, isAdmin, userTypes = [], onNavigateToUser }: PersonalTabProps) {
+  const page = usePage();
+  const resolvedUserTypes = userTypes.length > 0
+    ? userTypes
+    : ((page.props as any)?.userTypes || []);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const getInitials = (name: string) => {
@@ -94,9 +123,16 @@ export function PersonalTab({ user, allUsers, onChange, isAdmin, userTypes = [],
     });
   });
 
+  const isMinorUser = (candidate: any): boolean => {
+    if (candidate?.menor === true) return true;
+    const birthDate = formatDateForInput(candidate?.data_nascimento);
+    const age = birthDate ? getUserAge(birthDate) : null;
+    return age !== null && age < 18;
+  };
+
   const availableAthletes = allUsers.filter(u => {
     if (u.id === user.id) return false;
-    return u.menor;
+    return isMinorUser(u);
   });
 
   const isGuardian = user.tipo_membro?.some((tipo: string) => {
@@ -107,7 +143,9 @@ export function PersonalTab({ user, allUsers, onChange, isAdmin, userTypes = [],
     return normalized.includes('encarregado') && normalized.includes('educacao');
   }) || false;
 
-  const userAge = user.data_nascimento ? getUserAge(user.data_nascimento) : null;
+  const normalizedBirthDate = formatDateForInput(user.data_nascimento);
+  const userAge = normalizedBirthDate ? getUserAge(normalizedBirthDate) : null;
+  const displayBirthDate = normalizedBirthDate ? formatDateForDisplay(normalizedBirthDate) : '';
 
   return (
     <div className="space-y-2">
@@ -172,13 +210,18 @@ export function PersonalTab({ user, allUsers, onChange, isAdmin, userTypes = [],
                 <Input
                   id="data_nascimento"
                   type="date"
-                  value={user.data_nascimento || ''}
+                  value={normalizedBirthDate}
                   onChange={(e) => onChange('data_nascimento', e.target.value)}
                   disabled={!isAdmin}
                   max={format(new Date(), 'yyyy-MM-dd')}
                   min="1900-01-01"
                   className="flex-1 h-7 text-xs"
                 />
+                {displayBirthDate && (
+                  <span className="text-[10px] text-muted-foreground self-center">
+                    {displayBirthDate}
+                  </span>
+                )}
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button 
@@ -194,7 +237,7 @@ export function PersonalTab({ user, allUsers, onChange, isAdmin, userTypes = [],
                   <PopoverContent className="w-auto p-0" align="start">
                     <Calendar
                       mode="single"
-                      selected={user.data_nascimento ? new Date(user.data_nascimento) : undefined}
+                      selected={normalizedBirthDate ? new Date(normalizedBirthDate) : undefined}
                       onSelect={(date) => onChange('data_nascimento', date ? format(date, 'yyyy-MM-dd') : '')}
                       disabled={(date) => date > new Date() || date < new Date('1900-01-01')}
                       initialFocus
@@ -416,18 +459,25 @@ export function PersonalTab({ user, allUsers, onChange, isAdmin, userTypes = [],
         <div className="space-y-1">
           <Label htmlFor="tipo_membro" className="text-xs">Tipo de Membro *</Label>
           <div className="space-y-0.5">
-            {userTypes && userTypes.length > 0 ? (
-              userTypes.map((tipo) => {
+            {resolvedUserTypes && resolvedUserTypes.length > 0 ? (
+              resolvedUserTypes.map((tipo) => {
+                const displayName = tipo?.nome || tipo?.name || '';
                 const typeMapping: Record<string, string> = {
                   'Atleta': 'atleta',
                   'Encarregado de Educação': 'encarregado_educacao',
                   'Treinador': 'treinador',
                   'Dirigente': 'dirigente',
                   'Sócio': 'socio',
+                  'Funcionario': 'funcionario',
                   'Funcionário': 'funcionario',
                 };
-                const tipoValue = typeMapping[tipo.name] || tipo.name.toLowerCase().replace(/\s+/g, '_');
-                
+                const normalizedName = displayName
+                  .toLowerCase()
+                  .normalize('NFD')
+                  .replace(/[\u0300-\u036f]/g, '')
+                  .replace(/\s+/g, '_');
+                const tipoValue = typeMapping[displayName] || normalizedName;
+
                 return (
                   <div key={tipo.id} className="flex items-center space-x-1">
                     <input
@@ -446,7 +496,7 @@ export function PersonalTab({ user, allUsers, onChange, isAdmin, userTypes = [],
                       className="h-3 w-3 rounded border-input text-primary focus:ring-2 focus:ring-ring focus:ring-offset-2"
                     />
                     <Label htmlFor={`tipo_${tipo.id}`} className="font-normal cursor-pointer text-xs">
-                      {tipo.name}
+                      {displayName || 'Tipo'}
                     </Label>
                   </div>
                 );
@@ -519,10 +569,10 @@ export function PersonalTab({ user, allUsers, onChange, isAdmin, userTypes = [],
                 return (
                   <div key={guardianId} className="space-y-1">
                     {guardian && (
-                      <div className="flex items-center justify-between p-2 border rounded-lg hover:bg-accent/50 transition-colors group">
+                      <div className="flex flex-col gap-2 p-2 border rounded-lg hover:bg-accent/50 transition-colors group sm:flex-row sm:items-center sm:justify-between">
                         <button
                           type="button"
-                          className="flex items-center gap-2 flex-1 cursor-pointer text-left min-w-0 hover:opacity-80 transition-opacity"
+                          className="flex items-center gap-2 flex-1 cursor-pointer text-left min-w-0 hover:opacity-80 transition-opacity w-full"
                           onClick={() => {
                             if (onNavigateToUser) {
                               onNavigateToUser(guardianId);
@@ -541,7 +591,7 @@ export function PersonalTab({ user, allUsers, onChange, isAdmin, userTypes = [],
                           </div>
                         </button>
                         {isAdmin && (
-                          <div className="flex items-center gap-1 flex-shrink-0">
+                          <div className="flex items-center gap-1 flex-wrap w-full sm:w-auto sm:flex-nowrap flex-shrink-0 ml-auto justify-end">
                             <Select
                               value={guardianId}
                               onValueChange={(value) => {
@@ -550,7 +600,7 @@ export function PersonalTab({ user, allUsers, onChange, isAdmin, userTypes = [],
                                 onChange('encarregado_educacao', currentGuardians);
                               }}
                             >
-                              <SelectTrigger className="h-7 w-20 text-xs">
+                              <SelectTrigger className="h-7 w-auto max-w-[220px] text-xs justify-end text-right">
                                 <SelectValue placeholder="Trocar" />
                               </SelectTrigger>
                               <SelectContent>
@@ -653,7 +703,7 @@ export function PersonalTab({ user, allUsers, onChange, isAdmin, userTypes = [],
                           </div>
                         </button>
                         {isAdmin && (
-                          <div className="flex items-center gap-1 flex-shrink-0">
+                          <div className="flex items-center gap-1 flex-wrap w-full sm:w-auto sm:flex-nowrap flex-shrink-0 ml-auto justify-end">
                             <Select
                               value={educandoId}
                               onValueChange={(value) => {
@@ -662,7 +712,7 @@ export function PersonalTab({ user, allUsers, onChange, isAdmin, userTypes = [],
                                 onChange('educandos', currentEducandos);
                               }}
                             >
-                              <SelectTrigger className="h-7 w-20 text-xs">
+                              <SelectTrigger className="h-7 w-auto max-w-[220px] text-xs justify-end text-right">
                                 <SelectValue placeholder="Trocar" />
                               </SelectTrigger>
                               <SelectContent>

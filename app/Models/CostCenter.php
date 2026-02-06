@@ -14,12 +14,15 @@ class CostCenter extends Model
     protected $fillable = [
         'codigo',
         'nome',
+        'tipo',
         'descricao',
+        'orcamento',
         'ativo',
     ];
 
     protected $casts = [
         'ativo' => 'boolean',
+        'orcamento' => 'decimal:2',
     ];
 
     public function events(): HasMany

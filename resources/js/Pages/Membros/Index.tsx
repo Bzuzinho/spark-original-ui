@@ -94,6 +94,7 @@ export default function MembrosIndex({ members, userTypes, ageGroups, stats, tip
     };
 
     const handleDeleteClick = (user: User, e: React.MouseEvent) => {
+        e.preventDefault();
         e.stopPropagation();
         setUserToDelete(user);
         setDeleteDialogOpen(true);
@@ -123,7 +124,7 @@ export default function MembrosIndex({ members, userTypes, ageGroups, stats, tip
         >
             <Head title="Membros" />
 
-            <div className="container mx-auto px-2 sm:px-4 py-3 sm:py-4 max-w-7xl space-y-2 sm:space-y-3">
+            <div className="space-y-2 sm:space-y-3">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="grid w-full grid-cols-2 h-auto mb-3">
                     <TabsTrigger value="dashboard" className="flex items-center gap-1.5 py-1.5 text-xs">

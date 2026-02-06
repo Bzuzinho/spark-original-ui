@@ -12,14 +12,14 @@ import { ConfigurationTab } from '@/Components/Members/Tabs/ConfigurationTab';
 
 interface User {
     id: string;
-    numero_socio: string;
-    nome_completo: string;
+    numero_socio?: string;
+    nome_completo?: string;
     email_utilizador?: string;
     foto_perfil?: string;
-    estado: string;
-    tipo_membro: string[];
-    data_nascimento: string;
-    perfil: string;
+    estado?: string;
+    tipo_membro?: string[];
+    data_nascimento?: string;
+    perfil?: string;
     // ... other fields
     [key: string]: any;
 }
@@ -31,8 +31,47 @@ interface Props {
     ageGroups: any[];
 }
 
+const extractDateString = (value: any): string => {
+    if (!value) return '';
+    if (typeof value === 'string') return value;
+    if (value?.date && typeof value.date === 'string') return value.date;
+    if (value instanceof Date) return value.toISOString();
+    return '';
+};
+
+const formatDateForInput = (value?: any): string => {
+    const raw = extractDateString(value);
+    if (!raw) return '';
+    if (raw.includes('T')) return raw.split('T')[0];
+    if (raw.includes(' ')) return raw.split(' ')[0];
+    return raw;
+};
+
+const normalizeMember = (member: User): User => {
+    const guardiansFromRelation = Array.isArray((member as any).encarregados) && (member as any).encarregados.length > 0
+        ? (member as any).encarregados.map((g: any) => g.id)
+        : (member.encarregado_educacao || []);
+    const educandosFromRelation = Array.isArray((member as any).educandos) && (member as any).educandos.length > 0
+        ? (member as any).educandos.map((e: any) => e.id)
+        : (member.educandos || []);
+
+    const normalizedBirthDate = formatDateForInput(
+        member.data_nascimento ?? (member as any).birth_date ?? (member as any).data_nascimento
+    );
+
+    return {
+        ...member,
+        nome_completo: member.nome_completo ?? member.full_name ?? member.name ?? '',
+        numero_socio: member.numero_socio ?? member.member_number ?? '',
+        email_utilizador: member.email_utilizador ?? member.email ?? '',
+        data_nascimento: normalizedBirthDate,
+        encarregado_educacao: guardiansFromRelation,
+        educandos: educandosFromRelation,
+    };
+};
+
 export default function Show({ member, allUsers, userTypes, ageGroups }: Props) {
-    const [user, setUser] = useState<User>(member);
+    const [user, setUser] = useState<User>(() => normalizeMember(member));
     const [hasChanges, setHasChanges] = useState(false);
 
     const handleChange = (field: keyof User, value: any) => {
@@ -77,10 +116,10 @@ export default function Show({ member, allUsers, userTypes, ageGroups }: Props) 
                         </Button>
                         <div>
                             <h1 className="text-base sm:text-lg font-semibold tracking-tight">
-                                {user.full_name || 'Novo Membro'}
+                                {user.nome_completo || 'Novo Membro'}
                             </h1>
                             <p className="text-muted-foreground text-xs">
-                                Nº de Sócio: {user.member_number}
+                                Nº de Sócio: {user.numero_socio || '-'}
                             </p>
                         </div>
                     </div>
@@ -101,7 +140,7 @@ export default function Show({ member, allUsers, userTypes, ageGroups }: Props) 
                 </div>
             }
         >
-            <Head title={`Membro - ${user.full_name}`} />
+            <Head title={`Membro - ${user.nome_completo || 'Novo Membro'}`} />
 
             <Card className="p-2 sm:p-3">
                 <Tabs defaultValue="personal" className="space-y-2">
@@ -130,6 +169,8 @@ export default function Show({ member, allUsers, userTypes, ageGroups }: Props) 
                             onChange={handleChange}
                             isAdmin={true}
                             allUsers={allUsers}
+                            userTypes={userTypes}
+                            onNavigateToUser={(userId) => router.visit(route('membros.show', userId))}
                         />
                     </TabsContent>
 

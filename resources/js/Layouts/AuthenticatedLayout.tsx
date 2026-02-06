@@ -220,7 +220,7 @@ export default function AuthenticatedLayout({
                 {/* Page Header (if provided) - SEM border-b */}
                 {header && (
                     <header className="bg-background">
-                        <div className="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8">
+                        <div className="spark-container py-4">
                             {header}
                         </div>
                     </header>
@@ -228,7 +228,9 @@ export default function AuthenticatedLayout({
 
                 {/* Page Content */}
                 <main className="flex-1 overflow-auto">
-                    {children}
+                    <div className="spark-container py-3 sm:py-4">
+                        {children}
+                    </div>
                 </main>
             </div>
         </div>

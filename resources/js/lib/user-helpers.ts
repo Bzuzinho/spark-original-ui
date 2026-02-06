@@ -4,19 +4,30 @@ export function generateMemberNumber(existingUsers: any[]): string {
   const currentYear = new Date().getFullYear();
   
   if (!existingUsers || !Array.isArray(existingUsers)) {
-    return `${currentYear}-0001`;
+    return `${currentYear}-0000`;
   }
   
-  const existingNumbers = existingUsers
+  const yearPrefix = `${currentYear}-`;
+  const yearNumbers = existingUsers
     .map(u => u?.numero_socio)
-    .filter(n => n && typeof n === 'string' && n.startsWith(currentYear.toString()))
-    .map(n => parseInt(n.split('-')[1] || '0'))
-    .filter(n => !isNaN(n) && n > 0);
-  
-  const nextNumber = existingNumbers.length > 0 
-    ? Math.max(...existingNumbers) + 1 
-    : 1;
-  
+    .filter(n => n && typeof n === 'string' && n.startsWith(yearPrefix))
+    .map(n => parseInt(n.split('-')[1] || '0', 10))
+    .filter(n => !isNaN(n) && n >= 0);
+
+  if (yearNumbers.length > 0) {
+    const nextYearNumber = Math.max(...yearNumbers) + 1;
+    return `${currentYear}-${nextYearNumber.toString().padStart(4, '0')}`;
+  }
+
+  const numericNumbers = existingUsers
+    .map(u => u?.numero_socio)
+    .map(n => (typeof n === 'number' ? n : parseInt(n || '0', 10)))
+    .filter(n => !isNaN(n) && n >= 0);
+
+  const nextNumber = numericNumbers.length > 0
+    ? Math.max(...numericNumbers) + 1
+    : 0;
+
   return `${currentYear}-${nextNumber.toString().padStart(4, '0')}`;
 }
 
