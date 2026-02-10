@@ -7,6 +7,7 @@ use App\Models\AgeGroup;
 use App\Models\EventType;
 use App\Models\ClubSetting;
 use App\Models\CostCenter;
+use App\Models\InvoiceType;
 use App\Models\MonthlyFee;
 use App\Models\Product;
 use App\Models\Supplier;
@@ -33,6 +34,7 @@ class ConfiguracoesController extends Controller
             'permissions' => UserTypePermission::all(),
             'costCenters' => CostCenter::all(),
             'monthlyFees' => MonthlyFee::all(),
+            'invoiceTypes' => InvoiceType::orderBy('nome')->get(),
             'products' => Product::all(),
             'suppliers' => Supplier::all(),
             'provaTipos' => ProvaTipo::all(),
@@ -258,6 +260,52 @@ class ConfiguracoesController extends Controller
 
         return redirect()->route('configuracoes')
             ->with('success', 'Centro de custos criado com sucesso!');
+    }
+
+    public function storeInvoiceType(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'codigo' => 'nullable|string|max:50|unique:invoice_types,codigo',
+            'nome' => 'required|string|max:255',
+            'descricao' => 'nullable|string',
+            'ativo' => 'boolean',
+        ]);
+
+        if (empty($data['codigo'])) {
+            $data['codigo'] = Str::slug($data['nome']);
+        }
+
+        InvoiceType::create($data);
+
+        return redirect()->route('configuracoes')
+            ->with('success', 'Tipo de fatura criado com sucesso!');
+    }
+
+    public function updateInvoiceType(Request $request, InvoiceType $invoiceType): RedirectResponse
+    {
+        $data = $request->validate([
+            'codigo' => 'nullable|string|max:50|unique:invoice_types,codigo,' . $invoiceType->id,
+            'nome' => 'required|string|max:255',
+            'descricao' => 'nullable|string',
+            'ativo' => 'boolean',
+        ]);
+
+        if (empty($data['codigo'])) {
+            $data['codigo'] = Str::slug($data['nome']);
+        }
+
+        $invoiceType->update($data);
+
+        return redirect()->route('configuracoes')
+            ->with('success', 'Tipo de fatura atualizado com sucesso!');
+    }
+
+    public function destroyInvoiceType(InvoiceType $invoiceType): RedirectResponse
+    {
+        $invoiceType->delete();
+
+        return redirect()->route('configuracoes')
+            ->with('success', 'Tipo de fatura eliminado com sucesso!');
     }
 
     public function updateCostCenter(Request $request, CostCenter $costCenter): RedirectResponse

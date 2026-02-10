@@ -4,153 +4,128 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreInvoiceRequest;
 use App\Http\Requests\UpdateInvoiceRequest;
+use App\Models\AgeGroup;
+use App\Models\BankStatement;
+use App\Models\CostCenter;
+use App\Models\FinancialEntry;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
+use App\Models\InvoiceType;
+use App\Models\MonthlyFee;
+use App\Models\Movement;
+use App\Models\MovementItem;
+use App\Models\Product;
 use App\Models\User;
-use App\Models\Transaction;
-use App\Models\MembershipFee;
-use App\Models\FinancialCategory;
 use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Http\RedirectResponse;
-use Carbon\Carbon;
 
 class FinanceiroController extends Controller
 {
     public function index(): Response
     {
-        $now = Carbon::now();
-        $currentMonth = $now->month;
-        $currentYear = $now->year;
-
-        // Get all transactions with relationships
-        $transactions = Transaction::with(['user', 'category'])
-            ->orderBy('date', 'desc')
-            ->get();
-
-        // Get all membership fees with relationships
-        $membershipFees = MembershipFee::with(['user', 'transaction'])
-            ->orderBy('year', 'desc')
-            ->orderBy('month', 'desc')
-            ->get();
-
-        // Get all categories
-        $categories = FinancialCategory::orderBy('name')->get();
-
-        // Get active users for generating fees
-        $users = User::where('status', 'ativo')
-            ->select('id', 'nome_completo', 'member_number')
-            ->orderBy('nome_completo')
-            ->get();
-
-        // Calculate stats
-        $receitas = Transaction::where('type', 'receita')
-            ->where('status', 'paga')
-            ->sum('amount');
-        
-        $despesas = Transaction::where('type', 'despesa')
-            ->where('status', 'paga')
-            ->sum('amount');
-        
-        $saldoAtual = $receitas - $despesas;
-
-        $receitasMes = Transaction::where('type', 'receita')
-            ->where('status', 'paga')
-            ->whereMonth('date', $currentMonth)
-            ->whereYear('date', $currentYear)
-            ->sum('amount');
-
-        $despesasMes = Transaction::where('type', 'despesa')
-            ->where('status', 'paga')
-            ->whereMonth('date', $currentMonth)
-            ->whereYear('date', $currentYear)
-            ->sum('amount');
-
-        $mensalidadesAtrasadas = MembershipFee::where('status', 'atrasada')
-            ->orWhere(function($query) use ($now) {
-                $query->where('status', 'pendente')
-                    ->where(function($q) use ($now) {
-                        $q->where('year', '<', $now->year)
-                            ->orWhere(function($q2) use ($now) {
-                                $q2->where('year', '=', $now->year)
-                                    ->where('month', '<', $now->month);
-                            });
-                    });
-            })
-            ->count();
-
-        // Get monthly evolution data (last 6 months)
-        $monthlyData = [];
-        for ($i = 5; $i >= 0; $i--) {
-            $date = Carbon::now()->subMonths($i);
-            $month = $date->month;
-            $year = $date->year;
-
-            $monthlyReceitas = Transaction::where('type', 'receita')
-                ->where('status', 'paga')
-                ->whereMonth('date', $month)
-                ->whereYear('date', $year)
-                ->sum('amount');
-
-            $monthlyDespesas = Transaction::where('type', 'despesa')
-                ->where('status', 'paga')
-                ->whereMonth('date', $month)
-                ->whereYear('date', $year)
-                ->sum('amount');
-
-            $monthlyData[] = [
-                'mes' => $date->format('M'),
-                'receitas' => (float) $monthlyReceitas,
-                'despesas' => (float) $monthlyDespesas,
-            ];
-        }
-
         return Inertia::render('Financeiro/Index', [
-            'transactions' => $transactions,
-            'membershipFees' => $membershipFees,
-            'categories' => $categories,
-            'users' => $users,
-            'stats' => [
-                'saldoAtual' => (float) $saldoAtual,
-                'receitasMes' => (float) $receitasMes,
-                'despesasMes' => (float) $despesasMes,
-                'mensalidadesAtrasadas' => $mensalidadesAtrasadas,
-                'totalReceitas' => (float) $receitas,
-                'totalDespesas' => (float) $despesas,
-            ],
-            'monthlyData' => $monthlyData,
+            'faturas' => Invoice::orderBy('data_emissao', 'desc')->get()->map(function ($fatura) {
+                $fatura->valor_total = (float) $fatura->valor_total;
+                return $fatura;
+            }),
+            'faturaItens' => InvoiceItem::orderBy('created_at', 'desc')->get(),
+            'movimentos' => Movement::orderBy('data_emissao', 'desc')->get()->map(function ($movimento) {
+                $movimento->valor_total = (float) $movimento->valor_total;
+                return $movimento;
+            }),
+            'movimentoItens' => MovementItem::orderBy('created_at', 'desc')->get(),
+            'lancamentos' => FinancialEntry::orderBy('data', 'desc')->get()->map(function ($lancamento) {
+                $lancamento->valor = (float) $lancamento->valor;
+                return $lancamento;
+            }),
+            'extratos' => BankStatement::orderBy('data_movimento', 'desc')->get()->map(function ($extrato) {
+                $extrato->valor = (float) $extrato->valor;
+                $extrato->saldo = $extrato->saldo !== null ? (float) $extrato->saldo : null;
+                return $extrato;
+            }),
+            'centrosCusto' => CostCenter::orderBy('nome')->get(),
+            'users' => User::select(
+                'id',
+                'nome_completo',
+                'numero_socio',
+                'data_inscricao',
+                'tipo_mensalidade',
+                'centro_custo',
+                'tipo_membro',
+                'escalao',
+                'nif',
+                'morada'
+            )->orderBy('nome_completo')->get(),
+            'products' => Product::select('id', 'nome', 'preco', 'stock', 'stock_minimo', 'ativo')
+                ->orderBy('nome')
+                ->get()
+                ->map(function ($product) {
+                    $product->preco = (float) $product->preco;
+                    return $product;
+                }),
+            'mensalidades' => MonthlyFee::select('id', 'designacao', 'valor', 'age_group_id')
+                ->get()
+                ->map(function ($mensalidade) {
+                    $mensalidade->valor = (float) $mensalidade->valor;
+                    return $mensalidade;
+                }),
+            'invoiceTypes' => InvoiceType::orderBy('nome')->get(),
+            'ageGroups' => AgeGroup::select('id', 'nome')->orderBy('nome')->get(),
         ]);
     }
 
     public function create(): Response
     {
         return Inertia::render('Financeiro/Create', [
-            'users' => User::where('status', 'ativo')->get(),
+            'users' => User::where('estado', 'ativo')->get(),
         ]);
     }
 
     public function store(StoreInvoiceRequest $request): RedirectResponse
     {
         $data = $request->validated();
-        
+
         $invoice = Invoice::create([
             'user_id' => $data['user_id'],
-            'invoice_number' => $this->generateInvoiceNumber(),
-            'issue_date' => $data['issue_date'],
-            'due_date' => $data['due_date'],
-            'payment_status' => $data['payment_status'],
-            'total_amount' => $data['total_amount'],
-            'notes' => $data['notes'] ?? null,
+            'data_fatura' => $data['data_fatura'] ?? $data['data_emissao'],
+            'mes' => $data['mes'] ?? null,
+            'data_emissao' => $data['data_emissao'],
+            'data_vencimento' => $data['data_vencimento'],
+            'valor_total' => $data['valor_total'],
+            'oculta' => $data['oculta'] ?? false,
+            'estado_pagamento' => $data['estado_pagamento'] ?? 'pendente',
+            'numero_recibo' => $data['numero_recibo'] ?? null,
+            'referencia_pagamento' => $data['referencia_pagamento'] ?? null,
+            'centro_custo_id' => $data['centro_custo_id'] ?? null,
+            'tipo' => $data['tipo'],
+            'origem_tipo' => $data['origem_tipo'] ?? null,
+            'origem_id' => $data['origem_id'] ?? null,
+            'observacoes' => $data['observacoes'] ?? null,
         ]);
 
-        // Create invoice items
         if (isset($data['items'])) {
             foreach ($data['items'] as $item) {
-                $invoice->items()->create($item);
+                InvoiceItem::create([
+                    'fatura_id' => $invoice->id,
+                    'descricao' => $item['descricao'],
+                    'quantidade' => $item['quantidade'],
+                    'valor_unitario' => $item['valor_unitario'],
+                    'imposto_percentual' => $item['imposto_percentual'] ?? 0,
+                    'total_linha' => $item['total_linha'],
+                    'produto_id' => $item['produto_id'] ?? null,
+                    'centro_custo_id' => $item['centro_custo_id'] ?? $data['centro_custo_id'] ?? null,
+                ]);
             }
         }
 
-        return redirect()->route('financial.index')
+        if ($request->expectsJson()) {
+            return response()->json([
+                'invoice' => $invoice->load('items'),
+            ]);
+        }
+
+        return redirect()->route('financeiro.index')
             ->with('success', 'Fatura criada com sucesso!');
     }
 
@@ -165,32 +140,55 @@ class FinanceiroController extends Controller
     {
         return Inertia::render('Financeiro/Edit', [
             'invoice' => $financial->load(['items']),
-            'users' => User::where('status', 'ativo')->get(),
+            'users' => User::where('estado', 'ativo')->get(),
         ]);
     }
 
     public function update(UpdateInvoiceRequest $request, Invoice $financial): RedirectResponse
     {
         $data = $request->validated();
-        
+
         $financial->update([
             'user_id' => $data['user_id'],
-            'issue_date' => $data['issue_date'],
-            'due_date' => $data['due_date'],
-            'payment_status' => $data['payment_status'],
-            'total_amount' => $data['total_amount'],
-            'notes' => $data['notes'] ?? null,
+            'data_fatura' => $data['data_fatura'] ?? $data['data_emissao'],
+            'mes' => $data['mes'] ?? null,
+            'data_emissao' => $data['data_emissao'],
+            'data_vencimento' => $data['data_vencimento'],
+            'valor_total' => $data['valor_total'],
+            'oculta' => $data['oculta'] ?? $financial->oculta,
+            'estado_pagamento' => $data['estado_pagamento'] ?? $financial->estado_pagamento,
+            'numero_recibo' => $data['numero_recibo'] ?? $financial->numero_recibo,
+            'referencia_pagamento' => $data['referencia_pagamento'] ?? $financial->referencia_pagamento,
+            'centro_custo_id' => $data['centro_custo_id'] ?? null,
+            'tipo' => $data['tipo'],
+            'origem_tipo' => $data['origem_tipo'] ?? $financial->origem_tipo,
+            'origem_id' => $data['origem_id'] ?? $financial->origem_id,
+            'observacoes' => $data['observacoes'] ?? null,
         ]);
 
-        // Update invoice items
         if (isset($data['items'])) {
-            $financial->items()->delete();
+            InvoiceItem::where('fatura_id', $financial->id)->delete();
             foreach ($data['items'] as $item) {
-                $financial->items()->create($item);
+                InvoiceItem::create([
+                    'fatura_id' => $financial->id,
+                    'descricao' => $item['descricao'],
+                    'quantidade' => $item['quantidade'],
+                    'valor_unitario' => $item['valor_unitario'],
+                    'imposto_percentual' => $item['imposto_percentual'] ?? 0,
+                    'total_linha' => $item['total_linha'],
+                    'produto_id' => $item['produto_id'] ?? null,
+                    'centro_custo_id' => $item['centro_custo_id'] ?? $data['centro_custo_id'] ?? null,
+                ]);
             }
         }
 
-        return redirect()->route('financial.index')
+        if ($request->expectsJson()) {
+            return response()->json([
+                'invoice' => $financial->load('items'),
+            ]);
+        }
+
+        return redirect()->route('financeiro.index')
             ->with('success', 'Fatura atualizada com sucesso!');
     }
 
@@ -198,24 +196,7 @@ class FinanceiroController extends Controller
     {
         $financial->delete();
 
-        return redirect()->route('financial.index')
+        return redirect()->route('financeiro.index')
             ->with('success', 'Fatura eliminada com sucesso!');
-    }
-
-    private function generateInvoiceNumber(): string
-    {
-        $year = now()->year;
-        $lastInvoice = Invoice::whereYear('issue_date', $year)
-            ->orderBy('invoice_number', 'desc')
-            ->first();
-
-        if ($lastInvoice) {
-            $lastNumber = (int) substr($lastInvoice->invoice_number, -4);
-            $newNumber = $lastNumber + 1;
-        } else {
-            $newNumber = 1;
-        }
-
-        return sprintf('FT%d/%04d', $year, $newNumber);
     }
 }

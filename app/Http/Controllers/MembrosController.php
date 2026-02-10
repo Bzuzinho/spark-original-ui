@@ -7,6 +7,10 @@ use App\Http\Requests\UpdateMemberRequest;
 use App\Models\User;
 use App\Models\UserType;
 use App\Models\AgeGroup;
+use App\Models\CostCenter;
+use App\Models\MonthlyFee;
+use App\Models\Invoice;
+use App\Models\Movement;
 use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Http\RedirectResponse;
@@ -227,11 +231,55 @@ class MembrosController extends Controller
             'data_nascimento'
         )->get();
 
+        $faturas = Invoice::where('user_id', $member->id)
+            ->orderBy('data_emissao', 'desc')
+            ->get()
+            ->map(function ($fatura) {
+                $fatura->valor_total = (float) $fatura->valor_total;
+                return $fatura;
+            });
+
+        $movimentos = Movement::where('user_id', $member->id)
+            ->orderBy('data_emissao', 'desc')
+            ->get()
+            ->map(function ($movimento) {
+                $movimento->valor_total = (float) $movimento->valor_total;
+                return $movimento;
+            });
+
+        $contaCorrente = (float) $faturas
+            ->filter(function ($fatura) {
+                if (!in_array($fatura->estado_pagamento, ['pendente', 'vencido'], true)) {
+                    return false;
+                }
+
+                if (!$fatura->data_fatura) {
+                    return true;
+                }
+
+                return $fatura->data_fatura->startOfDay()->lte(now()->startOfDay());
+            })
+            ->sum('valor_total');
+
+        $memberData['conta_corrente'] = $contaCorrente;
+
         return Inertia::render('Membros/Show', [
             'member' => $memberData,
             'allUsers' => $allUsers,
             'userTypes' => UserType::where('ativo', true)->get(),
             'ageGroups' => AgeGroup::all(),
+            'faturas' => $faturas,
+            'movimentos' => $movimentos,
+            'monthlyFees' => MonthlyFee::where('ativo', true)
+                ->select('id', 'designacao', 'valor', 'ativo')
+                ->get()
+                ->map(function ($fee) {
+                    $fee->valor = (float) $fee->valor;
+                    return $fee;
+                }),
+            'costCenters' => CostCenter::where('ativo', true)
+                ->select('id', 'nome', 'ativo')
+                ->get(),
         ]);
     }
 
@@ -246,6 +294,16 @@ class MembrosController extends Controller
             'ageGroups' => AgeGroup::all(),
             'guardians' => User::whereJsonContains('tipo_membro', 'encarregado_educacao')
                 ->where('id', '!=', $member->id)
+                ->get(),
+            'monthlyFees' => MonthlyFee::where('ativo', true)
+                ->select('id', 'designacao', 'valor', 'ativo')
+                ->get()
+                ->map(function ($fee) {
+                    $fee->valor = (float) $fee->valor;
+                    return $fee;
+                }),
+            'costCenters' => CostCenter::where('ativo', true)
+                ->select('id', 'nome', 'ativo')
                 ->get(),
         ]);
     }

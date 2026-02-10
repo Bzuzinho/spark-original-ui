@@ -8,31 +8,68 @@ import { ScrollArea } from '@/Components/ui/scroll-area';
 import { format } from 'date-fns';
 import { useMemo } from 'react';
 
+interface MonthlyFee {
+  id: string;
+  designacao: string;
+  valor: number;
+  ativo?: boolean;
+}
+
+interface CostCenter {
+  id: string;
+  nome: string;
+  ativo: boolean;
+}
+
 interface FinancialTabProps {
   user: any;
   onChange: (field: string, value: any) => void;
   isAdmin: boolean;
   faturas?: any[];
   movimentos?: any[];
+  monthlyFees?: MonthlyFee[];
+  costCenters?: CostCenter[];
 }
 
-export function FinancialTab({ user, onChange, isAdmin, faturas = [], movimentos = [] }: FinancialTabProps) {
+export function FinancialTab({
+  user,
+  onChange,
+  isAdmin,
+  faturas = [],
+  movimentos = [],
+  monthlyFees = [],
+  costCenters = [],
+}: FinancialTabProps) {
+  const toNumber = (value: unknown) => {
+    if (typeof value === 'number') return value;
+    if (typeof value === 'string') {
+      const parsed = parseFloat(value);
+      return Number.isNaN(parsed) ? 0 : parsed;
+    }
+    return 0;
+  };
+  const getStartOfToday = () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return today;
+  };
+  const isFutureInvoice = (fatura: any) => new Date(fatura.data_fatura) > getStartOfToday();
   const userFaturas = useMemo(() => {
     return (faturas || [])
-      .filter(f => f.user_id === user.id)
+      .filter((f) => f.user_id === user.id && !isFutureInvoice(f))
       .sort((a, b) => new Date(b.data_emissao).getTime() - new Date(a.data_emissao).getTime());
   }, [faturas, user.id]);
 
   const totalPago = useMemo(() => {
     return userFaturas
       .filter(f => f.estado_pagamento === 'pago')
-      .reduce((sum, f) => sum + f.valor_total, 0);
+      .reduce((sum, f) => sum + toNumber(f.valor_total), 0);
   }, [userFaturas]);
 
   const totalPendente = useMemo(() => {
     return userFaturas
       .filter(f => f.estado_pagamento === 'pendente' || f.estado_pagamento === 'vencido')
-      .reduce((sum, f) => sum + f.valor_total, 0);
+      .reduce((sum, f) => sum + toNumber(f.valor_total), 0);
   }, [userFaturas]);
 
   const getEstadoBadge = (estado: string) => {
@@ -52,17 +89,8 @@ export function FinancialTab({ user, onChange, isAdmin, faturas = [], movimentos
       .sort((a, b) => new Date(b.data_emissao).getTime() - new Date(a.data_emissao).getTime());
   }, [movimentos, user.id]);
 
-  const mensalidadesDisponiveis = [
-    { id: 'standard', name: 'Mensalidade Standard', amount: 30 },
-    { id: 'junior', name: 'Mensalidade Júnior', amount: 25 },
-    { id: 'senior', name: 'Mensalidade Sénior', amount: 35 },
-  ];
-
-  const costCenters = [
-    { id: 'natacao', nome: 'Natação', ativo: true },
-    { id: 'polo', nome: 'Pólo Aquático', ativo: true },
-    { id: 'masters', nome: 'Masters', ativo: true },
-  ];
+  const mensalidadesDisponiveis = (monthlyFees || []).filter((fee) => fee.ativo !== false);
+  const centrosCustoAtivos = (costCenters || []).filter((center) => center.ativo);
 
   return (
     <div className="space-y-2">
@@ -80,12 +108,12 @@ export function FinancialTab({ user, onChange, isAdmin, faturas = [], movimentos
             <SelectContent>
               {mensalidadesDisponiveis.length === 0 ? (
                 <div className="px-2 py-4 text-center text-xs text-muted-foreground">
-                  Nenhuma mensalidade configurada. Configure em Configurações → Financeiro.
+                  Nenhuma mensalidade configurada. Configure em Configuracoes → Financeiro.
                 </div>
               ) : (
                 mensalidadesDisponiveis.map((mensalidade) => (
                   <SelectItem key={mensalidade.id} value={mensalidade.id}>
-                    {mensalidade.name} - €{mensalidade.amount.toFixed(2)}
+                    {mensalidade.designacao} - €{toNumber(mensalidade.valor).toFixed(2)}
                   </SelectItem>
                 ))
               )}
@@ -104,18 +132,16 @@ export function FinancialTab({ user, onChange, isAdmin, faturas = [], movimentos
               <SelectValue placeholder="Selecionar centro de custos" />
             </SelectTrigger>
             <SelectContent>
-              {costCenters.filter(c => c.ativo).length === 0 ? (
+              {centrosCustoAtivos.length === 0 ? (
                 <div className="px-2 py-4 text-center text-xs text-muted-foreground">
-                  Nenhum centro de custos configurado. Configure em Configurações → Financeiro.
+                  Nenhum centro de custos configurado. Configure em Configuracoes → Financeiro.
                 </div>
               ) : (
-                costCenters
-                  .filter(c => c.ativo)
-                  .map((center) => (
-                    <SelectItem key={center.id} value={center.id}>
-                      {center.nome}
-                    </SelectItem>
-                  ))
+                centrosCustoAtivos.map((center) => (
+                  <SelectItem key={center.id} value={center.id}>
+                    {center.nome}
+                  </SelectItem>
+                ))
               )}
             </SelectContent>
           </Select>
@@ -144,11 +170,11 @@ export function FinancialTab({ user, onChange, isAdmin, faturas = [], movimentos
           </Card>
           <Card className="p-1.5">
             <p className="text-xs text-muted-foreground">Total Pago</p>
-            <p className="text-base font-bold text-green-600">€{totalPago.toFixed(2)}</p>
+            <p className="text-base font-bold text-green-600">€{toNumber(totalPago).toFixed(2)}</p>
           </Card>
           <Card className="p-1.5">
             <p className="text-xs text-muted-foreground">Total Pendente</p>
-            <p className="text-base font-bold text-orange-600">€{totalPendente.toFixed(2)}</p>
+            <p className="text-base font-bold text-orange-600">€{toNumber(totalPendente).toFixed(2)}</p>
           </Card>
         </div>
 
@@ -178,7 +204,7 @@ export function FinancialTab({ user, onChange, isAdmin, faturas = [], movimentos
                       </TableCell>
                       <TableCell className="py-1">{format(new Date(fatura.data_emissao), 'dd/MM/yy')}</TableCell>
                       <TableCell className="py-1 hidden sm:table-cell">{format(new Date(fatura.data_vencimento), 'dd/MM/yy')}</TableCell>
-                      <TableCell className="font-semibold py-1">€{fatura.valor_total.toFixed(2)}</TableCell>
+                      <TableCell className="font-semibold py-1">€{toNumber(fatura.valor_total).toFixed(2)}</TableCell>
                       <TableCell className="py-1">{getEstadoBadge(fatura.estado_pagamento)}</TableCell>
                       <TableCell className="text-xs text-muted-foreground py-1 hidden md:table-cell">
                         {fatura.numero_recibo || '-'}
@@ -219,7 +245,7 @@ export function FinancialTab({ user, onChange, isAdmin, faturas = [], movimentos
                       </TableCell>
                       <TableCell className="py-1">{format(new Date(movimento.data_emissao), 'dd/MM/yy')}</TableCell>
                       <TableCell className="py-1">{movimento.evento_nome}</TableCell>
-                      <TableCell className="font-semibold py-1 text-red-600">-€{movimento.valor.toFixed(2)}</TableCell>
+                      <TableCell className="font-semibold py-1 text-red-600">-€{toNumber(movimento.valor).toFixed(2)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

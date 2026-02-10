@@ -23,6 +23,7 @@ class StoreMembroRequest extends FormRequest
             'nif' => ['nullable', 'string', 'max:50'],
             'telefone' => ['nullable', 'string', 'max:20'],
             'data_nascimento' => ['nullable', 'date'],
+            'data_inscricao' => ['nullable', 'date'],
             'sexo' => ['required', 'in:masculino,feminino'],
             'menor' => ['boolean'],
             
@@ -42,7 +43,9 @@ class StoreMembroRequest extends FormRequest
             // Dados desportivos
             'escalao_id' => ['nullable', 'exists:age_groups,id'],
             'ativo_desportivo' => ['boolean'],
-            'numero_federacao' => ['nullable', 'string'],
+            'num_federacao' => ['nullable', 'string'],
+            'data_atestado_medico' => ['nullable', 'date'],
+            'informacoes_medicas' => ['nullable', 'string'],
             
             // Encarregados de educação
             'encarregado_educacao' => ['nullable', 'array'],
@@ -72,6 +75,9 @@ class StoreMembroRequest extends FormRequest
             'email_secundario' => ['nullable', 'email'],
             'cc' => ['nullable', 'string'],
             'numero_irmãos' => ['nullable', 'integer'],
+            'tipo_mensalidade' => ['nullable', 'exists:monthly_fees,id'],
+            'centro_custo' => ['nullable', 'array'],
+            'centro_custo.*' => ['exists:cost_centers,id'],
         ];
     }
 

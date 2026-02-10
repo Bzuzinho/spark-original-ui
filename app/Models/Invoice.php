@@ -19,11 +19,14 @@ class Invoice extends Model
         'data_emissao',
         'data_vencimento',
         'valor_total',
+        'oculta',
         'estado_pagamento',
         'numero_recibo',
         'referencia_pagamento',
         'centro_custo_id',
         'tipo',
+        'origem_tipo',
+        'origem_id',
         'observacoes',
     ];
 
@@ -32,6 +35,7 @@ class Invoice extends Model
         'data_emissao' => 'date',
         'data_vencimento' => 'date',
         'valor_total' => 'decimal:2',
+        'oculta' => 'boolean',
     ];
 
     public function user(): BelongsTo
@@ -46,6 +50,6 @@ class Invoice extends Model
 
     public function items(): HasMany
     {
-        return $this->hasMany(InvoiceItem::class, 'invoice_id');
+        return $this->hasMany(InvoiceItem::class, 'fatura_id');
     }
 }

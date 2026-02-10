@@ -22,6 +22,8 @@ class FinancialEntry extends Model
         'centro_custo_id',
         'user_id',
         'fatura_id',
+        'origem_tipo',
+        'origem_id',
         'metodo_pagamento',
         'comprovativo',
     ];

@@ -92,6 +92,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('/configuracoes/centros-custo/{costCenter}', [ConfiguracoesController::class, 'updateCostCenter'])->name('configuracoes.centros-custo.update');
     Route::delete('/configuracoes/centros-custo/{costCenter}', [ConfiguracoesController::class, 'destroyCostCenter'])->name('configuracoes.centros-custo.destroy');
 
+    Route::post('/configuracoes/tipos-fatura', [ConfiguracoesController::class, 'storeInvoiceType'])->name('configuracoes.tipos-fatura.store');
+    Route::put('/configuracoes/tipos-fatura/{invoiceType}', [ConfiguracoesController::class, 'updateInvoiceType'])->name('configuracoes.tipos-fatura.update');
+    Route::delete('/configuracoes/tipos-fatura/{invoiceType}', [ConfiguracoesController::class, 'destroyInvoiceType'])->name('configuracoes.tipos-fatura.destroy');
+
     Route::post('/configuracoes/mensalidades', [ConfiguracoesController::class, 'storeMonthlyFee'])->name('configuracoes.mensalidades.store');
     Route::put('/configuracoes/mensalidades/{monthlyFee}', [ConfiguracoesController::class, 'updateMonthlyFee'])->name('configuracoes.mensalidades.update');
     Route::delete('/configuracoes/mensalidades/{monthlyFee}', [ConfiguracoesController::class, 'destroyMonthlyFee'])->name('configuracoes.mensalidades.destroy');

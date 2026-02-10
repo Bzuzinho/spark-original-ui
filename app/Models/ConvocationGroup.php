@@ -6,6 +6,12 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
+use App\Models\Event;
+use App\Models\User;
+use App\Models\Movement;
+use App\Models\MovementItem;
+use App\Models\ConvocationAthlete;
 
 class ConvocationGroup extends Model
 {
@@ -37,6 +43,150 @@ class ConvocationGroup extends Model
         'valor_inscricao_unitaria' => 'decimal:2',
         'valor_inscricao_calculado' => 'decimal:2',
     ];
+
+    protected static function booted(): void
+    {
+        static::created(function (ConvocationGroup $group) {
+            if ($group->movimento_id) {
+                return;
+            }
+
+            $event = Event::find($group->evento_id);
+            if (!$event) {
+                return;
+            }
+
+            $athletes = $group->atletas_ids ?? [];
+            if (!is_array($athletes) || count($athletes) === 0) {
+                return;
+            }
+
+            $emissao = $group->data_criacao ? Carbon::parse($group->data_criacao) : Carbon::now();
+            $vencimento = self::addBusinessDays($emissao->copy(), 8);
+
+            $totalAggregate = 0;
+            $athleteCount = 0;
+
+            foreach ($athletes as $athleteId) {
+                $user = User::find($athleteId);
+                if (!$user) {
+                    continue;
+                }
+
+                $provaCount = self::getProvasCount($group->id, $athleteId);
+                $valor = self::calcularCusto($group, $event, $provaCount);
+                if ($valor <= 0) {
+                    continue;
+                }
+
+                $movement = Movement::create([
+                    'user_id' => $athleteId,
+                    'classificacao' => 'despesa',
+                    'data_emissao' => $emissao->toDateString(),
+                    'data_vencimento' => $vencimento->toDateString(),
+                    'valor_total' => -abs($valor),
+                    'estado_pagamento' => 'pendente',
+                    'centro_custo_id' => $event->centro_custo_id,
+                    'tipo' => 'inscricao',
+                    'origem_tipo' => 'evento',
+                    'origem_id' => $event->id,
+                    'observacoes' => "Convocatoria {$event->titulo}",
+                ]);
+
+                MovementItem::create([
+                    'movimento_id' => $movement->id,
+                    'descricao' => "Convocatoria - {$event->titulo}",
+                    'valor_unitario' => $valor,
+                    'quantidade' => 1,
+                    'imposto_percentual' => 0,
+                    'total_linha' => $valor,
+                    'centro_custo_id' => $event->centro_custo_id,
+                ]);
+
+                $totalAggregate += $valor;
+                $athleteCount += 1;
+            }
+
+            if ($totalAggregate <= 0) {
+                return;
+            }
+
+            $aggregateMovement = Movement::create([
+                'user_id' => null,
+                'nome_manual' => "Convocatoria {$event->titulo}",
+                'classificacao' => 'despesa',
+                'data_emissao' => $emissao->toDateString(),
+                'data_vencimento' => $vencimento->toDateString(),
+                'valor_total' => -abs($totalAggregate),
+                'estado_pagamento' => 'pendente',
+                'centro_custo_id' => $event->centro_custo_id,
+                'tipo' => 'inscricao',
+                'origem_tipo' => 'evento',
+                'origem_id' => $event->id,
+                'observacoes' => "Convocatoria agregada ({$athleteCount} atletas)",
+            ]);
+
+            MovementItem::create([
+                'movimento_id' => $aggregateMovement->id,
+                'descricao' => "Convocatoria agregada - {$event->titulo}",
+                'valor_unitario' => $totalAggregate,
+                'quantidade' => 1,
+                'imposto_percentual' => 0,
+                'total_linha' => $totalAggregate,
+                'centro_custo_id' => $event->centro_custo_id,
+            ]);
+
+            $group->update(['movimento_id' => $aggregateMovement->id]);
+        });
+    }
+
+    private static function getProvasCount(string $groupId, string $athleteId): int
+    {
+        $athlete = ConvocationAthlete::where('convocatoria_grupo_id', $groupId)
+            ->where('atleta_id', $athleteId)
+            ->first();
+
+        if (!$athlete || !is_array($athlete->provas)) {
+            return 0;
+        }
+
+        return count($athlete->provas);
+    }
+
+    private static function calcularCusto(ConvocationGroup $group, Event $event, int $provaCount): float
+    {
+        $tipo = $group->tipo_custo;
+
+        if ($tipo === 'por_prova') {
+            $unit = $group->valor_inscricao_unitaria ?? $event->custo_inscricao_por_prova ?? $event->taxa_inscricao ?? 0;
+            $count = $provaCount > 0 ? $provaCount : 1;
+            return (float) $unit * $count;
+        }
+
+        if ($tipo === 'por_salto') {
+            return (float) ($group->valor_por_salto ?? $event->custo_inscricao_por_salto ?? 0);
+        }
+
+        if ($tipo === 'por_estafeta') {
+            return (float) ($group->valor_por_estafeta ?? $event->custo_inscricao_estafeta ?? 0);
+        }
+
+        return (float) ($group->valor_inscricao_unitaria ?? $event->taxa_inscricao ?? 0);
+    }
+
+    private static function addBusinessDays(Carbon $date, int $days): Carbon
+    {
+        $added = 0;
+        while ($added < $days) {
+            $date->addDay();
+            if ($date->isWeekend()) {
+                continue;
+            }
+            $added += 1;
+        }
+
+        return $date;
+    }
 
     public function evento(): BelongsTo
     {

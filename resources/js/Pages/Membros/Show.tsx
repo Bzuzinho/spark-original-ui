@@ -29,6 +29,10 @@ interface Props {
     allUsers: User[];
     userTypes: any[];
     ageGroups: any[];
+    faturas: any[];
+    movimentos: any[];
+    monthlyFees: any[];
+    costCenters: any[];
 }
 
 const extractDateString = (value: any): string => {
@@ -70,7 +74,7 @@ const normalizeMember = (member: User): User => {
     };
 };
 
-export default function Show({ member, allUsers, userTypes, ageGroups }: Props) {
+export default function Show({ member, allUsers, userTypes, ageGroups, faturas, movimentos, monthlyFees, costCenters }: Props) {
     const [user, setUser] = useState<User>(() => normalizeMember(member));
     const [hasChanges, setHasChanges] = useState(false);
 
@@ -179,6 +183,10 @@ export default function Show({ member, allUsers, userTypes, ageGroups }: Props) 
                             user={user}
                             onChange={handleChange}
                             isAdmin={true}
+                            faturas={faturas}
+                            movimentos={movimentos}
+                            monthlyFees={monthlyFees}
+                            costCenters={costCenters}
                         />
                     </TabsContent>
 

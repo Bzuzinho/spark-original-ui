@@ -26,6 +26,8 @@ class Movement extends Model
         'referencia_pagamento',
         'centro_custo_id',
         'tipo',
+        'origem_tipo',
+        'origem_id',
         'observacoes',
     ];
 

@@ -62,6 +62,14 @@ interface MonthlyFee {
     ativo: boolean;
 }
 
+interface InvoiceType {
+    id: string;
+    codigo: string;
+    nome: string;
+    descricao?: string | null;
+    ativo: boolean;
+}
+
 interface CostCenter {
     id: string;
     codigo: string;
@@ -80,6 +88,15 @@ interface Product {
     preco: number;
     ativo: boolean;
 }
+
+const toNumber = (value: unknown, fallback = 0): number => {
+    if (typeof value === 'number' && !Number.isNaN(value)) return value;
+    if (typeof value === 'string' && value.trim() !== '') {
+        const parsed = Number(value);
+        return Number.isNaN(parsed) ? fallback : parsed;
+    }
+    return fallback;
+};
 
 interface Supplier {
     id: string;
@@ -335,6 +352,7 @@ const permissionCatalog = [
                 label: 'Financeiro',
                 separators: [
                     { value: 'mensalidades', label: 'Mensalidades', fields: ['designacao', 'valor'] },
+                    { value: 'tipos_fatura', label: 'Tipos de Fatura', fields: ['nome', 'codigo'] },
                     { value: 'centros_custo', label: 'Centros de Custo', fields: ['nome', 'orcamento'] },
                 ],
             },
@@ -377,6 +395,7 @@ interface Props {
     eventTypes: EventType[];
     permissions: Permission[];
     monthlyFees: MonthlyFee[];
+    invoiceTypes: InvoiceType[];
     costCenters: CostCenter[];
     products: Product[];
     suppliers: Supplier[];
@@ -392,6 +411,7 @@ export default function SettingsIndex({
     eventTypes,
     permissions,
     monthlyFees,
+    invoiceTypes,
     costCenters,
     products,
     suppliers,
@@ -496,6 +516,9 @@ export default function SettingsIndex({
             'monthly-fee': isEditing
                 ? route('configuracoes.mensalidades.update', editingItem.id)
                 : route('configuracoes.mensalidades.store'),
+            'invoice-type': isEditing
+                ? route('configuracoes.tipos-fatura.update', editingItem.id)
+                : route('configuracoes.tipos-fatura.store'),
             'cost-center': isEditing
                 ? route('configuracoes.centros-custo.update', editingItem.id)
                 : route('configuracoes.centros-custo.store'),
@@ -538,6 +561,7 @@ export default function SettingsIndex({
             'event-type': route('configuracoes.tipos-evento.destroy', id),
             'permission': route('configuracoes.permissoes.destroy', id),
             'monthly-fee': route('configuracoes.mensalidades.destroy', id),
+            'invoice-type': route('configuracoes.tipos-fatura.destroy', id),
             'cost-center': route('configuracoes.centros-custo.destroy', id),
             'product': route('configuracoes.artigos.destroy', id),
             'supplier': route('configuracoes.fornecedores.destroy', id),
@@ -1125,7 +1149,7 @@ export default function SettingsIndex({
                                                     <TableRow key={fee.id}>
                                                         <TableCell className="font-medium">{fee.designacao}</TableCell>
                                                         <TableCell>{ageGroup?.nome || '-'}</TableCell>
-                                                        <TableCell>€{Number(fee.valor).toFixed(2)}</TableCell>
+                                                        <TableCell>€{toNumber(fee.valor).toFixed(2)}</TableCell>
                                                         <TableCell className="text-right">
                                                             <div className="flex justify-end gap-2">
                                                                 <Button
@@ -1147,6 +1171,68 @@ export default function SettingsIndex({
                                                     </TableRow>
                                                 );
                                             })
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </CardContent>
+                        </Card>
+
+                        <Card>
+                            <CardHeader className="pb-3">
+                                <CardTitle className="text-lg">Tipos de Fatura</CardTitle>
+                                <CardDescription className="text-sm">
+                                    Definir os tipos disponiveis na criacao de faturas
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="flex justify-end mb-3">
+                                    <Button onClick={() => openAddDialog('invoice-type')} size="sm">
+                                        <Plus className="mr-2" size={16} />
+                                        Adicionar Tipo
+                                    </Button>
+                                </div>
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Nome</TableHead>
+                                            <TableHead>Codigo</TableHead>
+                                            <TableHead>Ativo</TableHead>
+                                            <TableHead className="text-right">Ações</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {invoiceTypes.length === 0 ? (
+                                            <TableRow>
+                                                <TableCell colSpan={4} className="text-center text-muted-foreground">
+                                                    Nenhum tipo de fatura cadastrado
+                                                </TableCell>
+                                            </TableRow>
+                                        ) : (
+                                            invoiceTypes.map((type) => (
+                                                <TableRow key={type.id}>
+                                                    <TableCell className="font-medium">{type.nome}</TableCell>
+                                                    <TableCell>{type.codigo}</TableCell>
+                                                    <TableCell>{type.ativo ? 'Sim' : 'Nao'}</TableCell>
+                                                    <TableCell className="text-right">
+                                                        <div className="flex justify-end gap-2">
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                onClick={() => openEditDialog(type, 'invoice-type')}
+                                                            >
+                                                                <PencilSimple size={16} />
+                                                            </Button>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                onClick={() => handleDelete(type.id, 'invoice-type')}
+                                                            >
+                                                                <Trash size={16} />
+                                                            </Button>
+                                                        </div>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))
                                         )}
                                     </TableBody>
                                 </Table>
@@ -1476,6 +1562,7 @@ export default function SettingsIndex({
                             {editingItem?.type === 'event-type' && 'Tipo de Evento'}
                             {editingItem?.type === 'permission' && 'Permissão'}
                             {editingItem?.type === 'monthly-fee' && 'Mensalidade'}
+                            {editingItem?.type === 'invoice-type' && 'Tipo de Fatura'}
                             {editingItem?.type === 'cost-center' && 'Centro de Custos'}
                             {editingItem?.type === 'product' && 'Artigo'}
                             {editingItem?.type === 'supplier' && 'Fornecedor'}
@@ -1841,6 +1928,45 @@ export default function SettingsIndex({
                                             value={data.valor ?? ''}
                                             onChange={e => setData('valor', e.target.value ? parseFloat(e.target.value) : '')}
                                             required
+                                        />
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <Switch
+                                            id="ativo"
+                                            checked={data.ativo ?? true}
+                                            onCheckedChange={checked => setData('ativo', checked)}
+                                        />
+                                        <Label htmlFor="ativo">Ativo</Label>
+                                    </div>
+                                </>
+                            )}
+
+                            {editingItem?.type === 'invoice-type' && (
+                                <>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="nome">Nome *</Label>
+                                        <Input
+                                            id="nome"
+                                            value={data.nome || ''}
+                                            onChange={e => setData('nome', e.target.value)}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="codigo">Codigo</Label>
+                                        <Input
+                                            id="codigo"
+                                            value={data.codigo || ''}
+                                            onChange={e => setData('codigo', e.target.value)}
+                                            placeholder="mensalidade"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="descricao">Descricao</Label>
+                                        <Textarea
+                                            id="descricao"
+                                            value={data.descricao || ''}
+                                            onChange={e => setData('descricao', e.target.value)}
                                         />
                                     </div>
                                     <div className="flex items-center space-x-2">

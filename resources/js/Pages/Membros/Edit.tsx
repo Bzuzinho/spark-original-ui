@@ -54,6 +54,7 @@ interface Props {
     userTypes?: any[];
     ageGroups?: any[];
     guardians?: any[];
+    monthlyFees?: Array<{ id: string; designacao: string; valor: number; ativo?: boolean }>;
 }
 
 // ✅ Helper para formatar datas yyyy-MM-dd
@@ -62,7 +63,22 @@ const formatDateForInput = (dateString: string | null | undefined): string => {
     return dateString.split('T')[0];
 };
 
-export default function MembrosEdit({ member, userTypes = [], ageGroups = [], guardians = [] }: Props) {
+const toNumber = (value: unknown, fallback = 0): number => {
+    if (typeof value === 'number' && !Number.isNaN(value)) return value;
+    if (typeof value === 'string' && value.trim() !== '') {
+        const parsed = Number(value);
+        return Number.isNaN(parsed) ? fallback : parsed;
+    }
+    return fallback;
+};
+
+export default function MembrosEdit({
+    member,
+    userTypes = [],
+    ageGroups = [],
+    guardians = [],
+    monthlyFees = [],
+}: Props) {
     const { data, setData, put, processing, errors, clearErrors } = useForm({
         numero_socio: member.numero_socio || '',
         nome_completo: member.nome_completo || '',
@@ -411,11 +427,29 @@ export default function MembrosEdit({ member, userTypes = [], ageGroups = [], gu
                                     <CardContent className="space-y-4">
                                         <div className="space-y-2">
                                             <Label htmlFor="tipo_mensalidade">Tipo de Mensalidade</Label>
-                                            <Input
-                                                id="tipo_mensalidade"
+                                            <Select
                                                 value={data.tipo_mensalidade}
-                                                onChange={(e) => setData('tipo_mensalidade', e.target.value)}
-                                            />
+                                                onValueChange={(value) => setData('tipo_mensalidade', value)}
+                                            >
+                                                <SelectTrigger id="tipo_mensalidade">
+                                                    <SelectValue placeholder="Selecionar tipo de mensalidade" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {monthlyFees.filter((fee) => fee.ativo !== false).length === 0 ? (
+                                                        <div className="px-2 py-4 text-center text-xs text-muted-foreground">
+                                                            Nenhuma mensalidade configurada. Configure em Configurações → Financeiro.
+                                                        </div>
+                                                    ) : (
+                                                        monthlyFees
+                                                            .filter((fee) => fee.ativo !== false)
+                                                            .map((fee) => (
+                                                                <SelectItem key={fee.id} value={fee.id}>
+                                                                    {fee.designacao} - €{toNumber(fee.valor).toFixed(2)}
+                                                                </SelectItem>
+                                                            ))
+                                                    )}
+                                                </SelectContent>
+                                            </Select>
                                         </div>
                                     </CardContent>
                                 </Card>
