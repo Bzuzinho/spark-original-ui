@@ -1,4 +1,6 @@
 import { useState, useMemo } from 'react';
+import { router } from '@inertiajs/react';
+import axios from 'axios';
 import { Fatura, FaturaItem, User, CentroCusto, Product, LancamentoFinanceiro, MonthlyFee, InvoiceType } from './types';
 import { Button } from '@/Components/ui/button';
 import { Card } from '@/Components/ui/card';
@@ -88,6 +90,7 @@ export function FaturasTab({
         'X-Requested-With': 'XMLHttpRequest',
         'X-CSRF-TOKEN': getCsrfToken(),
       },
+      credentials: 'same-origin',
       body: JSON.stringify(payload),
     });
 
@@ -109,6 +112,71 @@ export function FaturasTab({
 
     const data = await response.json();
     return data.invoice as Fatura & { items?: FaturaItem[] };
+  };
+  const persistInvoiceUpdate = async (invoiceId: string, payload: {
+    user_id: string;
+    data_emissao: string;
+    data_vencimento: string;
+    data_fatura?: string;
+    mes?: string | null;
+    tipo: Fatura['tipo'];
+    valor_total: number;
+    estado_pagamento?: Fatura['estado_pagamento'];
+    numero_recibo?: string | null;
+    centro_custo_id?: string | null;
+    observacoes?: string | null;
+    origem_tipo?: Fatura['origem_tipo'] | null;
+    origem_id?: string | null;
+    oculta?: boolean;
+    items: Array<{
+      descricao: string;
+      quantidade: number;
+      valor_unitario: number;
+      imposto_percentual?: number;
+      total_linha: number;
+      produto_id?: string;
+      centro_custo_id?: string | null;
+    }>;
+  }) => {
+    const response = await fetch(route('financeiro.update', invoiceId), {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRF-TOKEN': getCsrfToken(),
+      },
+      credentials: 'same-origin',
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      let message = 'Erro ao atualizar fatura';
+      try {
+        const data = await response.json();
+        if (data?.message) message = data.message;
+        if (data?.errors) {
+          const errors = Object.values(data.errors).flat().join(' ');
+          if (errors) message = errors;
+        }
+      } catch (error) {
+        const fallback = await response.text();
+        if (fallback) message = fallback;
+      }
+      throw new Error(message);
+    }
+
+    const data = await response.json();
+    return data.invoice as Fatura & { items?: FaturaItem[] };
+  };
+
+  const deleteInvoice = async (invoiceId: string) => {
+    await axios.post(route('financeiro.destroy.post', invoiceId), {}, {
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+      withCredentials: true,
+    });
   };
   const getStartOfToday = () => {
     const today = new Date();
@@ -155,6 +223,12 @@ export function FaturasTab({
   const getInvoiceTypeLabel = (tipo: string) => {
     const match = (invoiceTypes || []).find((type) => type.codigo === tipo);
     return match ? match.nome : tipo;
+  };
+
+  const refreshInvoices = () => {
+    router.reload({
+      only: ['faturas', 'faturaItens', 'lancamentos'],
+    });
   };
 
   const [formData, setFormData] = useState({
@@ -223,7 +297,7 @@ export function FaturasTab({
     setDialogReciboOpen(true);
   };
 
-  const handleConfirmarLiquidacao = () => {
+  const handleConfirmarLiquidacao = async () => {
     const faturasParaLiquidar = selectedFaturaId ? [selectedFaturaId] : Array.from(selectedFaturas);
 
     if (faturasParaLiquidar.length === 0) return;
@@ -233,17 +307,70 @@ export function FaturasTab({
       return;
     }
 
-    setFaturas((current) =>
-      (current || []).map((f) => {
-        if (faturasParaLiquidar.includes(f.id)) {
-          return { ...f, estado_pagamento: 'pago' as const, numero_recibo: numeroRecibo.trim() };
-        }
-        return f;
-      })
-    );
-
     const faturasMap = new Map((faturas || []).map((f) => [f.id, f]));
     const novosLancamentos: LancamentoFinanceiro[] = [];
+
+    try {
+      for (const faturaId of faturasParaLiquidar) {
+        const fatura = faturasMap.get(faturaId);
+        if (!fatura) continue;
+
+        const itens = (faturaItens || [])
+          .filter((item) => item.fatura_id === faturaId)
+          .map((item) => ({
+            descricao: item.descricao,
+            quantidade: item.quantidade,
+            valor_unitario: item.valor_unitario,
+            imposto_percentual: item.imposto_percentual,
+            total_linha: item.total_linha,
+            produto_id: item.produto_id || undefined,
+            centro_custo_id: item.centro_custo_id || fatura.centro_custo_id || undefined,
+          }));
+
+        const fallbackItems = itens.length
+          ? itens
+          : [
+              {
+                descricao: `Fatura ${fatura.tipo}`,
+                quantidade: 1,
+                valor_unitario: fatura.valor_total,
+                imposto_percentual: 0,
+                total_linha: fatura.valor_total,
+                centro_custo_id: fatura.centro_custo_id || undefined,
+              },
+            ];
+
+        const updated = await persistInvoiceUpdate(faturaId, {
+          user_id: fatura.user_id,
+          data_emissao: fatura.data_emissao,
+          data_vencimento: fatura.data_vencimento,
+          data_fatura: fatura.data_fatura,
+          mes: fatura.mes || null,
+          tipo: fatura.tipo,
+          valor_total: fatura.valor_total,
+          estado_pagamento: 'pago',
+          numero_recibo: numeroRecibo.trim(),
+          centro_custo_id: fatura.centro_custo_id || undefined,
+          observacoes: fatura.observacoes || undefined,
+          origem_tipo: fatura.origem_tipo || null,
+          origem_id: fatura.origem_id || null,
+          oculta: fatura.oculta || false,
+          items: fallbackItems,
+        });
+
+        setFaturas((current) => (current || []).map((f) => (f.id === faturaId ? updated : f)));
+        if (updated.items) {
+          setFaturaItens((current) => {
+            const filtered = (current || []).filter((item) => item.fatura_id !== faturaId);
+            return [...filtered, ...updated.items!];
+          });
+        }
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Erro ao liquidar fatura';
+      toast.error(message);
+      return;
+    }
 
     faturasParaLiquidar.forEach((faturaId) => {
       const fatura = faturasMap.get(faturaId);
@@ -283,6 +410,7 @@ export function FaturasTab({
     });
 
     toast.success(`${faturasParaLiquidar.length} fatura(s) liquidada(s) com recibo ${numeroRecibo.trim()}`);
+    refreshInvoices();
     setDialogReciboOpen(false);
     setSelectedFaturaId(null);
     setSelectedFaturas(new Set());
@@ -317,23 +445,43 @@ export function FaturasTab({
     setDialogDeleteOpen(true);
   };
 
-  const handleConfirmarDelete = () => {
+  const handleConfirmarDelete = async () => {
     const faturasParaApagar = Array.from(selectedFaturas);
 
-    setFaturas((current) => (current || []).filter((f) => !faturasParaApagar.includes(f.id)));
-    setFaturaItens((current) => (current || []).filter((item) => !faturasParaApagar.includes(item.fatura_id)));
-    setLancamentos((current) => (current || []).filter((l) => !l.fatura_id || !faturasParaApagar.includes(l.fatura_id)));
+    try {
+      for (const faturaId of faturasParaApagar) {
+        await deleteInvoice(faturaId);
+      }
 
-    toast.success(`${faturasParaApagar.length} fatura(s) apagada(s) com sucesso`);
-    setDialogDeleteOpen(false);
-    setSelectedFaturas(new Set());
+      setFaturas((current) => (current || []).filter((f) => !faturasParaApagar.includes(f.id)));
+      setFaturaItens((current) => (current || []).filter((item) => !faturasParaApagar.includes(item.fatura_id)));
+      setLancamentos((current) => (current || []).filter((l) => !l.fatura_id || !faturasParaApagar.includes(l.fatura_id)));
+
+      toast.success(`${faturasParaApagar.length} fatura(s) apagada(s) com sucesso`);
+      refreshInvoices();
+      setDialogDeleteOpen(false);
+      setSelectedFaturas(new Set());
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Erro ao apagar faturas';
+      toast.error(message);
+    }
   };
 
-  const handleDeleteSingleFatura = (faturaId: string) => {
-    setFaturas((current) => (current || []).filter((f) => f.id !== faturaId));
-    setFaturaItens((current) => (current || []).filter((item) => item.fatura_id !== faturaId));
-    setLancamentos((current) => (current || []).filter((l) => l.fatura_id !== faturaId));
-    toast.success('Fatura apagada com sucesso');
+  const handleDeleteSingleFatura = async (faturaId: string) => {
+    const confirmed = window.confirm('Tem a certeza que deseja apagar esta fatura?');
+    if (!confirmed) return;
+
+    try {
+      await deleteInvoice(faturaId);
+      setFaturas((current) => (current || []).filter((f) => f.id !== faturaId));
+      setFaturaItens((current) => (current || []).filter((item) => item.fatura_id !== faturaId));
+      setLancamentos((current) => (current || []).filter((l) => l.fatura_id !== faturaId));
+      toast.success('Fatura apagada com sucesso');
+      refreshInvoices();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Erro ao apagar fatura';
+      toast.error(message);
+    }
   };
 
   const gerarFaturasParaUtilizador = (userId: string) => {
@@ -359,6 +507,34 @@ export function FaturasTab({
     const novasFaturas: Fatura[] = [];
     const novosItens: FaturaItem[] = [];
 
+    const centros = (user.centro_custo_pesos && user.centro_custo_pesos.length > 0)
+      ? user.centro_custo_pesos
+      : (user.centro_custo || []).map((id) => ({ id, peso: 1 }));
+
+    const splitValor = (total: number, weights: Array<{ id: string; peso: number }>) => {
+      if (weights.length === 0) return [{ valor: total } as { id?: string; valor: number }];
+      const pesoTotal = weights.reduce((sum, w) => sum + (w.peso || 0), 0) || 1;
+      const valores = weights.map((w) => ({
+        id: w.id,
+        valor: (total * (w.peso || 0)) / pesoTotal,
+      }));
+
+      const arredondados = valores.map((v) => ({ ...v, valor: Math.round(v.valor * 100) / 100 }));
+      const soma = arredondados.reduce((sum, v) => sum + v.valor, 0);
+      const ajuste = Math.round((total - soma) * 100) / 100;
+      if (ajuste !== 0) {
+        arredondados[arredondados.length - 1].valor += ajuste;
+      }
+      return arredondados as Array<{ id?: string; valor: number }>;
+    };
+
+    const getPrimaryCentroCustoId = (weights: Array<{ id: string; peso: number }>) => {
+      if (weights.length === 0) return undefined;
+      if (weights.length === 1) return weights[0].id;
+      const sorted = [...weights].sort((a, b) => (b.peso || 0) - (a.peso || 0));
+      return sorted[0]?.id;
+    };
+
     while (isBefore(dataAtual, julhoSeguinte) || dataAtual.getTime() === julhoSeguinte.getTime()) {
       const mesKey = format(dataAtual, 'yyyy-MM');
       const faturaExistente = (faturas || []).find((f) => f.user_id === userId && f.mes === mesKey);
@@ -368,6 +544,8 @@ export function FaturasTab({
         const primeiroDiaMes = startOfMonth(dataAtual);
         const dataVencimento = addBusinessDays(primeiroDiaMes, 8);
         const ocultar = isAfter(primeiroDiaMes, getStartOfToday());
+        const centrosValores = splitValor(mensalidade.valor, centros as Array<{ id: string; peso: number }>);
+        const primaryCentroCustoId = getPrimaryCentroCustoId(centros as Array<{ id: string; peso: number }>);
 
         const novaFatura: Fatura = {
           id: faturaId,
@@ -379,24 +557,25 @@ export function FaturasTab({
           valor_total: mensalidade.valor,
           oculta: ocultar,
           estado_pagamento: 'pendente',
-          centro_custo_id: user.centro_custo?.[0] || undefined,
+          centro_custo_id: primaryCentroCustoId,
           tipo: 'mensalidade',
           created_at: new Date().toISOString(),
         };
 
-        const novoItem: FaturaItem = {
+        const itensParaCentro = centrosValores.length > 0 ? centrosValores : [{ id: undefined, valor: mensalidade.valor }];
+        const novosItensMes = itensParaCentro.map((item) => ({
           id: crypto.randomUUID(),
           fatura_id: faturaId,
           descricao: mensalidade.designacao,
-          valor_unitario: mensalidade.valor,
+          valor_unitario: item.valor,
           quantidade: 1,
           imposto_percentual: 0,
-          total_linha: mensalidade.valor,
-          centro_custo_id: user.centro_custo?.[0] || undefined,
-        };
+          total_linha: item.valor,
+          centro_custo_id: item.id || undefined,
+        }));
 
         novasFaturas.push(novaFatura);
-        novosItens.push(novoItem);
+        novosItens.push(...novosItensMes);
       }
 
       dataAtual = addMonths(dataAtual, 1);
@@ -505,6 +684,7 @@ export function FaturasTab({
         }
 
         toast.success(`${createdInvoices.length} fatura(s) gerada(s) com sucesso`);
+        refreshInvoices();
         if (usersSemInscricao.length > 0) {
           toast.warning(`${usersSemInscricao.length} utilizador(es) sem data de inscricao foram ignorados`);
         }
@@ -512,7 +692,6 @@ export function FaturasTab({
         setSelectedUserId('');
         setGerarParaTodos(false);
       } catch (error) {
-        console.error(error);
         const message = error instanceof Error ? error.message : 'Erro ao gravar faturas na base de dados';
         toast.error(message);
       }
@@ -552,10 +731,6 @@ export function FaturasTab({
         observacoes: formData.observacoes || undefined,
       };
 
-      setFaturas((current) => (current || []).map((f) => (f.id === editingFaturaId ? faturaAtualizada : f)));
-
-      setFaturaItens((current) => (current || []).filter((item) => item.fatura_id !== editingFaturaId));
-
       const novosItens: FaturaItem[] = linhasValidas.map((linha) => {
         const totalLinha = linha.valor_unitario * linha.quantidade * (1 + linha.imposto_percentual / 100);
 
@@ -572,7 +747,44 @@ export function FaturasTab({
         };
       });
 
-      setFaturaItens((current) => [...(current || []), ...novosItens]);
+      try {
+        const updated = await persistInvoiceUpdate(editingFaturaId, {
+          user_id: faturaAtualizada.user_id,
+          data_emissao: faturaAtualizada.data_emissao,
+          data_vencimento: faturaAtualizada.data_vencimento,
+          data_fatura: faturaAtualizada.data_fatura,
+          mes: faturaAtualizada.mes || null,
+          tipo: faturaAtualizada.tipo,
+          valor_total: faturaAtualizada.valor_total,
+          estado_pagamento: faturaAtualizada.estado_pagamento,
+          numero_recibo: faturaAtualizada.numero_recibo || null,
+          centro_custo_id: faturaAtualizada.centro_custo_id || undefined,
+          observacoes: faturaAtualizada.observacoes || undefined,
+          origem_tipo: faturaAtualizada.origem_tipo || null,
+          origem_id: faturaAtualizada.origem_id || null,
+          oculta: faturaAtualizada.oculta || false,
+          items: novosItens.map((item) => ({
+            descricao: item.descricao,
+            quantidade: item.quantidade,
+            valor_unitario: item.valor_unitario,
+            imposto_percentual: item.imposto_percentual,
+            total_linha: item.total_linha,
+            produto_id: item.produto_id || undefined,
+            centro_custo_id: item.centro_custo_id || undefined,
+          })),
+        });
+
+        setFaturas((current) => (current || []).map((f) => (f.id === editingFaturaId ? updated : f)));
+        setFaturaItens((current) => {
+          const filtered = (current || []).filter((item) => item.fatura_id !== editingFaturaId);
+          return [...filtered, ...(updated.items || [])];
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Erro ao atualizar fatura';
+        toast.error(message);
+        return;
+      }
+
       setLancamentos((current) => {
         const existing = (current || []).find((l) => l.fatura_id === editingFaturaId);
         const novoLancamento: LancamentoFinanceiro = {
@@ -597,6 +809,7 @@ export function FaturasTab({
         return [...(current || []), novoLancamento];
       });
       toast.success('Fatura atualizada com sucesso');
+      refreshInvoices();
       setEditingFaturaId(null);
     } else {
       const faturaId = crypto.randomUUID();
@@ -699,8 +912,8 @@ export function FaturasTab({
         ]);
 
         toast.success('Fatura criada com sucesso');
+        refreshInvoices();
       } catch (error) {
-        console.error(error);
         const message = error instanceof Error ? error.message : 'Erro ao gravar fatura na base de dados';
         toast.error(message);
         return;
@@ -733,12 +946,19 @@ export function FaturasTab({
 
     const itens = (faturaItens || []).filter((item) => item.fatura_id === faturaId);
 
+    const toInputDate = (value?: string | null) => {
+      if (!value) return '';
+      const parsed = new Date(value);
+      if (Number.isNaN(parsed.getTime())) return '';
+      return format(parsed, 'yyyy-MM-dd');
+    };
+
     setFormData({
       user_id: fatura.user_id,
       tipo: fatura.tipo,
       valor_total: fatura.valor_total,
-      data_emissao: fatura.data_emissao,
-      data_vencimento: fatura.data_vencimento,
+      data_emissao: toInputDate(fatura.data_emissao),
+      data_vencimento: toInputDate(fatura.data_vencimento),
       centro_custo_id: fatura.centro_custo_id || '',
       origem_tipo: fatura.origem_tipo || null,
       origem_id: fatura.origem_id || '',
@@ -1275,9 +1495,18 @@ export function FaturasTab({
                           {fatura.estado_pagamento === 'pago' && fatura.numero_recibo && (
                             <div className="text-xs text-muted-foreground">Recibo: {fatura.numero_recibo}</div>
                           )}
-                          <Button size="sm" variant="ghost" onClick={() => handleDeleteSingleFatura(fatura.id)}>
+                          <button
+                            type="button"
+                            title="Apagar fatura"
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-accent"
+                            onClick={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              handleDeleteSingleFatura(fatura.id);
+                            }}
+                          >
                             <Trash size={16} />
-                          </Button>
+                          </button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -1333,14 +1562,18 @@ export function FaturasTab({
                             <Check size={16} />
                           </Button>
                         )}
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleDeleteSingleFatura(fatura.id)}
-                          className="h-8 w-8 p-0"
+                        <button
+                          type="button"
+                          title="Apagar fatura"
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-accent"
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            handleDeleteSingleFatura(fatura.id);
+                          }}
                         >
                           <Trash size={16} />
-                        </Button>
+                        </button>
                       </div>
                     </div>
                   </div>

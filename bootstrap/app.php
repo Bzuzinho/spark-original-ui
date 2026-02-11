@@ -18,6 +18,10 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware) {
         // Trust all proxies for Codespaces
         $middleware->trustProxies(at: '*');
+
+        $middleware->validateCsrfTokens(except: [
+            'financeiro/*/apagar',
+        ]);
         
         $middleware->web(append: [
             \App\Http\Middleware\ForceAppUrl::class,

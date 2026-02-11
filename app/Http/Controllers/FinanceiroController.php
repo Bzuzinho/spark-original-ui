@@ -14,10 +14,14 @@ use App\Models\InvoiceType;
 use App\Models\MonthlyFee;
 use App\Models\Movement;
 use App\Models\MovementItem;
+use App\Models\MapaConciliacao;
 use App\Models\Product;
 use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 
 class FinanceiroController extends Controller
@@ -56,7 +60,41 @@ class FinanceiroController extends Controller
                 'escalao',
                 'nif',
                 'morada'
-            )->orderBy('nome_completo')->get(),
+            )
+                ->with(['dadosFinanceiros', 'centrosCusto'])
+                ->orderBy('nome_completo')
+                ->get()
+                ->map(function ($user) {
+                    $user->tipo_mensalidade = $user->dadosFinanceiros?->mensalidade_id ?? $user->tipo_mensalidade;
+                    $legacyCentros = collect($user->centro_custo ?? [])
+                        ->map(function ($center) {
+                            if (is_array($center) && isset($center['id'])) {
+                                return $center['id'];
+                            }
+                            return $center;
+                        })
+                        ->filter()
+                        ->values();
+
+                    if ($user->centrosCusto->isNotEmpty()) {
+                        $user->centro_custo = $user->centrosCusto->pluck('id')->values();
+                        $user->centro_custo_pesos = $user->centrosCusto->map(function ($center) {
+                            return [
+                                'id' => $center->id,
+                                'peso' => (float) ($center->pivot->peso ?? 1),
+                            ];
+                        })->values();
+                    } else {
+                        $user->centro_custo = $legacyCentros;
+                        $user->centro_custo_pesos = $legacyCentros->map(function ($id) {
+                            return [
+                                'id' => $id,
+                                'peso' => 1.0,
+                            ];
+                        })->values();
+                    }
+                    return $user;
+                }),
             'products' => Product::select('id', 'nome', 'preco', 'stock', 'stock_minimo', 'ativo')
                 ->orderBy('nome')
                 ->get()
@@ -82,7 +120,7 @@ class FinanceiroController extends Controller
         ]);
     }
 
-    public function store(StoreInvoiceRequest $request): RedirectResponse
+    public function store(StoreInvoiceRequest $request): RedirectResponse|JsonResponse
     {
         $data = $request->validated();
 
@@ -116,6 +154,10 @@ class FinanceiroController extends Controller
                     'produto_id' => $item['produto_id'] ?? null,
                     'centro_custo_id' => $item['centro_custo_id'] ?? $data['centro_custo_id'] ?? null,
                 ]);
+
+                if (!empty($item['produto_id'])) {
+                    Product::where('id', $item['produto_id'])->decrement('stock', (int) $item['quantidade']);
+                }
             }
         }
 
@@ -129,48 +171,56 @@ class FinanceiroController extends Controller
             ->with('success', 'Fatura criada com sucesso!');
     }
 
-    public function show(Invoice $financial): Response
+    public function show(Invoice $financeiro): Response
     {
         return Inertia::render('Financeiro/Show', [
-            'invoice' => $financial->load(['user', 'items']),
+            'invoice' => $financeiro->load(['user', 'items']),
         ]);
     }
 
-    public function edit(Invoice $financial): Response
+    public function edit(Invoice $financeiro): Response
     {
         return Inertia::render('Financeiro/Edit', [
-            'invoice' => $financial->load(['items']),
+            'invoice' => $financeiro->load(['items']),
             'users' => User::where('estado', 'ativo')->get(),
         ]);
     }
 
-    public function update(UpdateInvoiceRequest $request, Invoice $financial): RedirectResponse
+    public function update(UpdateInvoiceRequest $request, Invoice $financeiro): RedirectResponse|JsonResponse
     {
         $data = $request->validated();
 
-        $financial->update([
+        $financeiro->update([
             'user_id' => $data['user_id'],
             'data_fatura' => $data['data_fatura'] ?? $data['data_emissao'],
             'mes' => $data['mes'] ?? null,
             'data_emissao' => $data['data_emissao'],
             'data_vencimento' => $data['data_vencimento'],
             'valor_total' => $data['valor_total'],
-            'oculta' => $data['oculta'] ?? $financial->oculta,
-            'estado_pagamento' => $data['estado_pagamento'] ?? $financial->estado_pagamento,
-            'numero_recibo' => $data['numero_recibo'] ?? $financial->numero_recibo,
-            'referencia_pagamento' => $data['referencia_pagamento'] ?? $financial->referencia_pagamento,
+            'oculta' => $data['oculta'] ?? $financeiro->oculta,
+            'estado_pagamento' => $data['estado_pagamento'] ?? $financeiro->estado_pagamento,
+            'numero_recibo' => $data['numero_recibo'] ?? $financeiro->numero_recibo,
+            'referencia_pagamento' => $data['referencia_pagamento'] ?? $financeiro->referencia_pagamento,
             'centro_custo_id' => $data['centro_custo_id'] ?? null,
             'tipo' => $data['tipo'],
-            'origem_tipo' => $data['origem_tipo'] ?? $financial->origem_tipo,
-            'origem_id' => $data['origem_id'] ?? $financial->origem_id,
+            'origem_tipo' => $data['origem_tipo'] ?? $financeiro->origem_tipo,
+            'origem_id' => $data['origem_id'] ?? $financeiro->origem_id,
             'observacoes' => $data['observacoes'] ?? null,
         ]);
 
         if (isset($data['items'])) {
-            InvoiceItem::where('fatura_id', $financial->id)->delete();
+            $existingItems = InvoiceItem::where('fatura_id', $financeiro->id)->get();
+            $existingByProduct = $existingItems
+                ->filter(fn ($item) => !empty($item->produto_id))
+                ->groupBy('produto_id')
+                ->map(fn ($group) => (int) $group->sum('quantidade'));
+
+            InvoiceItem::where('fatura_id', $financeiro->id)->delete();
+
+            $newByProduct = [];
             foreach ($data['items'] as $item) {
                 InvoiceItem::create([
-                    'fatura_id' => $financial->id,
+                    'fatura_id' => $financeiro->id,
                     'descricao' => $item['descricao'],
                     'quantidade' => $item['quantidade'],
                     'valor_unitario' => $item['valor_unitario'],
@@ -179,12 +229,31 @@ class FinanceiroController extends Controller
                     'produto_id' => $item['produto_id'] ?? null,
                     'centro_custo_id' => $item['centro_custo_id'] ?? $data['centro_custo_id'] ?? null,
                 ]);
+
+                if (!empty($item['produto_id'])) {
+                    $newByProduct[$item['produto_id']] = ($newByProduct[$item['produto_id']] ?? 0) + (int) $item['quantidade'];
+                }
+            }
+
+            $allProductIds = collect($existingByProduct->keys())
+                ->merge(array_keys($newByProduct))
+                ->unique();
+
+            foreach ($allProductIds as $productId) {
+                $previous = (int) ($existingByProduct[$productId] ?? 0);
+                $next = (int) ($newByProduct[$productId] ?? 0);
+                $delta = $next - $previous;
+                if ($delta > 0) {
+                    Product::where('id', $productId)->decrement('stock', $delta);
+                } elseif ($delta < 0) {
+                    Product::where('id', $productId)->increment('stock', abs($delta));
+                }
             }
         }
 
         if ($request->expectsJson()) {
             return response()->json([
-                'invoice' => $financial->load('items'),
+                'invoice' => $financeiro->load('items'),
             ]);
         }
 
@@ -192,11 +261,455 @@ class FinanceiroController extends Controller
             ->with('success', 'Fatura atualizada com sucesso!');
     }
 
-    public function destroy(Invoice $financial): RedirectResponse
+    public function destroy(Invoice $financeiro): RedirectResponse|JsonResponse
     {
-        $financial->delete();
+        $financeiro->delete();
+
+        if (request()->expectsJson()) {
+            return response()->json(['success' => true]);
+        }
 
         return redirect()->route('financeiro.index')
             ->with('success', 'Fatura eliminada com sucesso!');
+    }
+
+    public function storeMovimento(Request $request)
+    {
+        if (is_string($request->input('items'))) {
+            $decoded = json_decode($request->input('items'), true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $request->merge(['items' => $decoded]);
+            }
+        }
+        $data = $request->validate([
+            'user_id' => ['nullable', 'exists:users,id'],
+            'nome_manual' => ['nullable', 'string', 'max:255'],
+            'nif_manual' => ['nullable', 'string', 'max:50'],
+            'morada_manual' => ['nullable', 'string'],
+            'classificacao' => ['required', 'in:receita,despesa'],
+            'data_emissao' => ['required', 'date'],
+            'data_vencimento' => ['required', 'date'],
+            'valor_total' => ['required', 'numeric'],
+            'estado_pagamento' => ['nullable', 'in:pendente,pago,vencido,parcial,cancelado'],
+            'numero_recibo' => ['nullable', 'string', 'max:255'],
+            'referencia_pagamento' => ['nullable', 'string', 'max:255'],
+            'metodo_pagamento' => ['nullable', 'string', 'max:50'],
+            'centro_custo_id' => ['required', 'exists:cost_centers,id'],
+            'tipo' => ['required', 'string', 'max:30'],
+            'origem_tipo' => ['nullable', 'in:evento,stock,patrocinio,manual'],
+            'origem_id' => ['nullable', 'string', 'max:255'],
+            'observacoes' => ['nullable', 'string'],
+            'documento_original' => ['nullable', 'file'],
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.descricao' => ['required', 'string', 'max:255'],
+            'items.*.quantidade' => ['required', 'integer', 'min:1'],
+            'items.*.valor_unitario' => ['required', 'numeric', 'min:0'],
+            'items.*.imposto_percentual' => ['nullable', 'numeric', 'min:0'],
+            'items.*.total_linha' => ['required', 'numeric', 'min:0'],
+            'items.*.produto_id' => ['nullable', 'exists:products,id'],
+            'items.*.centro_custo_id' => ['nullable', 'exists:cost_centers,id'],
+            'items.*.fatura_id' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        if (!$data['user_id'] && empty($data['nome_manual'])) {
+            $data['nome_manual'] = $data['classificacao'] === 'despesa' ? 'BSCN Despesa' : 'BSCN Receita';
+        }
+
+        if ($request->hasFile('documento_original')) {
+            $data['documento_original'] = $request->file('documento_original')->store('financeiro/movimentos', 'public');
+        }
+
+        $movimento = Movement::create([
+            'user_id' => $data['user_id'] ?? null,
+            'nome_manual' => $data['nome_manual'] ?? null,
+            'nif_manual' => $data['nif_manual'] ?? null,
+            'morada_manual' => $data['morada_manual'] ?? null,
+            'classificacao' => $data['classificacao'],
+            'data_emissao' => $data['data_emissao'],
+            'data_vencimento' => $data['data_vencimento'],
+            'valor_total' => $data['valor_total'],
+            'estado_pagamento' => $data['estado_pagamento'] ?? 'pendente',
+            'numero_recibo' => $data['numero_recibo'] ?? null,
+            'referencia_pagamento' => $data['referencia_pagamento'] ?? null,
+            'metodo_pagamento' => $data['metodo_pagamento'] ?? null,
+            'comprovativo' => $data['comprovativo'] ?? null,
+            'documento_original' => $data['documento_original'] ?? null,
+            'centro_custo_id' => $data['centro_custo_id'],
+            'tipo' => $data['tipo'],
+            'origem_tipo' => $data['origem_tipo'] ?? null,
+            'origem_id' => $data['origem_id'] ?? null,
+            'observacoes' => $data['observacoes'] ?? null,
+        ]);
+
+        $createdItems = [];
+        foreach ($data['items'] as $item) {
+            $createdItems[] = MovementItem::create([
+                'movimento_id' => $movimento->id,
+                'descricao' => $item['descricao'],
+                'quantidade' => $item['quantidade'],
+                'valor_unitario' => $item['valor_unitario'],
+                'imposto_percentual' => $item['imposto_percentual'] ?? 0,
+                'total_linha' => $item['total_linha'],
+                'produto_id' => $item['produto_id'] ?? null,
+                'centro_custo_id' => $item['centro_custo_id'] ?? $data['centro_custo_id'],
+                'fatura_id' => $item['fatura_id'] ?? null,
+            ]);
+
+            if (!empty($item['produto_id']) && ($data['origem_tipo'] ?? null) === 'stock') {
+                $delta = $data['classificacao'] === 'despesa' ? (int) $item['quantidade'] : -((int) $item['quantidade']);
+                Product::where('id', $item['produto_id'])->increment('stock', $delta);
+            }
+        }
+
+        return response()->json([
+            'movimento' => $movimento,
+            'items' => $createdItems,
+        ]);
+    }
+
+    public function updateMovimento(Request $request, Movement $movimento)
+    {
+        if (is_string($request->input('items'))) {
+            $decoded = json_decode($request->input('items'), true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $request->merge(['items' => $decoded]);
+            }
+        }
+        $data = $request->validate([
+            'user_id' => ['nullable', 'exists:users,id'],
+            'nome_manual' => ['nullable', 'string', 'max:255'],
+            'nif_manual' => ['nullable', 'string', 'max:50'],
+            'morada_manual' => ['nullable', 'string'],
+            'classificacao' => ['required', 'in:receita,despesa'],
+            'data_emissao' => ['required', 'date'],
+            'data_vencimento' => ['required', 'date'],
+            'valor_total' => ['required', 'numeric'],
+            'estado_pagamento' => ['nullable', 'in:pendente,pago,vencido,parcial,cancelado'],
+            'numero_recibo' => ['nullable', 'string', 'max:255'],
+            'referencia_pagamento' => ['nullable', 'string', 'max:255'],
+            'metodo_pagamento' => ['nullable', 'string', 'max:50'],
+            'centro_custo_id' => ['required', 'exists:cost_centers,id'],
+            'tipo' => ['required', 'string', 'max:30'],
+            'origem_tipo' => ['nullable', 'in:evento,stock,patrocinio,manual'],
+            'origem_id' => ['nullable', 'string', 'max:255'],
+            'observacoes' => ['nullable', 'string'],
+            'documento_original' => ['nullable', 'file'],
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.descricao' => ['required', 'string', 'max:255'],
+            'items.*.quantidade' => ['required', 'integer', 'min:1'],
+            'items.*.valor_unitario' => ['required', 'numeric', 'min:0'],
+            'items.*.imposto_percentual' => ['nullable', 'numeric', 'min:0'],
+            'items.*.total_linha' => ['required', 'numeric', 'min:0'],
+            'items.*.produto_id' => ['nullable', 'exists:products,id'],
+            'items.*.centro_custo_id' => ['nullable', 'exists:cost_centers,id'],
+            'items.*.fatura_id' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        if (!$data['user_id'] && empty($data['nome_manual'])) {
+            $data['nome_manual'] = $data['classificacao'] === 'despesa' ? 'BSCN Despesa' : 'BSCN Receita';
+        }
+
+        if ($request->hasFile('documento_original')) {
+            if ($movimento->documento_original) {
+                Storage::disk('public')->delete($movimento->documento_original);
+            }
+            $data['documento_original'] = $request->file('documento_original')->store('financeiro/movimentos', 'public');
+        }
+
+        $movimento->update([
+            'user_id' => $data['user_id'] ?? null,
+            'nome_manual' => $data['nome_manual'] ?? null,
+            'nif_manual' => $data['nif_manual'] ?? null,
+            'morada_manual' => $data['morada_manual'] ?? null,
+            'classificacao' => $data['classificacao'],
+            'data_emissao' => $data['data_emissao'],
+            'data_vencimento' => $data['data_vencimento'],
+            'valor_total' => $data['valor_total'],
+            'estado_pagamento' => $data['estado_pagamento'] ?? $movimento->estado_pagamento,
+            'numero_recibo' => $data['numero_recibo'] ?? null,
+            'referencia_pagamento' => $data['referencia_pagamento'] ?? null,
+            'metodo_pagamento' => $data['metodo_pagamento'] ?? null,
+            'documento_original' => $data['documento_original'] ?? $movimento->documento_original,
+            'centro_custo_id' => $data['centro_custo_id'],
+            'tipo' => $data['tipo'],
+            'origem_tipo' => $data['origem_tipo'] ?? null,
+            'origem_id' => $data['origem_id'] ?? null,
+            'observacoes' => $data['observacoes'] ?? null,
+        ]);
+
+        $existingItems = MovementItem::where('movimento_id', $movimento->id)->get();
+        $existingByProduct = $existingItems
+            ->filter(fn ($item) => !empty($item->produto_id))
+            ->groupBy('produto_id')
+            ->map(fn ($group) => (int) $group->sum('quantidade'));
+
+        MovementItem::where('movimento_id', $movimento->id)->delete();
+
+        $createdItems = [];
+        $newByProduct = [];
+        foreach ($data['items'] as $item) {
+            $createdItems[] = MovementItem::create([
+                'movimento_id' => $movimento->id,
+                'descricao' => $item['descricao'],
+                'quantidade' => $item['quantidade'],
+                'valor_unitario' => $item['valor_unitario'],
+                'imposto_percentual' => $item['imposto_percentual'] ?? 0,
+                'total_linha' => $item['total_linha'],
+                'produto_id' => $item['produto_id'] ?? null,
+                'centro_custo_id' => $item['centro_custo_id'] ?? $data['centro_custo_id'],
+                'fatura_id' => $item['fatura_id'] ?? null,
+            ]);
+
+            if (!empty($item['produto_id']) && ($data['origem_tipo'] ?? null) === 'stock') {
+                $newByProduct[$item['produto_id']] = ($newByProduct[$item['produto_id']] ?? 0) + (int) $item['quantidade'];
+            }
+        }
+
+        if (($data['origem_tipo'] ?? null) === 'stock') {
+            $allProductIds = collect($existingByProduct->keys())
+                ->merge(array_keys($newByProduct))
+                ->unique();
+
+            foreach ($allProductIds as $productId) {
+                $previous = (int) ($existingByProduct[$productId] ?? 0);
+                $next = (int) ($newByProduct[$productId] ?? 0);
+                $delta = $next - $previous;
+                if ($delta > 0) {
+                    $adjust = $data['classificacao'] === 'despesa' ? $delta : -$delta;
+                    Product::where('id', $productId)->increment('stock', $adjust);
+                } elseif ($delta < 0) {
+                    $adjust = $data['classificacao'] === 'despesa' ? abs($delta) : -abs($delta);
+                    Product::where('id', $productId)->increment('stock', $adjust);
+                }
+            }
+        }
+
+        return response()->json([
+            'movimento' => $movimento,
+            'items' => $createdItems,
+        ]);
+    }
+
+    public function destroyMovimento(Movement $movimento)
+    {
+        if ($movimento->documento_original) {
+            Storage::disk('public')->delete($movimento->documento_original);
+        }
+        if ($movimento->comprovativo) {
+            Storage::disk('public')->delete($movimento->comprovativo);
+        }
+
+        MovementItem::where('movimento_id', $movimento->id)->delete();
+        $movimento->delete();
+
+        return response()->json(['success' => true]);
+    }
+
+    public function liquidarMovimento(Request $request, Movement $movimento)
+    {
+        $data = $request->validate([
+            'numero_recibo' => ['required', 'string', 'max:255'],
+            'metodo_pagamento' => ['nullable', 'string', 'max:50'],
+        ]);
+
+        if ($request->hasFile('comprovativo')) {
+            if ($movimento->comprovativo) {
+                Storage::disk('public')->delete($movimento->comprovativo);
+            }
+            $movimento->comprovativo = $request->file('comprovativo')->store('financeiro/movimentos', 'public');
+        }
+
+        $movimento->estado_pagamento = 'pago';
+        $movimento->numero_recibo = $data['numero_recibo'];
+        $movimento->metodo_pagamento = $data['metodo_pagamento'] ?? $movimento->metodo_pagamento;
+        $movimento->save();
+
+        $lancamento = FinancialEntry::create([
+            'data' => $movimento->data_emissao,
+            'tipo' => $movimento->classificacao,
+            'categoria' => 'Pagamento de Movimento',
+            'descricao' => "Pagamento de movimento {$movimento->tipo}",
+            'documento_ref' => $movimento->numero_recibo,
+            'valor' => abs($movimento->valor_total),
+            'centro_custo_id' => $movimento->centro_custo_id,
+            'user_id' => $movimento->user_id,
+            'origem_tipo' => $movimento->origem_tipo ?? 'manual',
+            'origem_id' => $movimento->id,
+            'metodo_pagamento' => $movimento->metodo_pagamento,
+            'comprovativo' => $movimento->comprovativo,
+        ]);
+
+        return response()->json(['movimento' => $movimento, 'lancamento' => $lancamento]);
+    }
+
+    public function storeExtrato(Request $request)
+    {
+        $data = $request->validate([
+            'conta' => ['nullable', 'string', 'max:255'],
+            'data_movimento' => ['required', 'date'],
+            'descricao' => ['required', 'string'],
+            'valor' => ['required', 'numeric'],
+            'saldo' => ['nullable', 'numeric'],
+            'referencia' => ['nullable', 'string', 'max:255'],
+            'ficheiro_id' => ['nullable', 'string', 'max:255'],
+            'centro_custo_id' => ['required', 'exists:cost_centers,id'],
+        ]);
+
+        $extrato = BankStatement::create([
+            'conta' => $data['conta'] ?? null,
+            'data_movimento' => $data['data_movimento'],
+            'descricao' => $data['descricao'],
+            'valor' => $data['valor'],
+            'saldo' => $data['saldo'] ?? null,
+            'referencia' => $data['referencia'] ?? null,
+            'ficheiro_id' => $data['ficheiro_id'] ?? null,
+            'centro_custo_id' => $data['centro_custo_id'],
+            'conciliado' => false,
+        ]);
+
+        return response()->json(['extrato' => $extrato]);
+    }
+
+    public function storeExtratosBulk(Request $request)
+    {
+        $data = $request->validate([
+            'extratos' => ['required', 'array', 'min:1'],
+            'extratos.*.conta' => ['nullable', 'string', 'max:255'],
+            'extratos.*.data_movimento' => ['required', 'date'],
+            'extratos.*.descricao' => ['required', 'string'],
+            'extratos.*.valor' => ['required', 'numeric'],
+            'extratos.*.saldo' => ['nullable', 'numeric'],
+            'extratos.*.referencia' => ['nullable', 'string', 'max:255'],
+            'extratos.*.ficheiro_id' => ['nullable', 'string', 'max:255'],
+            'extratos.*.centro_custo_id' => ['required', 'exists:cost_centers,id'],
+        ]);
+
+        $created = [];
+        foreach ($data['extratos'] as $row) {
+            $created[] = BankStatement::create([
+                'conta' => $row['conta'] ?? null,
+                'data_movimento' => $row['data_movimento'],
+                'descricao' => $row['descricao'],
+                'valor' => $row['valor'],
+                'saldo' => $row['saldo'] ?? null,
+                'referencia' => $row['referencia'] ?? null,
+                'ficheiro_id' => $row['ficheiro_id'] ?? null,
+                'centro_custo_id' => $row['centro_custo_id'],
+                'conciliado' => false,
+            ]);
+        }
+
+        return response()->json(['extratos' => $created]);
+    }
+
+    public function updateExtrato(Request $request, BankStatement $extrato)
+    {
+        $data = $request->validate([
+            'data_movimento' => ['required', 'date'],
+            'descricao' => ['required', 'string'],
+            'valor' => ['required', 'numeric'],
+            'saldo' => ['nullable', 'numeric'],
+            'referencia' => ['nullable', 'string', 'max:255'],
+            'centro_custo_id' => ['required', 'exists:cost_centers,id'],
+        ]);
+
+        $extrato->update([
+            'data_movimento' => $data['data_movimento'],
+            'descricao' => $data['descricao'],
+            'valor' => $data['valor'],
+            'saldo' => $data['saldo'] ?? null,
+            'referencia' => $data['referencia'] ?? null,
+            'centro_custo_id' => $data['centro_custo_id'],
+        ]);
+
+        return response()->json(['extrato' => $extrato]);
+    }
+
+    public function destroyExtrato(BankStatement $extrato)
+    {
+        if ($extrato->lancamento_id) {
+            FinancialEntry::where('id', $extrato->lancamento_id)->delete();
+        }
+
+        $extrato->delete();
+        return response()->json(['success' => true]);
+    }
+
+    public function conciliarExtrato(Request $request, BankStatement $extrato)
+    {
+        $data = $request->validate([
+            'tipo' => ['required', 'in:receita,despesa'],
+            'centro_custo_id' => ['required', 'exists:cost_centers,id'],
+            'user_id' => ['nullable', 'exists:users,id'],
+            'fatura_id' => ['nullable', 'exists:invoices,id'],
+            'movimento_id' => ['nullable', 'exists:movements,id'],
+        ]);
+
+        $entry = FinancialEntry::create([
+            'data' => $extrato->data_movimento,
+            'tipo' => $data['tipo'],
+            'descricao' => $extrato->descricao,
+            'documento_ref' => $extrato->referencia,
+            'valor' => abs($extrato->valor),
+            'centro_custo_id' => $data['centro_custo_id'],
+            'user_id' => $data['user_id'] ?? null,
+            'fatura_id' => $data['fatura_id'] ?? null,
+            'origem_tipo' => 'manual',
+            'origem_id' => $data['movimento_id'] ?? null,
+            'metodo_pagamento' => 'transferencia',
+        ]);
+
+        $extrato->update([
+            'conciliado' => true,
+            'lancamento_id' => $entry->id,
+        ]);
+
+        MapaConciliacao::create([
+            'extrato_id' => $extrato->id,
+            'lancamento_id' => $entry->id,
+            'status' => 'confirmado',
+            'regra_usada' => 'manual',
+        ]);
+
+        if (!empty($data['fatura_id'])) {
+            Invoice::where('id', $data['fatura_id'])->update([
+                'estado_pagamento' => 'pago',
+            ]);
+        }
+
+        if (!empty($data['movimento_id'])) {
+            Movement::where('id', $data['movimento_id'])->update([
+                'estado_pagamento' => 'pago',
+            ]);
+        }
+
+        return response()->json([
+            'extrato' => $extrato,
+            'lancamento' => $entry,
+        ]);
+    }
+
+    public function desconciliarExtrato(BankStatement $extrato)
+    {
+        if ($extrato->lancamento_id) {
+            $entry = FinancialEntry::where('id', $extrato->lancamento_id)->first();
+            if ($entry) {
+                if ($entry->fatura_id) {
+                    Invoice::where('id', $entry->fatura_id)->update([
+                        'estado_pagamento' => 'pendente',
+                    ]);
+                }
+                $entry->delete();
+            }
+        }
+
+        MapaConciliacao::where('extrato_id', $extrato->id)->delete();
+
+        $extrato->update([
+            'conciliado' => false,
+            'lancamento_id' => null,
+        ]);
+
+        return response()->json(['extrato' => $extrato]);
     }
 }

@@ -157,6 +157,18 @@ class User extends Authenticatable
         return $this->hasOne(AthleteSportsData::class, 'user_id');
     }
 
+    public function dadosFinanceiros(): HasOne
+    {
+        return $this->hasOne(DadosFinanceiros::class, 'user_id');
+    }
+
+    public function centrosCusto(): BelongsToMany
+    {
+        return $this->belongsToMany(CostCenter::class, 'centro_custo_user', 'user_id', 'centro_custo_id')
+            ->withPivot('peso')
+            ->withTimestamps();
+    }
+
     public function createdEvents(): HasMany
     {
         return $this->hasMany(Event::class, 'created_by');

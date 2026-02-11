@@ -42,6 +42,113 @@ export function MovimentosTab({
   faturas,
 }: MovimentosTabProps) {
   const allMovimentos = movimentos || [];
+  const toNumber = (value: unknown, fallback = 0): number => {
+    if (typeof value === 'number' && !Number.isNaN(value)) return value;
+    if (typeof value === 'string' && value.trim() !== '') {
+      const parsed = Number(value);
+      return Number.isNaN(parsed) ? fallback : parsed;
+    }
+    return fallback;
+  };
+  const getCsrfToken = () => {
+    const token = document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement | null;
+    return token?.content || '';
+  };
+  const sendMovimento = async (url: string, method: 'POST' | 'PUT', payload: Record<string, unknown>, documentoOriginal?: File | null) => {
+    const headers: Record<string, string> = {
+      Accept: 'application/json',
+      'X-Requested-With': 'XMLHttpRequest',
+      'X-CSRF-TOKEN': getCsrfToken(),
+    };
+
+    let body: BodyInit;
+    if (documentoOriginal) {
+      const form = new FormData();
+      Object.entries(payload).forEach(([key, value]) => {
+        if (value === undefined || value === null) return;
+        if (key === 'items') {
+          form.append('items', JSON.stringify(value));
+          return;
+        }
+        form.append(key, String(value));
+      });
+      form.append('documento_original', documentoOriginal);
+      body = form;
+    } else {
+      headers['Content-Type'] = 'application/json';
+      body = JSON.stringify(payload);
+    }
+
+    const response = await fetch(url, {
+      method,
+      headers,
+      credentials: 'same-origin',
+      body,
+    });
+
+    if (!response.ok) {
+      let message = 'Erro ao gravar movimento';
+      try {
+        const data = await response.json();
+        if (data?.message) message = data.message;
+        if (data?.errors) {
+          const errors = Object.values(data.errors).flat().join(' ');
+          if (errors) message = errors;
+        }
+      } catch (error) {
+        const fallback = await response.text();
+        if (fallback) message = fallback;
+      }
+      throw new Error(message);
+    }
+
+    return response.json() as Promise<{ movimento: Movimento; items: MovimentoItem[] }>;
+  };
+
+  const liquidarMovimento = async (movimentoId: string, numeroReciboLocal: string, metodoPagamentoLocal: string, comprovativo?: File | null) => {
+    const headers: Record<string, string> = {
+      Accept: 'application/json',
+      'X-Requested-With': 'XMLHttpRequest',
+      'X-CSRF-TOKEN': getCsrfToken(),
+    };
+
+    let body: BodyInit;
+    if (comprovativo) {
+      const form = new FormData();
+      form.append('numero_recibo', numeroReciboLocal);
+      form.append('metodo_pagamento', metodoPagamentoLocal);
+      form.append('comprovativo', comprovativo);
+      body = form;
+    } else {
+      headers['Content-Type'] = 'application/json';
+      body = JSON.stringify({ numero_recibo: numeroReciboLocal, metodo_pagamento: metodoPagamentoLocal });
+    }
+
+    const response = await fetch(route('financeiro.movimentos.liquidar', movimentoId), {
+      method: 'POST',
+      headers,
+      credentials: 'same-origin',
+      body,
+    });
+
+    if (!response.ok) {
+      let message = 'Erro ao liquidar movimento';
+      try {
+        const data = await response.json();
+        if (data?.message) message = data.message;
+        if (data?.errors) {
+          const errors = Object.values(data.errors).flat().join(' ');
+          if (errors) message = errors;
+        }
+      } catch (error) {
+        const fallback = await response.text();
+        if (fallback) message = fallback;
+      }
+      throw new Error(message);
+    }
+
+    return response.json() as Promise<{ movimento: Movimento; lancamento?: LancamentoFinanceiro }>;
+  };
 
   const [estadoFilter, setEstadoFilter] = useState<string>('all');
   const [classificacaoFilter, setClassificacaoFilter] = useState<string>('all');
@@ -51,8 +158,11 @@ export function MovimentosTab({
   const [selectedMovimentoId, setSelectedMovimentoId] = useState<string | null>(null);
   const [selectedMovimentos, setSelectedMovimentos] = useState<Set<string>>(new Set());
   const [numeroRecibo, setNumeroRecibo] = useState<string>('');
+  const [metodoPagamento, setMetodoPagamento] = useState<string>('transferencia');
+  const [comprovativoFile, setComprovativoFile] = useState<File | null>(null);
   const [editingMovimentoId, setEditingMovimentoId] = useState<string | null>(null);
   const [usarDadosUtilizador, setUsarDadosUtilizador] = useState(true);
+  const [documentoOriginalFile, setDocumentoOriginalFile] = useState<File | null>(null);
 
   const [formData, setFormData] = useState({
     user_id: '',
@@ -125,7 +235,7 @@ export function MovimentosTab({
     setDialogReciboOpen(true);
   };
 
-  const handleConfirmarLiquidacao = () => {
+  const handleConfirmarLiquidacao = async () => {
     const movimentosParaLiquidar = selectedMovimentoId ? [selectedMovimentoId] : Array.from(selectedMovimentos);
 
     if (movimentosParaLiquidar.length === 0) return;
@@ -135,45 +245,36 @@ export function MovimentosTab({
       return;
     }
 
-    setMovimentos((current) =>
-      (current || []).map((m) => {
-        if (movimentosParaLiquidar.includes(m.id)) {
-          return { ...m, estado_pagamento: 'pago' as const, numero_recibo: numeroRecibo.trim() };
+    try {
+      const updatedMovimentos: Movimento[] = [];
+      const novosLancamentos: LancamentoFinanceiro[] = [];
+
+      for (const movimentoId of movimentosParaLiquidar) {
+        const result = await liquidarMovimento(movimentoId, numeroRecibo.trim(), metodoPagamento, comprovativoFile);
+        updatedMovimentos.push(result.movimento);
+        if (result.lancamento) {
+          novosLancamentos.push(result.lancamento);
         }
-        return m;
-      })
-    );
+      }
 
-    const novosLancamentos: LancamentoFinanceiro[] = movimentosParaLiquidar
-      .map((movimentoId) => {
-        const movimento = (movimentos || []).find((m) => m.id === movimentoId);
-        if (!movimento) return null;
+      setMovimentos((current) =>
+        (current || []).map((m) => updatedMovimentos.find((u) => u.id === m.id) || m)
+      );
 
-        return {
-          id: crypto.randomUUID(),
-          data: new Date().toISOString().split('T')[0],
-          tipo: movimento.classificacao,
-          categoria: `Pagamento de Movimento ${movimento.tipo}`,
-          descricao: `Pagamento de movimento ${movimento.tipo} - ${getNomeDisplay(movimento)} - Recibo: ${numeroRecibo.trim()}`,
-          valor: movimento.valor_total,
-          centro_custo_id: movimento.centro_custo_id,
-          user_id: movimento.user_id,
-          fatura_id: movimentoId,
-          origem_tipo: movimento.origem_tipo || undefined,
-          origem_id: movimento.origem_id || undefined,
-          metodo_pagamento: 'dinheiro',
-          created_at: new Date().toISOString(),
-        };
-      })
-      .filter(Boolean) as LancamentoFinanceiro[];
+      if (novosLancamentos.length > 0) {
+        setLancamentos((current) => [...(current || []), ...novosLancamentos]);
+      }
 
-    setLancamentos((current) => [...(current || []), ...novosLancamentos]);
-
-    toast.success(`${movimentosParaLiquidar.length} movimento(s) liquidado(s) com recibo ${numeroRecibo.trim()}`);
-    setDialogReciboOpen(false);
-    setSelectedMovimentoId(null);
-    setSelectedMovimentos(new Set());
-    setNumeroRecibo('');
+      toast.success(`${movimentosParaLiquidar.length} movimento(s) liquidado(s) com recibo ${numeroRecibo.trim()}`);
+      setDialogReciboOpen(false);
+      setSelectedMovimentoId(null);
+      setSelectedMovimentos(new Set());
+      setNumeroRecibo('');
+      setComprovativoFile(null);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Erro ao liquidar movimento';
+      toast.error(message);
+    }
   };
 
   const handleToggleMovimentoSelection = (movimentoId: string) => {
@@ -204,33 +305,63 @@ export function MovimentosTab({
     setDialogDeleteOpen(true);
   };
 
-  const handleConfirmarDelete = () => {
+  const handleConfirmarDelete = async () => {
     const movimentosParaApagar = Array.from(selectedMovimentos);
+    try {
+      for (const movimentoId of movimentosParaApagar) {
+        await fetch(route('financeiro.movimentos.destroy', movimentoId), {
+          method: 'DELETE',
+          headers: {
+            Accept: 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': getCsrfToken(),
+          },
+          credentials: 'same-origin',
+        });
+      }
 
-    setMovimentos((current) => (current || []).filter((m) => !movimentosParaApagar.includes(m.id)));
-    setMovimentoItens((current) =>
-      (current || []).filter((item) => !movimentosParaApagar.includes(item.movimento_id))
-    );
+      setMovimentos((current) => (current || []).filter((m) => !movimentosParaApagar.includes(m.id)));
+      setMovimentoItens((current) =>
+        (current || []).filter((item) => !movimentosParaApagar.includes(item.movimento_id))
+      );
 
-    toast.success(`${movimentosParaApagar.length} movimento(s) apagado(s) com sucesso`);
-    setDialogDeleteOpen(false);
-    setSelectedMovimentos(new Set());
+      toast.success(`${movimentosParaApagar.length} movimento(s) apagado(s) com sucesso`);
+      setDialogDeleteOpen(false);
+      setSelectedMovimentos(new Set());
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Erro ao apagar movimentos';
+      toast.error(message);
+    }
   };
 
-  const handleDeleteSingleMovimento = (movimentoId: string) => {
-    setMovimentos((current) => (current || []).filter((m) => m.id !== movimentoId));
-    setMovimentoItens((current) => (current || []).filter((item) => item.movimento_id !== movimentoId));
-    toast.success('Movimento apagado com sucesso');
+  const handleDeleteSingleMovimento = async (movimentoId: string) => {
+    try {
+      await fetch(route('financeiro.movimentos.destroy', movimentoId), {
+        method: 'DELETE',
+        headers: {
+          Accept: 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRF-TOKEN': getCsrfToken(),
+        },
+        credentials: 'same-origin',
+      });
+      setMovimentos((current) => (current || []).filter((m) => m.id !== movimentoId));
+      setMovimentoItens((current) => (current || []).filter((item) => item.movimento_id !== movimentoId));
+      toast.success('Movimento apagado com sucesso');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Erro ao apagar movimento';
+      toast.error(message);
+    }
   };
 
-  const handleCriarMovimento = () => {
-    if (!usarDadosUtilizador && (!formData.nome_manual || !formData.nif_manual || !formData.morada_manual)) {
-      toast.error('Preencha todos os dados manuais (nome, NIF e morada)');
+  const handleCriarMovimento = async () => {
+    if (usarDadosUtilizador && !formData.user_id) {
+      toast.error('Selecione um utilizador');
       return;
     }
 
-    if (usarDadosUtilizador && !formData.user_id) {
-      toast.error('Selecione um utilizador');
+    if (!formData.centro_custo_id) {
+      toast.error('Selecione um centro de custo');
       return;
     }
 
@@ -246,110 +377,92 @@ export function MovimentosTab({
         0
       );
       const total = formData.classificacao === 'despesa' ? -Math.abs(totalAbsoluto) : Math.abs(totalAbsoluto);
-
-      const movimentoAtualizado: Movimento = {
-        ...(movimentos || []).find((m) => m.id === editingMovimentoId)!,
-        user_id: usarDadosUtilizador ? formData.user_id : undefined,
-        nome_manual: !usarDadosUtilizador ? formData.nome_manual : undefined,
-        nif_manual: !usarDadosUtilizador ? formData.nif_manual : undefined,
-        morada_manual: !usarDadosUtilizador ? formData.morada_manual : undefined,
+      const payload = {
+        user_id: usarDadosUtilizador ? formData.user_id : null,
+        nome_manual: usarDadosUtilizador ? undefined : formData.nome_manual,
+        nif_manual: usarDadosUtilizador ? undefined : formData.nif_manual,
+        morada_manual: usarDadosUtilizador ? undefined : formData.morada_manual,
         classificacao: formData.classificacao,
         data_emissao: formData.data_emissao,
         data_vencimento: formData.data_vencimento,
         valor_total: total,
-        centro_custo_id: formData.centro_custo_id || undefined,
+        centro_custo_id: formData.centro_custo_id,
         tipo: formData.tipo,
         origem_tipo: formData.origem_tipo || null,
         origem_id: formData.origem_id || null,
         observacoes: formData.observacoes || undefined,
+        items: linhasValidas.map((linha) => ({
+          descricao: linha.descricao,
+          quantidade: linha.quantidade,
+          valor_unitario: linha.valor_unitario,
+          imposto_percentual: linha.imposto_percentual,
+          total_linha: linha.valor_unitario * linha.quantidade * (1 + linha.imposto_percentual / 100),
+          produto_id: linha.produto_id || undefined,
+          centro_custo_id: formData.centro_custo_id,
+          fatura_id: linha.fatura_id || undefined,
+        })),
       };
 
-      setMovimentos((current) =>
-        (current || []).map((m) => (m.id === editingMovimentoId ? movimentoAtualizado : m))
-      );
-
-      setMovimentoItens((current) => (current || []).filter((item) => item.movimento_id !== editingMovimentoId));
-
-      const novosItens: MovimentoItem[] = linhasValidas.map((linha) => {
-        const totalLinha = linha.valor_unitario * linha.quantidade * (1 + linha.imposto_percentual / 100);
-
-        return {
-          id: crypto.randomUUID(),
-          movimento_id: editingMovimentoId,
-          descricao: linha.descricao,
-          valor_unitario: linha.valor_unitario,
-          quantidade: linha.quantidade,
-          imposto_percentual: linha.imposto_percentual,
-          total_linha: totalLinha,
-          produto_id: linha.produto_id,
-          fatura_id: linha.fatura_id,
-          centro_custo_id: formData.centro_custo_id || undefined,
-        };
-      });
-
-      setMovimentoItens((current) => [...(current || []), ...novosItens]);
-      toast.success('Movimento atualizado com sucesso');
-      setEditingMovimentoId(null);
+      try {
+        const result = await sendMovimento(route('financeiro.movimentos.update', editingMovimentoId), 'PUT', payload, documentoOriginalFile);
+        setMovimentos((current) =>
+          (current || []).map((m) => (m.id === editingMovimentoId ? result.movimento : m))
+        );
+        setMovimentoItens((current) => {
+          const filtered = (current || []).filter((item) => item.movimento_id !== editingMovimentoId);
+          return [...filtered, ...result.items];
+        });
+        toast.success('Movimento atualizado com sucesso');
+        setEditingMovimentoId(null);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Erro ao atualizar movimento';
+        toast.error(message);
+        return;
+      }
     } else {
-      const movimentoId = crypto.randomUUID();
       const linhasValidas = linhas.filter((l) => l.descricao && l.valor_unitario > 0);
       const totalAbsoluto = linhasValidas.reduce(
         (sum, l) => sum + l.valor_unitario * l.quantidade * (1 + l.imposto_percentual / 100),
         0
       );
       const total = formData.classificacao === 'despesa' ? -Math.abs(totalAbsoluto) : Math.abs(totalAbsoluto);
-
-      const novoMovimento: Movimento = {
-        id: movimentoId,
-        user_id: usarDadosUtilizador ? formData.user_id : undefined,
-        nome_manual: !usarDadosUtilizador ? formData.nome_manual : undefined,
-        nif_manual: !usarDadosUtilizador ? formData.nif_manual : undefined,
-        morada_manual: !usarDadosUtilizador ? formData.morada_manual : undefined,
+      const payload = {
+        user_id: usarDadosUtilizador ? formData.user_id : null,
+        nome_manual: usarDadosUtilizador ? undefined : formData.nome_manual,
+        nif_manual: usarDadosUtilizador ? undefined : formData.nif_manual,
+        morada_manual: usarDadosUtilizador ? undefined : formData.morada_manual,
         classificacao: formData.classificacao,
         data_emissao: formData.data_emissao,
         data_vencimento: formData.data_vencimento,
         valor_total: total,
         estado_pagamento: 'pendente',
-        centro_custo_id: formData.centro_custo_id || undefined,
+        centro_custo_id: formData.centro_custo_id,
         tipo: formData.tipo,
         origem_tipo: formData.origem_tipo || null,
         origem_id: formData.origem_id || null,
         observacoes: formData.observacoes || undefined,
-        created_at: new Date().toISOString(),
+        items: linhasValidas.map((linha) => ({
+          descricao: linha.descricao,
+          quantidade: linha.quantidade,
+          valor_unitario: linha.valor_unitario,
+          imposto_percentual: linha.imposto_percentual,
+          total_linha: linha.valor_unitario * linha.quantidade * (1 + linha.imposto_percentual / 100),
+          produto_id: linha.produto_id || undefined,
+          centro_custo_id: formData.centro_custo_id,
+          fatura_id: linha.fatura_id || undefined,
+        })),
       };
 
-      const novosItens: MovimentoItem[] = linhasValidas.map((linha) => {
-        const totalLinha = linha.valor_unitario * linha.quantidade * (1 + linha.imposto_percentual / 100);
-
-        if (linha.produto_id && formData.origem_tipo === 'stock') {
-          const product = (products || []).find((p) => p.id === linha.produto_id);
-          if (product) {
-            const delta = formData.classificacao === 'despesa' ? linha.quantidade : -linha.quantidade;
-            const novoStock = product.stock + delta;
-            const updatedProducts = (products || []).map((p) =>
-              p.id === linha.produto_id ? { ...p, stock: novoStock } : p
-            );
-            setProducts(updatedProducts);
-          }
-        }
-
-        return {
-          id: crypto.randomUUID(),
-          movimento_id: movimentoId,
-          descricao: linha.descricao,
-          valor_unitario: linha.valor_unitario,
-          quantidade: linha.quantidade,
-          imposto_percentual: linha.imposto_percentual,
-          total_linha: totalLinha,
-          produto_id: linha.produto_id,
-          fatura_id: linha.fatura_id,
-          centro_custo_id: formData.centro_custo_id || undefined,
-        };
-      });
-
-      setMovimentos((current) => [...(current || []), novoMovimento]);
-      setMovimentoItens((current) => [...(current || []), ...novosItens]);
-      toast.success('Movimento criado com sucesso');
+      try {
+        const result = await sendMovimento(route('financeiro.movimentos.store'), 'POST', payload, documentoOriginalFile);
+        setMovimentos((current) => [...(current || []), result.movimento]);
+        setMovimentoItens((current) => [...(current || []), ...result.items]);
+        toast.success('Movimento criado com sucesso');
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Erro ao criar movimento';
+        toast.error(message);
+        return;
+      }
     }
 
     setDialogOpen(false);
@@ -375,6 +488,7 @@ export function MovimentosTab({
     setLinhas([{ descricao: '', valor_unitario: 0, quantidade: 1, imposto_percentual: 0 }]);
     setEditingMovimentoId(null);
     setUsarDadosUtilizador(true);
+    setDocumentoOriginalFile(null);
   };
 
   const handleEditarMovimento = (movimentoId: string) => {
@@ -747,6 +861,14 @@ export function MovimentosTab({
                       </SelectContent>
                     </Select>
                   </div>
+
+                  <div className="space-y-2 col-span-2">
+                    <Label>Documento Original (opcional)</Label>
+                    <Input
+                      type="file"
+                      onChange={(e) => setDocumentoOriginalFile(e.target.files?.[0] || null)}
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-2">
@@ -853,7 +975,7 @@ export function MovimentosTab({
                                       const user = (users || []).find((u) => u.id === fatura.user_id);
                                       return (
                                         <SelectItem key={fatura.id} value={fatura.id}>
-                                          {user?.nome_completo} - {fatura.tipo} - €{fatura.valor_total.toFixed(2)} ({format(new Date(fatura.data_emissao), 'dd/MM/yyyy')})
+                                          {user?.nome_completo} - {fatura.tipo} - €{toNumber(fatura.valor_total).toFixed(2)} ({format(new Date(fatura.data_emissao), 'dd/MM/yyyy')})
                                         </SelectItem>
                                       );
                                     })}
@@ -903,7 +1025,7 @@ export function MovimentosTab({
                                         : movimento.nome_manual;
                                       return (
                                         <SelectItem key={movimento.id} value={movimento.id}>
-                                          {nomeDisplay} - {movimento.tipo} - €{movimento.valor_total.toFixed(2)} ({format(new Date(movimento.data_emissao), 'dd/MM/yyyy')})
+                                          {nomeDisplay} - {movimento.tipo} - €{toNumber(movimento.valor_total).toFixed(2)} ({format(new Date(movimento.data_emissao), 'dd/MM/yyyy')})
                                         </SelectItem>
                                       );
                                     })}
@@ -979,8 +1101,10 @@ export function MovimentosTab({
             ) : (
               filteredMovimentos
                 .sort((a, b) => new Date(b.data_emissao).getTime() - new Date(a.data_emissao).getTime())
-                .map((movimento) => (
-                  <TableRow key={movimento.id}>
+                .map((movimento) => {
+                  const movimentoValor = toNumber(movimento.valor_total);
+                  return (
+                    <TableRow key={movimento.id}>
                     <TableCell>
                       <Checkbox
                         checked={selectedMovimentos.has(movimento.id)}
@@ -995,8 +1119,8 @@ export function MovimentosTab({
                     <TableCell>{format(new Date(movimento.data_emissao), 'dd/MM/yyyy')}</TableCell>
                     <TableCell>{format(new Date(movimento.data_vencimento), 'dd/MM/yyyy')}</TableCell>
                     <TableCell className="font-semibold">
-                      <span className={movimento.valor_total < 0 ? 'text-red-600' : 'text-green-600'}>
-                        €{movimento.valor_total.toFixed(2)}
+                      <span className={movimentoValor < 0 ? 'text-red-600' : 'text-green-600'}>
+                        €{movimentoValor.toFixed(2)}
                       </span>
                     </TableCell>
                     <TableCell>{getEstadoBadge(movimento.estado_pagamento)}</TableCell>
@@ -1023,8 +1147,9 @@ export function MovimentosTab({
                         </Button>
                       </div>
                     </TableCell>
-                  </TableRow>
-                ))
+                    </TableRow>
+                  );
+                })
             )}
           </TableBody>
         </Table>
@@ -1063,6 +1188,25 @@ export function MovimentosTab({
                   ? 'Insira o numero do recibo para confirmar o pagamento deste movimento.'
                   : 'Este numero de recibo sera usado para todos os movimentos selecionados.'}
               </p>
+            </div>
+            <div className="space-y-2">
+              <Label>Metodo de Pagamento</Label>
+              <Select value={metodoPagamento} onValueChange={setMetodoPagamento}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="dinheiro">Dinheiro</SelectItem>
+                  <SelectItem value="transferencia">Transferencia</SelectItem>
+                  <SelectItem value="mbway">MB Way</SelectItem>
+                  <SelectItem value="multibanco">Multibanco</SelectItem>
+                  <SelectItem value="cartao">Cartao</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Comprovativo (opcional)</Label>
+              <Input type="file" onChange={(e) => setComprovativoFile(e.target.files?.[0] || null)} />
             </div>
           </div>
           <DialogFooter>

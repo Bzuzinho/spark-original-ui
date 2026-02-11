@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class CostCenter extends Model
@@ -28,6 +29,13 @@ class CostCenter extends Model
     public function events(): HasMany
     {
         return $this->hasMany(Event::class, 'centro_custo_id');
+    }
+
+    public function users(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'centro_custo_user', 'centro_custo_id', 'user_id')
+            ->withPivot('peso')
+            ->withTimestamps();
     }
 
     public function invoices(): HasMany

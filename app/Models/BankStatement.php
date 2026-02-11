@@ -19,6 +19,7 @@ class BankStatement extends Model
         'valor',
         'saldo',
         'referencia',
+        'ficheiro_id',
         'centro_custo_id',
         'conciliado',
         'lancamento_id',

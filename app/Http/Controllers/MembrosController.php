@@ -9,6 +9,7 @@ use App\Models\UserType;
 use App\Models\AgeGroup;
 use App\Models\CostCenter;
 use App\Models\MonthlyFee;
+use App\Models\DadosFinanceiros;
 use App\Models\Invoice;
 use App\Models\Movement;
 use Inertia\Inertia;
@@ -118,6 +119,16 @@ class MembrosController extends Controller
             'userTypes' => $userTypes,
             'ageGroups' => $ageGroups,
             'nextMemberNumber' => $nextMemberNumber,
+            'monthlyFees' => MonthlyFee::where('ativo', true)
+                ->select('id', 'designacao', 'valor', 'ativo')
+                ->get()
+                ->map(function ($fee) {
+                    $fee->valor = (float) $fee->valor;
+                    return $fee;
+                }),
+            'costCenters' => CostCenter::where('ativo', true)
+                ->select('id', 'nome', 'ativo')
+                ->get(),
         ]);
     }
 
@@ -178,6 +189,17 @@ class MembrosController extends Controller
             }
             
             $member = User::create($data);
+
+            if (array_key_exists('tipo_mensalidade', $data) || array_key_exists('conta_corrente_manual', $data)) {
+                $financeData = DadosFinanceiros::firstOrNew(['user_id' => $member->id]);
+                if (array_key_exists('tipo_mensalidade', $data)) {
+                    $financeData->mensalidade_id = $data['tipo_mensalidade'];
+                }
+                if (array_key_exists('conta_corrente_manual', $data)) {
+                    $financeData->conta_corrente_manual = $data['conta_corrente_manual'] ?? 0;
+                }
+                $financeData->save();
+            }
             
             // Sync relationships
             if (isset($data['user_types'])) {
@@ -192,6 +214,29 @@ class MembrosController extends Controller
             // Sync educandos relationship (with reciprocal update)
             if (array_key_exists('educandos', $data) && is_array($data['educandos'])) {
                 $this->syncEducandoRelations($member, $data['educandos']);
+            }
+
+            if (array_key_exists('centro_custo', $data) && is_array($data['centro_custo'])) {
+                $centros = $data['centro_custo'];
+                $syncData = [];
+
+                foreach ($centros as $center) {
+                    if (is_array($center)) {
+                        $centerId = $center['id'] ?? null;
+                        $peso = isset($center['peso']) ? (float) $center['peso'] : 1;
+                    } else {
+                        $centerId = $center;
+                        $peso = 1;
+                    }
+
+                    if ($centerId) {
+                        $syncData[$centerId] = ['peso' => $peso];
+                    }
+                }
+
+                $member->centrosCusto()->sync($syncData);
+                $member->centro_custo = array_values(array_keys($syncData));
+                $member->save();
             }
 
             return redirect()->route('membros.index')
@@ -215,6 +260,8 @@ class MembrosController extends Controller
             'eventAttendances',
             'documents',
             'relationships.relatedUser',
+            'dadosFinanceiros',
+            'centrosCusto',
         ]);
 
         $memberData = $member->toArray();
@@ -261,7 +308,37 @@ class MembrosController extends Controller
             })
             ->sum('valor_total');
 
-        $memberData['conta_corrente'] = $contaCorrente;
+        $contaCorrenteManual = $member->dadosFinanceiros?->conta_corrente_manual ?? 0;
+        $memberData['conta_corrente'] = $contaCorrente + (float) $contaCorrenteManual;
+        $memberData['conta_corrente_manual'] = (float) $contaCorrenteManual;
+        $memberData['tipo_mensalidade'] = $member->dadosFinanceiros?->mensalidade_id ?? $member->tipo_mensalidade;
+        $legacyCentros = collect($member->centro_custo ?? [])
+            ->map(function ($center) {
+                if (is_array($center) && isset($center['id'])) {
+                    return $center['id'];
+                }
+                return $center;
+            })
+            ->filter()
+            ->values();
+
+        if ($member->centrosCusto->isNotEmpty()) {
+            $memberData['centro_custo'] = $member->centrosCusto->pluck('id')->values();
+            $memberData['centro_custo_pesos'] = $member->centrosCusto->map(function ($center) {
+                return [
+                    'id' => $center->id,
+                    'peso' => (float) ($center->pivot->peso ?? 1),
+                ];
+            })->values();
+        } else {
+            $memberData['centro_custo'] = $legacyCentros;
+            $memberData['centro_custo_pesos'] = $legacyCentros->map(function ($id) {
+                return [
+                    'id' => $id,
+                    'peso' => 1.0,
+                ];
+            })->values();
+        }
 
         return Inertia::render('Membros/Show', [
             'member' => $memberData,
@@ -288,8 +365,37 @@ class MembrosController extends Controller
         if ($member->data_nascimento) {
             $member->data_nascimento = $member->data_nascimento->format('Y-m-d');
         }
+        $member->load(['dadosFinanceiros', 'centrosCusto']);
+        $member->tipo_mensalidade = $member->dadosFinanceiros?->mensalidade_id ?? $member->tipo_mensalidade;
+        $legacyCentros = collect($member->centro_custo ?? [])
+            ->map(function ($center) {
+                if (is_array($center) && isset($center['id'])) {
+                    return $center['id'];
+                }
+                return $center;
+            })
+            ->filter()
+            ->values();
+
+        if ($member->centrosCusto->isNotEmpty()) {
+            $member->centro_custo = $member->centrosCusto->pluck('id')->values();
+            $member->centro_custo_pesos = $member->centrosCusto->map(function ($center) {
+                return [
+                    'id' => $center->id,
+                    'peso' => (float) ($center->pivot->peso ?? 1),
+                ];
+            })->values();
+        } else {
+            $member->centro_custo = $legacyCentros;
+            $member->centro_custo_pesos = $legacyCentros->map(function ($id) {
+                return [
+                    'id' => $id,
+                    'peso' => 1.0,
+                ];
+            })->values();
+        }
         return Inertia::render('Membros/Edit', [
-            'member' => $member->load(['userTypes', 'ageGroup', 'encarregados', 'educandos']),
+            'member' => $member->load(['userTypes', 'ageGroup', 'encarregados', 'educandos', 'dadosFinanceiros', 'centrosCusto']),
             'userTypes' => UserType::where('ativo', true)->get(),
             'ageGroups' => AgeGroup::all(),
             'guardians' => User::whereJsonContains('tipo_membro', 'encarregado_educacao')
@@ -360,6 +466,40 @@ class MembrosController extends Controller
             }
             
             $member->update($data);
+
+            if (array_key_exists('tipo_mensalidade', $data) || array_key_exists('conta_corrente_manual', $data)) {
+                $financeData = DadosFinanceiros::firstOrNew(['user_id' => $member->id]);
+                if (array_key_exists('tipo_mensalidade', $data)) {
+                    $financeData->mensalidade_id = $data['tipo_mensalidade'];
+                }
+                if (array_key_exists('conta_corrente_manual', $data)) {
+                    $financeData->conta_corrente_manual = $data['conta_corrente_manual'] ?? 0;
+                }
+                $financeData->save();
+            }
+
+            if (array_key_exists('centro_custo', $data) && is_array($data['centro_custo'])) {
+                $centros = $data['centro_custo'];
+                $syncData = [];
+
+                foreach ($centros as $center) {
+                    if (is_array($center)) {
+                        $centerId = $center['id'] ?? null;
+                        $peso = isset($center['peso']) ? (float) $center['peso'] : 1;
+                    } else {
+                        $centerId = $center;
+                        $peso = 1;
+                    }
+
+                    if ($centerId) {
+                        $syncData[$centerId] = ['peso' => $peso];
+                    }
+                }
+
+                $member->centrosCusto()->sync($syncData);
+                $member->centro_custo = array_values(array_keys($syncData));
+                $member->save();
+            }
             
             // Sync relationships
             if (isset($data['user_types'])) {

@@ -32,9 +32,11 @@ interface Props {
     userTypes: any[];
     ageGroups: any[];
     guardians?: User[];
+    monthlyFees?: any[];
+    costCenters?: any[];
 }
 
-export default function Create({ allUsers, userTypes, ageGroups, guardians }: Props) {
+export default function Create({ allUsers, userTypes, ageGroups, guardians, monthlyFees = [], costCenters = [] }: Props) {
     const [user, setUser] = useState<User>({
         nome_completo: '',
         email_utilizador: '',
@@ -154,6 +156,8 @@ export default function Create({ allUsers, userTypes, ageGroups, guardians }: Pr
                             user={user}
                             onChange={handleChange}
                             isAdmin={true}
+                            monthlyFees={monthlyFees}
+                            costCenters={costCenters}
                         />
                     </TabsContent>
 

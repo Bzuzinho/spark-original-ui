@@ -89,6 +89,7 @@ class UpdateMemberRequest extends FormRequest
             'tipo_mensalidade' => ['nullable', 'exists:monthly_fees,id'],
             'centro_custo' => ['nullable', 'array'],
             'centro_custo.*' => ['exists:cost_centers,id'],
+            'conta_corrente_manual' => ['nullable', 'numeric'],
         ];
     }
 

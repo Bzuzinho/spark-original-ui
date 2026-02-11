@@ -1,5 +1,5 @@
 import { useState, useMemo, type ChangeEvent } from 'react';
-import { ExtratoBancario, LancamentoFinanceiro, Fatura, CentroCusto, User } from './types';
+import { ExtratoBancario, LancamentoFinanceiro, Fatura, CentroCusto, User, Movimento } from './types';
 import { Button } from '@/Components/ui/button';
 import { Card } from '@/Components/ui/card';
 import { Input } from '@/Components/ui/input';
@@ -21,6 +21,8 @@ interface BancoTabProps {
   setLancamentos: React.Dispatch<React.SetStateAction<LancamentoFinanceiro[]>>;
   faturas: Fatura[];
   setFaturas: React.Dispatch<React.SetStateAction<Fatura[]>>;
+  movimentos: Movimento[];
+  setMovimentos: React.Dispatch<React.SetStateAction<Movimento[]>>;
   centrosCusto: CentroCusto[];
   users: User[];
 }
@@ -32,9 +34,15 @@ export function BancoTab({
   setLancamentos,
   faturas,
   setFaturas,
+  movimentos,
+  setMovimentos,
   centrosCusto,
   users,
 }: BancoTabProps) {
+  const getCsrfToken = () => {
+    const token = document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement | null;
+    return token?.content || '';
+  };
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogCatalogOpen, setDialogCatalogOpen] = useState(false);
   const [dialogEditOpen, setDialogEditOpen] = useState(false);
@@ -77,6 +85,7 @@ export function BancoTab({
     centro_custo_id: '',
     fatura_id: '',
     user_id: '',
+    movimento_id: '',
   });
 
   const filteredExtratos = useMemo(() => {
@@ -125,7 +134,7 @@ export function BancoTab({
     return sugestoes.sort((a, b) => b.score - a.score).slice(0, 5);
   }, [selectedExtrato, faturas, users]);
 
-  const handleAddExtrato = () => {
+  const handleAddExtrato = async () => {
     if (!formData.descricao || formData.valor === 0) {
       toast.error('Preencha todos os campos obrigatorios');
       return;
@@ -136,26 +145,43 @@ export function BancoTab({
       return;
     }
 
-    const novoExtrato: ExtratoBancario = {
-      id: crypto.randomUUID(),
-      conta: '',
-      data_movimento: formData.data_movimento,
-      descricao: formData.descricao,
-      valor: formData.valor,
-      saldo: formData.saldo,
-      referencia: formData.referencia || undefined,
-      centro_custo_id: formData.centro_custo_id,
-      conciliado: false,
-      created_at: new Date().toISOString(),
-    };
+    try {
+      const response = await fetch(route('financeiro.extratos.store'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRF-TOKEN': getCsrfToken(),
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify({
+          conta: '',
+          data_movimento: formData.data_movimento,
+          descricao: formData.descricao,
+          valor: formData.valor,
+          saldo: formData.saldo,
+          referencia: formData.referencia || undefined,
+          centro_custo_id: formData.centro_custo_id,
+        }),
+      });
 
-    setExtratos((current) => [...(current || []), novoExtrato]);
-    toast.success('Movimento bancario adicionado');
-    setDialogOpen(false);
-    resetForm();
+      if (!response.ok) {
+        throw new Error('Erro ao guardar movimento bancario');
+      }
+
+      const data = await response.json();
+      setExtratos((current) => [...(current || []), data.extrato]);
+      toast.success('Movimento bancario adicionado');
+      setDialogOpen(false);
+      resetForm();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Erro ao guardar movimento bancario';
+      toast.error(message);
+    }
   };
 
-  const handleCatalogar = () => {
+  const handleCatalogar = async () => {
     if (!selectedExtrato) return;
 
     if (!catalogData.centro_custo_id) {
@@ -163,37 +189,60 @@ export function BancoTab({
       return;
     }
 
-    const novoLancamento: LancamentoFinanceiro = {
-      id: crypto.randomUUID(),
-      data: selectedExtrato.data_movimento,
-      descricao: selectedExtrato.descricao,
-      tipo: catalogData.tipo,
-      valor: Math.abs(selectedExtrato.valor),
-      metodo_pagamento: 'transferencia',
-      user_id: catalogData.user_id || undefined,
-      centro_custo_id: catalogData.centro_custo_id,
-      fatura_id: catalogData.fatura_id || undefined,
-      created_at: new Date().toISOString(),
-    };
+    try {
+      const response = await fetch(route('financeiro.extratos.conciliar', selectedExtrato.id), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRF-TOKEN': getCsrfToken(),
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify({
+          tipo: catalogData.tipo,
+          centro_custo_id: catalogData.centro_custo_id,
+          user_id: catalogData.user_id || undefined,
+          fatura_id: catalogData.fatura_id || undefined,
+          movimento_id: catalogData.movimento_id || undefined,
+        }),
+      });
 
-    setLancamentos((current) => [...(current || []), novoLancamento]);
+      if (!response.ok) {
+        throw new Error('Erro ao catalogar movimento');
+      }
 
-    setExtratos((current) =>
-      (current || []).map((e) =>
-        e.id === selectedExtrato.id ? { ...e, conciliado: true, lancamento_id: novoLancamento.id } : e
-      )
-    );
+      const data = await response.json();
+      if (data.lancamento) {
+        setLancamentos((current) => [...(current || []), data.lancamento]);
+      }
 
-    if (catalogData.fatura_id) {
-      setFaturas((current) =>
-        (current || []).map((f) => (f.id === catalogData.fatura_id ? { ...f, estado_pagamento: 'pago' as const } : f))
+      setExtratos((current) =>
+        (current || []).map((e) =>
+          e.id === selectedExtrato.id ? { ...e, conciliado: true, lancamento_id: data.lancamento?.id } : e
+        )
       );
-    }
 
-    toast.success('Movimento catalogado e conciliado');
-    setDialogCatalogOpen(false);
-    setSelectedExtrato(null);
-    resetCatalogData();
+      if (catalogData.fatura_id) {
+        setFaturas((current) =>
+          (current || []).map((f) => (f.id === catalogData.fatura_id ? { ...f, estado_pagamento: 'pago' as const } : f))
+        );
+      }
+
+      if (catalogData.movimento_id) {
+        setMovimentos((current) =>
+          (current || []).map((m) => (m.id === catalogData.movimento_id ? { ...m, estado_pagamento: 'pago' as const } : m))
+        );
+      }
+
+      toast.success('Movimento catalogado e conciliado');
+      setDialogCatalogOpen(false);
+      setSelectedExtrato(null);
+      resetCatalogData();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Erro ao catalogar movimento';
+      toast.error(message);
+    }
   };
 
   const resetForm = () => {
@@ -213,10 +262,11 @@ export function BancoTab({
       centro_custo_id: '',
       fatura_id: '',
       user_id: '',
+      movimento_id: '',
     });
   };
 
-  const handleEditExtrato = () => {
+  const handleEditExtrato = async () => {
     if (!editingExtrato) return;
 
     if (!formData.descricao || formData.valor === 0) {
@@ -229,27 +279,43 @@ export function BancoTab({
       return;
     }
 
-    setExtratos((current) =>
-      (current || []).map((e) =>
-        e.id === editingExtrato.id
-          ? {
-              ...e,
-              conta: '',
-              data_movimento: formData.data_movimento,
-              descricao: formData.descricao,
-              valor: formData.valor,
-              saldo: formData.saldo,
-              referencia: formData.referencia || undefined,
-              centro_custo_id: formData.centro_custo_id,
-            }
-          : e
-      )
-    );
+    try {
+      const response = await fetch(route('financeiro.extratos.update', editingExtrato.id), {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRF-TOKEN': getCsrfToken(),
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify({
+          data_movimento: formData.data_movimento,
+          descricao: formData.descricao,
+          valor: formData.valor,
+          saldo: formData.saldo,
+          referencia: formData.referencia || undefined,
+          centro_custo_id: formData.centro_custo_id,
+        }),
+      });
 
-    toast.success('Movimento atualizado com sucesso');
-    setDialogEditOpen(false);
-    setEditingExtrato(null);
-    resetForm();
+      if (!response.ok) {
+        throw new Error('Erro ao atualizar movimento bancario');
+      }
+
+      const data = await response.json();
+      setExtratos((current) =>
+        (current || []).map((e) => (e.id === editingExtrato.id ? data.extrato : e))
+      );
+
+      toast.success('Movimento atualizado com sucesso');
+      setDialogEditOpen(false);
+      setEditingExtrato(null);
+      resetForm();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Erro ao atualizar movimento bancario';
+      toast.error(message);
+    }
   };
 
   const openEditDialog = (extrato: ExtratoBancario) => {
@@ -265,27 +331,65 @@ export function BancoTab({
     setDialogEditOpen(true);
   };
 
-  const handleDesconciliar = (extrato: ExtratoBancario) => {
-    setExtratos((current) =>
-      (current || []).map((e) => (e.id === extrato.id ? { ...e, conciliado: false, lancamento_id: undefined } : e))
-    );
+  const handleDesconciliar = async (extrato: ExtratoBancario) => {
+    try {
+      const response = await fetch(route('financeiro.extratos.desconciliar', extrato.id), {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRF-TOKEN': getCsrfToken(),
+        },
+        credentials: 'same-origin',
+      });
 
-    if (extrato.lancamento_id) {
-      setLancamentos((current) => (current || []).filter((l) => l.id !== extrato.lancamento_id));
+      if (!response.ok) {
+        throw new Error('Erro ao desconciliar movimento');
+      }
+
+      const data = await response.json();
+      setExtratos((current) =>
+        (current || []).map((e) => (e.id === extrato.id ? data.extrato : e))
+      );
+
+      if (extrato.lancamento_id) {
+        setLancamentos((current) => (current || []).filter((l) => l.id !== extrato.lancamento_id));
+      }
+
+      toast.success('Movimento desconciliado com sucesso');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Erro ao desconciliar movimento';
+      toast.error(message);
     }
-
-    toast.success('Movimento desconciliado com sucesso');
   };
 
-  const handleDeleteExtrato = (extrato: ExtratoBancario) => {
+  const handleDeleteExtrato = async (extrato: ExtratoBancario) => {
     if (extrato.conciliado) {
       toast.error('Nao e possivel apagar um movimento conciliado. Desconcilie primeiro.');
       return;
     }
 
-    setExtratos((current) => (current || []).filter((e) => e.id !== extrato.id));
+    try {
+      const response = await fetch(route('financeiro.extratos.destroy', extrato.id), {
+        method: 'DELETE',
+        headers: {
+          Accept: 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRF-TOKEN': getCsrfToken(),
+        },
+        credentials: 'same-origin',
+      });
 
-    toast.success('Movimento apagado com sucesso');
+      if (!response.ok) {
+        throw new Error('Erro ao apagar movimento');
+      }
+
+      setExtratos((current) => (current || []).filter((e) => e.id !== extrato.id));
+      toast.success('Movimento apagado com sucesso');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Erro ao apagar movimento';
+      toast.error(message);
+    }
   };
 
   const getCentroCustoName = (id?: string) => {
@@ -353,7 +457,6 @@ export function BancoTab({
         }
       } catch (error) {
         toast.error('Erro ao ler o ficheiro');
-        console.error(error);
       }
     };
     reader.readAsBinaryString(file);
@@ -455,7 +558,6 @@ export function BancoTab({
                   }
                 }
               } catch (e) {
-                console.error('Error parsing date:', e);
               }
             }
 
@@ -467,6 +569,7 @@ export function BancoTab({
               valor: parsedValor,
               saldo: parsedSaldo,
               referencia: referencia?.toString(),
+              ficheiro_id: importFile?.name,
               centro_custo_id: importCentroCusto,
               conciliado: false,
               created_at: new Date().toISOString(),
@@ -475,13 +578,40 @@ export function BancoTab({
             novosExtratos.push(novoExtrato);
             importedCount++;
           } catch (error) {
-            console.error(`Error processing row ${index}:`, error);
             errorCount++;
           }
         });
 
         if (novosExtratos.length > 0) {
-          setExtratos((current) => [...(current || []), ...novosExtratos]);
+          const response = await fetch(route('financeiro.extratos.bulk'), {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Accept: 'application/json',
+              'X-Requested-With': 'XMLHttpRequest',
+              'X-CSRF-TOKEN': getCsrfToken(),
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({
+              extratos: novosExtratos.map((extrato) => ({
+                conta: extrato.conta,
+                data_movimento: extrato.data_movimento,
+                descricao: extrato.descricao,
+                valor: extrato.valor,
+                saldo: extrato.saldo,
+                referencia: extrato.referencia,
+                ficheiro_id: extrato.ficheiro_id,
+                centro_custo_id: extrato.centro_custo_id,
+              })),
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error('Erro ao guardar extratos');
+          }
+
+          const data = await response.json();
+          setExtratos((current) => [...(current || []), ...(data.extratos || [])]);
           toast.success(
             `${importedCount} movimentos importados com sucesso${
               errorCount > 0 ? ` (${errorCount} erros)` : ''
@@ -494,7 +624,6 @@ export function BancoTab({
         }
       } catch (error) {
         toast.error('Erro ao processar o ficheiro');
-        console.error(error);
       }
     };
     reader.readAsBinaryString(importFile);
@@ -848,6 +977,7 @@ export function BancoTab({
                                     centro_custo_id: extrato.centro_custo_id || '',
                                     fatura_id: '',
                                     user_id: '',
+                                    movimento_id: '',
                                   });
                                   setDialogCatalogOpen(true);
                                 }}
@@ -1006,6 +1136,29 @@ export function BancoTab({
                       return (
                         <SelectItem key={fatura.id} value={fatura.id}>
                           {user?.nome_completo} - €{fatura.valor_total.toFixed(2)} ({format(new Date(fatura.data_emissao), 'dd/MM/yyyy')})
+                        </SelectItem>
+                      );
+                    })}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Movimento Relacionado (opcional)</Label>
+              <Select value={catalogData.movimento_id} onValueChange={(v) => setCatalogData({ ...catalogData, movimento_id: v })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Nenhum" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(movimentos || [])
+                    .filter((m) => m.estado_pagamento !== 'cancelado')
+                    .map((movimento) => {
+                      const nomeDisplay = movimento.user_id
+                        ? (users || []).find((u) => u.id === movimento.user_id)?.nome_completo
+                        : movimento.nome_manual;
+                      return (
+                        <SelectItem key={movimento.id} value={movimento.id}>
+                          {nomeDisplay || 'Cliente'} - {movimento.tipo} - €{movimento.valor_total.toFixed(2)}
                         </SelectItem>
                       );
                     })}

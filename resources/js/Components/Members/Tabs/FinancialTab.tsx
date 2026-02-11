@@ -54,6 +54,13 @@ export function FinancialTab({
     return today;
   };
   const isFutureInvoice = (fatura: any) => new Date(fatura.data_fatura) > getStartOfToday();
+  const getEstadoDisplay = (fatura: any) => {
+    const vencimento = new Date(fatura.data_vencimento);
+    if ((fatura.estado_pagamento === 'pendente' || fatura.estado_pagamento === 'vencido') && vencimento < new Date()) {
+      return 'vencido';
+    }
+    return fatura.estado_pagamento;
+  };
   const userFaturas = useMemo(() => {
     return (faturas || [])
       .filter((f) => f.user_id === user.id && !isFutureInvoice(f))
@@ -89,6 +96,20 @@ export function FinancialTab({
       .sort((a, b) => new Date(b.data_emissao).getTime() - new Date(a.data_emissao).getTime());
   }, [movimentos, user.id]);
 
+  const centroCustoIds = useMemo(() => {
+    if (!user.centro_custo) return [];
+    if (user.centro_custo.length === 0) return [];
+
+    const first = user.centro_custo[0];
+    if (typeof first === 'object' && first !== null) {
+      return (user.centro_custo as Array<{ id: string }>).map((c) => c.id);
+    }
+
+    return user.centro_custo as string[];
+  }, [user.centro_custo]);
+
+  const selectedCentroCustoId = centroCustoIds[0] || '';
+
   const mensalidadesDisponiveis = (monthlyFees || []).filter((fee) => fee.ativo !== false);
   const centrosCustoAtivos = (costCenters || []).filter((center) => center.ativo);
 
@@ -122,29 +143,35 @@ export function FinancialTab({
         </div>
 
         <div className="space-y-1">
-          <Label htmlFor="centro_custo" className="text-xs">Centro de Custos</Label>
-          <Select
-            value={user.centro_custo?.[0] || undefined}
-            onValueChange={(value) => onChange('centro_custo', [value])}
-            disabled={!isAdmin}
-          >
-            <SelectTrigger id="centro_custo" className="h-7 text-xs">
-              <SelectValue placeholder="Selecionar centro de custos" />
-            </SelectTrigger>
-            <SelectContent>
-              {centrosCustoAtivos.length === 0 ? (
-                <div className="px-2 py-4 text-center text-xs text-muted-foreground">
-                  Nenhum centro de custos configurado. Configure em Configuracoes → Financeiro.
-                </div>
-              ) : (
-                centrosCustoAtivos.map((center) => (
+          <Label className="text-xs">Centro de Custos</Label>
+          {centrosCustoAtivos.length === 0 ? (
+            <Card className="p-2">
+              <div className="text-center text-xs text-muted-foreground">
+                Nenhum centro de custos configurado. Configure em Configuracoes → Financeiro.
+              </div>
+            </Card>
+          ) : (
+            <Select
+              value={selectedCentroCustoId || 'none'}
+              onValueChange={(value) => {
+                if (!isAdmin) return;
+                onChange('centro_custo', value === 'none' ? [] : [value]);
+              }}
+              disabled={!isAdmin}
+            >
+              <SelectTrigger className="h-7 text-xs">
+                <SelectValue placeholder="Selecionar centro de custos" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Sem centro de custos</SelectItem>
+                {centrosCustoAtivos.map((center) => (
                   <SelectItem key={center.id} value={center.id}>
                     {center.nome}
                   </SelectItem>
-                ))
-              )}
-            </SelectContent>
-          </Select>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
       </div>
 
@@ -157,6 +184,18 @@ export function FinancialTab({
           readOnly
           disabled
           className="h-7 text-xs bg-muted"
+        />
+      </div>
+
+      <div className="space-y-1">
+        <Label htmlFor="conta_corrente_manual" className="text-xs">Ajuste Manual</Label>
+        <Input
+          id="conta_corrente_manual"
+          type="number"
+          value={user.conta_corrente_manual ?? 0}
+          disabled={!isAdmin}
+          onChange={(event) => onChange('conta_corrente_manual', Number(event.target.value))}
+          className="h-7 text-xs"
         />
       </div>
 
@@ -205,7 +244,7 @@ export function FinancialTab({
                       <TableCell className="py-1">{format(new Date(fatura.data_emissao), 'dd/MM/yy')}</TableCell>
                       <TableCell className="py-1 hidden sm:table-cell">{format(new Date(fatura.data_vencimento), 'dd/MM/yy')}</TableCell>
                       <TableCell className="font-semibold py-1">€{toNumber(fatura.valor_total).toFixed(2)}</TableCell>
-                      <TableCell className="py-1">{getEstadoBadge(fatura.estado_pagamento)}</TableCell>
+                      <TableCell className="py-1">{getEstadoBadge(getEstadoDisplay(fatura))}</TableCell>
                       <TableCell className="text-xs text-muted-foreground py-1 hidden md:table-cell">
                         {fatura.numero_recibo || '-'}
                       </TableCell>

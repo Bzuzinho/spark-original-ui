@@ -45,6 +45,8 @@ export interface User {
   tipo_mensalidade?: string;
   conta_corrente?: number;
   centro_custo?: string[];
+  centro_custo_pesos?: Array<{ id: string; peso: number }>;
+  conta_corrente_manual?: number;
   
   num_federacao?: string;
   cartao_federacao?: string;

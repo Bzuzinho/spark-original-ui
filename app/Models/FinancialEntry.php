@@ -18,6 +18,7 @@ class FinancialEntry extends Model
         'tipo',
         'categoria',
         'descricao',
+        'documento_ref',
         'valor',
         'centro_custo_id',
         'user_id',

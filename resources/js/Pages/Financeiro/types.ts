@@ -7,6 +7,7 @@ export interface User {
   morada?: string | null;
   tipo_mensalidade?: string | null;
   centro_custo?: string[] | null;
+  centro_custo_pesos?: Array<{ id: string; peso: number }>;
   tipo_membro?: string[] | null;
   escalao?: string[] | null;
 }
@@ -67,6 +68,7 @@ export interface LancamentoFinanceiro {
   tipo: 'receita' | 'despesa';
   categoria?: string | null;
   descricao: string;
+  documento_ref?: string | null;
   valor: number;
   centro_custo_id?: string | null;
   user_id?: string | null;
@@ -86,6 +88,7 @@ export interface ExtratoBancario {
   valor: number;
   saldo?: number | null;
   referencia?: string | null;
+  ficheiro_id?: string | null;
   centro_custo_id?: string | null;
   conciliado: boolean;
   lancamento_id?: string | null;
@@ -105,6 +108,9 @@ export interface Movimento {
   estado_pagamento: 'pendente' | 'pago' | 'vencido' | 'parcial' | 'cancelado';
   numero_recibo?: string | null;
   referencia_pagamento?: string | null;
+  metodo_pagamento?: string | null;
+  comprovativo?: string | null;
+  documento_original?: string | null;
   centro_custo_id?: string | null;
   tipo: 'inscricao' | 'material' | 'servico' | 'patrocinio' | 'outro';
   origem_tipo?: 'evento' | 'stock' | 'patrocinio' | 'manual' | null;

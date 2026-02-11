@@ -105,7 +105,9 @@ export default function FinanceiroIndex({
           </div>
 
           <TabsContent value="dashboard">
-            <DashboardTab faturas={faturasState} lancamentos={lancamentosState} centrosCusto={centrosCusto || []} />
+            {activeTab === 'dashboard' ? (
+              <DashboardTab faturas={faturasState} lancamentos={lancamentosState} centrosCusto={centrosCusto || []} />
+            ) : null}
           </TabsContent>
 
           <TabsContent value="faturas">
@@ -149,19 +151,23 @@ export default function FinanceiroIndex({
               setLancamentos={setLancamentos}
               faturas={faturasState}
               setFaturas={setFaturas}
+              movimentos={movimentosState}
+              setMovimentos={setMovimentos}
               centrosCusto={centrosCusto || []}
               users={users || []}
             />
           </TabsContent>
 
           <TabsContent value="relatorios">
-            <RelatoriosTab
-              faturas={faturasState}
-              lancamentos={lancamentosState}
-              centrosCusto={centrosCusto || []}
-              users={users || []}
-              ageGroups={ageGroups || []}
-            />
+            {activeTab === 'relatorios' ? (
+              <RelatoriosTab
+                faturas={faturasState}
+                lancamentos={lancamentosState}
+                centrosCusto={centrosCusto || []}
+                users={users || []}
+                ageGroups={ageGroups || []}
+              />
+            ) : null}
           </TabsContent>
         </Tabs>
       </div>
