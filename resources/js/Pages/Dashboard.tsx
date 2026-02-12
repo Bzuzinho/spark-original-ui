@@ -35,12 +35,20 @@ interface Props {
 
 export default function Dashboard({ stats, recentEvents = [], recentActivity = [] }: Props) {
     // Validação de dados
+    const toNumber = (value: unknown, fallback = 0) => {
+        if (typeof value === 'number' && !Number.isNaN(value)) return value;
+        if (typeof value === 'string' && value.trim() !== '') {
+            const parsed = Number(value);
+            return Number.isNaN(parsed) ? fallback : parsed;
+        }
+        return fallback;
+    };
     const safeStats = {
         totalMembers: stats?.totalMembers ?? 0,
         activeAthletes: stats?.activeAthletes ?? 0,
         guardians: stats?.guardians ?? 0,
         upcomingEvents: stats?.upcomingEvents ?? 0,
-        monthlyRevenue: stats?.monthlyRevenue ?? 0,
+        monthlyRevenue: toNumber(stats?.monthlyRevenue ?? 0),
     };
 
     const handleNavigate = (view: string) => {

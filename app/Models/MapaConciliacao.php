@@ -15,6 +15,11 @@ class MapaConciliacao extends Model
     protected $fillable = [
         'extrato_id',
         'lancamento_id',
+        'fatura_id',
+        'movimento_id',
+        'estado_fatura_anterior',
+        'estado_movimento_anterior',
+        'valor_conciliado',
         'status',
         'regra_usada',
     ];

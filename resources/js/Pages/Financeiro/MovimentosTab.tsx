@@ -161,12 +161,12 @@ export function MovimentosTab({
   const [metodoPagamento, setMetodoPagamento] = useState<string>('transferencia');
   const [comprovativoFile, setComprovativoFile] = useState<File | null>(null);
   const [editingMovimentoId, setEditingMovimentoId] = useState<string | null>(null);
-  const [usarDadosUtilizador, setUsarDadosUtilizador] = useState(true);
+  const [usarDadosUtilizador, setUsarDadosUtilizador] = useState(false);
   const [documentoOriginalFile, setDocumentoOriginalFile] = useState<File | null>(null);
 
   const [formData, setFormData] = useState({
     user_id: '',
-    nome_manual: '',
+    nome_manual: 'BSCN',
     nif_manual: '',
     morada_manual: '',
     classificacao: 'receita' as 'receita' | 'despesa',
@@ -224,14 +224,15 @@ export function MovimentosTab({
       });
   }, [movimentos, estadoFilter, classificacaoFilter]);
 
-  const handleAbrirDialogoRecibo = (movimentoId?: string) => {
+  const handleAbrirDialogoRecibo = (movimentoId?: string, reciboAtual?: string | null, metodoAtual?: string | null) => {
     if (movimentoId) {
       setSelectedMovimentoId(movimentoId);
       setSelectedMovimentos(new Set());
     } else {
       setSelectedMovimentoId(null);
     }
-    setNumeroRecibo('');
+    setNumeroRecibo(reciboAtual || '');
+    setMetodoPagamento(metodoAtual || 'transferencia');
     setDialogReciboOpen(true);
   };
 
@@ -472,7 +473,7 @@ export function MovimentosTab({
   const resetForm = () => {
     setFormData({
       user_id: '',
-      nome_manual: '',
+      nome_manual: 'BSCN',
       nif_manual: '',
       morada_manual: '',
       classificacao: 'receita',
@@ -487,7 +488,7 @@ export function MovimentosTab({
     });
     setLinhas([{ descricao: '', valor_unitario: 0, quantidade: 1, imposto_percentual: 0 }]);
     setEditingMovimentoId(null);
-    setUsarDadosUtilizador(true);
+    setUsarDadosUtilizador(false);
     setDocumentoOriginalFile(null);
   };
 
@@ -569,7 +570,7 @@ export function MovimentosTab({
       const user = (users || []).find((u) => u.id === movimento.user_id);
       return user ? user.nome_completo : 'Utilizador desconhecido';
     }
-    return movimento.nome_manual || 'Sem nome';
+    return movimento.nome_manual || 'BSCN';
   };
 
   const getCentroCustoName = (id?: string) => {
@@ -691,7 +692,20 @@ export function MovimentosTab({
                     onCheckedChange={(checked) => {
                       setUsarDadosUtilizador(checked === true);
                       if (!checked) {
-                        setFormData((prev) => ({ ...prev, user_id: '' }));
+                        setFormData((prev) => ({
+                          ...prev,
+                          user_id: '',
+                          nome_manual: 'BSCN',
+                          nif_manual: '',
+                          morada_manual: '',
+                        }));
+                      } else {
+                        setFormData((prev) => ({
+                          ...prev,
+                          nome_manual: '',
+                          nif_manual: '',
+                          morada_manual: '',
+                        }));
                       }
                     }}
                   />
@@ -720,7 +734,7 @@ export function MovimentosTab({
                   ) : (
                     <>
                       <div className="space-y-2 col-span-2">
-                        <Label>Nome Completo *</Label>
+                        <Label>Entidade</Label>
                         <Input
                           value={formData.nome_manual}
                           onChange={(e) => setFormData({ ...formData, nome_manual: e.target.value })}
@@ -728,7 +742,7 @@ export function MovimentosTab({
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label>NIF *</Label>
+                        <Label>NIF</Label>
                         <Input
                           value={formData.nif_manual}
                           onChange={(e) => setFormData({ ...formData, nif_manual: e.target.value })}
@@ -736,7 +750,7 @@ export function MovimentosTab({
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label>Morada *</Label>
+                        <Label>Morada</Label>
                         <Input
                           value={formData.morada_manual}
                           onChange={(e) => setFormData({ ...formData, morada_manual: e.target.value })}
@@ -1139,8 +1153,23 @@ export function MovimentosTab({
                             Liquidar
                           </Button>
                         )}
+                        {movimento.estado_pagamento === 'pago' && !movimento.numero_recibo && (
+                          <Button size="sm" variant="outline" onClick={() => handleAbrirDialogoRecibo(movimento.id)}>
+                            <Check size={16} className="mr-1" />
+                            Recibo
+                          </Button>
+                        )}
                         {movimento.estado_pagamento === 'pago' && movimento.numero_recibo && (
-                          <div className="text-xs text-muted-foreground">Recibo: {movimento.numero_recibo}</div>
+                          <div className="flex items-center gap-2">
+                            <div className="text-xs text-muted-foreground">Recibo: {movimento.numero_recibo}</div>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleAbrirDialogoRecibo(movimento.id, movimento.numero_recibo, movimento.metodo_pagamento)}
+                            >
+                              Editar Recibo
+                            </Button>
+                          </div>
                         )}
                         <Button size="sm" variant="ghost" onClick={() => handleDeleteSingleMovimento(movimento.id)}>
                           <Trash size={16} />

@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { router } from '@inertiajs/react';
 import axios from 'axios';
-import { Fatura, FaturaItem, User, CentroCusto, Product, LancamentoFinanceiro, MonthlyFee, InvoiceType } from './types';
+import { Fatura, FaturaItem, User, CentroCusto, Product, LancamentoFinanceiro, MonthlyFee, InvoiceType, ConciliacaoMapa, ExtratoBancario } from './types';
 import { Button } from '@/Components/ui/button';
 import { Card } from '@/Components/ui/card';
 import { Input } from '@/Components/ui/input';
@@ -23,6 +23,9 @@ interface FaturasTabProps {
   setFaturaItens: React.Dispatch<React.SetStateAction<FaturaItem[]>>;
   lancamentos: LancamentoFinanceiro[];
   setLancamentos: React.Dispatch<React.SetStateAction<LancamentoFinanceiro[]>>;
+  conciliacoes: ConciliacaoMapa[];
+  setConciliacoes: React.Dispatch<React.SetStateAction<ConciliacaoMapa[]>>;
+  setExtratos: React.Dispatch<React.SetStateAction<ExtratoBancario[]>>;
   users: User[];
   mensalidades: MonthlyFee[];
   centrosCusto: CentroCusto[];
@@ -38,6 +41,9 @@ export function FaturasTab({
   setFaturaItens,
   lancamentos,
   setLancamentos,
+  conciliacoes,
+  setConciliacoes,
+  setExtratos,
   users,
   mensalidades,
   centrosCusto,
@@ -237,6 +243,7 @@ export function FaturasTab({
     valor_total: 0,
     data_emissao: format(new Date(), 'yyyy-MM-dd'),
     data_vencimento: format(addMonths(new Date(), 0), 'yyyy-MM-dd'),
+    estado_pagamento: 'pendente' as Fatura['estado_pagamento'],
     centro_custo_id: '',
     origem_tipo: null as Fatura['origem_tipo'],
     origem_id: '',
@@ -286,14 +293,14 @@ export function FaturasTab({
       });
   }, [faturas, estadoFilter, showFutureInvoices]);
 
-  const handleAbrirDialogoRecibo = (faturaId?: string) => {
+  const handleAbrirDialogoRecibo = (faturaId?: string, reciboAtual?: string | null) => {
     if (faturaId) {
       setSelectedFaturaId(faturaId);
       setSelectedFaturas(new Set());
     } else {
       setSelectedFaturaId(null);
     }
-    setNumeroRecibo('');
+    setNumeroRecibo(reciboAtual || '');
     setDialogReciboOpen(true);
   };
 
@@ -712,6 +719,7 @@ export function FaturasTab({
     }
 
     if (editingFaturaId) {
+      const faturaOriginal = (faturas || []).find((f) => f.id === editingFaturaId);
       const linhasValidas = linhas.filter((l) => l.descricao && l.valor_unitario > 0);
       const total = linhasValidas.reduce(
         (sum, l) => sum + l.valor_unitario * l.quantidade * (1 + l.imposto_percentual / 100),
@@ -719,11 +727,12 @@ export function FaturasTab({
       );
 
       const faturaAtualizada: Fatura = {
-        ...(faturas || []).find((f) => f.id === editingFaturaId)!,
+        ...faturaOriginal!,
         user_id: formData.user_id,
         data_emissao: formData.data_emissao,
         data_vencimento: formData.data_vencimento,
         valor_total: total,
+        estado_pagamento: formData.estado_pagamento,
         centro_custo_id: formData.centro_custo_id || undefined,
         tipo: formData.tipo,
         origem_tipo: formData.origem_tipo || null,
@@ -748,6 +757,55 @@ export function FaturasTab({
       });
 
       try {
+        if (faturaOriginal && faturaOriginal.estado_pagamento !== faturaAtualizada.estado_pagamento) {
+          const conciliacao = (conciliacoes || []).find((c) => c.fatura_id === editingFaturaId);
+          if (conciliacao) {
+            const confirmar = window.confirm(
+              'Esta fatura tem conciliacao. OK = desconciliar e mudar o estado. Cancelar = mudar apenas o estado.'
+            );
+
+            if (confirmar) {
+              const response = await fetch(route('financeiro.extratos.desconciliar', conciliacao.extrato_id), {
+                method: 'POST',
+                headers: {
+                  Accept: 'application/json',
+                  'X-Requested-With': 'XMLHttpRequest',
+                  'X-CSRF-TOKEN': getCsrfToken(),
+                },
+                credentials: 'same-origin',
+              });
+              if (!response.ok) {
+                toast.error('Erro ao desconciliar fatura');
+                return;
+              }
+              if (response.ok) {
+                const data = await response.json();
+                if (data.lancamentos_removidos && Array.isArray(data.lancamentos_removidos)) {
+                  setLancamentos((current) => (current || []).filter((l) => !data.lancamentos_removidos.includes(l.id)));
+                } else if (conciliacao.lancamento_id) {
+                  setLancamentos((current) => (current || []).filter((l) => l.id !== conciliacao.lancamento_id));
+                }
+                if (data.faturas && Array.isArray(data.faturas)) {
+                  setFaturas((current) =>
+                    (current || []).map((f) => {
+                      const updated = data.faturas.find((u: Fatura) => u.id === f.id);
+                      return updated ? { ...f, ...updated } : f;
+                    })
+                  );
+                }
+                if (data.extrato?.id) {
+                  setExtratos((current) => (current || []).map((e) => (e.id === data.extrato.id ? data.extrato : e)));
+                }
+                if (data.extrato?.id) {
+                  setConciliacoes((current) => (current || []).filter((c) => c.extrato_id !== data.extrato.id));
+                }
+              }
+            } else {
+              toast.warning('Estado alterado. A conciliacao foi mantida; liquidacao deve ser feita manualmente.');
+            }
+          }
+        }
+
         const updated = await persistInvoiceUpdate(editingFaturaId, {
           user_id: faturaAtualizada.user_id,
           data_emissao: faturaAtualizada.data_emissao,
@@ -826,7 +884,7 @@ export function FaturasTab({
         data_emissao: formData.data_emissao,
         data_vencimento: formData.data_vencimento,
         valor_total: total,
-        estado_pagamento: 'pendente',
+        estado_pagamento: formData.estado_pagamento || 'pendente',
         centro_custo_id: formData.centro_custo_id || undefined,
         tipo: formData.tipo,
         origem_tipo: formData.origem_tipo || null,
@@ -931,6 +989,7 @@ export function FaturasTab({
       valor_total: 0,
       data_emissao: format(new Date(), 'yyyy-MM-dd'),
       data_vencimento: format(addMonths(new Date(), 0), 'yyyy-MM-dd'),
+      estado_pagamento: 'pendente',
       centro_custo_id: '',
       origem_tipo: null,
       origem_id: '',
@@ -959,6 +1018,7 @@ export function FaturasTab({
       valor_total: fatura.valor_total,
       data_emissao: toInputDate(fatura.data_emissao),
       data_vencimento: toInputDate(fatura.data_vencimento),
+      estado_pagamento: fatura.estado_pagamento,
       centro_custo_id: fatura.centro_custo_id || '',
       origem_tipo: fatura.origem_tipo || null,
       origem_id: fatura.origem_id || '',
@@ -1259,6 +1319,25 @@ export function FaturasTab({
                     />
                   </div>
 
+                  <div className="space-y-2">
+                    <Label className="text-sm">Estado</Label>
+                    <Select
+                      value={formData.estado_pagamento}
+                      onValueChange={(v) => setFormData({ ...formData, estado_pagamento: v as Fatura['estado_pagamento'] })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pendente">Pendente</SelectItem>
+                        <SelectItem value="pago">Pago</SelectItem>
+                        <SelectItem value="vencido">Vencido</SelectItem>
+                        <SelectItem value="parcial">Parcial</SelectItem>
+                        <SelectItem value="cancelado">Cancelado</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
                   <div className="space-y-2 sm:col-span-2">
                     <Label className="text-sm">Centro de Custo</Label>
                     <Select
@@ -1492,8 +1571,23 @@ export function FaturasTab({
                               Liquidar
                             </Button>
                           )}
+                          {fatura.estado_pagamento === 'pago' && !fatura.numero_recibo && (
+                            <Button size="sm" variant="outline" onClick={() => handleAbrirDialogoRecibo(fatura.id)}>
+                              <Check size={16} className="mr-1" />
+                              Recibo
+                            </Button>
+                          )}
                           {fatura.estado_pagamento === 'pago' && fatura.numero_recibo && (
-                            <div className="text-xs text-muted-foreground">Recibo: {fatura.numero_recibo}</div>
+                            <div className="flex items-center gap-2">
+                              <div className="text-xs text-muted-foreground">Recibo: {fatura.numero_recibo}</div>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleAbrirDialogoRecibo(fatura.id, fatura.numero_recibo)}
+                              >
+                                Editar Recibo
+                              </Button>
+                            </div>
                           )}
                           <button
                             type="button"
@@ -1560,6 +1654,26 @@ export function FaturasTab({
                             className="h-8 w-8 p-0"
                           >
                             <Check size={16} />
+                          </Button>
+                        )}
+                        {fatura.estado_pagamento === 'pago' && !fatura.numero_recibo && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleAbrirDialogoRecibo(fatura.id)}
+                            className="h-8 w-8 p-0"
+                          >
+                            <Check size={16} />
+                          </Button>
+                        )}
+                        {fatura.estado_pagamento === 'pago' && fatura.numero_recibo && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleAbrirDialogoRecibo(fatura.id, fatura.numero_recibo)}
+                            className="h-8 w-8 p-0"
+                          >
+                            <PencilSimple size={16} />
                           </Button>
                         )}
                         <button

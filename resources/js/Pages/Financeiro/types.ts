@@ -95,6 +95,16 @@ export interface ExtratoBancario {
   created_at?: string | null;
 }
 
+export interface ConciliacaoMapa {
+  id: string;
+  extrato_id: string;
+  lancamento_id: string;
+  fatura_id?: string | null;
+  movimento_id?: string | null;
+  estado_fatura_anterior?: string | null;
+  estado_movimento_anterior?: string | null;
+}
+
 export interface Movimento {
   id: string;
   user_id?: string | null;

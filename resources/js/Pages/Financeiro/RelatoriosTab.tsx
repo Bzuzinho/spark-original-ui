@@ -18,6 +18,14 @@ interface RelatoriosTabProps {
 }
 
 export function RelatoriosTab({ faturas, lancamentos, centrosCusto, users, ageGroups }: RelatoriosTabProps) {
+  const toNumber = (value: unknown, fallback = 0) => {
+    if (typeof value === 'number' && !Number.isNaN(value)) return value;
+    if (typeof value === 'string' && value.trim() !== '') {
+      const parsed = Number(value);
+      return Number.isNaN(parsed) ? fallback : parsed;
+    }
+    return fallback;
+  };
   const getStartOfToday = () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -50,16 +58,16 @@ export function RelatoriosTab({ faturas, lancamentos, centrosCusto, users, ageGr
 
       const receitas = (lancamentos || [])
         .filter((l) => l.tipo === 'receita' && l.user_id && userIds.includes(l.user_id))
-        .reduce((sum, l) => sum + l.valor, 0);
+        .reduce((sum, l) => sum + toNumber(l.valor), 0);
 
       const faturasEscalao = faturasAtivas.filter((f) => userIds.includes(f.user_id));
-      const totalFaturado = faturasEscalao.reduce((sum, f) => sum + f.valor_total, 0);
+      const totalFaturado = faturasEscalao.reduce((sum, f) => sum + toNumber(f.valor_total), 0);
       const totalPago = faturasEscalao
         .filter((f) => f.estado_pagamento === 'pago')
-        .reduce((sum, f) => sum + f.valor_total, 0);
+        .reduce((sum, f) => sum + toNumber(f.valor_total), 0);
       const totalPendente = faturasEscalao
         .filter((f) => f.estado_pagamento === 'pendente' || f.estado_pagamento === 'vencido')
-        .reduce((sum, f) => sum + f.valor_total, 0);
+        .reduce((sum, f) => sum + toNumber(f.valor_total), 0);
 
       return {
         escalaoId: escalao,
@@ -85,11 +93,11 @@ export function RelatoriosTab({ faturas, lancamentos, centrosCusto, users, ageGr
       .map((cc) => {
         const despesas = (lancamentos || [])
           .filter((l) => l.tipo === 'despesa' && l.centro_custo_id === cc.id)
-          .reduce((sum, l) => sum + l.valor, 0);
+          .reduce((sum, l) => sum + toNumber(l.valor), 0);
 
         const receitas = (lancamentos || [])
           .filter((l) => l.tipo === 'receita' && l.centro_custo_id === cc.id)
-          .reduce((sum, l) => sum + l.valor, 0);
+          .reduce((sum, l) => sum + toNumber(l.valor), 0);
 
         const saldo = receitas - despesas;
 
@@ -117,11 +125,11 @@ export function RelatoriosTab({ faturas, lancamentos, centrosCusto, users, ageGr
         const faturasUsuario = faturasAtivas.filter((f) => f.user_id === user.id);
         const valorPago = faturasUsuario
           .filter((f) => f.estado_pagamento === 'pago')
-          .reduce((sum, f) => sum + f.valor_total, 0);
+          .reduce((sum, f) => sum + toNumber(f.valor_total), 0);
 
         const despesas = (lancamentos || [])
           .filter((l) => l.tipo === 'despesa' && l.user_id === user.id)
-          .reduce((sum, l) => sum + l.valor, 0);
+          .reduce((sum, l) => sum + toNumber(l.valor), 0);
 
         const pesoFinanceiro = valorPago - despesas;
 
@@ -286,11 +294,11 @@ export function RelatoriosTab({ faturas, lancamentos, centrosCusto, users, ageGr
                     <TableCell className="font-medium">{item.escalao}</TableCell>
                     <TableCell className="text-right">{item.numeroAtletas}</TableCell>
                     <TableCell className="text-right font-semibold text-green-600">
-                      €{item.receitas.toFixed(2)}
+                      €{toNumber(item.receitas).toFixed(2)}
                     </TableCell>
-                    <TableCell className="text-right">€{item.totalFaturado.toFixed(2)}</TableCell>
-                    <TableCell className="text-right text-green-600">€{item.totalPago.toFixed(2)}</TableCell>
-                    <TableCell className="text-right text-orange-600">€{item.totalPendente.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">€{toNumber(item.totalFaturado).toFixed(2)}</TableCell>
+                    <TableCell className="text-right text-green-600">€{toNumber(item.totalPago).toFixed(2)}</TableCell>
+                    <TableCell className="text-right text-orange-600">€{toNumber(item.totalPendente).toFixed(2)}</TableCell>
                   </TableRow>
                 ))
               )}
@@ -301,16 +309,16 @@ export function RelatoriosTab({ faturas, lancamentos, centrosCusto, users, ageGr
                     {relatorioEscalao.reduce((sum, item) => sum + item.numeroAtletas, 0)}
                   </TableCell>
                   <TableCell className="text-right text-green-600">
-                    €{relatorioEscalao.reduce((sum, item) => sum + item.receitas, 0).toFixed(2)}
+                    €{relatorioEscalao.reduce((sum, item) => sum + toNumber(item.receitas), 0).toFixed(2)}
                   </TableCell>
                   <TableCell className="text-right">
-                    €{relatorioEscalao.reduce((sum, item) => sum + item.totalFaturado, 0).toFixed(2)}
+                    €{relatorioEscalao.reduce((sum, item) => sum + toNumber(item.totalFaturado), 0).toFixed(2)}
                   </TableCell>
                   <TableCell className="text-right text-green-600">
-                    €{relatorioEscalao.reduce((sum, item) => sum + item.totalPago, 0).toFixed(2)}
+                    €{relatorioEscalao.reduce((sum, item) => sum + toNumber(item.totalPago), 0).toFixed(2)}
                   </TableCell>
                   <TableCell className="text-right text-orange-600">
-                    €{relatorioEscalao.reduce((sum, item) => sum + item.totalPendente, 0).toFixed(2)}
+                    €{relatorioEscalao.reduce((sum, item) => sum + toNumber(item.totalPendente), 0).toFixed(2)}
                   </TableCell>
                 </TableRow>
               )}
@@ -348,15 +356,15 @@ export function RelatoriosTab({ faturas, lancamentos, centrosCusto, users, ageGr
                     <TableCell className="font-medium">{item.nome}</TableCell>
                     <TableCell className="capitalize">{item.tipo}</TableCell>
                     <TableCell className="text-right font-semibold text-green-600">
-                      €{item.receitas.toFixed(2)}
+                      €{toNumber(item.receitas).toFixed(2)}
                     </TableCell>
                     <TableCell className="text-right font-semibold text-red-600">
-                      €{item.despesas.toFixed(2)}
+                      €{toNumber(item.despesas).toFixed(2)}
                     </TableCell>
                     <TableCell
-                      className={`text-right font-bold ${item.saldo >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                      className={`text-right font-bold ${toNumber(item.saldo) >= 0 ? 'text-green-600' : 'text-red-600'}`}
                     >
-                      €{item.saldo.toFixed(2)}
+                      €{toNumber(item.saldo).toFixed(2)}
                     </TableCell>
                   </TableRow>
                 ))
@@ -365,20 +373,20 @@ export function RelatoriosTab({ faturas, lancamentos, centrosCusto, users, ageGr
                 <TableRow className="font-bold bg-muted/50">
                   <TableCell colSpan={2}>TOTAL</TableCell>
                   <TableCell className="text-right text-green-600">
-                    €{relatorioCentroCusto.reduce((sum, item) => sum + item.receitas, 0).toFixed(2)}
+                    €{relatorioCentroCusto.reduce((sum, item) => sum + toNumber(item.receitas), 0).toFixed(2)}
                   </TableCell>
                   <TableCell className="text-right text-red-600">
-                    €{relatorioCentroCusto.reduce((sum, item) => sum + item.despesas, 0).toFixed(2)}
+                    €{relatorioCentroCusto.reduce((sum, item) => sum + toNumber(item.despesas), 0).toFixed(2)}
                   </TableCell>
                   <TableCell
                     className={`text-right ${
-                      relatorioCentroCusto.reduce((sum, item) => sum + item.saldo, 0) >= 0
+                      relatorioCentroCusto.reduce((sum, item) => sum + toNumber(item.saldo), 0) >= 0
                         ? 'text-green-600'
                         : 'text-red-600'
                     }`}
                   >
                     €{relatorioCentroCusto
-                      .reduce((sum, item) => sum + item.saldo, 0)
+                      .reduce((sum, item) => sum + toNumber(item.saldo), 0)
                       .toFixed(2)}
                   </TableCell>
                 </TableRow>
@@ -422,13 +430,13 @@ export function RelatoriosTab({ faturas, lancamentos, centrosCusto, users, ageGr
                     <TableCell>{item.numero_socio}</TableCell>
                     <TableCell>{item.escalao}</TableCell>
                     <TableCell className="text-right text-green-600 font-semibold">
-                      €{item.valorPago.toFixed(2)}
+                      €{toNumber(item.valorPago).toFixed(2)}
                     </TableCell>
-                    <TableCell className="text-right text-red-600">€{item.despesas.toFixed(2)}</TableCell>
+                    <TableCell className="text-right text-red-600">€{toNumber(item.despesas).toFixed(2)}</TableCell>
                     <TableCell
-                      className={`text-right font-bold ${item.pesoFinanceiro >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                      className={`text-right font-bold ${toNumber(item.pesoFinanceiro) >= 0 ? 'text-green-600' : 'text-red-600'}`}
                     >
-                      €{item.pesoFinanceiro.toFixed(2)}
+                      €{toNumber(item.pesoFinanceiro).toFixed(2)}
                     </TableCell>
                   </TableRow>
                 ))

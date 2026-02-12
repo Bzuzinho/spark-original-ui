@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Card } from '@/Components/ui/card';
-import { Fatura, LancamentoFinanceiro, CentroCusto } from './types';
+import { Fatura, LancamentoFinanceiro, CentroCusto, ExtratoBancario, Movimento } from './types';
 import { TrendUp, TrendDown, Wallet, Receipt, WarningCircle } from '@phosphor-icons/react';
 import {
   BarChart,
@@ -21,10 +21,12 @@ import {
 interface DashboardTabProps {
   faturas: Fatura[];
   lancamentos: LancamentoFinanceiro[];
+  movimentos: Movimento[];
+  extratos: ExtratoBancario[];
   centrosCusto: CentroCusto[];
 }
 
-export function DashboardTab({ faturas, lancamentos, centrosCusto }: DashboardTabProps) {
+export function DashboardTab({ faturas, lancamentos, movimentos, extratos, centrosCusto }: DashboardTabProps) {
   const toNumber = (value: unknown, fallback = 0) => {
     if (typeof value === 'number' && !Number.isNaN(value)) return value;
     if (typeof value === 'string' && value.trim() !== '') {
@@ -46,36 +48,48 @@ export function DashboardTab({ faturas, lancamentos, centrosCusto }: DashboardTa
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
 
-    const faturasVencidas = faturasAtivas.filter((f) => {
-      const vencimento = new Date(f.data_vencimento);
-      return f.estado_pagamento === 'pendente' && vencimento < now;
-    });
-
-    const valorMensalidadesVencidas = faturasVencidas.reduce((sum, f) => sum + toNumber(f.valor_total), 0);
-
-    const faturasPendentes = faturasAtivas.filter(
-      (f) => f.estado_pagamento === 'pendente' || f.estado_pagamento === 'vencido'
+    const mensalidadesVencidas = faturasAtivas.filter(
+      (f) => f.tipo === 'mensalidade' && f.estado_pagamento === 'vencido'
     );
 
-    const valorPendentes = faturasPendentes.reduce((sum, f) => sum + toNumber(f.valor_total), 0);
-
-    const mensalidadesCobradas = faturasAtivas
-      .filter((f) => f.estado_pagamento === 'pago')
+    const valorMensalidadesVencidas = mensalidadesVencidas
+      .filter((f) => {
+        const vencimento = new Date(f.data_vencimento);
+        return vencimento.getMonth() === currentMonth && vencimento.getFullYear() === currentYear;
+      })
       .reduce((sum, f) => sum + toNumber(f.valor_total), 0);
 
-    const receitasMes = (lancamentos || [])
-      .filter((l) => {
-        const data = new Date(l.data);
-        return l.tipo === 'receita' && data.getMonth() === currentMonth && data.getFullYear() === currentYear;
-      })
-      .reduce((sum, l) => sum + toNumber(l.valor), 0);
+    const movimentosReceitaPendentes = (movimentos || [])
+      .filter((m) => m.classificacao === 'receita' && m.estado_pagamento !== 'pago')
+      .reduce((sum, m) => sum + toNumber(m.valor_total), 0);
 
-    const despesasMes = (lancamentos || [])
-      .filter((l) => {
-        const data = new Date(l.data);
-        return l.tipo === 'despesa' && data.getMonth() === currentMonth && data.getFullYear() === currentYear;
+    const valorPendentes = valorMensalidadesVencidas + movimentosReceitaPendentes;
+
+    const faturasCobradasMes = faturasAtivas
+      .filter((f) => {
+        if (f.estado_pagamento !== 'pago') return false;
+        const data = new Date(f.data_emissao);
+        return data.getMonth() === currentMonth && data.getFullYear() === currentYear;
       })
-      .reduce((sum, l) => sum + toNumber(l.valor), 0);
+      .reduce((sum, f) => sum + toNumber(f.valor_total), 0);
+
+    const receitasMovimentosMes = (movimentos || [])
+      .filter((m) => {
+        if (m.classificacao !== 'receita' || m.estado_pagamento !== 'pago') return false;
+        const data = new Date(m.data_emissao);
+        return data.getMonth() === currentMonth && data.getFullYear() === currentYear;
+      })
+      .reduce((sum, m) => sum + toNumber(m.valor_total), 0);
+
+    const receitasMes = receitasMovimentosMes + faturasCobradasMes;
+
+    const despesasMes = (movimentos || [])
+      .filter((m) => {
+        if (m.classificacao !== 'despesa') return false;
+        const data = new Date(m.data_emissao);
+        return data.getMonth() === currentMonth && data.getFullYear() === currentYear;
+      })
+      .reduce((sum, m) => sum + Math.abs(toNumber(m.valor_total)), 0);
 
     const receitasTotal = (lancamentos || [])
       .filter((l) => l.tipo === 'receita')
@@ -85,13 +99,31 @@ export function DashboardTab({ faturas, lancamentos, centrosCusto }: DashboardTa
       .filter((l) => l.tipo === 'despesa')
       .reduce((sum, l) => sum + toNumber(l.valor), 0);
 
-    const totalGeral = receitasTotal - despesasTotal + mensalidadesCobradas;
+    const saldoPorConta = new Map<string, ExtratoBancario>();
+    (extratos || []).forEach((extrato) => {
+      const key = extrato.conta || 'default';
+      const current = saldoPorConta.get(key);
+      if (!current) {
+        saldoPorConta.set(key, extrato);
+        return;
+      }
+      const currentDate = new Date(current.data_movimento).getTime();
+      const nextDate = new Date(extrato.data_movimento).getTime();
+      if (nextDate >= currentDate) {
+        saldoPorConta.set(key, extrato);
+      }
+    });
+
+    const totalGeral = Array.from(saldoPorConta.values()).reduce(
+      (sum, extrato) => sum + toNumber(extrato.saldo),
+      0
+    );
 
     return {
-      mensalidadesVencidas: faturasVencidas.length,
+      mensalidadesVencidas: mensalidadesVencidas.length,
       valorMensalidadesVencidas,
       valorPendentes,
-      mensalidadesCobradas,
+      mensalidadesCobradas: faturasCobradasMes,
       receitasMes,
       despesasMes,
       receitasTotal,
@@ -100,7 +132,7 @@ export function DashboardTab({ faturas, lancamentos, centrosCusto }: DashboardTa
       saldoMes: receitasMes - despesasMes,
       saldoTotal: receitasTotal - despesasTotal,
     };
-  }, [faturasAtivas, lancamentos]);
+  }, [faturasAtivas, lancamentos, movimentos, extratos]);
 
   const centrosCustoData = useMemo(() => {
     const data = (centrosCusto || [])

@@ -1,5 +1,5 @@
 import { useState, useMemo, type ChangeEvent } from 'react';
-import { ExtratoBancario, LancamentoFinanceiro, Fatura, CentroCusto, User, Movimento } from './types';
+import { ExtratoBancario, LancamentoFinanceiro, Fatura, CentroCusto, User, Movimento, ConciliacaoMapa } from './types';
 import { Button } from '@/Components/ui/button';
 import { Card } from '@/Components/ui/card';
 import { Input } from '@/Components/ui/input';
@@ -7,6 +7,7 @@ import { Label } from '@/Components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogFooter } from '@/Components/ui/dialog';
 import { Badge } from '@/Components/ui/badge';
+import { Checkbox } from '@/Components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/Components/ui/table';
 import { Textarea } from '@/Components/ui/textarea';
 import { Plus, ArrowsLeftRight, Check, Bank, PencilSimple, X, FileArrowUp, Gear, Trash } from '@phosphor-icons/react';
@@ -23,6 +24,7 @@ interface BancoTabProps {
   setFaturas: React.Dispatch<React.SetStateAction<Fatura[]>>;
   movimentos: Movimento[];
   setMovimentos: React.Dispatch<React.SetStateAction<Movimento[]>>;
+  setConciliacoes: React.Dispatch<React.SetStateAction<ConciliacaoMapa[]>>;
   centrosCusto: CentroCusto[];
   users: User[];
 }
@@ -36,12 +38,39 @@ export function BancoTab({
   setFaturas,
   movimentos,
   setMovimentos,
+  setConciliacoes,
   centrosCusto,
   users,
 }: BancoTabProps) {
   const getCsrfToken = () => {
     const token = document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement | null;
     return token?.content || '';
+  };
+  const toNumber = (value: unknown, fallback = 0): number => {
+    if (typeof value === 'number' && !Number.isNaN(value)) return value;
+    if (typeof value === 'string' && value.trim() !== '') {
+      const parsed = Number(value);
+      return Number.isNaN(parsed) ? fallback : parsed;
+    }
+    return fallback;
+  };
+  const parsePtNumber = (value: unknown, fallback = 0): number => {
+    if (typeof value === 'number' && !Number.isNaN(value)) return value;
+    if (typeof value !== 'string') return fallback;
+    const cleaned = value.replace(/\s/g, '').replace(/[^\d.,-]/g, '');
+    if (!cleaned) return fallback;
+    const hasComma = cleaned.includes(',');
+    const hasDot = cleaned.includes('.');
+
+    let normalized = cleaned;
+    if (hasComma && hasDot) {
+      normalized = cleaned.replace(/\./g, '').replace(',', '.');
+    } else if (hasComma) {
+      normalized = cleaned.replace(/,/g, '.');
+    }
+
+    const parsed = parseFloat(normalized);
+    return Number.isNaN(parsed) ? fallback : parsed;
   };
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogCatalogOpen, setDialogCatalogOpen] = useState(false);
@@ -51,10 +80,14 @@ export function BancoTab({
   const [selectedExtrato, setSelectedExtrato] = useState<ExtratoBancario | null>(null);
   const [editingExtrato, setEditingExtrato] = useState<ExtratoBancario | null>(null);
   const [conciliadoFilter, setConciliadoFilter] = useState<string>('all');
+  const [conciliacaoItens, setConciliacaoItens] = useState<Array<{ tipo: 'fatura' | 'movimento'; id: string; valor: number }>>([]);
   const [importFile, setImportFile] = useState<File | null>(null);
+  const [importRawRows, setImportRawRows] = useState<any[][]>([]);
   const [importPreview, setImportPreview] = useState<any[]>([]);
   const [importCentroCusto, setImportCentroCusto] = useState<string>('');
   const [availableColumns, setAvailableColumns] = useState<string[]>([]);
+  const [headerRowIndex, setHeaderRowIndex] = useState<number>(0);
+  const [dataStartRowIndex, setDataStartRowIndex] = useState<number>(1);
   const [columnMapping, setColumnMapping] = useState<{
     data: string;
     descricao: string;
@@ -70,6 +103,42 @@ export function BancoTab({
     conta: '',
     referencia: '',
   });
+
+  const getColumnLetter = (index: number) => {
+    let letter = '';
+    let temp = index + 1;
+    while (temp > 0) {
+      const rem = (temp - 1) % 26;
+      letter = String.fromCharCode(65 + rem) + letter;
+      temp = Math.floor((temp - 1) / 26);
+    }
+    return letter;
+  };
+
+  const buildHeaderColumns = (row: any[]) => {
+    if (!Array.isArray(row)) return [] as string[];
+    return row.map((cell, idx) => {
+      const value = cell?.toString?.().trim();
+      const label = value ? value : `Coluna ${idx + 1}`;
+      return `${getColumnLetter(idx)} - ${label}`;
+    });
+  };
+
+  const parseSheetRows = async (file: File) => {
+    const XLSX = await import('xlsx');
+    const buffer = await file.arrayBuffer();
+    const previewText = new TextDecoder('latin1', { fatal: false }).decode(buffer.slice(0, 4096));
+    const isHtml = previewText.toLowerCase().includes('<html') || previewText.toLowerCase().includes('<table');
+    const workbook = isHtml
+      ? XLSX.read(new TextDecoder('latin1').decode(buffer), {
+          type: 'string',
+          cellDates: true,
+          raw: true,
+        })
+      : XLSX.read(buffer, { type: 'array', cellDates: true, raw: true });
+    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+    return XLSX.utils.sheet_to_json(firstSheet, { header: 1, raw: true, defval: '' }) as any[];
+  };
 
   const [formData, setFormData] = useState({
     data_movimento: format(new Date(), 'yyyy-MM-dd'),
@@ -88,6 +157,28 @@ export function BancoTab({
     movimento_id: '',
   });
 
+  const valorExtrato = selectedExtrato ? Math.abs(toNumber(selectedExtrato.valor)) : 0;
+  const totalConciliacao = conciliacaoItens.reduce((sum, item) => sum + toNumber(item.valor), 0);
+  const restanteConciliacao = Math.max(0, valorExtrato - totalConciliacao);
+
+  const toggleConciliacaoItem = (tipo: 'fatura' | 'movimento', id: string, defaultValor: number) => {
+    setConciliacaoItens((current) => {
+      const exists = current.find((item) => item.tipo === tipo && item.id === id);
+      if (exists) {
+        return current.filter((item) => !(item.tipo === tipo && item.id === id));
+      }
+      return [...current, { tipo, id, valor: defaultValor }];
+    });
+  };
+
+  const updateConciliacaoValor = (tipo: 'fatura' | 'movimento', id: string, valor: number) => {
+    setConciliacaoItens((current) =>
+      current.map((item) =>
+        item.tipo === tipo && item.id === id ? { ...item, valor: valor } : item
+      )
+    );
+  };
+
   const filteredExtratos = useMemo(() => {
     return (extratos || []).filter((extrato) => {
       if (conciliadoFilter === 'all') return true;
@@ -104,6 +195,7 @@ export function BancoTab({
     const sugestoes: Array<{ tipo: 'fatura' | 'user'; data: any; score: number }> = [];
 
     (faturas || []).forEach((fatura) => {
+      if (fatura.estado_pagamento !== 'vencido') return;
       const user = (users || []).find((u) => u.id === fatura.user_id);
       if (!user) return;
 
@@ -112,7 +204,7 @@ export function BancoTab({
 
       if (descricaoLower.includes(nomeLower)) score += 50;
       if (descricaoLower.includes(user.numero_socio.toLowerCase())) score += 40;
-      if (Math.abs(fatura.valor_total - Math.abs(selectedExtrato.valor)) < 0.01) score += 30;
+      if (Math.abs(toNumber(fatura.valor_total) - Math.abs(toNumber(selectedExtrato.valor))) < 0.01) score += 30;
 
       if (score > 0) {
         sugestoes.push({ tipo: 'fatura', data: { fatura, user }, score });
@@ -184,9 +276,23 @@ export function BancoTab({
   const handleCatalogar = async () => {
     if (!selectedExtrato) return;
 
-    if (!catalogData.centro_custo_id) {
+    if (!catalogData.centro_custo_id && conciliacaoItens.length === 0) {
       toast.error('Selecione um centro de custo');
       return;
+    }
+
+    if (conciliacaoItens.length > 0) {
+      if (totalConciliacao <= 0) {
+        toast.error('Selecione itens para conciliar');
+        return;
+      }
+      if (totalConciliacao > valorExtrato) {
+        toast.error('O total da conciliacao ultrapassa o valor do extrato');
+        return;
+      }
+      if (totalConciliacao !== valorExtrato) {
+        toast.warning('Conciliacao parcial: o extrato ficara pendente para o valor restante.');
+      }
     }
 
     try {
@@ -203,8 +309,15 @@ export function BancoTab({
           tipo: catalogData.tipo,
           centro_custo_id: catalogData.centro_custo_id,
           user_id: catalogData.user_id || undefined,
-          fatura_id: catalogData.fatura_id || undefined,
-          movimento_id: catalogData.movimento_id || undefined,
+          fatura_id: conciliacaoItens.length === 0 ? catalogData.fatura_id || undefined : undefined,
+          movimento_id: conciliacaoItens.length === 0 ? catalogData.movimento_id || undefined : undefined,
+          itens: conciliacaoItens.length > 0
+            ? conciliacaoItens.map((item) => ({
+                tipo: item.tipo,
+                id: item.id,
+                valor: item.valor,
+              }))
+            : undefined,
         }),
       });
 
@@ -213,31 +326,49 @@ export function BancoTab({
       }
 
       const data = await response.json();
-      if (data.lancamento) {
+      if (data.lancamentos && Array.isArray(data.lancamentos)) {
+        setLancamentos((current) => [...(current || []), ...data.lancamentos]);
+      } else if (data.lancamento) {
         setLancamentos((current) => [...(current || []), data.lancamento]);
       }
 
-      setExtratos((current) =>
-        (current || []).map((e) =>
-          e.id === selectedExtrato.id ? { ...e, conciliado: true, lancamento_id: data.lancamento?.id } : e
-        )
-      );
+      if (data.extrato) {
+        setExtratos((current) => (current || []).map((e) => (e.id === selectedExtrato.id ? data.extrato : e)));
+      }
 
-      if (catalogData.fatura_id) {
+      if (data.faturas && Array.isArray(data.faturas)) {
         setFaturas((current) =>
-          (current || []).map((f) => (f.id === catalogData.fatura_id ? { ...f, estado_pagamento: 'pago' as const } : f))
+          (current || []).map((f) => {
+            const updated = data.faturas.find((u: Fatura) => u.id === f.id);
+            return updated ? { ...f, ...updated } : f;
+          })
         );
       }
 
-      if (catalogData.movimento_id) {
+      if (data.movimentos && Array.isArray(data.movimentos)) {
         setMovimentos((current) =>
-          (current || []).map((m) => (m.id === catalogData.movimento_id ? { ...m, estado_pagamento: 'pago' as const } : m))
+          (current || []).map((m) => {
+            const updated = data.movimentos.find((u: Movimento) => u.id === m.id);
+            return updated ? { ...m, ...updated } : m;
+          })
         );
+      }
+
+      if (data.conciliacoes && Array.isArray(data.conciliacoes)) {
+        setConciliacoes((current) => {
+          const existing = new Set((current || []).map((c) => c.id));
+          const merged = [...(current || [])];
+          data.conciliacoes.forEach((c: ConciliacaoMapa) => {
+            if (!existing.has(c.id)) merged.push(c);
+          });
+          return merged;
+        });
       }
 
       toast.success('Movimento catalogado e conciliado');
       setDialogCatalogOpen(false);
       setSelectedExtrato(null);
+      setConciliacaoItens([]);
       resetCatalogData();
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Erro ao catalogar movimento';
@@ -323,8 +454,8 @@ export function BancoTab({
     setFormData({
       data_movimento: extrato.data_movimento,
       descricao: extrato.descricao,
-      valor: extrato.valor,
-      saldo: extrato.saldo || 0,
+      valor: toNumber(extrato.valor),
+      saldo: toNumber(extrato.saldo),
       referencia: extrato.referencia || '',
       centro_custo_id: extrato.centro_custo_id || '',
     });
@@ -352,8 +483,32 @@ export function BancoTab({
         (current || []).map((e) => (e.id === extrato.id ? data.extrato : e))
       );
 
-      if (extrato.lancamento_id) {
+      if (data.lancamentos_removidos && Array.isArray(data.lancamentos_removidos)) {
+        setLancamentos((current) => (current || []).filter((l) => !data.lancamentos_removidos.includes(l.id)));
+      } else if (extrato.lancamento_id) {
         setLancamentos((current) => (current || []).filter((l) => l.id !== extrato.lancamento_id));
+      }
+
+      if (data.faturas && Array.isArray(data.faturas)) {
+        setFaturas((current) =>
+          (current || []).map((f) => {
+            const updated = data.faturas.find((u: Fatura) => u.id === f.id);
+            return updated ? { ...f, ...updated } : f;
+          })
+        );
+      }
+
+      if (data.movimentos && Array.isArray(data.movimentos)) {
+        setMovimentos((current) =>
+          (current || []).map((m) => {
+            const updated = data.movimentos.find((u: Movimento) => u.id === m.id);
+            return updated ? { ...m, ...updated } : m;
+          })
+        );
+      }
+
+      if (data.extrato?.id) {
+        setConciliacoes((current) => (current || []).filter((c) => c.extrato_id !== data.extrato.id));
       }
 
       toast.success('Movimento desconciliado com sucesso');
@@ -399,11 +554,11 @@ export function BancoTab({
   };
 
   const totalConciliado = useMemo(() => {
-    return (extratos || []).filter((e) => e.conciliado).reduce((sum, e) => sum + e.valor, 0);
+    return (extratos || []).filter((e) => e.conciliado).reduce((sum, e) => sum + toNumber(e.valor), 0);
   }, [extratos]);
 
   const totalNaoConciliado = useMemo(() => {
-    return (extratos || []).filter((e) => !e.conciliado).reduce((sum, e) => sum + e.valor, 0);
+    return (extratos || []).filter((e) => !e.conciliado).reduce((sum, e) => sum + toNumber(e.valor), 0);
   }, [extratos]);
 
   const saldoConta = useMemo(() => {
@@ -414,11 +569,12 @@ export function BancoTab({
     if (extratosOrdenados.length === 0) return 0;
 
     const ultimoExtrato = extratosOrdenados[extratosOrdenados.length - 1];
-    if (ultimoExtrato.saldo !== undefined && ultimoExtrato.saldo !== 0) {
-      return ultimoExtrato.saldo;
+    const ultimoSaldo = toNumber(ultimoExtrato.saldo);
+    if (ultimoSaldo !== 0) {
+      return ultimoSaldo;
     }
 
-    return (extratos || []).reduce((sum, e) => sum + e.valor, 0);
+    return (extratos || []).reduce((sum, e) => sum + toNumber(e.valor), 0);
   }, [extratos]);
 
   const handleFileSelect = (event: ChangeEvent<HTMLInputElement>) => {
@@ -439,27 +595,46 @@ export function BancoTab({
 
     setImportFile(file);
 
-    const reader = new FileReader();
-    reader.onload = async (e) => {
+    (async () => {
       try {
-        const XLSX = await import('xlsx');
-        const data = e.target?.result;
-        const workbook = XLSX.read(data, { type: 'binary' });
-        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-        const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
-
-        const preview = jsonData.slice(0, 6);
+        const jsonData = await parseSheetRows(file);
+        setImportRawRows(jsonData as any[][]);
+        setHeaderRowIndex(0);
+        setDataStartRowIndex(1);
+        const preview = jsonData.slice(0, 10);
         setImportPreview(preview);
 
         if (jsonData.length > 0) {
-          const headers = jsonData[0] as string[];
-          setAvailableColumns(headers.filter((h) => h && h.toString().trim()));
+          const headers = buildHeaderColumns(jsonData[0] || []);
+          setAvailableColumns(headers);
         }
       } catch (error) {
         toast.error('Erro ao ler o ficheiro');
       }
-    };
-    reader.readAsBinaryString(file);
+    })();
+  };
+
+  const handleHeaderRowChange = (value: string) => {
+    const parsed = Number(value);
+    const nextIndex = Number.isNaN(parsed) ? 0 : parsed;
+    setHeaderRowIndex(nextIndex);
+    const headers = buildHeaderColumns(importRawRows[nextIndex] || []);
+    setAvailableColumns(headers);
+    setDataStartRowIndex(Math.max(nextIndex + 1, dataStartRowIndex));
+    setColumnMapping({
+      data: '',
+      descricao: '',
+      valor: '',
+      saldo: '',
+      conta: '',
+      referencia: '',
+    });
+  };
+
+  const handleDataStartRowChange = (value: string) => {
+    const parsed = Number(value);
+    const nextIndex = Number.isNaN(parsed) ? headerRowIndex + 1 : parsed;
+    setDataStartRowIndex(Math.max(nextIndex, headerRowIndex + 1));
   };
 
   const handleImport = () => {
@@ -473,14 +648,21 @@ export function BancoTab({
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = async (e) => {
+    (async () => {
       try {
-        const XLSX = await import('xlsx');
-        const data = e.target?.result;
-        const workbook = XLSX.read(data, { type: 'binary' });
-        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-        const jsonData: any[] = XLSX.utils.sheet_to_json(firstSheet);
+        const rows: any[] = importRawRows.length > 0 ? importRawRows : await parseSheetRows(importFile);
+        const headers = buildHeaderColumns(rows[headerRowIndex] || []);
+        const dataRows = rows.slice(dataStartRowIndex);
+        const jsonData: any[] = dataRows
+          .map((row: any[]) => {
+            const obj: Record<string, any> = {};
+            headers.forEach((header, idx) => {
+              if (!header) return;
+              obj[header] = row?.[idx];
+            });
+            return obj;
+          })
+          .filter((row) => Object.keys(row).length > 0);
 
         if (jsonData.length === 0) {
           toast.error('O ficheiro esta vazio');
@@ -502,8 +684,15 @@ export function BancoTab({
               }
 
               const defaultColumns: Record<string, string[]> = {
-                data: ['Data', 'data', 'DATE', 'Data Movimento', 'Data Mov'],
-                descricao: ['Descricao', 'descricao', 'DESCRIPTION', 'Descricao', 'Historico'],
+                data: ['Data', 'data', 'DATE', 'Data Movimento', 'Data Mov', 'Data do Movimento', 'Data Valor'],
+                descricao: [
+                  'Descricao',
+                  'descrição',
+                  'Descricao do Movimento',
+                  'Descrição do Movimento',
+                  'DESCRIPTION',
+                  'Historico',
+                ],
                 valor: ['Valor', 'valor', 'VALUE', 'Montante', 'montante', 'Debito/Credito'],
                 saldo: ['Saldo', 'saldo', 'BALANCE'],
                 conta: ['Conta', 'conta', 'NIB', 'nib'],
@@ -511,9 +700,14 @@ export function BancoTab({
               };
 
               const possibleColumns = defaultColumns[field] || [];
-              for (const col of possibleColumns) {
-                if (row[col] !== undefined) {
-                  return row[col];
+              const normalizedCandidates = possibleColumns.map((col) => col.toLowerCase());
+              for (const key of Object.keys(row)) {
+                const normalizedKey = key.toLowerCase();
+                const stripped = key.includes(' - ')
+                  ? key.split(' - ').slice(1).join(' - ').toLowerCase()
+                  : normalizedKey;
+                if (normalizedCandidates.includes(normalizedKey) || normalizedCandidates.includes(stripped)) {
+                  return row[key];
                 }
               }
               return null;
@@ -531,19 +725,8 @@ export function BancoTab({
               return;
             }
 
-            let parsedValor = 0;
-            if (typeof valor === 'number') {
-              parsedValor = valor;
-            } else if (typeof valor === 'string') {
-              parsedValor = parseFloat(valor.replace(/[^\d.,-]/g, '').replace(',', '.'));
-            }
-
-            let parsedSaldo = 0;
-            if (typeof saldo === 'number') {
-              parsedSaldo = saldo;
-            } else if (typeof saldo === 'string') {
-              parsedSaldo = parseFloat(saldo.replace(/[^\d.,-]/g, '').replace(',', '.'));
-            }
+            const parsedValor = parsePtNumber(valor);
+            const parsedSaldo = parsePtNumber(saldo);
 
             let parsedData = format(new Date(), 'yyyy-MM-dd');
             if (data_movimento) {
@@ -625,14 +808,17 @@ export function BancoTab({
       } catch (error) {
         toast.error('Erro ao processar o ficheiro');
       }
-    };
-    reader.readAsBinaryString(importFile);
+    })();
   };
 
   const resetImportData = () => {
     setImportFile(null);
+    setImportRawRows([]);
     setImportPreview([]);
     setImportCentroCusto('');
+    setAvailableColumns([]);
+    setHeaderRowIndex(0);
+    setDataStartRowIndex(1);
   };
 
   return (
@@ -659,7 +845,7 @@ export function BancoTab({
                 Importar Extrato XLS
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-3xl">
+            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Importar Extrato Bancario</DialogTitle>
                 <DialogDescription>
@@ -698,17 +884,48 @@ export function BancoTab({
                 {importPreview.length > 0 && (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <Label>Pre-visualizacao (primeiras 5 linhas)</Label>
+                      <Label>Pre-visualizacao (primeiras 10 linhas)</Label>
                       <Button variant="outline" size="sm" onClick={() => setDialogMappingOpen(true)}>
                         <Gear className="mr-2" size={14} />
                         Configurar Mapeamento
                       </Button>
                     </div>
-                    <Card className="p-4 overflow-x-auto">
+                    <div className="space-y-2">
+                      <Label>Linha de cabecalhos</Label>
+                      <Select value={String(headerRowIndex)} onValueChange={handleHeaderRowChange}>
+                        <SelectTrigger className="w-[220px]">
+                          <SelectValue placeholder="Selecionar linha de cabecalhos" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(importPreview || []).map((_, idx) => (
+                            <SelectItem key={idx} value={String(idx)}>
+                              Linha {idx + 1}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Linha inicial de dados</Label>
+                      <Select value={String(dataStartRowIndex)} onValueChange={handleDataStartRowChange}>
+                        <SelectTrigger className="w-[220px]">
+                          <SelectValue placeholder="Selecionar linha inicial" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(importPreview || []).map((_, idx) => (
+                            <SelectItem key={idx} value={String(idx)}>
+                              Linha {idx + 1}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <Card className="p-4 overflow-auto max-h-[240px]">
                       <Table>
                         <TableBody>
                           {importPreview.map((row: any[], idx) => (
                             <TableRow key={idx}>
+                              <TableCell className="text-xs text-muted-foreground w-16">{idx + 1}</TableCell>
                               {Array.isArray(row) &&
                                 row.map((cell, cellIdx) => (
                                   <TableCell key={cellIdx} className="text-xs">
@@ -858,7 +1075,7 @@ export function BancoTab({
           <div className="flex items-start justify-between">
             <div>
               <p className="text-[10px] md:text-xs text-muted-foreground font-medium">Conciliados</p>
-              <p className="text-xl md:text-2xl font-bold text-green-600 mt-1">€{totalConciliado.toFixed(2)}</p>
+              <p className="text-xl md:text-2xl font-bold text-green-600 mt-1">€{toNumber(totalConciliado).toFixed(2)}</p>
             </div>
             <div className="p-1.5 md:p-2 rounded-lg bg-green-50">
               <Check className="text-green-600" size={16} weight="bold" />
@@ -870,7 +1087,7 @@ export function BancoTab({
           <div className="flex items-start justify-between">
             <div>
               <p className="text-[10px] md:text-xs text-muted-foreground font-medium">Nao Conciliados</p>
-              <p className="text-xl md:text-2xl font-bold text-orange-600 mt-1">€{totalNaoConciliado.toFixed(2)}</p>
+              <p className="text-xl md:text-2xl font-bold text-orange-600 mt-1">€{toNumber(totalNaoConciliado).toFixed(2)}</p>
             </div>
             <div className="p-1.5 md:p-2 rounded-lg bg-orange-50">
               <ArrowsLeftRight className="text-orange-600" size={16} weight="bold" />
@@ -883,7 +1100,7 @@ export function BancoTab({
             <div>
               <p className="text-[10px] md:text-xs text-muted-foreground font-medium">Saldo da Conta</p>
               <p className={`text-xl md:text-2xl font-bold mt-1 ${saldoConta >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
-                €{saldoConta.toFixed(2)}
+                €{toNumber(saldoConta).toFixed(2)}
               </p>
             </div>
             <div className={`p-1.5 md:p-2 rounded-lg ${saldoConta >= 0 ? 'bg-blue-50' : 'bg-red-50'}`}>
@@ -924,11 +1141,11 @@ export function BancoTab({
                           {format(new Date(extrato.data_movimento), 'dd/MM/yyyy')}
                         </TableCell>
                         <TableCell className="text-xs md:text-sm max-w-[120px] md:max-w-xs truncate">{extrato.descricao}</TableCell>
-                        <TableCell className={`text-xs md:text-sm font-semibold whitespace-nowrap ${extrato.valor >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          {extrato.valor >= 0 ? '+' : ''}€{extrato.valor.toFixed(2)}
+                        <TableCell className={`text-xs md:text-sm font-semibold whitespace-nowrap ${toNumber(extrato.valor) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {toNumber(extrato.valor) >= 0 ? '+' : ''}€{toNumber(extrato.valor).toFixed(2)}
                         </TableCell>
                         <TableCell className="text-xs md:text-sm whitespace-nowrap">
-                          {extrato.saldo !== undefined ? `€${extrato.saldo.toFixed(2)}` : '-'}
+                          {extrato.saldo !== undefined ? `€${toNumber(extrato.saldo).toFixed(2)}` : '-'}
                         </TableCell>
                         <TableCell className="text-xs md:text-sm max-w-[100px] md:max-w-none truncate">
                           {getCentroCustoName(extrato.centro_custo_id)}
@@ -972,6 +1189,7 @@ export function BancoTab({
                                 variant="outline"
                                 onClick={() => {
                                   setSelectedExtrato(extrato);
+                                  setConciliacaoItens([]);
                                   setCatalogData({
                                     tipo: extrato.valor >= 0 ? 'receita' : 'despesa',
                                     centro_custo_id: extrato.centro_custo_id || '',
@@ -998,8 +1216,18 @@ export function BancoTab({
         </div>
       </Card>
 
-      <Dialog open={dialogCatalogOpen} onOpenChange={setDialogCatalogOpen}>
-        <DialogContent className="max-w-2xl">
+      <Dialog
+        open={dialogCatalogOpen}
+        onOpenChange={(open) => {
+          setDialogCatalogOpen(open);
+          if (!open) {
+            setSelectedExtrato(null);
+            setConciliacaoItens([]);
+            resetCatalogData();
+          }
+        }}
+      >
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Catalogar Movimento para Conciliacao</DialogTitle>
             <DialogDescription>Associe este movimento bancario a uma fatura ou utilizador do clube</DialogDescription>
@@ -1019,7 +1247,7 @@ export function BancoTab({
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Valor:</span>
                     <span className={`font-bold ${selectedExtrato.valor >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {selectedExtrato.valor >= 0 ? '+' : ''}€{selectedExtrato.valor.toFixed(2)}
+                      {toNumber(selectedExtrato.valor) >= 0 ? '+' : ''}€{toNumber(selectedExtrato.valor).toFixed(2)}
                     </span>
                   </div>
                 </div>
@@ -1029,13 +1257,16 @@ export function BancoTab({
             {sugestoesAutomaticas.length > 0 && (
               <div className="space-y-2">
                 <Label className="text-sm font-semibold">Sugestoes Automaticas</Label>
-                <div className="space-y-2">
+                <div className="space-y-2 max-h-[220px] overflow-y-auto">
                   {sugestoesAutomaticas.map((sugestao, idx) => (
                     <Card
                       key={idx}
                       className="p-3 cursor-pointer hover:bg-muted/50"
                       onClick={() => {
                         if (sugestao.tipo === 'fatura') {
+                          const valorBase = toNumber(sugestao.data.fatura.valor_total);
+                          const defaultValor = Math.min(valorBase, restanteConciliacao > 0 ? restanteConciliacao : valorBase);
+                          toggleConciliacaoItem('fatura', sugestao.data.fatura.id, defaultValor);
                           setCatalogData({
                             ...catalogData,
                             fatura_id: sugestao.data.fatura.id,
@@ -1057,7 +1288,7 @@ export function BancoTab({
                             <>
                               <p className="font-medium text-sm">{sugestao.data.user.nome_completo}</p>
                               <p className="text-xs text-muted-foreground">
-                                Fatura: €{sugestao.data.fatura.valor_total.toFixed(2)} - {sugestao.data.fatura.tipo}
+                                Fatura: €{toNumber(sugestao.data.fatura.valor_total).toFixed(2)} - {sugestao.data.fatura.tipo} - {format(new Date(sugestao.data.fatura.data_emissao), 'dd/MM/yyyy')}
                               </p>
                             </>
                           ) : (
@@ -1123,47 +1354,107 @@ export function BancoTab({
             </div>
 
             <div className="space-y-2">
-              <Label>Fatura Relacionada (opcional)</Label>
-              <Select value={catalogData.fatura_id} onValueChange={(v) => setCatalogData({ ...catalogData, fatura_id: v })}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Nenhuma" />
-                </SelectTrigger>
-                <SelectContent>
-                  {(faturas || [])
-                    .filter((f) => f.estado_pagamento !== 'pago' && f.estado_pagamento !== 'cancelado')
-                    .map((fatura) => {
-                      const user = (users || []).find((u) => u.id === fatura.user_id);
-                      return (
-                        <SelectItem key={fatura.id} value={fatura.id}>
-                          {user?.nome_completo} - €{fatura.valor_total.toFixed(2)} ({format(new Date(fatura.data_emissao), 'dd/MM/yyyy')})
-                        </SelectItem>
-                      );
-                    })}
-                </SelectContent>
-              </Select>
+              <Label>Faturas a Conciliar</Label>
+              <Card className="p-2 max-h-[220px] overflow-y-auto">
+                <Table>
+                  <TableBody>
+                    {(faturas || [])
+                      .filter((f) => f.estado_pagamento !== 'cancelado')
+                      .map((fatura) => {
+                        const user = (users || []).find((u) => u.id === fatura.user_id);
+                        const checked = conciliacaoItens.some((i) => i.tipo === 'fatura' && i.id === fatura.id);
+                        const valorBase = toNumber(fatura.valor_total);
+                        const defaultValor = Math.min(valorBase, restanteConciliacao > 0 ? restanteConciliacao : valorBase);
+                        return (
+                          <TableRow key={fatura.id}>
+                            <TableCell className="w-10">
+                              <Checkbox
+                                checked={checked}
+                                onCheckedChange={() => {
+                                  toggleConciliacaoItem('fatura', fatura.id, defaultValor);
+                                  setCatalogData((current) => ({
+                                    ...current,
+                                    user_id: fatura.user_id || current.user_id,
+                                    centro_custo_id: fatura.centro_custo_id || current.centro_custo_id,
+                                  }));
+                                }}
+                              />
+                            </TableCell>
+                            <TableCell className="text-xs">
+                              {user?.nome_completo || 'Utilizador'} - €{valorBase.toFixed(2)} ({format(new Date(fatura.data_emissao), 'dd/MM/yyyy')})
+                            </TableCell>
+                            <TableCell className="w-28">
+                              {checked ? (
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  value={conciliacaoItens.find((i) => i.tipo === 'fatura' && i.id === fatura.id)?.valor ?? 0}
+                                  onChange={(e) => updateConciliacaoValor('fatura', fatura.id, parseFloat(e.target.value) || 0)}
+                                />
+                              ) : null}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                  </TableBody>
+                </Table>
+              </Card>
             </div>
 
             <div className="space-y-2">
-              <Label>Movimento Relacionado (opcional)</Label>
-              <Select value={catalogData.movimento_id} onValueChange={(v) => setCatalogData({ ...catalogData, movimento_id: v })}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Nenhum" />
-                </SelectTrigger>
-                <SelectContent>
-                  {(movimentos || [])
-                    .filter((m) => m.estado_pagamento !== 'cancelado')
-                    .map((movimento) => {
-                      const nomeDisplay = movimento.user_id
-                        ? (users || []).find((u) => u.id === movimento.user_id)?.nome_completo
-                        : movimento.nome_manual;
-                      return (
-                        <SelectItem key={movimento.id} value={movimento.id}>
-                          {nomeDisplay || 'Cliente'} - {movimento.tipo} - €{movimento.valor_total.toFixed(2)}
-                        </SelectItem>
-                      );
-                    })}
-                </SelectContent>
-              </Select>
+              <Label>Movimentos a Conciliar</Label>
+              <Card className="p-2 max-h-[220px] overflow-y-auto">
+                <Table>
+                  <TableBody>
+                    {(movimentos || [])
+                      .filter((m) => m.estado_pagamento !== 'cancelado')
+                      .map((movimento) => {
+                        const nomeDisplay = movimento.user_id
+                          ? (users || []).find((u) => u.id === movimento.user_id)?.nome_completo
+                          : movimento.nome_manual;
+                        const checked = conciliacaoItens.some((i) => i.tipo === 'movimento' && i.id === movimento.id);
+                        const valorBase = Math.abs(toNumber(movimento.valor_total));
+                        const defaultValor = Math.min(valorBase, restanteConciliacao > 0 ? restanteConciliacao : valorBase);
+                        return (
+                          <TableRow key={movimento.id}>
+                            <TableCell className="w-10">
+                              <Checkbox
+                                checked={checked}
+                                onCheckedChange={() => toggleConciliacaoItem('movimento', movimento.id, defaultValor)}
+                              />
+                            </TableCell>
+                            <TableCell className="text-xs">
+                              {nomeDisplay || 'Cliente'} - {movimento.tipo} - €{valorBase.toFixed(2)}
+                            </TableCell>
+                            <TableCell className="w-28">
+                              {checked ? (
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  value={conciliacaoItens.find((i) => i.tipo === 'movimento' && i.id === movimento.id)?.valor ?? 0}
+                                  onChange={(e) => updateConciliacaoValor('movimento', movimento.id, parseFloat(e.target.value) || 0)}
+                                />
+                              ) : null}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                  </TableBody>
+                </Table>
+              </Card>
+            </div>
+
+            <div className="flex items-center justify-between rounded-lg border p-3 text-sm">
+              <span>Total selecionado:</span>
+              <span className="font-semibold">€{toNumber(totalConciliacao).toFixed(2)}</span>
+            </div>
+            <div className="flex items-center justify-between rounded-lg border p-3 text-sm">
+              <span>Restante:</span>
+              <span className={`font-semibold ${restanteConciliacao > 0 ? 'text-orange-600' : 'text-green-600'}`}>
+                €{toNumber(restanteConciliacao).toFixed(2)}
+              </span>
             </div>
           </div>
           <DialogFooter>
@@ -1172,6 +1463,7 @@ export function BancoTab({
               onClick={() => {
                 setDialogCatalogOpen(false);
                 setSelectedExtrato(null);
+                setConciliacaoItens([]);
                 resetCatalogData();
               }}
             >

@@ -15,6 +15,7 @@ import {
   MovimentoItem,
   LancamentoFinanceiro,
   ExtratoBancario,
+  ConciliacaoMapa,
   CentroCusto,
   User,
   Product,
@@ -30,6 +31,7 @@ interface Props {
   movimentoItens: MovimentoItem[];
   lancamentos: LancamentoFinanceiro[];
   extratos: ExtratoBancario[];
+  conciliacoes: ConciliacaoMapa[];
   centrosCusto: CentroCusto[];
   users: User[];
   products: Product[];
@@ -45,6 +47,7 @@ export default function FinanceiroIndex({
   movimentoItens,
   lancamentos,
   extratos,
+  conciliacoes,
   centrosCusto,
   users,
   products,
@@ -59,6 +62,7 @@ export default function FinanceiroIndex({
   const [movimentoItensState, setMovimentoItens] = useState<MovimentoItem[]>(movimentoItens || []);
   const [lancamentosState, setLancamentos] = useState<LancamentoFinanceiro[]>(lancamentos || []);
   const [extratosState, setExtratos] = useState<ExtratoBancario[]>(extratos || []);
+  const [conciliacoesState, setConciliacoes] = useState<ConciliacaoMapa[]>(conciliacoes || []);
   const [productsState, setProducts] = useState<Product[]>(products || []);
 
   return (
@@ -106,7 +110,13 @@ export default function FinanceiroIndex({
 
           <TabsContent value="dashboard">
             {activeTab === 'dashboard' ? (
-              <DashboardTab faturas={faturasState} lancamentos={lancamentosState} centrosCusto={centrosCusto || []} />
+              <DashboardTab
+                faturas={faturasState}
+                lancamentos={lancamentosState}
+                movimentos={movimentosState}
+                extratos={extratosState}
+                centrosCusto={centrosCusto || []}
+              />
             ) : null}
           </TabsContent>
 
@@ -118,6 +128,9 @@ export default function FinanceiroIndex({
               setFaturaItens={setFaturaItens}
               lancamentos={lancamentosState}
               setLancamentos={setLancamentos}
+              conciliacoes={conciliacoesState}
+              setConciliacoes={setConciliacoes}
+              setExtratos={setExtratos}
               users={users || []}
               mensalidades={mensalidades || []}
               centrosCusto={centrosCusto || []}
@@ -153,6 +166,7 @@ export default function FinanceiroIndex({
               setFaturas={setFaturas}
               movimentos={movimentosState}
               setMovimentos={setMovimentos}
+              setConciliacoes={setConciliacoes}
               centrosCusto={centrosCusto || []}
               users={users || []}
             />
