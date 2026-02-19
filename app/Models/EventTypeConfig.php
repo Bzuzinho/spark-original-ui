@@ -32,6 +32,6 @@ class EventTypeConfig extends Model
 
     public function events(): HasMany
     {
-        return $this->hasMany(Event::class, 'type_config_id');
+        return $this->hasMany(Event::class, 'tipo_config_id');
     }
 }

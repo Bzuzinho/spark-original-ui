@@ -1,0 +1,792 @@
+<?php
+
+namespace App\Services\KeyValue;
+
+use App\Models\ConvocationAthlete;
+use App\Models\ConvocationGroup;
+use App\Models\ConvocationMovement;
+use App\Models\ConvocationMovementItem;
+use App\Models\Event;
+use App\Models\EventAttendance;
+use App\Models\EventConvocation;
+use App\Models\EventResult;
+use App\Models\EventTypeConfig;
+use App\Models\ResultProva;
+use App\Models\User;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
+
+class EventosKeyValueService
+{
+    private const SUPPORTED_KEYS = [
+        'club-events',
+        'club-eventos-tipos',
+        'club-presencas',
+        'club-resultados',
+        'club-resultados-provas',
+        'club-convocatorias',
+        'club-convocatorias-grupo',
+        'club-convocatorias-atleta',
+        'movimentos-convocatoria',
+    ];
+
+    public function supports(string $key): bool
+    {
+        return in_array($key, self::SUPPORTED_KEYS, true);
+    }
+
+    public function get(string $key, ?string $userId): array
+    {
+        return match ($key) {
+            'club-events' => $this->getEvents(),
+            'club-eventos-tipos' => $this->getEventTypeConfigs(),
+            'club-presencas' => $this->getAttendances(),
+            'club-resultados' => $this->getEventResults(),
+            'club-resultados-provas' => $this->getResultProvas(),
+            'club-convocatorias' => $this->getEventConvocations(),
+            'club-convocatorias-grupo' => $this->getConvocationGroups(),
+            'club-convocatorias-atleta' => $this->getConvocationAthletes(),
+            'movimentos-convocatoria' => $this->getConvocationMovements(),
+            default => [],
+        };
+    }
+
+    public function set(string $key, mixed $value, ?string $userId): void
+    {
+        $items = $this->normalizeArray($value);
+
+        match ($key) {
+            'club-events' => $this->syncEvents($items, $userId),
+            'club-eventos-tipos' => $this->syncEventTypeConfigs($items),
+            'club-presencas' => $this->syncAttendances($items, $userId),
+            'club-resultados' => $this->syncEventResults($items, $userId),
+            'club-resultados-provas' => $this->syncResultProvas($items),
+            'club-convocatorias' => $this->syncEventConvocations($items),
+            'club-convocatorias-grupo' => $this->syncConvocationGroups($items, $userId),
+            'club-convocatorias-atleta' => $this->syncConvocationAthletes($items),
+            'movimentos-convocatoria' => $this->syncConvocationMovements($items),
+            default => null,
+        };
+    }
+
+    public function delete(string $key, ?string $userId): void
+    {
+        match ($key) {
+            'club-events' => Event::query()->delete(),
+            'club-eventos-tipos' => EventTypeConfig::query()->delete(),
+            'club-presencas' => EventAttendance::query()->delete(),
+            'club-resultados' => EventResult::query()->delete(),
+            'club-resultados-provas' => ResultProva::query()->delete(),
+            'club-convocatorias' => EventConvocation::query()->delete(),
+            'club-convocatorias-grupo' => ConvocationGroup::query()->delete(),
+            'club-convocatorias-atleta' => ConvocationAthlete::query()->delete(),
+            'movimentos-convocatoria' => $this->deleteConvocationMovements(),
+            default => null,
+        };
+    }
+
+    private function normalizeArray(mixed $value): array
+    {
+        if (is_array($value)) {
+            return $value;
+        }
+
+        if ($value instanceof Collection) {
+            return $value->all();
+        }
+
+        return [];
+    }
+
+    private function formatDate(mixed $value): ?string
+    {
+        if ($value instanceof Carbon) {
+            return $value->toDateString();
+        }
+
+        if (is_string($value)) {
+            return substr($value, 0, 10);
+        }
+
+        return null;
+    }
+
+    private function formatDateTime(mixed $value): ?string
+    {
+        if ($value instanceof Carbon) {
+            return $value->toISOString();
+        }
+
+        if (is_string($value)) {
+            return $value;
+        }
+
+        return null;
+    }
+
+    private function formatTime(?string $value): ?string
+    {
+        if (!$value) {
+            return null;
+        }
+
+        return strlen($value) > 5 ? substr($value, 0, 5) : $value;
+    }
+
+    private function getEvents(): array
+    {
+        return Event::query()
+            ->orderBy('data_inicio', 'desc')
+            ->get()
+            ->map(function (Event $event) {
+                return [
+                    'id' => $event->id,
+                    'titulo' => $event->titulo,
+                    'descricao' => $event->descricao,
+                    'data_inicio' => $this->formatDate($event->data_inicio),
+                    'hora_inicio' => $this->formatTime($event->hora_inicio),
+                    'data_fim' => $this->formatDate($event->data_fim),
+                    'hora_fim' => $this->formatTime($event->hora_fim),
+                    'local' => $event->local,
+                    'local_detalhes' => $event->local_detalhes,
+                    'tipo' => $event->tipo,
+                    'tipo_config_id' => $event->tipo_config_id,
+                    'tipo_piscina' => $event->tipo_piscina,
+                    'visibilidade' => $event->visibilidade,
+                    'escaloes_elegiveis' => $event->escaloes_elegiveis,
+                    'transporte_necessario' => $event->transporte_necessario,
+                    'transporte_detalhes' => $event->transporte_detalhes,
+                    'hora_partida' => $this->formatTime($event->hora_partida),
+                    'local_partida' => $event->local_partida,
+                    'taxa_inscricao' => $event->taxa_inscricao,
+                    'custo_inscricao_por_prova' => $event->custo_inscricao_por_prova,
+                    'custo_inscricao_por_salto' => $event->custo_inscricao_por_salto,
+                    'custo_inscricao_estafeta' => $event->custo_inscricao_estafeta,
+                    'centro_custo_id' => $event->centro_custo_id,
+                    'observacoes' => $event->observacoes,
+                    'convocatoria_ficheiro' => $event->convocatoria_ficheiro,
+                    'regulamento_ficheiro' => $event->regulamento_ficheiro,
+                    'estado' => $event->estado,
+                    'criado_por' => $event->criado_por,
+                    'criado_em' => $this->formatDateTime($event->created_at),
+                    'atualizado_em' => $this->formatDateTime($event->updated_at),
+                    'recorrente' => $event->recorrente,
+                    'recorrencia_data_inicio' => $this->formatDate($event->recorrencia_data_inicio),
+                    'recorrencia_data_fim' => $this->formatDate($event->recorrencia_data_fim),
+                    'recorrencia_dias_semana' => $event->recorrencia_dias_semana,
+                    'evento_pai_id' => $event->evento_pai_id,
+                ];
+            })
+            ->all();
+    }
+
+    private function getEventTypeConfigs(): array
+    {
+        return EventTypeConfig::query()
+            ->orderBy('nome')
+            ->get()
+            ->map(function (EventTypeConfig $type) {
+                return [
+                    'id' => $type->id,
+                    'nome' => $type->nome,
+                    'cor' => $type->cor,
+                    'icon' => $type->icon,
+                    'ativo' => $type->ativo,
+                    'gera_taxa' => $type->gera_taxa,
+                    'requer_convocatoria' => $type->requer_convocatoria,
+                    'requer_transporte' => $type->requer_transporte,
+                    'visibilidade_default' => $type->visibilidade_default,
+                    'created_at' => $this->formatDateTime($type->created_at),
+                ];
+            })
+            ->all();
+    }
+
+    private function getAttendances(): array
+    {
+        return EventAttendance::query()
+            ->orderBy('registado_em', 'desc')
+            ->get()
+            ->map(function (EventAttendance $attendance) {
+                $horaChegada = null;
+                if ($attendance->hora_chegada instanceof Carbon) {
+                    $horaChegada = $attendance->hora_chegada->format('H:i');
+                } elseif (is_string($attendance->hora_chegada)) {
+                    $horaChegada = $attendance->hora_chegada;
+                }
+
+                return [
+                    'id' => $attendance->id,
+                    'evento_id' => $attendance->evento_id,
+                    'user_id' => $attendance->user_id,
+                    'estado' => $attendance->estado,
+                    'hora_chegada' => $this->formatTime($horaChegada),
+                    'observacoes' => $attendance->observacoes,
+                    'registado_por' => $attendance->registado_por,
+                    'registado_em' => $this->formatDateTime($attendance->registado_em),
+                ];
+            })
+            ->all();
+    }
+
+    private function getEventResults(): array
+    {
+        return EventResult::query()
+            ->orderBy('registado_em', 'desc')
+            ->get()
+            ->map(function (EventResult $result) {
+                return [
+                    'id' => $result->id,
+                    'evento_id' => $result->evento_id,
+                    'user_id' => $result->user_id,
+                    'prova' => $result->prova,
+                    'tempo' => $result->tempo,
+                    'classificacao' => $result->classificacao,
+                    'piscina' => $result->piscina,
+                    'escalao' => $result->escalao,
+                    'observacoes' => $result->observacoes,
+                    'epoca' => $result->epoca,
+                    'registado_por' => $result->registado_por,
+                    'registado_em' => $this->formatDateTime($result->registado_em),
+                ];
+            })
+            ->all();
+    }
+
+    private function getResultProvas(): array
+    {
+        return ResultProva::query()
+            ->orderBy('data', 'desc')
+            ->get()
+            ->map(function (ResultProva $result) {
+                return [
+                    'id' => $result->id,
+                    'atleta_id' => $result->atleta_id,
+                    'evento_id' => $result->evento_id,
+                    'evento_nome' => $result->evento_nome,
+                    'prova' => $result->prova,
+                    'local' => $result->local,
+                    'data' => $this->formatDate($result->data),
+                    'piscina' => $result->piscina,
+                    'tempo_final' => $result->tempo_final,
+                    'created_at' => $this->formatDateTime($result->created_at),
+                    'updated_at' => $this->formatDateTime($result->updated_at),
+                ];
+            })
+            ->all();
+    }
+
+    private function getEventConvocations(): array
+    {
+        return EventConvocation::query()
+            ->orderBy('data_convocatoria', 'desc')
+            ->get()
+            ->map(function (EventConvocation $convocation) {
+                return [
+                    'id' => $convocation->id,
+                    'evento_id' => $convocation->evento_id,
+                    'user_id' => $convocation->user_id,
+                    'data_convocatoria' => $this->formatDate($convocation->data_convocatoria),
+                    'estado_confirmacao' => $convocation->estado_confirmacao,
+                    'data_resposta' => $this->formatDateTime($convocation->data_resposta),
+                    'justificacao' => $convocation->justificacao,
+                    'observacoes' => $convocation->observacoes,
+                    'transporte_clube' => $convocation->transporte_clube,
+                ];
+            })
+            ->all();
+    }
+
+    private function getConvocationGroups(): array
+    {
+        return ConvocationGroup::query()
+            ->orderBy('data_criacao', 'desc')
+            ->get()
+            ->map(function (ConvocationGroup $group) {
+                return [
+                    'id' => $group->id,
+                    'evento_id' => $group->evento_id,
+                    'data_criacao' => $this->formatDateTime($group->data_criacao),
+                    'criado_por' => $group->criado_por,
+                    'atletas_ids' => $group->atletas_ids,
+                    'hora_encontro' => $this->formatTime($group->hora_encontro),
+                    'local_encontro' => $group->local_encontro,
+                    'observacoes' => $group->observacoes,
+                    'tipo_custo' => $group->tipo_custo,
+                    'valor_por_salto' => $group->valor_por_salto,
+                    'valor_por_estafeta' => $group->valor_por_estafeta,
+                    'valor_inscricao_unitaria' => $group->valor_inscricao_unitaria,
+                    'valor_inscricao_calculado' => $group->valor_inscricao_calculado,
+                    'movimento_id' => $group->movimento_id,
+                ];
+            })
+            ->all();
+    }
+
+    private function getConvocationAthletes(): array
+    {
+        return ConvocationAthlete::query()
+            ->get()
+            ->map(function (ConvocationAthlete $athlete) {
+                return [
+                    'convocatoria_grupo_id' => $athlete->convocatoria_grupo_id,
+                    'atleta_id' => $athlete->atleta_id,
+                    'provas' => $athlete->provas,
+                    'presente' => $athlete->presente,
+                    'confirmado' => $athlete->confirmado,
+                ];
+            })
+            ->all();
+    }
+
+    private function getConvocationMovements(): array
+    {
+        return ConvocationMovement::with('items')
+            ->orderBy('data_emissao', 'desc')
+            ->get()
+            ->map(function (ConvocationMovement $movement) {
+                return [
+                    'id' => $movement->id,
+                    'user_id' => $movement->user_id,
+                    'convocatoria_grupo_id' => $movement->convocatoria_grupo_id,
+                    'evento_id' => $movement->evento_id,
+                    'evento_nome' => $movement->evento_nome,
+                    'tipo' => $movement->tipo,
+                    'data_emissao' => $this->formatDate($movement->data_emissao),
+                    'valor' => $movement->valor,
+                    'itens' => $movement->items->map(function (ConvocationMovementItem $item) {
+                        return [
+                            'id' => $item->id,
+                            'movimento_convocatoria_id' => $item->movimento_convocatoria_id,
+                            'descricao' => $item->descricao,
+                            'valor' => $item->valor,
+                        ];
+                    })->all(),
+                    'created_at' => $this->formatDateTime($movement->created_at),
+                ];
+            })
+            ->all();
+    }
+
+    private function syncEvents(array $items, ?string $userId): void
+    {
+        DB::transaction(function () use ($items, $userId) {
+            $ids = [];
+
+            foreach ($items as $item) {
+                if (!is_array($item)) {
+                    continue;
+                }
+
+                $id = $item['id'] ?? (string) Str::uuid();
+                $ids[] = $id;
+
+                $criadoPor = $this->resolveUserId($item['criado_por'] ?? null, $userId);
+
+                Event::updateOrCreate(
+                    ['id' => $id],
+                    [
+                        'titulo' => $item['titulo'] ?? '',
+                        'descricao' => $item['descricao'] ?? '',
+                        'data_inicio' => $item['data_inicio'] ?? null,
+                        'hora_inicio' => $item['hora_inicio'] ?? null,
+                        'data_fim' => $item['data_fim'] ?? null,
+                        'hora_fim' => $item['hora_fim'] ?? null,
+                        'local' => $item['local'] ?? null,
+                        'local_detalhes' => $item['local_detalhes'] ?? null,
+                        'tipo' => $item['tipo'] ?? 'evento_interno',
+                        'tipo_config_id' => $item['tipo_config_id'] ?? null,
+                        'tipo_piscina' => $item['tipo_piscina'] ?? null,
+                        'visibilidade' => $item['visibilidade'] ?? 'publico',
+                        'escaloes_elegiveis' => $item['escaloes_elegiveis'] ?? null,
+                        'transporte_necessario' => $item['transporte_necessario'] ?? false,
+                        'transporte_detalhes' => $item['transporte_detalhes'] ?? null,
+                        'hora_partida' => $item['hora_partida'] ?? null,
+                        'local_partida' => $item['local_partida'] ?? null,
+                        'taxa_inscricao' => $item['taxa_inscricao'] ?? null,
+                        'custo_inscricao_por_prova' => $item['custo_inscricao_por_prova'] ?? null,
+                        'custo_inscricao_por_salto' => $item['custo_inscricao_por_salto'] ?? null,
+                        'custo_inscricao_estafeta' => $item['custo_inscricao_estafeta'] ?? null,
+                        'centro_custo_id' => $item['centro_custo_id'] ?? null,
+                        'observacoes' => $item['observacoes'] ?? null,
+                        'convocatoria_ficheiro' => $item['convocatoria_ficheiro'] ?? null,
+                        'regulamento_ficheiro' => $item['regulamento_ficheiro'] ?? null,
+                        'estado' => $item['estado'] ?? 'rascunho',
+                        'criado_por' => $criadoPor,
+                        'recorrente' => $item['recorrente'] ?? false,
+                        'recorrencia_data_inicio' => $item['recorrencia_data_inicio'] ?? null,
+                        'recorrencia_data_fim' => $item['recorrencia_data_fim'] ?? null,
+                        'recorrencia_dias_semana' => $item['recorrencia_dias_semana'] ?? null,
+                        'evento_pai_id' => $item['evento_pai_id'] ?? null,
+                    ]
+                );
+            }
+
+            if (count($ids) === 0) {
+                Event::query()->delete();
+                return;
+            }
+
+            Event::whereNotIn('id', $ids)->delete();
+        });
+    }
+
+    private function syncEventTypeConfigs(array $items): void
+    {
+        DB::transaction(function () use ($items) {
+            $ids = [];
+
+            foreach ($items as $item) {
+                if (!is_array($item)) {
+                    continue;
+                }
+
+                $id = $item['id'] ?? (string) Str::uuid();
+                $ids[] = $id;
+
+                EventTypeConfig::updateOrCreate(
+                    ['id' => $id],
+                    [
+                        'nome' => $item['nome'] ?? '',
+                        'cor' => $item['cor'] ?? '#3b82f6',
+                        'icon' => $item['icon'] ?? 'flag',
+                        'ativo' => $item['ativo'] ?? true,
+                        'gera_taxa' => $item['gera_taxa'] ?? false,
+                        'requer_convocatoria' => $item['requer_convocatoria'] ?? false,
+                        'requer_transporte' => $item['requer_transporte'] ?? false,
+                        'visibilidade_default' => $item['visibilidade_default'] ?? 'restrito',
+                    ]
+                );
+            }
+
+            if (count($ids) === 0) {
+                EventTypeConfig::query()->delete();
+                return;
+            }
+
+            EventTypeConfig::whereNotIn('id', $ids)->delete();
+        });
+    }
+
+    private function syncAttendances(array $items, ?string $userId): void
+    {
+        DB::transaction(function () use ($items, $userId) {
+            $ids = [];
+
+            foreach ($items as $item) {
+                if (!is_array($item)) {
+                    continue;
+                }
+
+                $id = $item['id'] ?? (string) Str::uuid();
+                $ids[] = $id;
+
+                EventAttendance::updateOrCreate(
+                    ['id' => $id],
+                    [
+                        'evento_id' => $item['evento_id'] ?? null,
+                        'user_id' => $item['user_id'] ?? null,
+                        'estado' => $item['estado'] ?? 'ausente',
+                        'hora_chegada' => $item['hora_chegada'] ?? null,
+                        'observacoes' => $item['observacoes'] ?? null,
+                        'registado_por' => $this->resolveUserId($item['registado_por'] ?? null, $userId),
+                        'registado_em' => $item['registado_em'] ?? now(),
+                    ]
+                );
+            }
+
+            if (count($ids) === 0) {
+                EventAttendance::query()->delete();
+                return;
+            }
+
+            EventAttendance::whereNotIn('id', $ids)->delete();
+        });
+    }
+
+    private function syncEventResults(array $items, ?string $userId): void
+    {
+        DB::transaction(function () use ($items, $userId) {
+            $ids = [];
+
+            foreach ($items as $item) {
+                if (!is_array($item)) {
+                    continue;
+                }
+
+                $id = $item['id'] ?? (string) Str::uuid();
+                $ids[] = $id;
+
+                EventResult::updateOrCreate(
+                    ['id' => $id],
+                    [
+                        'evento_id' => $item['evento_id'] ?? null,
+                        'user_id' => $item['user_id'] ?? null,
+                        'prova' => $item['prova'] ?? '',
+                        'tempo' => $item['tempo'] ?? null,
+                        'classificacao' => $item['classificacao'] ?? null,
+                        'piscina' => $item['piscina'] ?? null,
+                        'escalao' => $item['escalao'] ?? null,
+                        'observacoes' => $item['observacoes'] ?? null,
+                        'epoca' => $item['epoca'] ?? null,
+                        'registado_por' => $this->resolveUserId($item['registado_por'] ?? null, $userId),
+                        'registado_em' => $item['registado_em'] ?? now(),
+                    ]
+                );
+            }
+
+            if (count($ids) === 0) {
+                EventResult::query()->delete();
+                return;
+            }
+
+            EventResult::whereNotIn('id', $ids)->delete();
+        });
+    }
+
+    private function syncResultProvas(array $items): void
+    {
+        DB::transaction(function () use ($items) {
+            $ids = [];
+
+            foreach ($items as $item) {
+                if (!is_array($item)) {
+                    continue;
+                }
+
+                $id = $item['id'] ?? (string) Str::uuid();
+                $ids[] = $id;
+
+                ResultProva::updateOrCreate(
+                    ['id' => $id],
+                    [
+                        'atleta_id' => $item['atleta_id'] ?? null,
+                        'evento_id' => $item['evento_id'] ?? null,
+                        'evento_nome' => $item['evento_nome'] ?? null,
+                        'prova' => $item['prova'] ?? '',
+                        'local' => $item['local'] ?? '',
+                        'data' => $item['data'] ?? null,
+                        'piscina' => $item['piscina'] ?? 'piscina_25m',
+                        'tempo_final' => $item['tempo_final'] ?? '',
+                    ]
+                );
+            }
+
+            if (count($ids) === 0) {
+                ResultProva::query()->delete();
+                return;
+            }
+
+            ResultProva::whereNotIn('id', $ids)->delete();
+        });
+    }
+
+    private function syncEventConvocations(array $items): void
+    {
+        DB::transaction(function () use ($items) {
+            $ids = [];
+
+            foreach ($items as $item) {
+                if (!is_array($item)) {
+                    continue;
+                }
+
+                $id = $item['id'] ?? (string) Str::uuid();
+                $ids[] = $id;
+
+                EventConvocation::updateOrCreate(
+                    ['id' => $id],
+                    [
+                        'evento_id' => $item['evento_id'] ?? null,
+                        'user_id' => $item['user_id'] ?? null,
+                        'data_convocatoria' => $item['data_convocatoria'] ?? now()->toDateString(),
+                        'estado_confirmacao' => $item['estado_confirmacao'] ?? 'pendente',
+                        'data_resposta' => $item['data_resposta'] ?? null,
+                        'justificacao' => $item['justificacao'] ?? null,
+                        'observacoes' => $item['observacoes'] ?? null,
+                        'transporte_clube' => $item['transporte_clube'] ?? false,
+                    ]
+                );
+            }
+
+            if (count($ids) === 0) {
+                EventConvocation::query()->delete();
+                return;
+            }
+
+            EventConvocation::whereNotIn('id', $ids)->delete();
+        });
+    }
+
+    private function syncConvocationGroups(array $items, ?string $userId): void
+    {
+        DB::transaction(function () use ($items, $userId) {
+            $ids = [];
+
+            foreach ($items as $item) {
+                if (!is_array($item)) {
+                    continue;
+                }
+
+                $id = $item['id'] ?? (string) Str::uuid();
+                $ids[] = $id;
+
+                ConvocationGroup::updateOrCreate(
+                    ['id' => $id],
+                    [
+                        'evento_id' => $item['evento_id'] ?? null,
+                        'data_criacao' => $item['data_criacao'] ?? now(),
+                        'criado_por' => $this->resolveUserId($item['criado_por'] ?? null, $userId),
+                        'atletas_ids' => $item['atletas_ids'] ?? [],
+                        'hora_encontro' => $item['hora_encontro'] ?? null,
+                        'local_encontro' => $item['local_encontro'] ?? null,
+                        'observacoes' => $item['observacoes'] ?? null,
+                        'tipo_custo' => $item['tipo_custo'] ?? 'por_salto',
+                        'valor_por_salto' => $item['valor_por_salto'] ?? null,
+                        'valor_por_estafeta' => $item['valor_por_estafeta'] ?? null,
+                        'valor_inscricao_unitaria' => $item['valor_inscricao_unitaria'] ?? null,
+                        'valor_inscricao_calculado' => $item['valor_inscricao_calculado'] ?? null,
+                        'movimento_id' => $item['movimento_id'] ?? null,
+                    ]
+                );
+            }
+
+            if (count($ids) === 0) {
+                ConvocationGroup::query()->delete();
+                return;
+            }
+
+            ConvocationGroup::whereNotIn('id', $ids)->delete();
+        });
+    }
+
+    private function syncConvocationAthletes(array $items): void
+    {
+        DB::transaction(function () use ($items) {
+            if (count($items) === 0) {
+                ConvocationAthlete::query()->delete();
+                return;
+            }
+
+            $grouped = collect($items)->filter(fn ($item) => is_array($item))
+                ->groupBy('convocatoria_grupo_id');
+
+            foreach ($grouped as $groupId => $athletes) {
+                $athleteIds = $athletes->pluck('atleta_id')->filter()->values();
+
+                foreach ($athletes as $item) {
+                    ConvocationAthlete::updateOrCreate(
+                        [
+                            'convocatoria_grupo_id' => $item['convocatoria_grupo_id'],
+                            'atleta_id' => $item['atleta_id'],
+                        ],
+                        [
+                            'provas' => $item['provas'] ?? [],
+                            'presente' => $item['presente'] ?? false,
+                            'confirmado' => $item['confirmado'] ?? false,
+                        ]
+                    );
+                }
+
+                ConvocationAthlete::where('convocatoria_grupo_id', $groupId)
+                    ->when($athleteIds->isNotEmpty(), fn ($query) => $query->whereNotIn('atleta_id', $athleteIds))
+                    ->delete();
+            }
+
+            $groupIds = $grouped->keys()->filter()->values();
+            if ($groupIds->isNotEmpty()) {
+                ConvocationAthlete::whereNotIn('convocatoria_grupo_id', $groupIds)->delete();
+            }
+        });
+    }
+
+    private function syncConvocationMovements(array $items): void
+    {
+        DB::transaction(function () use ($items) {
+            $ids = [];
+
+            foreach ($items as $item) {
+                if (!is_array($item)) {
+                    continue;
+                }
+
+                $id = $item['id'] ?? (string) Str::uuid();
+                $ids[] = $id;
+
+                ConvocationMovement::updateOrCreate(
+                    ['id' => $id],
+                    [
+                        'user_id' => $item['user_id'] ?? null,
+                        'convocatoria_grupo_id' => $item['convocatoria_grupo_id'] ?? null,
+                        'evento_id' => $item['evento_id'] ?? null,
+                        'evento_nome' => $item['evento_nome'] ?? '',
+                        'tipo' => $item['tipo'] ?? 'convocatoria',
+                        'data_emissao' => $item['data_emissao'] ?? now()->toDateString(),
+                        'valor' => $item['valor'] ?? 0,
+                    ]
+                );
+
+                $itemIds = [];
+                $movementItems = $item['itens'] ?? [];
+
+                foreach ($movementItems as $movementItem) {
+                    if (!is_array($movementItem)) {
+                        continue;
+                    }
+
+                    $itemId = $movementItem['id'] ?? (string) Str::uuid();
+                    $itemIds[] = $itemId;
+
+                    ConvocationMovementItem::updateOrCreate(
+                        ['id' => $itemId],
+                        [
+                            'movimento_convocatoria_id' => $id,
+                            'descricao' => $movementItem['descricao'] ?? '',
+                            'valor' => $movementItem['valor'] ?? 0,
+                        ]
+                    );
+                }
+
+                if (count($itemIds) === 0) {
+                    ConvocationMovementItem::where('movimento_convocatoria_id', $id)->delete();
+                } else {
+                    ConvocationMovementItem::where('movimento_convocatoria_id', $id)
+                        ->whereNotIn('id', $itemIds)
+                        ->delete();
+                }
+            }
+
+            if (count($ids) === 0) {
+                ConvocationMovementItem::query()->delete();
+                ConvocationMovement::query()->delete();
+                return;
+            }
+
+            ConvocationMovementItem::whereNotIn('movimento_convocatoria_id', $ids)->delete();
+            ConvocationMovement::whereNotIn('id', $ids)->delete();
+        });
+    }
+
+    private function resolveUserId(?string $candidate, ?string $fallback): ?string
+    {
+        if ($candidate && Str::isUuid($candidate)) {
+            return $candidate;
+        }
+
+        if ($fallback && Str::isUuid($fallback)) {
+            return $fallback;
+        }
+
+        return User::query()->value('id');
+    }
+
+    private function deleteConvocationMovements(): bool
+    {
+        ConvocationMovementItem::query()->delete();
+        ConvocationMovement::query()->delete();
+
+        return true;
+    }
+}

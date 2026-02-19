@@ -13,29 +13,29 @@ class ResultsController extends Controller
     {
         $query = ResultProva::with(['atleta', 'evento']);
 
-        if ($request->has('athlete_id')) {
-            $query->where('athlete_id', $request->get('athlete_id'));
+        if ($request->has('atleta_id')) {
+            $query->where('atleta_id', $request->get('atleta_id'));
         }
 
-        if ($request->has('event_id')) {
-            $query->where('event_id', $request->get('event_id'));
+        if ($request->has('evento_id')) {
+            $query->where('evento_id', $request->get('evento_id'));
         }
 
-        $results = $query->orderBy('date', 'desc')->get();
+        $results = $query->orderBy('data', 'desc')->get();
         return response()->json($results);
     }
 
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'athlete_id' => 'required|uuid|exists:users,id',
-            'event_id' => 'nullable|uuid|exists:events,id',
-            'event_name' => 'required|string',
-            'race' => 'required|string',
-            'location' => 'nullable|string',
-            'date' => 'required|date',
-            'pool' => 'nullable|in:piscina_25m,piscina_50m,aguas_abertas',
-            'final_time' => 'required|string',
+            'atleta_id' => 'required|uuid|exists:users,id',
+            'evento_id' => 'nullable|uuid|exists:events,id',
+            'evento_nome' => 'nullable|string',
+            'prova' => 'required|string',
+            'local' => 'required|string',
+            'data' => 'required|date',
+            'piscina' => 'nullable|in:piscina_25m,piscina_50m,aguas_abertas',
+            'tempo_final' => 'required|string',
         ]);
 
         $result = ResultProva::create($validated);
@@ -53,12 +53,12 @@ class ResultsController extends Controller
         $result = ResultProva::findOrFail($id);
         
         $validated = $request->validate([
-            'event_name' => 'sometimes|string',
-            'race' => 'sometimes|string',
-            'location' => 'sometimes|string',
-            'date' => 'sometimes|date',
-            'pool' => 'sometimes|in:piscina_25m,piscina_50m,aguas_abertas',
-            'final_time' => 'sometimes|string',
+            'evento_nome' => 'sometimes|string',
+            'prova' => 'sometimes|string',
+            'local' => 'sometimes|string',
+            'data' => 'sometimes|date',
+            'piscina' => 'sometimes|in:piscina_25m,piscina_50m,aguas_abertas',
+            'tempo_final' => 'sometimes|string',
         ]);
 
         $result->update($validated);

@@ -13,30 +13,32 @@ class EventAttendancesController extends Controller
     {
         $query = EventAttendance::with(['event', 'user', 'registeredBy']);
 
-        if ($request->has('event_id')) {
-            $query->where('event_id', $request->get('event_id'));
+        if ($request->has('evento_id')) {
+            $query->where('evento_id', $request->get('evento_id'));
         }
 
         if ($request->has('user_id')) {
             $query->where('user_id', $request->get('user_id'));
         }
 
-        $attendances = $query->orderBy('registered_at', 'desc')->get();
+        $attendances = $query->orderBy('registado_em', 'desc')->get();
         return response()->json($attendances);
     }
 
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'event_id' => 'required|uuid|exists:events,id',
+            'evento_id' => 'required|uuid|exists:events,id',
             'user_id' => 'required|uuid|exists:users,id',
-            'status' => 'required|in:present,absent,excused,late',
-            'arrival_time' => 'nullable|date',
-            'notes' => 'nullable|string',
-            'registered_by' => 'nullable|uuid|exists:users,id',
+            'estado' => 'required|in:presente,ausente,justificado',
+            'hora_chegada' => 'nullable|date_format:H:i',
+            'observacoes' => 'nullable|string',
+            'registado_por' => 'nullable|uuid|exists:users,id',
+            'registado_em' => 'nullable|date',
         ]);
 
-        $validated['registered_at'] = now();
+        $validated['registado_por'] = $validated['registado_por'] ?? auth()->id();
+        $validated['registado_em'] = $validated['registado_em'] ?? now();
         $attendance = EventAttendance::create($validated);
         
         return response()->json($attendance, 201);
@@ -53,9 +55,9 @@ class EventAttendancesController extends Controller
         $attendance = EventAttendance::findOrFail($id);
         
         $validated = $request->validate([
-            'status' => 'sometimes|in:present,absent,excused,late',
-            'arrival_time' => 'sometimes|date',
-            'notes' => 'sometimes|string',
+            'estado' => 'sometimes|in:presente,ausente,justificado',
+            'hora_chegada' => 'sometimes|date_format:H:i',
+            'observacoes' => 'sometimes|string',
         ]);
 
         $attendance->update($validated);

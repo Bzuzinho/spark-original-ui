@@ -5,9 +5,8 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreEventRequest;
 use App\Http\Requests\UpdateEventRequest;
 use App\Models\Event;
-use App\Models\EventType;
+use App\Models\EventTypeConfig;
 use App\Models\EventConvocation;
-use App\Models\EventAttendance;
 use App\Models\User;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -26,29 +25,29 @@ class EventosController extends Controller
         $endOfMonth = $now->copy()->endOfMonth();
         
         $stats = [
-            'upcomingEvents' => Event::where('start_date', '>=', $now)
-                ->where('status', '!=', 'cancelado')
+            'upcomingEvents' => Event::where('data_inicio', '>=', $now)
+                ->where('estado', '!=', 'cancelado')
                 ->count(),
             'monthParticipants' => EventConvocation::whereBetween('created_at', [$startOfMonth, $endOfMonth])
                 ->count(),
-            'completedEvents' => Event::where('status', 'concluido')
-                ->whereYear('start_date', $now->year)
+            'completedEvents' => Event::where('estado', 'concluido')
+                ->whereYear('data_inicio', $now->year)
                 ->count(),
         ];
 
         return Inertia::render('Eventos/Index', [
             'events' => Event::with(['creator', 'convocations.athlete', 'attendances.athlete'])
-                ->orderBy('start_date', 'desc')
+                ->orderBy('data_inicio', 'desc')
                 ->get(),
             'stats' => $stats,
-            'users' => User::where('status', 'ativo')->get(['id', 'nome_completo', 'user_type']),
+            'users' => User::where('estado', 'ativo')->get(['id', 'nome_completo', 'perfil']),
         ]);
     }
 
     public function create(): Response
     {
         return Inertia::render('Eventos/Create', [
-            'eventTypes' => EventType::where('ativo', true)->get(),
+            'eventTypes' => EventTypeConfig::where('ativo', true)->get(),
             'users' => User::where('estado', 'ativo')->get(),
         ]);
     }
@@ -56,16 +55,17 @@ class EventosController extends Controller
     public function store(StoreEventRequest $request): RedirectResponse
     {
         $data = $request->validated();
-        $data['created_by'] = auth()->id();
+        $data['criado_por'] = $data['criado_por'] ?? auth()->id();
+        $data['descricao'] = $data['descricao'] ?? '';
         
         // Set default estado if not provided
-        if (!isset($data['status'])) {
-            $data['status'] = 'rascunho';
+        if (!isset($data['estado'])) {
+            $data['estado'] = 'rascunho';
         }
         
         $event = Event::create($data);
 
-        return redirect()->route('events.index')
+        return redirect()->route('eventos.index')
             ->with('success', 'Evento criado com sucesso!');
     }
 
@@ -74,7 +74,7 @@ class EventosController extends Controller
         return Inertia::render('Eventos/Show', [
             'event' => $evento->load([
                 'creator',
-                'eventType',
+                'tipoConfig',
                 'convocations.user',
                 'attendances.user',
                 'results',
@@ -85,17 +85,19 @@ class EventosController extends Controller
     public function edit(Event $evento): Response
     {
         return Inertia::render('Eventos/Edit', [
-            'event' => $evento->load(['eventType']),
-            'eventTypes' => EventType::where('ativo', true)->get(),
+            'event' => $evento->load(['tipoConfig']),
+            'eventTypes' => EventTypeConfig::where('ativo', true)->get(),
             'users' => User::where('estado', 'ativo')->get(),
         ]);
     }
 
     public function update(UpdateEventRequest $request, Event $evento): RedirectResponse
     {
-        $evento->update($request->validated());
+        $data = $request->validated();
+        $data['descricao'] = $data['descricao'] ?? $evento->descricao ?? '';
+        $evento->update($data);
 
-        return redirect()->route('events.index')
+        return redirect()->route('eventos.index')
             ->with('success', 'Evento atualizado com sucesso!');
     }
 
@@ -103,7 +105,7 @@ class EventosController extends Controller
     {
         $evento->delete();
 
-        return redirect()->route('events.index')
+        return redirect()->route('eventos.index')
             ->with('success', 'Evento eliminado com sucesso!');
     }
 
@@ -114,14 +116,17 @@ class EventosController extends Controller
     {
         $request->validate([
             'user_id' => 'required|exists:users,id',
-            'status' => 'nullable|in:confirmado,pendente,ausente',
-            'notes' => 'nullable|string',
+            'estado_confirmacao' => 'nullable|in:confirmado,pendente,recusado',
+            'status' => 'nullable|in:confirmado,pendente,recusado',
+            'observacoes' => 'nullable|string',
+            'justificacao' => 'nullable|string',
+            'transporte_clube' => 'nullable|boolean',
         ]);
 
-        $status = $request->input('status', 'pendente');
+        $estadoConfirmacao = $request->input('estado_confirmacao', $request->input('status', 'pendente'));
 
         // Check if participant already exists
-        $existing = EventConvocation::where('event_id', $evento->id)
+        $existing = EventConvocation::where('evento_id', $evento->id)
             ->where('user_id', $request->user_id)
             ->first();
 
@@ -132,11 +137,13 @@ class EventosController extends Controller
         }
 
         $convocation = EventConvocation::create([
-            'event_id' => $evento->id,
+            'evento_id' => $evento->id,
             'user_id' => $request->user_id,
-            'convocation_date' => now(),
-            'confirmation_status' => $status,
-            'notes' => $request->notes,
+            'data_convocatoria' => now()->toDateString(),
+            'estado_confirmacao' => $estadoConfirmacao,
+            'observacoes' => $request->input('observacoes'),
+            'justificacao' => $request->input('justificacao'),
+            'transporte_clube' => (bool) $request->input('transporte_clube', false),
         ]);
 
         return response()->json([
@@ -150,7 +157,7 @@ class EventosController extends Controller
      */
     public function removeParticipant(Event $evento, User $user): JsonResponse
     {
-        $convocation = EventConvocation::where('event_id', $evento->id)
+        $convocation = EventConvocation::where('evento_id', $evento->id)
             ->where('user_id', $user->id)
             ->first();
 
@@ -173,11 +180,21 @@ class EventosController extends Controller
     public function updateParticipantStatus(Request $request, Event $evento, User $user): JsonResponse
     {
         $request->validate([
-            'status' => 'required|in:confirmado,pendente,ausente',
-            'notes' => 'nullable|string',
+            'estado_confirmacao' => 'nullable|in:confirmado,pendente,recusado',
+            'status' => 'nullable|in:confirmado,pendente,recusado',
+            'observacoes' => 'nullable|string',
+            'justificacao' => 'nullable|string',
         ]);
 
-        $convocation = EventConvocation::where('event_id', $evento->id)
+        $estadoConfirmacao = $request->input('estado_confirmacao', $request->input('status'));
+
+        if (!$estadoConfirmacao) {
+            return response()->json([
+                'message' => 'Estado de confirmação obrigatório',
+            ], 422);
+        }
+
+        $convocation = EventConvocation::where('evento_id', $evento->id)
             ->where('user_id', $user->id)
             ->first();
 
@@ -188,9 +205,10 @@ class EventosController extends Controller
         }
 
         $convocation->update([
-            'confirmation_status' => $request->status,
-            'notes' => $request->notes,
-            'response_date' => now(),
+            'estado_confirmacao' => $estadoConfirmacao,
+            'observacoes' => $request->input('observacoes'),
+            'justificacao' => $request->input('justificacao'),
+            'data_resposta' => now(),
         ]);
 
         return response()->json([
@@ -209,13 +227,13 @@ class EventosController extends Controller
         $endOfMonth = $now->copy()->endOfMonth();
         
         return response()->json([
-            'upcomingEvents' => Event::where('start_date', '>=', $now)
-                ->where('status', '!=', 'cancelado')
+            'upcomingEvents' => Event::where('data_inicio', '>=', $now)
+                ->where('estado', '!=', 'cancelado')
                 ->count(),
             'monthParticipants' => EventConvocation::whereBetween('created_at', [$startOfMonth, $endOfMonth])
                 ->count(),
-            'completedEvents' => Event::where('status', 'concluido')
-                ->whereYear('start_date', $now->year)
+            'completedEvents' => Event::where('estado', 'concluido')
+                ->whereYear('data_inicio', $now->year)
                 ->count(),
         ]);
     }

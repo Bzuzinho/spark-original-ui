@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\KeyValueStore;
+use App\Services\KeyValue\EventosKeyValueService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
@@ -18,6 +19,15 @@ class KeyValueController extends Controller
     {
         $scope = $request->get('scope', 'global');
         $userId = $scope === 'user' ? auth()->id() : null;
+
+        $eventosSync = new EventosKeyValueService();
+        if ($eventosSync->supports($key)) {
+            return response()->json([
+                'key' => $key,
+                'value' => $eventosSync->get($key, $userId),
+                'scope' => $scope,
+            ]);
+        }
 
         $value = KeyValueStore::getValue($key, $userId);
 
@@ -43,6 +53,16 @@ class KeyValueController extends Controller
         $scope = $validated['scope'] ?? 'global';
         $userId = $scope === 'user' ? auth()->id() : null;
 
+        $eventosSync = new EventosKeyValueService();
+        if ($eventosSync->supports($key)) {
+            $eventosSync->set($key, $validated['value'], $userId);
+
+            return response()->json([
+                'message' => 'Value saved successfully',
+                'key' => $key,
+            ]);
+        }
+
         KeyValueStore::setValue($key, $validated['value'], $userId);
 
         return response()->json([
@@ -60,6 +80,16 @@ class KeyValueController extends Controller
     {
         $scope = $request->get('scope', 'global');
         $userId = $scope === 'user' ? auth()->id() : null;
+
+        $eventosSync = new EventosKeyValueService();
+        if ($eventosSync->supports($key)) {
+            $eventosSync->delete($key, $userId);
+
+            return response()->json([
+                'message' => 'Value deleted successfully',
+                'key' => $key,
+            ]);
+        }
 
         KeyValueStore::deleteValue($key, $userId);
 
