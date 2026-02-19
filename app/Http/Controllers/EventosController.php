@@ -7,6 +7,8 @@ use App\Http\Requests\UpdateEventRequest;
 use App\Models\Event;
 use App\Models\EventTypeConfig;
 use App\Models\EventConvocation;
+use App\Models\EventAttendance;
+use App\Models\EventResult;
 use App\Models\User;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -25,6 +27,7 @@ class EventosController extends Controller
         $endOfMonth = $now->copy()->endOfMonth();
         
         $stats = [
+            'totalEvents' => Event::count(),
             'upcomingEvents' => Event::where('data_inicio', '>=', $now)
                 ->where('estado', '!=', 'cancelado')
                 ->count(),
@@ -33,14 +36,21 @@ class EventosController extends Controller
             'completedEvents' => Event::where('estado', 'concluido')
                 ->whereYear('data_inicio', $now->year)
                 ->count(),
+            'activeConvocatorias' => EventConvocation::whereHas('event', function($query) use ($now) {
+                $query->where('data_inicio', '>=', $now);
+            })->count(),
         ];
 
         return Inertia::render('Eventos/Index', [
-            'events' => Event::with(['creator', 'convocations.athlete', 'attendances.athlete'])
+            'eventos' => Event::with(['creator', 'convocations', 'attendances'])
                 ->orderBy('data_inicio', 'desc')
                 ->get(),
             'stats' => $stats,
-            'users' => User::where('estado', 'ativo')->get(['id', 'nome_completo', 'perfil']),
+            'users' => User::where('estado', 'ativo')->get(['id', 'nome_completo', 'perfil', 'email']),
+            'convocations' => EventConvocation::with('event', 'user')->get(),
+            'attendances' => EventAttendance::with('event', 'user')->get(),
+            'results' => EventResult::with('event', 'user')->get(),
+            'eventTypes' => EventTypeConfig::where('ativo', true)->get(),
         ]);
     }
 
