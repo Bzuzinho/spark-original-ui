@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Head } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs';
-import { ListChecks, CalendarBlank, PaperPlaneTilt, ClipboardText, Gear, ChartBar, Trophy } from '@phosphor-icons/react';
+import { ListChecks, CalendarBlank, PaperPlaneTilt, ClipboardText, ChartBar, Trophy } from '@phosphor-icons/react';
 import {
   EventosDashboard,
   EventosList,
@@ -11,7 +11,6 @@ import {
   PresencasList,
   EventosResultados,
   EventosRelatorios,
-  EventosTipos,
 } from '@/Components/Eventos';
 
 interface Event {
@@ -47,7 +46,6 @@ interface Props {
     convocations?: any[];
     attendances?: any[];
     results?: any[];
-    eventTypes?: any[];
 }
 
 export default function EventosIndex({
@@ -57,7 +55,6 @@ export default function EventosIndex({
   convocations = [],
   attendances = [],
   results = [],
-  eventTypes = [],
 }: Props) {
   const [activeTab, setActiveTab] = useState('dashboard');
 
@@ -128,13 +125,6 @@ export default function EventosIndex({
               <ChartBar size={16} className="flex-shrink-0" />
               <span className="hidden sm:inline">Relatórios</span>
             </TabsTrigger>
-            <TabsTrigger
-              value="configuracao"
-              className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-2 px-1 text-xs"
-            >
-              <Gear size={16} className="flex-shrink-0" />
-              <span className="hidden sm:inline">Config</span>
-            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="dashboard" className="space-y-3">
@@ -179,10 +169,6 @@ export default function EventosIndex({
               attendances={attendances}
               results={results}
             />
-          </TabsContent>
-
-          <TabsContent value="configuracao" className="space-y-3">
-            <EventosTipos types={eventTypes} />
           </TabsContent>
         </Tabs>
       </div>

@@ -50,7 +50,6 @@ class EventosController extends Controller
             'convocations' => EventConvocation::with('event', 'user')->get(),
             'attendances' => EventAttendance::with('event', 'user')->get(),
             'results' => EventResult::with('event', 'user')->get(),
-            'eventTypes' => EventTypeConfig::where('ativo', true)->get(),
         ]);
     }
 
