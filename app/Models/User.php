@@ -171,7 +171,7 @@ class User extends Authenticatable
 
     public function createdEvents(): HasMany
     {
-        return $this->hasMany(Event::class, 'created_by');
+        return $this->hasMany(Event::class, 'criado_por');
     }
 
     public function convocations(): HasMany
@@ -201,7 +201,7 @@ class User extends Authenticatable
 
     public function createdTrainings(): HasMany
     {
-        return $this->hasMany(Training::class, 'created_by');
+        return $this->hasMany(Training::class, 'criado_por');
     }
 
     public function trainingAthletes(): HasMany
@@ -266,7 +266,7 @@ class User extends Authenticatable
 
     public function createdConvocationGroups(): HasMany
     {
-        return $this->hasMany(ConvocationGroup::class, 'created_by');
+        return $this->hasMany(ConvocationGroup::class, 'criado_por');
     }
 
     public function convocationAthletes(): HasMany
@@ -311,6 +311,6 @@ class User extends Authenticatable
 
     public function eventsCreated(): HasMany
     {
-        return $this->hasMany(Event::class, 'created_by');
+        return $this->hasMany(Event::class, 'criado_por');
     }
 }
