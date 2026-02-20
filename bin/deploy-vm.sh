@@ -1,58 +1,255 @@
 #!/usr/bin/env bash
+# deploy-vm.sh — Deploy Codespace → VM Oracle Ubuntu 22.04
+# Usage: npm run deploy:vm
 set -euo pipefail
 
 # ===== Config =====
 VM_USER="${VM_USER:-ubuntu}"
 VM_HOST="${VM_HOST:-129.159.13.211}"
 VM_APP_DIR="${VM_APP_DIR:-/var/www/clubmanager}"
-REMOTE_BACKEND_DEPLOY="${REMOTE_BACKEND_DEPLOY:-clubmanager-deploy-backend.sh}"
-REMOTE_FRONTEND_RELOAD="${REMOTE_FRONTEND_RELOAD:-clubmanager-frontend-reload.sh}"
-REMOTE_HEALTHCHECK="${REMOTE_HEALTHCHECK:-clubmanager-healthcheck.sh}"
+SSH_KEY="${SSH_KEY:-${HOME}/.ssh/id_ed25519}"
+SSH_ALIAS="clubmanager-vm"
+SSH_CONFIG="${HOME}/.ssh/config"
+KNOWN_HOSTS="${HOME}/.ssh/known_hosts"
+REMOTE_BACKEND_SCRIPT="/usr/local/bin/clubmanager-deploy-backend.sh"
+REMOTE_FRONTEND_SCRIPT="/usr/local/bin/clubmanager-frontend-reload.sh"
+REMOTE_HEALTHCHECK_SCRIPT="/usr/local/bin/clubmanager-healthcheck.sh"
 
 echo "==> Repo: $(pwd)"
 echo "==> VM:   ${VM_USER}@${VM_HOST}:${VM_APP_DIR}"
 
-# ===== Guardrails =====
-if [[ "$(git rev-parse --abbrev-ref HEAD)" != "main" ]]; then
-  echo "❌ Tens de estar na branch main."
+# ===== Helper: run ssh via alias (BatchMode, 15s timeout) =====
+vm_ssh() {
+  ssh -o BatchMode=yes -o ConnectTimeout=15 "${SSH_ALIAS}" "$@"
+}
+
+# ===== Helper: show failure logs from VM =====
+show_failure_logs() {
+  echo ""
+  echo "--- Laravel log (last 80 lines) ---"
+  vm_ssh "tail -n 80 ${VM_APP_DIR}/storage/logs/laravel.log 2>/dev/null || true"
+  echo ""
+  echo "--- Nginx error log (last 40 lines) ---"
+  vm_ssh "tail -n 40 /var/log/nginx/error.log 2>/dev/null || true"
+}
+
+# ===== [0/6] Pre-flight: repo state =====
+echo ""
+echo "==> [0/6] Verificar estado do repo"
+
+if [[ "$(git rev-parse --abbrev-ref HEAD 2>/dev/null)" != "main" ]]; then
+  echo "❌ Tens de estar na branch main (actual: $(git rev-parse --abbrev-ref HEAD))."
   exit 1
 fi
 
-if [[ -n "$(git status --porcelain)" ]]; then
+if [[ -n "$(git status --porcelain 2>/dev/null)" ]]; then
   echo "❌ Tens alterações por commitar. Faz commit antes do deploy."
   echo "   (git status para veres o que falta)"
   exit 1
 fi
 
-# ===== 1) Frontend build FIRST (se falhar, não estraga produção) =====
-echo "==> [1/6] npm ci"
+echo "   ✔ branch=main, working tree limpo"
+
+# ===== [1/6] Build frontend no Codespace =====
+echo ""
+echo "==> [1/6] Build frontend (Codespace)"
+echo "    npm ci ..."
 npm ci
 
-echo "==> [2/6] npm run build"
+echo "    npm run build ..."
 npm run build
 
 if [[ ! -f "public/build/manifest.json" ]]; then
-  echo "❌ Build não gerou public/build/manifest.json"
+  echo "❌ Build não gerou public/build/manifest.json — abortar."
+  exit 1
+fi
+echo "   ✔ Build OK (public/build/manifest.json presente)"
+
+# ===== [2/6] Git push =====
+echo ""
+echo "==> [2/6] git push origin main"
+git push origin main
+echo "   ✔ Push OK"
+
+# ===== [3/6] Garantir SSH funcional =====
+echo ""
+echo "==> [3/6] Configurar SSH para a VM"
+
+mkdir -p "${HOME}/.ssh"
+chmod 700 "${HOME}/.ssh"
+
+# 3a) Criar chave ed25519 se não existir
+if [[ ! -f "${SSH_KEY}" ]]; then
+  echo "    Gerar chave SSH ed25519 (sem passphrase) ..."
+  ssh-keygen -t ed25519 -C "codespace-deploy" -N "" -f "${SSH_KEY}"
+  echo "   ✔ Chave criada: ${SSH_KEY}"
+else
+  echo "   ✔ Chave já existe: ${SSH_KEY}"
+fi
+
+# 3b) Adicionar host key ao known_hosts (idempotente)
+echo "    Actualizar known_hosts via ssh-keyscan ..."
+ssh-keyscan -H "${VM_HOST}" >> "${KNOWN_HOSTS}" 2>/dev/null || true
+# Deduplicate
+sort -u "${KNOWN_HOSTS}" -o "${KNOWN_HOSTS}" 2>/dev/null || true
+echo "   ✔ known_hosts actualizado"
+
+# 3c) Criar/actualizar ~/.ssh/config com alias clubmanager-vm
+if ! grep -q "Host ${SSH_ALIAS}" "${SSH_CONFIG}" 2>/dev/null; then
+  echo "    Adicionar alias '${SSH_ALIAS}' ao ${SSH_CONFIG} ..."
+  cat >> "${SSH_CONFIG}" <<SSHCONFIG
+
+# --- Adicionado por deploy-vm.sh ---
+Host ${SSH_ALIAS}
+  HostName ${VM_HOST}
+  User ${VM_USER}
+  IdentityFile ${SSH_KEY}
+  IdentitiesOnly yes
+  StrictHostKeyChecking accept-new
+  ServerAliveInterval 60
+SSHCONFIG
+  chmod 600 "${SSH_CONFIG}"
+  echo "   ✔ Alias '${SSH_ALIAS}' adicionado ao SSH config"
+else
+  echo "   ✔ Alias '${SSH_ALIAS}' já existe no SSH config"
+fi
+
+# 3d) Instalar chave pública na VM (tenta via ssh; se falhar, mostra instrução manual)
+PUB_KEY_CONTENT="$(cat "${SSH_KEY}.pub")"
+
+echo "    Tentar instalar chave pública na VM ..."
+if ssh -o BatchMode=yes -o ConnectTimeout=15 \
+     -o StrictHostKeyChecking=accept-new \
+     -i "${SSH_KEY}" "${VM_USER}@${VM_HOST}" \
+     "mkdir -p ~/.ssh && chmod 700 ~/.ssh && \
+      grep -qxF '${PUB_KEY_CONTENT}' ~/.ssh/authorized_keys 2>/dev/null || \
+      echo '${PUB_KEY_CONTENT}' >> ~/.ssh/authorized_keys && \
+      chmod 600 ~/.ssh/authorized_keys && \
+      chown -R ${VM_USER}:${VM_USER} ~/.ssh && \
+      echo PUBKEY_OK" 2>/dev/null | grep -q "PUBKEY_OK"; then
+  echo "   ✔ Chave pública instalada/verificada na VM"
+else
+  echo "   ⚠ Não foi possível instalar a chave automaticamente."
+  echo "     Instala manualmente na VM:"
+  echo "       echo '${PUB_KEY_CONTENT}' >> /home/${VM_USER}/.ssh/authorized_keys"
+  echo "       chmod 700 /home/${VM_USER}/.ssh && chmod 600 /home/${VM_USER}/.ssh/authorized_keys"
+  echo "     Depois corre novamente: npm run deploy:vm"
   exit 1
 fi
 
-# ===== 2) Push main =====
-echo "==> [3/6] git push origin main"
-git push origin main
+# 3e) Validar SSH via alias
+echo "    Validar SSH com alias '${SSH_ALIAS}' ..."
+SSH_TEST="$(vm_ssh 'echo SSH_OK && hostname' 2>&1)" || {
+  echo "❌ SSH falhou com alias '${SSH_ALIAS}'."
+  echo "   Output: ${SSH_TEST}"
+  echo "   Verifica ~/.ssh/config e authorized_keys na VM."
+  exit 1
+}
+echo "   ✔ SSH OK — ${SSH_TEST}"
 
-# ===== 3) Backend deploy na VM (pull + composer + migrate + cache + reload) =====
+# ===== [4/6] Deploy backend na VM =====
+echo ""
 echo "==> [4/6] Deploy backend na VM"
-ssh -o BatchMode=yes -o ConnectTimeout=10 "${VM_USER}@${VM_HOST}" \
-  "cd '${VM_APP_DIR}' && ${REMOTE_BACKEND_DEPLOY}"
 
-# ===== 4) Upload do build =====
-echo "==> [5/6] Upload public/build -> VM"
-scp -r public/build "${VM_USER}@${VM_HOST}:${VM_APP_DIR}/public/"
+# Garantir que os scripts remotos existem; criá-los via heredoc se necessário
+vm_ssh "bash -s" <<'ENSURE_SCRIPTS'
+set -e
 
-# ===== 5) Reload frontend + healthcheck =====
+# --- clubmanager-deploy-backend.sh ---
+if [[ ! -x /usr/local/bin/clubmanager-deploy-backend.sh ]]; then
+  echo "  Criar /usr/local/bin/clubmanager-deploy-backend.sh ..."
+  sudo tee /usr/local/bin/clubmanager-deploy-backend.sh > /dev/null <<'BACKEND'
+#!/usr/bin/env bash
+set -euo pipefail
+APP_DIR="${1:-/var/www/clubmanager}"
+cd "$APP_DIR"
+echo "[backend] git pull"
+git pull
+echo "[backend] composer install"
+composer install --no-dev --optimize-autoloader
+echo "[backend] migrate"
+php artisan migrate --force
+echo "[backend] cache"
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+echo "[backend] reload php-fpm"
+sudo systemctl reload php8.3-fpm || sudo service php8.3-fpm reload
+echo "[backend] done"
+BACKEND
+  sudo chmod +x /usr/local/bin/clubmanager-deploy-backend.sh
+fi
+
+# --- clubmanager-frontend-reload.sh ---
+if [[ ! -x /usr/local/bin/clubmanager-frontend-reload.sh ]]; then
+  echo "  Criar /usr/local/bin/clubmanager-frontend-reload.sh ..."
+  sudo tee /usr/local/bin/clubmanager-frontend-reload.sh > /dev/null <<'FRONTEND'
+#!/usr/bin/env bash
+set -euo pipefail
+echo "[frontend] reload nginx"
+sudo systemctl reload nginx || sudo service nginx reload
+echo "[frontend] done"
+FRONTEND
+  sudo chmod +x /usr/local/bin/clubmanager-frontend-reload.sh
+fi
+
+# --- clubmanager-healthcheck.sh ---
+if [[ ! -x /usr/local/bin/clubmanager-healthcheck.sh ]]; then
+  echo "  Criar /usr/local/bin/clubmanager-healthcheck.sh ..."
+  sudo tee /usr/local/bin/clubmanager-healthcheck.sh > /dev/null <<'HEALTH'
+#!/usr/bin/env bash
+set -euo pipefail
+HOST="${1:-localhost}"
+echo "[healthcheck] curl -Is http://${HOST}/ ..."
+RESPONSE="$(curl -Is --max-time 10 "http://${HOST}/" | head -1)"
+echo "[healthcheck] ${RESPONSE}"
+if echo "${RESPONSE}" | grep -qE "^HTTP/[0-9.]+ (200|301|302|303)"; then
+  echo "[healthcheck] OK"
+else
+  echo "[healthcheck] WARN: resposta inesperada: ${RESPONSE}"
+  exit 1
+fi
+HEALTH
+  sudo chmod +x /usr/local/bin/clubmanager-healthcheck.sh
+fi
+
+echo "Scripts remotos OK"
+ENSURE_SCRIPTS
+
+echo "   ✔ Scripts remotos verificados/criados"
+
+# Correr deploy backend
+if ! vm_ssh "/usr/local/bin/clubmanager-deploy-backend.sh '${VM_APP_DIR}'"; then
+  echo "❌ Deploy backend falhou."
+  show_failure_logs
+  exit 1
+fi
+echo "   ✔ Backend deploy OK"
+
+# ===== [5/6] Copiar public/build para a VM =====
+echo ""
+echo "==> [5/6] Upload public/build → VM"
+scp -o BatchMode=yes -o ConnectTimeout=15 \
+    -i "${SSH_KEY}" \
+    -r public/build "${VM_USER}@${VM_HOST}:${VM_APP_DIR}/public/"
+echo "   ✔ public/build copiado"
+
+# ===== [6/6] Reload frontend + healthcheck =====
+echo ""
 echo "==> [6/6] Reload frontend + healthcheck"
-ssh -o BatchMode=yes -o ConnectTimeout=10 "${VM_USER}@${VM_HOST}" \
-  "cd '${VM_APP_DIR}' && ${REMOTE_FRONTEND_RELOAD} && ${REMOTE_HEALTHCHECK}"
 
+if ! vm_ssh "/usr/local/bin/clubmanager-frontend-reload.sh"; then
+  echo "❌ Frontend reload falhou."
+  show_failure_logs
+  exit 1
+fi
+
+if ! vm_ssh "/usr/local/bin/clubmanager-healthcheck.sh"; then
+  echo "❌ Healthcheck falhou."
+  show_failure_logs
+  exit 1
+fi
+
+echo ""
 echo "✅ Deploy completo OK."
 echo "🌍 Abre: http://${VM_HOST}"
