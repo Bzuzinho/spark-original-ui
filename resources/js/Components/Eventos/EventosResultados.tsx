@@ -284,12 +284,12 @@ export function EventosResultados({
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
           <div className="space-y-1">
             <Label className="text-xs">Evento</Label>
-            <Select value={filterEvento} onValueChange={setFilterEvento}>
+            <Select value={filterEvento || 'all'} onValueChange={(value) => setFilterEvento(value === 'all' ? '' : value)}>
               <SelectTrigger className="h-9">
                 <SelectValue placeholder="Todos" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todos</SelectItem>
+                <SelectItem value="all">Todos</SelectItem>
                 {events
                   .filter((e) => e.tipo === 'prova' || e.tipo === 'competicao')
                   .map((event) => (
@@ -303,12 +303,12 @@ export function EventosResultados({
 
           <div className="space-y-1">
             <Label className="text-xs">Prova</Label>
-            <Select value={filterProva} onValueChange={setFilterProva}>
+            <Select value={filterProva || 'all'} onValueChange={(value) => setFilterProva(value === 'all' ? '' : value)}>
               <SelectTrigger className="h-9">
                 <SelectValue placeholder="Todas" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todas</SelectItem>
+                <SelectItem value="all">Todas</SelectItem>
                 {uniqueProvas.map((prova) => (
                   <SelectItem key={prova} value={prova}>
                     {prova}
@@ -320,12 +320,12 @@ export function EventosResultados({
 
           <div className="space-y-1">
             <Label className="text-xs">Escalão</Label>
-            <Select value={filterEscalao} onValueChange={setFilterEscalao}>
+            <Select value={filterEscalao || 'all'} onValueChange={(value) => setFilterEscalao(value === 'all' ? '' : value)}>
               <SelectTrigger className="h-9">
                 <SelectValue placeholder="Todos" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todos</SelectItem>
+                <SelectItem value="all">Todos</SelectItem>
                 {uniqueEscaloes.map((escalao) => (
                   <SelectItem key={escalao} value={escalao || ''}>
                     {escalao}
@@ -337,12 +337,12 @@ export function EventosResultados({
 
           <div className="space-y-1">
             <Label className="text-xs">Piscina</Label>
-            <Select value={filterPiscina} onValueChange={setFilterPiscina}>
+            <Select value={filterPiscina || 'all'} onValueChange={(value) => setFilterPiscina(value === 'all' ? '' : value)}>
               <SelectTrigger className="h-9">
                 <SelectValue placeholder="Todas" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todas</SelectItem>
+                <SelectItem value="all">Todas</SelectItem>
                 <SelectItem value="25m">25m</SelectItem>
                 <SelectItem value="50m">50m</SelectItem>
                 <SelectItem value="aguas_abertas">Águas Abertas</SelectItem>
@@ -352,12 +352,12 @@ export function EventosResultados({
 
           <div className="space-y-1">
             <Label className="text-xs">Época</Label>
-            <Select value={filterEpoca} onValueChange={setFilterEpoca}>
+            <Select value={filterEpoca || 'all'} onValueChange={(value) => setFilterEpoca(value === 'all' ? '' : value)}>
               <SelectTrigger className="h-9">
                 <SelectValue placeholder="Todas" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todas</SelectItem>
+                <SelectItem value="all">Todas</SelectItem>
                 {uniqueEpocas.map((epoca) => (
                   <SelectItem key={epoca} value={epoca || ''}>
                     {epoca}
@@ -369,12 +369,12 @@ export function EventosResultados({
 
           <div className="space-y-1">
             <Label className="text-xs">Classificação</Label>
-            <Select value={filterClassificacao} onValueChange={setFilterClassificacao}>
+            <Select value={filterClassificacao || 'all'} onValueChange={(value) => setFilterClassificacao(value === 'all' ? '' : value)}>
               <SelectTrigger className="h-9">
                 <SelectValue placeholder="Todas" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todas</SelectItem>
+                <SelectItem value="all">Todas</SelectItem>
                 <SelectItem value="1">🥇 1º Lugar</SelectItem>
                 <SelectItem value="2">🥈 2º Lugar</SelectItem>
                 <SelectItem value="3">🥉 3º Lugar</SelectItem>

@@ -16,12 +16,14 @@ class ConvocationAthlete extends Model
         'convocatoria_grupo_id',
         'atleta_id',
         'provas',
+        'estafetas',
         'presente',
         'confirmado',
     ];
 
     protected $casts = [
         'provas' => 'array',
+        'estafetas' => 'integer',
         'presente' => 'boolean',
         'confirmado' => 'boolean',
     ];

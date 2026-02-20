@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { Head, router } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Card } from '@/Components/ui/Card';
-import { Button } from '@/Components/ui/Button';
+import { Card } from '@/Components/ui/card';
+import { Button } from '@/Components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/Components/ui/dialog';
-import { Input } from '@/Components/ui/Input';
-import { Label } from '@/Components/ui/Label';
+import { Input } from '@/Components/ui/input';
+import { Label } from '@/Components/ui/label';
 import { Textarea } from '@/Components/ui/textarea';
 import { MegaphoneSimple, ShareNetwork, EnvelopeSimple, ChartLine, Plus, Pencil, Trash } from '@phosphor-icons/react';
 

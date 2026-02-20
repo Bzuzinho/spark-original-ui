@@ -13,7 +13,7 @@ class EscaloesController extends Controller
      */
     public function index()
     {
-        return AgeGroup::orderBy('min_age')->get();
+        return AgeGroup::orderBy('idade_minima')->get();
     }
 
     /**

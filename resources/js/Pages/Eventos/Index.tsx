@@ -40,10 +40,27 @@ interface User {
     email: string;
 }
 
+interface CostCenter {
+  id: string;
+  nome: string;
+  codigo?: string;
+  ativo?: boolean;
+}
+
+interface AgeGroup {
+  id: string;
+  nome: string;
+  idade_minima?: number;
+  idade_maxima?: number;
+  ativo?: boolean;
+}
+
 interface Props {
     eventos: Event[];
     stats: EventStats;
     users: User[];
+  costCenters: CostCenter[];
+  ageGroups: AgeGroup[];
     convocations?: any[];
     attendances?: any[];
     results?: any[];
@@ -53,6 +70,8 @@ export default function EventosIndex({
   eventos = [],
   stats,
   users = [],
+  costCenters = [],
+  ageGroups = [],
   convocations = [],
   attendances = [],
   results = [],
@@ -141,7 +160,12 @@ export default function EventosIndex({
           </TabsContent>
 
           <TabsContent value="eventos" className="space-y-3">
-            <EventosList events={eventos} users={users} />
+            <EventosList
+              events={eventos}
+              users={users}
+              costCenters={costCenters}
+              ageGroups={ageGroups}
+            />
           </TabsContent>
 
           <TabsContent value="convocatorias" className="space-y-3">

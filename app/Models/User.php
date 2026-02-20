@@ -12,6 +12,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Support\Facades\Storage;
+use App\Models\UserGuardian;
 
 class User extends Authenticatable
 {
@@ -301,12 +302,18 @@ class User extends Authenticatable
 
     public function encarregados(): BelongsToMany
     {
-        return $this->belongsToMany(User::class, 'user_guardian', 'user_id', 'guardian_id');
+        return $this->belongsToMany(User::class, 'user_guardian', 'user_id', 'guardian_id')
+            ->using(UserGuardian::class)
+            ->withPivot('id')
+            ->withTimestamps();
     }
 
     public function educandos(): BelongsToMany
     {
-        return $this->belongsToMany(User::class, 'user_guardian', 'guardian_id', 'user_id');
+        return $this->belongsToMany(User::class, 'user_guardian', 'guardian_id', 'user_id')
+            ->using(UserGuardian::class)
+            ->withPivot('id')
+            ->withTimestamps();
     }
 
     public function eventsCreated(): HasMany

@@ -106,7 +106,7 @@ export function CreateConvocatoriaDialog({ open, onOpenChange, onSuccess, editin
     return events?.find(e => e.id === selectedEventId);
   }, [events, selectedEventId]);
 
-  const valorInscricaoCalculado = useMemo(() => {
+    const valorInscricaoCalculado = useMemo(() => {
     if (!selectedEvent) return 0;
 
     if (tipoCusto === 'por_atleta') {
@@ -115,9 +115,10 @@ export function CreateConvocatoriaDialog({ open, onOpenChange, onSuccess, editin
     }
 
     let totalCusto = 0;
-    const custoProva = selectedEvent.custo_inscricao_por_prova || 0;
-    const custoSalto = selectedEvent.custo_inscricao_por_salto || 0;
-    const custoEstafeta = selectedEvent.custo_inscricao_estafeta || 0;
+      const taxaInscricao = selectedEvent.taxa_inscricao || 0;
+      const custoProva = selectedEvent.custo_inscricao_por_prova || 0;
+      const custoSalto = selectedEvent.custo_inscricao_por_salto || 0;
+      const custoEstafeta = selectedEvent.custo_inscricao_estafeta || 0;
 
     selectedAtletas.forEach(atletaId => {
       const provasAtleta = atletasProvas[atletaId] || [];
@@ -135,10 +136,14 @@ export function CreateConvocatoriaDialog({ open, onOpenChange, onSuccess, editin
       const numProvasNaoEstafetas = provasNaoEstafetas.length;
       const numEstafetas = provasEstafetas.length;
 
-      const custoEstafetaPorAtleta = numEstafetas > 0 ? (custoEstafeta * numEstafetas) / 4 : 0;
-      const custoAtleta = custoProva + (custoSalto * numProvasNaoEstafetas) + custoEstafetaPorAtleta;
+      const custoEstafetaPorAtleta = custoEstafeta * numEstafetas;
+      const custoAtleta = taxaInscricao +
+        (custoProva * numProvasNaoEstafetas) +
+        (custoSalto * numProvasNaoEstafetas) +
+        custoEstafetaPorAtleta;
       
       console.log(`[Cálculo Atleta ${atletaId}]`, {
+        taxaInscricao,
         custoProva,
         custoSalto,
         numProvasNaoEstafetas,
@@ -260,6 +265,7 @@ export function CreateConvocatoriaDialog({ open, onOpenChange, onSuccess, editin
       return;
     }
 
+    const taxaInscricao = selectedEvent.taxa_inscricao || 0;
     const custoProva = selectedEvent.custo_inscricao_por_prova || 0;
     const custoSalto = selectedEvent.custo_inscricao_por_salto || 0;
     const custoEstafeta = selectedEvent.custo_inscricao_estafeta || 0;
@@ -290,11 +296,15 @@ export function CreateConvocatoriaDialog({ open, onOpenChange, onSuccess, editin
       const numProvasNaoEstafetas = provasNaoEstafetas.length;
       const numEstafetas = provasEstafetas.length;
 
-      const custoEstafetaPorAtleta = numEstafetas > 0 ? (custoEstafeta * numEstafetas) / 4 : 0;
-      const custoAtleta = custoProva + (custoSalto * numProvasNaoEstafetas) + custoEstafetaPorAtleta;
+      const custoEstafetaPorAtleta = custoEstafeta * numEstafetas;
+      const custoAtleta = taxaInscricao +
+        (custoProva * numProvasNaoEstafetas) +
+        (custoSalto * numProvasNaoEstafetas) +
+        custoEstafetaPorAtleta;
 
       console.log(`[Movimento Financeiro Atleta ${atletaId}]`, {
         atleta: atleta?.nome_completo,
+        taxaInscricao,
         custoProva,
         custoSalto,
         numProvasNaoEstafetas,
@@ -323,14 +333,17 @@ export function CreateConvocatoriaDialog({ open, onOpenChange, onSuccess, editin
       };
 
       const detalhes: string[] = [];
-      if (custoProva > 0) {
-        detalhes.push(`Taxa base: €${custoProva.toFixed(2)}`);
+      if (taxaInscricao > 0) {
+        detalhes.push(`Taxa base: €${taxaInscricao.toFixed(2)}`);
+      }
+      if (custoProva > 0 && numProvasNaoEstafetas > 0) {
+        detalhes.push(`${numProvasNaoEstafetas} prova${numProvasNaoEstafetas !== 1 ? 's' : ''} × €${custoProva.toFixed(2)}`);
       }
       if (custoSalto > 0 && numProvasNaoEstafetas > 0) {
         detalhes.push(`${numProvasNaoEstafetas} salto${numProvasNaoEstafetas !== 1 ? 's' : ''} × €${custoSalto.toFixed(2)}`);
       }
       if (custoEstafeta > 0 && numEstafetas > 0) {
-        detalhes.push(`${numEstafetas} estafeta${numEstafetas !== 1 ? 's' : ''} × €${custoEstafeta.toFixed(2)} ÷ 4`);
+        detalhes.push(`${numEstafetas} estafeta${numEstafetas !== 1 ? 's' : ''} × €${custoEstafeta.toFixed(2)}`);
       }
 
       const item: MovimentoItem = {
@@ -349,20 +362,29 @@ export function CreateConvocatoriaDialog({ open, onOpenChange, onSuccess, editin
 
       const movimentoConvocatoriaItens: MovimentoConvocatoriaItem[] = [];
       
-      if (custoProva > 0) {
+      if (taxaInscricao > 0) {
         movimentoConvocatoriaItens.push({
           id: crypto.randomUUID(),
           movimento_convocatoria_id: movimentoId,
           descricao: 'Taxa base de inscrição',
-          valor: custoProva,
+          valor: taxaInscricao,
         });
       }
       
+      if (custoProva > 0 && numProvasNaoEstafetas > 0) {
+        movimentoConvocatoriaItens.push({
+          id: crypto.randomUUID(),
+          movimento_convocatoria_id: movimentoId,
+          descricao: `Inscrição em ${numProvasNaoEstafetas} prova${numProvasNaoEstafetas !== 1 ? 's' : ''} (€${custoProva.toFixed(2)} × ${numProvasNaoEstafetas})`,
+          valor: custoProva * numProvasNaoEstafetas,
+        });
+      }
+
       if (custoSalto > 0 && numProvasNaoEstafetas > 0) {
         movimentoConvocatoriaItens.push({
           id: crypto.randomUUID(),
           movimento_convocatoria_id: movimentoId,
-          descricao: `Inscrição em ${numProvasNaoEstafetas} prova${numProvasNaoEstafetas !== 1 ? 's' : ''} (€${custoSalto.toFixed(2)} × ${numProvasNaoEstafetas})`,
+          descricao: `Inscrição em ${numProvasNaoEstafetas} salto${numProvasNaoEstafetas !== 1 ? 's' : ''} (€${custoSalto.toFixed(2)} × ${numProvasNaoEstafetas})`,
           valor: custoSalto * numProvasNaoEstafetas,
         });
       }
@@ -371,7 +393,7 @@ export function CreateConvocatoriaDialog({ open, onOpenChange, onSuccess, editin
         movimentoConvocatoriaItens.push({
           id: crypto.randomUUID(),
           movimento_convocatoria_id: movimentoId,
-          descricao: `Inscrição em ${numEstafetas} estafeta${numEstafetas !== 1 ? 's' : ''} (€${custoEstafeta.toFixed(2)} × ${numEstafetas} ÷ 4)`,
+          descricao: `Inscrição em ${numEstafetas} estafeta${numEstafetas !== 1 ? 's' : ''} (€${custoEstafeta.toFixed(2)} × ${numEstafetas})`,
           valor: custoEstafetaPorAtleta,
         });
       }
@@ -487,6 +509,10 @@ export function CreateConvocatoriaDialog({ open, onOpenChange, onSuccess, editin
     };
 
     const convocatoriasAtletaList: ConvocatoriaAtleta[] = selectedAtletas.map(atletaId => ({
+      estafetas: (atletasProvas[atletaId] || []).filter(provaId => {
+        const prova = provas?.find(p => p.id === provaId);
+        return prova && prova.name.toLowerCase().includes('estafeta');
+      }).length,
       convocatoria_grupo_id: convocatoriaId,
       atleta_id: atletaId,
       provas: atletasProvas[atletaId] || [],

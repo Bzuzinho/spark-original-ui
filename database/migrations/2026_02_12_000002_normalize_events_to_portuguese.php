@@ -10,38 +10,8 @@ return new class extends Migration
 
     public function up(): void
     {
-        Schema::table('events', function (Blueprint $table) {
-            $this->renameIfExists($table, 'title', 'titulo');
-            $this->renameIfExists($table, 'description', 'descricao');
-            $this->renameIfExists($table, 'start_date', 'data_inicio');
-            $this->renameIfExists($table, 'start_time', 'hora_inicio');
-            $this->renameIfExists($table, 'end_date', 'data_fim');
-            $this->renameIfExists($table, 'end_time', 'hora_fim');
-            $this->renameIfExists($table, 'location', 'local');
-            $this->renameIfExists($table, 'location_details', 'local_detalhes');
-            $this->renameIfExists($table, 'type', 'tipo');
-            $this->renameIfExists($table, 'pool_type', 'tipo_piscina');
-            $this->renameIfExists($table, 'visibility', 'visibilidade');
-            $this->renameIfExists($table, 'eligible_age_groups', 'escaloes_elegiveis');
-            $this->renameIfExists($table, 'transport_required', 'transporte_necessario');
-            $this->renameIfExists($table, 'transport_details', 'transporte_detalhes');
-            $this->renameIfExists($table, 'departure_time', 'hora_partida');
-            $this->renameIfExists($table, 'departure_location', 'local_partida');
-            $this->renameIfExists($table, 'registration_fee', 'taxa_inscricao');
-            $this->renameIfExists($table, 'cost_per_race', 'custo_inscricao_por_prova');
-            $this->renameIfExists($table, 'cost_per_dive', 'custo_inscricao_por_salto');
-            $this->renameIfExists($table, 'relay_cost', 'custo_inscricao_estafeta');
-            $this->renameIfExists($table, 'notes', 'observacoes');
-            $this->renameIfExists($table, 'call_up_file', 'convocatoria_ficheiro');
-            $this->renameIfExists($table, 'regulations_file', 'regulamento_ficheiro');
-            $this->renameIfExists($table, 'status', 'estado');
-            $this->renameIfExists($table, 'created_by', 'criado_por');
-            $this->renameIfExists($table, 'recurring', 'recorrente');
-            $this->renameIfExists($table, 'recurrence_start_date', 'recorrencia_data_inicio');
-            $this->renameIfExists($table, 'recurrence_end_date', 'recorrencia_data_fim');
-            $this->renameIfExists($table, 'recurrence_weekdays', 'recorrencia_dias_semana');
-            $this->renameIfExists($table, 'parent_event_id', 'evento_pai_id');
-        });
+        // Events table is already created with Portuguese column names
+        // No normalization needed - this migration is a no-op
     }
 
     public function down(): void

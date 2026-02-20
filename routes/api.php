@@ -21,7 +21,7 @@ use App\Http\Controllers\Api\EventResultsController;
 |--------------------------------------------------------------------------
 */
 
-Route::middleware(['auth:sanctum'])->group(function () {
+Route::middleware(['auth'])->group(function () {
     // Current user
     Route::get('/user', function (Request $request) {
         return $request->user();

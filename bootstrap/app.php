@@ -30,6 +30,13 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\ForceAppUrl::class,
             \App\Http\Middleware\HandleInertiaRequests::class,
         ]);
+
+        // Add session and cookie encryption to API routes for SPA authentication
+        $middleware->api(prepend: [
+            \Illuminate\Cookie\Middleware\EncryptCookies::class,
+            \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
+            \Illuminate\Session\Middleware\StartSession::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //

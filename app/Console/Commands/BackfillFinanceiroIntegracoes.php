@@ -355,17 +355,18 @@ class BackfillFinanceiroIntegracoes extends Command
 
         foreach ($athletes as $athleteId) {
             $provaCount = $this->getProvasCount($group->id, $athleteId);
-            $valor = $this->calcularCustoConvocatoria($group, $event, $provaCount);
+            $estafetaCount = $this->getEstafetasCount($group->id, $athleteId);
+            $valor = $this->calcularCustoConvocatoria($group, $event, $provaCount, $estafetaCount);
             if ($valor <= 0) {
                 continue;
             }
 
             $movement = Movement::create([
                 'user_id' => $athleteId,
-                'classificacao' => 'despesa',
+                'classificacao' => 'receita',
                 'data_emissao' => $emissao->toDateString(),
                 'data_vencimento' => $vencimento->toDateString(),
-                'valor_total' => -abs($valor),
+                'valor_total' => abs($valor),
                 'estado_pagamento' => 'pendente',
                 'centro_custo_id' => $event->centro_custo_id,
                 'tipo' => 'inscricao',
@@ -395,10 +396,10 @@ class BackfillFinanceiroIntegracoes extends Command
         $aggregateMovement = Movement::create([
             'user_id' => null,
             'nome_manual' => "Convocatoria {$event->titulo}",
-            'classificacao' => 'despesa',
+            'classificacao' => 'receita',
             'data_emissao' => $emissao->toDateString(),
             'data_vencimento' => $vencimento->toDateString(),
-            'valor_total' => -abs($totalAggregate),
+            'valor_total' => abs($totalAggregate),
             'estado_pagamento' => 'pendente',
             'centro_custo_id' => $event->centro_custo_id,
             'tipo' => 'inscricao',
@@ -435,25 +436,32 @@ class BackfillFinanceiroIntegracoes extends Command
         return count($athlete->provas);
     }
 
-    private function calcularCustoConvocatoria(ConvocationGroup $group, Event $event, int $provaCount): float
+    private function getEstafetasCount(string $groupId, string $athleteId): int
     {
-        $tipo = $group->tipo_custo;
+        $athlete = ConvocationAthlete::where('convocatoria_grupo_id', $groupId)
+            ->where('atleta_id', $athleteId)
+            ->first();
 
-        if ($tipo === 'por_prova') {
-            $unit = $group->valor_inscricao_unitaria ?? $event->custo_inscricao_por_prova ?? $event->taxa_inscricao ?? 0;
-            $count = $provaCount > 0 ? $provaCount : 1;
-            return (float) $unit * $count;
+        if (!$athlete) {
+            return 0;
         }
 
-        if ($tipo === 'por_salto') {
-            return (float) ($group->valor_por_salto ?? $event->custo_inscricao_por_salto ?? 0);
-        }
+        return (int) ($athlete->estafetas ?? 0);
+    }
 
-        if ($tipo === 'por_estafeta') {
-            return (float) ($group->valor_por_estafeta ?? $event->custo_inscricao_estafeta ?? 0);
-        }
+    private function calcularCustoConvocatoria(
+        ConvocationGroup $group,
+        Event $event,
+        int $provaCount,
+        int $estafetaCount
+    ): float
+    {
+        $base = (float) ($group->valor_inscricao_unitaria ?? $event->taxa_inscricao ?? 0);
+        $porProva = (float) ($event->custo_inscricao_por_prova ?? 0);
+        $porSalto = (float) ($group->valor_por_salto ?? $event->custo_inscricao_por_salto ?? 0);
+        $porEstafeta = (float) ($group->valor_por_estafeta ?? $event->custo_inscricao_estafeta ?? 0);
 
-        return (float) ($group->valor_inscricao_unitaria ?? $event->taxa_inscricao ?? 0);
+        return $base + ($porProva * $provaCount) + ($porSalto * $provaCount) + ($porEstafeta * $estafetaCount);
     }
 
     private function addBusinessDays(Carbon $date, int $days): Carbon

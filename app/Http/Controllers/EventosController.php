@@ -9,6 +9,8 @@ use App\Models\EventTypeConfig;
 use App\Models\EventConvocation;
 use App\Models\EventAttendance;
 use App\Models\EventResult;
+use App\Models\CostCenter;
+use App\Models\AgeGroup;
 use App\Models\User;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -48,6 +50,12 @@ class EventosController extends Controller
                 ->get(),
             'stats' => $stats,
             'users' => User::where('estado', 'ativo')->get(['id', 'nome_completo', 'perfil', 'email']),
+            'costCenters' => CostCenter::where('ativo', true)
+                ->orderBy('nome')
+                ->get(['id', 'codigo', 'nome', 'ativo']),
+            'ageGroups' => AgeGroup::where('ativo', true)
+                ->orderBy('idade_minima')
+                ->get(['id', 'nome', 'idade_minima', 'idade_maxima', 'ativo']),
             'convocations' => EventConvocation::with('event', 'user')->get(),
             'attendances' => EventAttendance::with('event', 'user')->get(),
             'results' => EventResult::with('event', 'user')->get(),

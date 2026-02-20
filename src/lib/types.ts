@@ -168,6 +168,7 @@ export interface ConvocatoriaAtleta {
   convocatoria_grupo_id: string;
   atleta_id: string;
   provas: string[];
+  estafetas?: number;
   presente: boolean;
   confirmado: boolean;
 }

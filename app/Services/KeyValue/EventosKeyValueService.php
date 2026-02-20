@@ -334,6 +334,7 @@ class EventosKeyValueService
                     'convocatoria_grupo_id' => $athlete->convocatoria_grupo_id,
                     'atleta_id' => $athlete->atleta_id,
                     'provas' => $athlete->provas,
+                    'estafetas' => $athlete->estafetas,
                     'presente' => $athlete->presente,
                     'confirmado' => $athlete->confirmado,
                 ];
@@ -684,6 +685,7 @@ class EventosKeyValueService
                         ],
                         [
                             'provas' => $item['provas'] ?? [],
+                            'estafetas' => $item['estafetas'] ?? 0,
                             'presente' => $item['presente'] ?? false,
                             'confirmado' => $item['confirmado'] ?? false,
                         ]

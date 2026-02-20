@@ -10,17 +10,10 @@ import { Button } from '@/Components/ui/button';
 import { format } from 'date-fns';
 import { pt } from 'date-fns/locale';
 import { FileUpload } from '@/Components/FileUpload';
-import { useKV } from '@/hooks/useKV';
+import { useAgeGroups } from '@/hooks/useAgeGroups';
 import { Printer } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/Components/ui/dialog';
 import { useState } from 'react';
-
-interface AgeGroup {
-  id: string;
-  name: string;
-  minAge: number;
-  maxAge: number;
-}
 
 interface DadosDesportivosTabProps {
   user: User;
@@ -29,7 +22,7 @@ interface DadosDesportivosTabProps {
 }
 
 export function DadosDesportivosTab({ user, onChange, isAdmin }: DadosDesportivosTabProps) {
-  const [ageGroups] = useKV<AgeGroup[]>('settings-age-groups', []);
+  const { data: ageGroups = [], isLoading } = useAgeGroups();
   const [showCardPreview, setShowCardPreview] = useState(false);
 
   const handlePrintCard = () => {
@@ -105,20 +98,24 @@ export function DadosDesportivosTab({ user, onChange, isAdmin }: DadosDesportivo
           <Select
             value={user.escalao?.[0] || undefined}
             onValueChange={(value) => onChange('escalao', value ? [value] : [])}
-            disabled={!isAdmin || (ageGroups || []).length === 0}
+            disabled={!isAdmin || isLoading || ageGroups.length === 0}
           >
             <SelectTrigger id="escalao" className="h-8 text-xs">
-              <SelectValue placeholder="Selecionar" />
+              <SelectValue placeholder={isLoading ? "A carregar..." : "Selecionar"} />
             </SelectTrigger>
             <SelectContent>
-              {(ageGroups || []).length === 0 ? (
-                <SelectItem value="placeholder" disabled>Nenhum escalão configurado</SelectItem>
+              {ageGroups.length === 0 ? (
+                <SelectItem value="placeholder" disabled>
+                  {isLoading ? "A carregar escalões..." : "Nenhum escalão configurado"}
+                </SelectItem>
               ) : (
-                (ageGroups || []).map((group) => (
-                  <SelectItem key={group.id} value={group.id}>
-                    {group.name} ({group.minAge}-{group.maxAge}a)
-                  </SelectItem>
-                ))
+                ageGroups
+                  .filter(group => group.ativo)
+                  .map((group) => (
+                    <SelectItem key={group.id} value={group.id}>
+                      {group.nome} ({group.idade_minima}-{group.idade_maxima}a)
+                    </SelectItem>
+                  ))
               )}
             </SelectContent>
           </Select>

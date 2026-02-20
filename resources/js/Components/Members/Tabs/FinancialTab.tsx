@@ -1,5 +1,5 @@
-import { Label } from '@/Components/ui/Label';
-import { Input } from '@/Components/ui/Input';
+import { Label } from '@/Components/ui/label';
+import { Input } from '@/Components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select';
 import { Card } from '@/Components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/Components/ui/table';

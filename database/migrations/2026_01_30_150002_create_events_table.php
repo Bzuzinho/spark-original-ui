@@ -49,14 +49,18 @@ return new class extends Migration
             $table->foreign('tipo_config_id')->references('id')->on('event_type_configs')->onDelete('set null');
             $table->foreign('centro_custo_id')->references('id')->on('cost_centers')->onDelete('set null');
             $table->foreign('criado_por')->references('id')->on('users')->onDelete('cascade');
-            $table->foreign('evento_pai_id')->references('id')->on('events')->onDelete('cascade');
             
             $table->index('tipo');
             $table->index('estado');
             $table->index('data_inicio');
             $table->index('visibilidade');
             $table->index('criado_por');
+            $table->index('evento_pai_id'); // Index for self-referencing relationship
         });
+        
+        // Note: Self-referencing foreign key removed to avoid Postgres constraint issues
+        // The evento_pai_id column can still be used for relationships
+        // If strict foreign key constraint is needed, add it manually after migration
     }
 
     public function down(): void

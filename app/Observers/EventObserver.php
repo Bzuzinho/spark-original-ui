@@ -128,10 +128,14 @@ class EventObserver
             return collect([]);
         }
 
-        // Get users whose escalao matches any of the escaloes_elegiveis
-        // Assuming User model has an 'escalao' field
-        return User::whereIn('escalao', $event->escaloes_elegiveis)
-            ->where('estado', 'ativo') // Only active users
-            ->get();
+        $query = User::where('estado', 'ativo');
+
+        $query->where(function ($builder) use ($event) {
+            foreach ($event->escaloes_elegiveis as $escalao) {
+                $builder->orWhereJsonContains('escalao', $escalao);
+            }
+        });
+
+        return $query->get();
     }
 }
