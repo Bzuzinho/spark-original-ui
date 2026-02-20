@@ -5,7 +5,7 @@ set -euo pipefail
 
 # ===== Config =====
 VM_USER="${VM_USER:-ubuntu}"
-VM_HOST="${VM_HOST:-129.159.13.211}"
+VM_HOST="${VM_HOST:clubmanager-vm}"
 VM_APP_DIR="${VM_APP_DIR:-/var/www/clubmanager}"
 SSH_KEY="${SSH_KEY:-${HOME}/.ssh/id_ed25519}"
 SSH_ALIAS="clubmanager-vm"
