@@ -277,9 +277,7 @@ echo "   ✔ Backend deploy OK"
 # ===== [5/6] Copiar public/build para a VM =====
 echo ""
 echo "==> [5/6] Upload public/build → VM"
-scp -o BatchMode=yes -o ConnectTimeout=15 \
-    -i "${SSH_KEY}" \
-    -r public/build "${VM_USER}@${VM_HOST}:${VM_APP_DIR}/public/"
+tar -C public -cf - build | vm_ssh "sudo mkdir -p '${VM_APP_DIR}/public' && sudo tar -xf - -C '${VM_APP_DIR}/public' && sudo chown -R www-data:www-data '${VM_APP_DIR}/public/build'"
 echo "   ✔ public/build copiado"
 
 # ===== [6/6] Reload frontend + healthcheck =====
