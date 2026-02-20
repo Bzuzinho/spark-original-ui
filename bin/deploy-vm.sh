@@ -42,13 +42,13 @@ if [[ "$(git rev-parse --abbrev-ref HEAD 2>/dev/null)" != "main" ]]; then
   exit 1
 fi
 
-if [[ -n "$(git status --porcelain 2>/dev/null)" ]]; then
-  echo "❌ Tens alterações por commitar. Faz commit antes do deploy."
-  echo "   (git status para veres o que falta)"
+if ! git config user.email >/dev/null 2>&1 || ! git config user.name >/dev/null 2>&1; then
+  echo "❌ Git user.name/user.email não configurados neste repositório."
+  echo "   Corre: git config user.name 'Teu Nome' && git config user.email 'teu@email.com'"
   exit 1
 fi
 
-echo "   ✔ branch=main, working tree limpo"
+echo "   ✔ branch=main, git user configurado"
 
 # ===== [1/6] Build frontend no Codespace =====
 echo ""
@@ -65,9 +65,31 @@ if [[ ! -f "public/build/manifest.json" ]]; then
 fi
 echo "   ✔ Build OK (public/build/manifest.json presente)"
 
-# ===== [2/6] Git push =====
+# ===== [2/6] Git sync + commit + push =====
 echo ""
-echo "==> [2/6] git push origin main"
+echo "==> [2/6] Sincronizar Git (auto-commit + rebase + push)"
+
+if [[ -n "$(git status --porcelain 2>/dev/null)" ]]; then
+  AUTO_COMMIT_MSG="${AUTO_COMMIT_MSG:-chore(deploy): auto-commit before vm deploy $(date +%Y-%m-%d_%H-%M-%S)}"
+  echo "    Alterações locais detectadas — auto commit"
+  git add -A
+  if git diff --cached --quiet; then
+    echo "    Sem alterações staged após git add -A"
+  else
+    git commit -m "${AUTO_COMMIT_MSG}"
+    echo "   ✔ Auto-commit criado"
+  fi
+else
+  echo "    Working tree limpo — sem auto-commit"
+fi
+
+echo "    fetch/rebase com origin/main ..."
+git fetch origin main
+if ! git merge-base --is-ancestor origin/main HEAD; then
+  git pull --rebase origin main
+fi
+
+echo "    push origin main ..."
 git push origin main
 echo "   ✔ Push OK"
 
@@ -156,29 +178,55 @@ vm_ssh "bash -s" <<'ENSURE_SCRIPTS'
 set -e
 
 # --- clubmanager-deploy-backend.sh ---
-if [[ ! -x /usr/local/bin/clubmanager-deploy-backend.sh ]]; then
-  echo "  Criar /usr/local/bin/clubmanager-deploy-backend.sh ..."
-  sudo tee /usr/local/bin/clubmanager-deploy-backend.sh > /dev/null <<'BACKEND'
+echo "  Atualizar /usr/local/bin/clubmanager-deploy-backend.sh ..."
+sudo tee /usr/local/bin/clubmanager-deploy-backend.sh > /dev/null <<'BACKEND'
 #!/usr/bin/env bash
 set -euo pipefail
 APP_DIR="${1:-/var/www/clubmanager}"
-cd "$APP_DIR"
-echo "[backend] git pull"
-git pull
+APP_USER="${APP_USER:-www-data}"
+
+if ! command -v git >/dev/null 2>&1; then
+  echo "[backend] git não encontrado"
+  exit 1
+fi
+
+if [[ ! -d "${APP_DIR}/.git" ]]; then
+  echo "[backend] diretório inválido ou sem .git: ${APP_DIR}"
+  exit 1
+fi
+
+if id -u "${APP_USER}" >/dev/null 2>&1; then
+  RUN_AS=(sudo -u "${APP_USER}" -H)
+else
+  RUN_AS=()
+fi
+
+echo "[backend] sync git (origin/main)"
+"${RUN_AS[@]}" git -C "${APP_DIR}" fetch --prune origin main
+
+if [[ -n "$("${RUN_AS[@]}" git -C "${APP_DIR}" status --porcelain)" ]]; then
+  TS="$(date +%Y%m%d-%H%M%S)"
+  echo "[backend] alterações locais detectadas; criar stash auto-deploy-${TS}"
+  "${RUN_AS[@]}" git -C "${APP_DIR}" stash push -u -m "auto-deploy-${TS}" || true
+fi
+
+"${RUN_AS[@]}" git -C "${APP_DIR}" checkout main
+"${RUN_AS[@]}" git -C "${APP_DIR}" reset --hard origin/main
+"${RUN_AS[@]}" git -C "${APP_DIR}" clean -fd
+
 echo "[backend] composer install"
-composer install --no-dev --optimize-autoloader
+"${RUN_AS[@]}" composer --working-dir="${APP_DIR}" install --no-dev --optimize-autoloader
 echo "[backend] migrate"
-php artisan migrate --force
+"${RUN_AS[@]}" php "${APP_DIR}/artisan" migrate --force
 echo "[backend] cache"
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
+"${RUN_AS[@]}" php "${APP_DIR}/artisan" config:cache
+"${RUN_AS[@]}" php "${APP_DIR}/artisan" route:cache
+"${RUN_AS[@]}" php "${APP_DIR}/artisan" view:cache
 echo "[backend] reload php-fpm"
 sudo systemctl reload php8.3-fpm || sudo service php8.3-fpm reload
 echo "[backend] done"
 BACKEND
-  sudo chmod +x /usr/local/bin/clubmanager-deploy-backend.sh
-fi
+sudo chmod +x /usr/local/bin/clubmanager-deploy-backend.sh
 
 # --- clubmanager-frontend-reload.sh ---
 if [[ ! -x /usr/local/bin/clubmanager-frontend-reload.sh ]]; then
