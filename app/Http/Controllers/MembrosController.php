@@ -136,6 +136,16 @@ class MembrosController extends Controller
     {
         try {
             $data = $request->validated();
+
+            if (array_key_exists('escalao_id', $data) && !array_key_exists('escalao', $data)) {
+                $data['escalao'] = $data['escalao_id'] ? [(string) $data['escalao_id']] : [];
+            }
+
+            if (array_key_exists('escalao', $data) && !is_array($data['escalao'])) {
+                $data['escalao'] = $data['escalao'] ? [(string) $data['escalao']] : [];
+            }
+
+            unset($data['escalao_id']);
             
             // Auto-generate numero_socio if not provided
             if (empty($data['numero_socio'])) {
@@ -418,6 +428,16 @@ class MembrosController extends Controller
     {
         try {
             $data = $request->validated();
+
+            if (array_key_exists('escalao_id', $data) && !array_key_exists('escalao', $data)) {
+                $data['escalao'] = $data['escalao_id'] ? [(string) $data['escalao_id']] : [];
+            }
+
+            if (array_key_exists('escalao', $data) && !is_array($data['escalao'])) {
+                $data['escalao'] = $data['escalao'] ? [(string) $data['escalao']] : [];
+            }
+
+            unset($data['escalao_id']);
             
             // Auto-calculate menor field if data_nascimento changes
             if (isset($data['data_nascimento'])) {

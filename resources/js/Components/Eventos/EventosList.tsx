@@ -393,7 +393,11 @@ export function EventosList({
                     <Select
                       value={formData.tipo}
                       onValueChange={(value) =>
-                        setFormData({ ...formData, tipo: value })
+                        setFormData({
+                          ...formData,
+                          tipo: value,
+                          tipo_piscina: value === 'prova' ? formData.tipo_piscina : '',
+                        })
                       }
                     >
                       <SelectTrigger id="tipo">
@@ -537,8 +541,9 @@ export function EventosList({
                           <SelectValue placeholder="Selecionar..." />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="25m">25m</SelectItem>
-                          <SelectItem value="50m">50m</SelectItem>
+                          <SelectItem value="piscina_25m">Piscina de 25m</SelectItem>
+                          <SelectItem value="piscina_50m">Piscina de 50m</SelectItem>
+                          <SelectItem value="aguas_abertas">Águas Abertas</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>

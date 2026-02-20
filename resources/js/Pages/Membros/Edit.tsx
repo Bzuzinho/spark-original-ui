@@ -47,6 +47,8 @@ interface User {
     data_atestado_medico?: string | null;
     informacoes_medicas?: string | null;
     ativo_desportivo?: boolean;
+    escalao?: string[] | null;
+    escalao_id?: string | null;
 }
 
 interface Props {
@@ -107,6 +109,12 @@ export default function MembrosEdit({
         data_atestado_medico: formatDateForInput(member.data_atestado_medico),
         informacoes_medicas: member.informacoes_medicas || '',
         ativo_desportivo: member.ativo_desportivo || false,
+        escalao: Array.isArray(member.escalao)
+            ? member.escalao
+            : member.escalao_id
+                ? [member.escalao_id]
+                : [],
+        escalao_id: member.escalao_id || (Array.isArray(member.escalao) && member.escalao.length > 0 ? member.escalao[0] : ''),
         rgpd: member.rgpd || false,
         consentimento: member.consentimento || false,
         afiliacao: member.afiliacao || false,
@@ -487,6 +495,27 @@ export default function MembrosEdit({
                                                         value={data.numero_pmb}
                                                         onChange={(e) => setData('numero_pmb', e.target.value)}
                                                     />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="escalao">Escalão</Label>
+                                                    <Select
+                                                        value={data.escalao?.[0] || data.escalao_id || ''}
+                                                        onValueChange={(value) => {
+                                                            setData('escalao', value ? [value] : []);
+                                                            setData('escalao_id', value || '');
+                                                        }}
+                                                    >
+                                                        <SelectTrigger id="escalao">
+                                                            <SelectValue placeholder="Selecionar escalão" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {ageGroups.map((group) => (
+                                                                <SelectItem key={group.id} value={group.id}>
+                                                                    {group.nome}
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
                                                 </div>
                                                 <div className="space-y-2">
                                                     <Label htmlFor="data_inscricao">Data de Inscrição</Label>

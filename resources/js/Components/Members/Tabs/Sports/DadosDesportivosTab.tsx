@@ -24,6 +24,9 @@ interface DadosDesportivosTabProps {
 export function DadosDesportivosTab({ user, onChange, isAdmin }: DadosDesportivosTabProps) {
   const { data: ageGroups = [], isLoading } = useAgeGroups();
   const [showCardPreview, setShowCardPreview] = useState(false);
+  const selectedEscalao = Array.isArray((user as any).escalao) && (user as any).escalao.length > 0
+    ? (user as any).escalao[0]
+    : (user as any).escalao_id || undefined;
 
   const handlePrintCard = () => {
     if (user.cartao_federacao) {
@@ -96,8 +99,11 @@ export function DadosDesportivosTab({ user, onChange, isAdmin }: DadosDesportivo
         <div className="space-y-1">
           <Label htmlFor="escalao" className="text-xs">Escalão</Label>
           <Select
-            value={user.escalao?.[0] || undefined}
-            onValueChange={(value) => onChange('escalao', value ? [value] : [])}
+            value={selectedEscalao}
+            onValueChange={(value) => {
+              onChange('escalao', value ? [value] : []);
+              onChange('escalao_id' as keyof User, value || null);
+            }}
             disabled={!isAdmin || isLoading || ageGroups.length === 0}
           >
             <SelectTrigger id="escalao" className="h-8 text-xs">

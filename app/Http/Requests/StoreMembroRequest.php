@@ -41,6 +41,8 @@ class StoreMembroRequest extends FormRequest
             'perfil' => ['nullable', 'string'],
             
             // Dados desportivos
+            'escalao' => ['nullable', 'array'],
+            'escalao.*' => ['exists:age_groups,id'],
             'escalao_id' => ['nullable', 'exists:age_groups,id'],
             'ativo_desportivo' => ['boolean'],
             'num_federacao' => ['nullable', 'string'],
