@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\EventsController;
 use App\Http\Controllers\Api\ProvasController;
 use App\Http\Controllers\Api\ResultsController;
 use App\Http\Controllers\Api\EventAttendancesController;
+use App\Http\Controllers\Api\EventResultsController;
 
 /*
 |--------------------------------------------------------------------------
@@ -37,6 +38,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::apiResource('provas', ProvasController::class);
     Route::apiResource('results', ResultsController::class);
     Route::apiResource('event-attendances', EventAttendancesController::class);
+    Route::apiResource('event-results', EventResultsController::class);
+    Route::get('event-results-stats', [EventResultsController::class, 'stats']);
 
     // Settings APIs
     Route::apiResource('user-types', TiposUtilizadorController::class);

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { usePage, router } from '@inertiajs/react';
 import { Button } from '@/Components/ui/button';
 import { Card } from '@/Components/ui/card';
 import { Input } from '@/Components/ui/input';
@@ -19,8 +20,19 @@ import {
   DialogTrigger,
   DialogFooter,
 } from '@/Components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/Components/ui/alert-dialog';
 import { Label } from '@/Components/ui/label';
 import { Textarea } from '@/Components/ui/textarea';
+import { Checkbox } from '@/Components/ui/checkbox';
 import {
   Plus,
   MagnifyingGlass,
@@ -29,6 +41,7 @@ import {
   MapPin,
   Clock,
   Users,
+  CheckSquare,
 } from '@phosphor-icons/react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -51,28 +64,38 @@ interface Event {
   tipo: string;
   estado: string;
   criado_por?: string;
+  escaloes_elegiveis?: string[];
+  descricao?: string;
 }
 
 interface EventosListProps {
   events: Event[];
   users?: any[];
-  onEventCreate?: (event: Event) => void;
-  onEventUpdate?: (event: Event) => void;
-  onEventDelete?: (id: string) => void;
 }
+
+const daysOfWeek = [
+  { id: 'segunda', label: 'Segunda', value: '1' },
+  { id: 'terca', label: 'Terça', value: '2' },
+  { id: 'quarta', label: 'Quarta', value: '3' },
+  { id: 'quinta', label: 'Quinta', value: '4' },
+  { id: 'sexta', label: 'Sexta', value: '5' },
+  { id: 'sabado', label: 'Sábado', value: '6' },
+  { id: 'domingo', label: 'Domingo', value: '0' },
+];
 
 export function EventosList({
   events = [],
   users = [],
-  onEventCreate,
-  onEventUpdate,
-  onEventDelete,
 }: EventosListProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('todos');
   const [statusFilter, setStatusFilter] = useState('todos');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedEvents, setSelectedEvents] = useState<Set<string>>(new Set());
+  const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
   const [formData, setFormData] = useState({
     titulo: '',
@@ -82,6 +105,10 @@ export function EventosList({
     local: '',
     tipo: 'evento_interno',
     estado: 'agendado',
+    recorrente: false,
+    recorrencia_data_inicio: '',
+    recorrencia_data_fim: '',
+    recorrencia_dias_semana: [] as string[],
   });
 
   const filteredEvents = events.filter((event) => {
@@ -94,33 +121,65 @@ export function EventosList({
     return matchesSearch && matchesType && matchesStatus;
   });
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!formData.titulo.trim()) {
       toast.error('Preencha o título do evento');
       return;
     }
 
-    if (editingEvent) {
-      const updated = { ...editingEvent, ...formData };
-      onEventUpdate?.(updated);
-      toast.success('Evento atualizado com sucesso!');
-    } else {
-      const newEvent: Event = {
-        id: crypto.randomUUID(),
-        ...formData,
-      };
-      onEventCreate?.(newEvent);
-      toast.success('Evento criado com sucesso!');
+    if (!formData.data_inicio) {
+      toast.error('Preencha a data do evento');
+      return;
     }
 
-    setDialogOpen(false);
-    resetForm();
+    setIsSubmitting(true);
+
+    try {
+      const payload = {
+        ...formData,
+        recorrencia_dias_semana: formData.recorrente ? formData.recorrencia_dias_semana : [],
+      };
+
+      if (editingEvent) {
+        router.put(`/eventos/${editingEvent.id}`, payload, {
+          onSuccess: () => {
+            toast.success('Evento atualizado com sucesso!');
+            setDialogOpen(false);
+            resetForm();
+          },
+          onError: (err: any) => {
+            toast.error('Erro ao atualizar evento');
+            console.error(err);
+          },
+        });
+      } else {
+        router.post('/eventos', payload, {
+          onSuccess: () => {
+            toast.success('Evento criado com sucesso!');
+            setDialogOpen(false);
+            resetForm();
+          },
+          onError: (err: any) => {
+            toast.error('Erro ao criar evento');
+            console.error(err);
+          },
+        });
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleDelete = (id: string) => {
     if (confirm('Tem certeza que deseja eliminar este evento?')) {
-      onEventDelete?.(id);
-      toast.success('Evento eliminado com sucesso!');
+      router.delete(`/eventos/${id}`, {
+        onSuccess: () => {
+          toast.success('Evento eliminado com sucesso!');
+        },
+        onError: () => {
+          toast.error('Erro ao eliminar evento');
+        },
+      });
     }
   };
 
@@ -133,8 +192,55 @@ export function EventosList({
       local: '',
       tipo: 'evento_interno',
       estado: 'agendado',
+      recorrente: false,
+      recorrencia_data_inicio: '',
+      recorrencia_data_fim: '',
+      recorrencia_dias_semana: [],
     });
     setEditingEvent(null);
+  };
+
+  const toggleEventSelection = (eventId: string) => {
+    const newSelection = new Set(selectedEvents);
+    if (newSelection.has(eventId)) {
+      newSelection.delete(eventId);
+    } else {
+      newSelection.add(eventId);
+    }
+    setSelectedEvents(newSelection);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedEvents.size === filteredEvents.length && filteredEvents.length > 0) {
+      setSelectedEvents(new Set());
+    } else {
+      setSelectedEvents(new Set(filteredEvents.map((e) => e.id)));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedEvents.size === 0) return;
+
+    setIsBulkDeleting(true);
+    try {
+      const promises = Array.from(selectedEvents).map((id) =>
+        router.delete(`/eventos/${id}`, {
+          preserveState: true,
+          preserveScroll: true,
+          only: ['events'],
+        })
+      );
+
+      await Promise.all(promises);
+      toast.success(`${selectedEvents.size} evento(s) eliminado(s) com sucesso!`);
+      setSelectedEvents(new Set());
+      setIsBulkDeleteDialogOpen(false);
+    } catch (error: any) {
+      console.error('Erro ao eliminar eventos:', error);
+      toast.error('Erro ao eliminar eventos');
+    } finally {
+      setIsBulkDeleting(false);
+    }
   };
 
   return (
@@ -174,14 +280,25 @@ export function EventosList({
           </Select>
         </div>
 
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => resetForm()} size="sm">
-              <Plus size={16} className="mr-2" />
-              Novo Evento
+        <div className="flex gap-2">
+          {selectedEvents.size > 0 && (
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={() => setIsBulkDeleteDialogOpen(true)}
+            >
+              <Trash size={16} className="mr-2" />
+              Eliminar ({selectedEvents.size})
             </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          )}
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={() => resetForm()} size="sm">
+                <Plus size={16} className="mr-2" />
+                Novo Evento
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>
                 {editingEvent ? 'Editar Evento' : 'Novo Evento'}
@@ -288,6 +405,7 @@ export function EventosList({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="rascunho">Rascunho</SelectItem>
                       <SelectItem value="agendado">Agendado</SelectItem>
                       <SelectItem value="em_curso">Em Curso</SelectItem>
                       <SelectItem value="concluido">Concluído</SelectItem>
@@ -296,22 +414,127 @@ export function EventosList({
                   </Select>
                 </div>
               </div>
+
+              {/* Recurrence section */}
+              <div className="border-t pt-4 space-y-4">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="recorrente"
+                    checked={formData.recorrente}
+                    onCheckedChange={(checked) =>
+                      setFormData({ ...formData, recorrente: checked as boolean })
+                    }
+                  />
+                  <Label htmlFor="recorrente" className="cursor-pointer">
+                    Este evento é recorrente
+                  </Label>
+                </div>
+
+                {formData.recorrente && (
+                  <div className="space-y-4 bg-slate-50 p-3 rounded-md">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="recorrencia_data_inicio">
+                          Data de Início da Recorrência *
+                        </Label>
+                        <Input
+                          id="recorrencia_data_inicio"
+                          type="date"
+                          value={formData.recorrencia_data_inicio}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              recorrencia_data_inicio: e.target.value,
+                            })
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="recorrencia_data_fim">
+                          Data de Fim da Recorrência *
+                        </Label>
+                        <Input
+                          id="recorrencia_data_fim"
+                          type="date"
+                          value={formData.recorrencia_data_fim}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              recorrencia_data_fim: e.target.value,
+                            })
+                          }
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Dias da Semana *</Label>
+                      <div className="grid grid-cols-3 gap-3">
+                        {daysOfWeek.map((day) => (
+                          <div key={day.id} className="flex items-center gap-2">
+                            <Checkbox
+                              id={day.id}
+                              checked={formData.recorrencia_dias_semana.includes(
+                                day.value
+                              )}
+                              onCheckedChange={(checked) => {
+                                const updated = formData.recorrencia_dias_semana;
+                                if (checked) {
+                                  updated.push(day.value);
+                                } else {
+                                  const index = updated.indexOf(day.value);
+                                  if (index > -1) {
+                                    updated.splice(index, 1);
+                                  }
+                                }
+                                setFormData({
+                                  ...formData,
+                                  recorrencia_dias_semana: [...updated],
+                                });
+                              }}
+                            />
+                            <Label
+                              htmlFor={day.id}
+                              className="cursor-pointer text-sm"
+                            >
+                              {day.label}
+                            </Label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             <DialogFooter>
               <Button variant="outline" onClick={() => setDialogOpen(false)}>
                 Cancelar
               </Button>
-              <Button onClick={handleSave}>Guardar</Button>
+              <Button onClick={handleSave} disabled={isSubmitting}>
+                {isSubmitting ? 'A guardar...' : 'Guardar'}
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
+      </div>
       </div>
 
       <Card>
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-12">
+                <Checkbox
+                  checked={
+                    selectedEvents.size === filteredEvents.length &&
+                    filteredEvents.length > 0
+                  }
+                  onCheckedChange={toggleSelectAll}
+                  aria-label="Selecionar todos"
+                />
+              </TableHead>
               <TableHead>Título</TableHead>
               <TableHead>Data</TableHead>
               <TableHead>Local</TableHead>
@@ -323,13 +546,23 @@ export function EventosList({
           <TableBody>
             {filteredEvents.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                   Nenhum evento encontrado
                 </TableCell>
               </TableRow>
             ) : (
               filteredEvents.map((event) => (
-                <TableRow key={event.id}>
+                <TableRow
+                  key={event.id}
+                  className={selectedEvents.has(event.id) ? 'bg-muted/50' : ''}
+                >
+                  <TableCell>
+                    <Checkbox
+                      checked={selectedEvents.has(event.id)}
+                      onCheckedChange={() => toggleEventSelection(event.id)}
+                      aria-label={`Selecionar ${event.titulo}`}
+                    />
+                  </TableCell>
                   <TableCell className="font-medium">{event.titulo}</TableCell>
                   <TableCell>
                     {format(
@@ -369,6 +602,10 @@ export function EventosList({
                           local: event.local,
                           tipo: event.tipo,
                           estado: event.estado,
+                          recorrente: false,
+                          recorrencia_data_inicio: '',
+                          recorrencia_data_fim: '',
+                          recorrencia_dias_semana: [],
                         });
                         setDialogOpen(true);
                       }}
@@ -389,6 +626,29 @@ export function EventosList({
           </TableBody>
         </Table>
       </Card>
+
+      {/* AlertDialog - Confirmação de Eliminação em Massa */}
+      <AlertDialog open={isBulkDeleteDialogOpen} onOpenChange={setIsBulkDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Eliminação em Massa</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem a certeza que deseja eliminar <strong>{selectedEvents.size}</strong>{' '}
+              evento(s) selecionado(s)? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isBulkDeleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleBulkDelete}
+              disabled={isBulkDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isBulkDeleting ? 'Eliminando...' : 'Eliminar'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -3,6 +3,13 @@ import { Card } from '@/Components/ui/card';
 import { Badge } from '@/Components/ui/badge';
 import { Button } from '@/Components/ui/button';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/Components/ui/select';
+import {
   startOfMonth,
   endOfMonth,
   eachDayOfInterval,
@@ -15,7 +22,7 @@ import {
   format,
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CaretLeft, CaretRight, MapPin, Clock } from '@phosphor-icons/react';
+import { CaretLeft, CaretRight, MapPin, Clock, X } from '@phosphor-icons/react';
 
 interface Event {
   id: string;
@@ -25,6 +32,7 @@ interface Event {
   local: string;
   tipo: string;
   estado: string;
+  escaloes_elegiveis?: string[];
 }
 
 interface EventosCalendarProps {
@@ -34,6 +42,7 @@ interface EventosCalendarProps {
 export function EventosCalendar({ events = [] }: EventosCalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [typeFilter, setTypeFilter] = useState('todos');
+  const [escalaoFilter, setEscalaoFilter] = useState('todos');
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
@@ -45,12 +54,27 @@ export function EventosCalendar({ events = [] }: EventosCalendarProps) {
     end: calendarEnd,
   });
 
+  // Obter escalões únicos dos eventos
+  const escaloes = useMemo(() => {
+    const uniqueEscaloes = new Set<string>();
+    events.forEach((event) => {
+      event.escaloes_elegiveis?.forEach((escalao) => {
+        uniqueEscaloes.add(escalao);
+      });
+    });
+    return Array.from(uniqueEscaloes).sort();
+  }, [events]);
+
   const filteredEvents = useMemo(() => {
     return events.filter((event) => {
       const matchesType = typeFilter === 'todos' || event.tipo === typeFilter;
-      return matchesType && event.estado !== 'cancelado';
+      const matchesEscalao =
+        escalaoFilter === 'todos' ||
+        event.escaloes_elegiveis?.includes(escalaoFilter) ||
+        false;
+      return matchesType && matchesEscalao && event.estado !== 'cancelado';
     });
-  }, [events, typeFilter]);
+  }, [events, typeFilter, escalaoFilter]);
 
   const getEventsForDay = (day: Date) => {
     return filteredEvents.filter((event) =>
@@ -73,14 +97,25 @@ export function EventosCalendar({ events = [] }: EventosCalendarProps) {
 
   const weekDays = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab', 'Dom'];
 
+  const clearFilters = () => {
+    setTypeFilter('todos');
+    setEscalaoFilter('todos');
+  };
+
+  const hasActiveFilters = typeFilter !== 'todos' || escalaoFilter !== 'todos';
+
   return (
     <Card className="p-4">
       <div className="space-y-4">
+        {/* Cabeçalho com navegação */}
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-semibold">
               {format(currentDate, "MMMM 'de' yyyy", { locale: ptBR })}
             </h2>
+            <p className="text-sm text-muted-foreground">
+              {filteredEvents.length} evento(s) no mês
+            </p>
           </div>
           <div className="flex gap-2">
             <Button
@@ -105,6 +140,44 @@ export function EventosCalendar({ events = [] }: EventosCalendarProps) {
               <CaretRight size={16} />
             </Button>
           </div>
+        </div>
+
+        {/* Filtros */}
+        <div className="flex gap-2 items-center flex-wrap">
+          <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="Tipo de Evento" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos os tipos</SelectItem>
+              <SelectItem value="treino">Treino</SelectItem>
+              <SelectItem value="prova">Prova</SelectItem>
+              <SelectItem value="competicao">Competição</SelectItem>
+              <SelectItem value="reuniao">Reunião</SelectItem>
+              <SelectItem value="evento">Evento</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={escalaoFilter} onValueChange={setEscalaoFilter}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="Escalão" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos os escalões</SelectItem>
+              {escaloes.map((escalao) => (
+                <SelectItem key={escalao} value={escalao}>
+                  {escalao}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {hasActiveFilters && (
+            <Button variant="outline" size="sm" onClick={clearFilters}>
+              <X size={14} className="mr-1" />
+              Limpar filtros
+            </Button>
+          )}
         </div>
 
         <div className="grid grid-cols-7 gap-2">

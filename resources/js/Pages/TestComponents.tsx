@@ -1,8 +1,8 @@
 import { Head } from '@inertiajs/react';
-import { Button } from '@/Components/ui/Button';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/Components/ui/Card';
-import { Input } from '@/Components/ui/Input';
-import { Label } from '@/Components/ui/Label';
+import { Button } from '@/Components/ui/button';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/Components/ui/card';
+import { Input } from '@/Components/ui/input';
+import { Label } from '@/Components/ui/label';
 
 export default function TestComponents() {
     return (

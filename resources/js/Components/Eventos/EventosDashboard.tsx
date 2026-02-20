@@ -16,7 +16,9 @@ interface Event {
   titulo: string;
   data_inicio: string;
   tipo: string;
-  estado: 'agendado' | 'em_curso' | 'concluido' | 'cancelado';
+  estado: string;
+  local?: string;
+  escaloes_elegiveis?: string[];
 }
 
 interface EventosDashboardProps {

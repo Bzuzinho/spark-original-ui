@@ -20,10 +20,11 @@ interface Event {
     data_fim?: string;
     tipo: string;
     estado: string;
-    local?: string;
+    local: string;
     descricao?: string;
     criado_por?: string;
     hora_inicio?: string;
+    escaloes_elegiveis?: string[];
 }
 
 interface EventStats {

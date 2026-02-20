@@ -16,6 +16,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
+use Carbon\CarbonPeriod;
 
 class EventosController extends Controller
 {
@@ -72,10 +73,57 @@ class EventosController extends Controller
             $data['estado'] = 'rascunho';
         }
         
-        $event = Event::create($data);
+        // Handle recurrence
+        if ($data['recorrente'] ?? false) {
+            $parentEvent = Event::create($data);
+            $this->generateRecurringEvents($parentEvent, $data);
+            $event = $parentEvent;
+        } else {
+            $event = Event::create($data);
+        }
 
         return redirect()->route('eventos.index')
             ->with('success', 'Evento criado com sucesso!');
+    }
+
+    /**
+     * Generate recurring events
+     */
+    private function generateRecurringEvents(Event $parentEvent, array $data): void
+    {
+        if (!($data['recorrente'] ?? false)) {
+            return;
+        }
+
+        $startDate = Carbon::parse($data['recorrencia_data_inicio']);
+        $endDate = Carbon::parse($data['recorrencia_data_fim']);
+        $selectedDays = $data['recorrencia_dias_semana'] ?? [];
+
+        if (empty($selectedDays)) {
+            return;
+        }
+
+        $period = CarbonPeriod::create($startDate, '1 day', $endDate);
+
+        foreach ($period as $date) {
+            // Check if this day of the week is selected (0 = Sunday, 1 = Monday, etc.)
+            if (in_array((string)$date->dayOfWeek, $selectedDays)) {
+                $eventData = $data;
+                $eventData['data_inicio'] = $date->toDateString();
+                $eventData['recorrente'] = false;
+                $eventData['evento_pai_id'] = $parentEvent->id;
+                
+                // If there's a data_fim, adjust it accordingly
+                if (isset($data['data_fim'])) {
+                    $originalStartDate = Carbon::parse($data['data_inicio']);
+                    $originalEndDate = Carbon::parse($data['data_fim']);
+                    $daysOffset = $originalStartDate->diffInDays($originalEndDate);
+                    $eventData['data_fim'] = $date->addDays($daysOffset)->toDateString();
+                }
+
+                Event::create($eventData);
+            }
+        }
     }
 
     public function show(Event $evento): Response
@@ -104,7 +152,16 @@ class EventosController extends Controller
     {
         $data = $request->validated();
         $data['descricao'] = $data['descricao'] ?? $evento->descricao ?? '';
-        $evento->update($data);
+        
+        // If this is a parent recurring event, handle updates
+        if ($evento->recorrente && ($data['recorrente'] ?? false)) {
+            // Delete old child events and regenerate
+            $evento->childEvents()->delete();
+            $evento->update($data);
+            $this->generateRecurringEvents($evento, $data);
+        } else {
+            $evento->update($data);
+        }
 
         return redirect()->route('eventos.index')
             ->with('success', 'Evento atualizado com sucesso!');
@@ -112,6 +169,11 @@ class EventosController extends Controller
 
     public function destroy(Event $evento): RedirectResponse
     {
+        // If this is a parent event, also delete child events
+        if ($evento->recorrente) {
+            $evento->childEvents()->delete();
+        }
+
         $evento->delete();
 
         return redirect()->route('eventos.index')
