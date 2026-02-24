@@ -21,15 +21,19 @@ export function useKV<T>(
   const queryClient = useQueryClient();
 
   // Fetch data from Laravel API
-  const { data } = useQuery<T>({
+  const { data, refetch } = useQuery<T>({
     queryKey: ['kv', key, scope],
     queryFn: async () => {
+      console.log(`🔄 useKV.get('${key}')`);
       const response = await axios.get(`/api/kv/${key}`, {
         params: { scope },
       });
+      console.log(`✅ useKV.get('${key}') retornou:`, response.data.value);
       return response.data.value ?? defaultValue;
     },
     initialData: defaultValue,
+    staleTime: 0, // ✅ Sempre considerar como stale para refetch rápido
+    gcTime: 1000 * 60 * 5, // 5 minutos
   });
 
   // Mutation to save data
@@ -53,8 +57,12 @@ export function useKV<T>(
         queryClient.setQueryData(['kv', key, scope], context.previousValue);
       }
     },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['kv', key, scope] });
+    onSettled: async () => {
+      // ✅ Invalidar e imediatamente refetch para garantir dados frescos
+      await queryClient.invalidateQueries({ queryKey: ['kv', key, scope] });
+      // Forçar refetch imediato
+      await new Promise(resolve => setTimeout(resolve, 100));
+      refetch();
     },
   });
 

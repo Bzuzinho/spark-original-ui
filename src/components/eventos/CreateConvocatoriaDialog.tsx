@@ -66,6 +66,7 @@ export function CreateConvocatoriaDialog({ open, onOpenChange, onSuccess, editin
   const [horaEncontro, setHoraEncontro] = useState('');
   const [localEncontro, setLocalEncontro] = useState('');
   const [observacoes, setObservacoes] = useState('');
+  const [centroCustoId, setCentroCustoId] = useState('');
   const [tipoCusto, setTipoCusto] = useState<'por_salto' | 'por_atleta'>('por_salto');
   const [valorPorSalto, setValorPorSalto] = useState('');
   const [valorPorEstafeta, setValorPorEstafeta] = useState('');
@@ -166,6 +167,7 @@ export function CreateConvocatoriaDialog({ open, onOpenChange, onSuccess, editin
     setHoraEncontro(convocatoria.hora_encontro || '');
     setLocalEncontro(convocatoria.local_encontro || '');
     setObservacoes(convocatoria.observacoes || '');
+    setCentroCustoId(convocatoria.centro_custo_id || '');
     setTipoCusto(convocatoria.tipo_custo || 'por_salto');
     setValorPorSalto(convocatoria.valor_por_salto?.toString() || '');
     setValorPorEstafeta(convocatoria.valor_por_estafeta?.toString() || '');
@@ -199,6 +201,7 @@ export function CreateConvocatoriaDialog({ open, onOpenChange, onSuccess, editin
     setHoraEncontro('');
     setLocalEncontro('');
     setObservacoes('');
+    setCentroCustoId('');
     setTipoCusto('por_salto');
     setValorPorSalto('');
     setValorPorEstafeta('');
@@ -501,6 +504,7 @@ export function CreateConvocatoriaDialog({ open, onOpenChange, onSuccess, editin
       hora_encontro: horaEncontro || undefined,
       local_encontro: localEncontro || undefined,
       observacoes: observacoes || undefined,
+      centro_custo_id: centroCustoId || undefined,
       tipo_custo: tipoCusto,
       valor_por_salto: tipoCusto === 'por_salto' ? parseFloat(valorPorSalto) : undefined,
       valor_por_estafeta: tipoCusto === 'por_salto' ? parseFloat(valorPorEstafeta) : undefined,
@@ -530,8 +534,10 @@ export function CreateConvocatoriaDialog({ open, onOpenChange, onSuccess, editin
         ...convocatoriasAtletaList
       ]);
     } else {
-      setConvocatoriasGrupo(current => [...(current || []), convocatoriaGrupo]);
-      setConvocatoriasAtleta(current => [...(current || []), ...convocatoriasAtletaList]);
+      await Promise.all([
+        setConvocatoriasGrupo(current => [...(current || []), convocatoriaGrupo]),
+        setConvocatoriasAtleta(current => [...(current || []), ...convocatoriasAtletaList]),
+      ]);
     }
 
     const resultadosList: EventoResultado[] = [];
@@ -590,6 +596,20 @@ export function CreateConvocatoriaDialog({ open, onOpenChange, onSuccess, editin
     await Promise.all([
       setResultados(current => [...(current || []), ...resultadosList]),
       setResultadosProvas(current => [...(current || []), ...resultadosProvasList]),
+    ]);
+
+    // Garantir persistência explícita no KV
+    const updatedConvocatoriasGrupo = isEditing 
+      ? (convocatoriasGrupo || []).map(c => c.id === convocatoriaId ? convocatoriaGrupo : c)
+      : [...(convocatoriasGrupo || []), convocatoriaGrupo];
+    
+    const updatedConvocatoriasAtleta = isEditing 
+      ? [...(convocatoriasAtleta || []).filter(ca => ca.convocatoria_grupo_id !== convocatoriaId), ...convocatoriasAtletaList]
+      : [...(convocatoriasAtleta || []), ...convocatoriasAtletaList];
+
+    await Promise.all([
+      window.spark.kv.set('club-convocatorias-grupo', updatedConvocatoriasGrupo),
+      window.spark.kv.set('club-convocatorias-atleta', updatedConvocatoriasAtleta),
     ]);
 
     toast.success(isEditing 
@@ -833,6 +853,16 @@ export function CreateConvocatoriaDialog({ open, onOpenChange, onSuccess, editin
               </div>
 
               <div className="space-y-2">
+                <Label htmlFor="centro-custo">Centro de Custos</Label>
+                <Input
+                  id="centro-custo"
+                  value={centroCustoId}
+                  onChange={(e) => setCentroCustoId(e.target.value)}
+                  placeholder="Digite o centro de custos (opcional)"
+                />
+              </div>
+
+              <div className="space-y-2">
                 <Label>Selecionar Atletas ({selectedAtletas.length} selecionados)</Label>
                 <div className="flex gap-2">
                   <Button
@@ -938,10 +968,10 @@ export function CreateConvocatoriaDialog({ open, onOpenChange, onSuccess, editin
           )}
 
           {step === 3 && (
-            <div className="space-y-4">
-              <Card className="p-4 bg-primary/5">
-                <h4 className="font-semibold text-sm mb-3">Custos do Evento</h4>
-                <div className="space-y-2 text-sm">
+            <div className="space-y-3">
+              <Card className="p-3 bg-primary/5">
+                <h4 className="font-semibold text-xs mb-2">Custos do Evento</h4>
+                <div className="space-y-1 text-xs">
                   {selectedEvent?.custo_inscricao_por_prova && selectedEvent.custo_inscricao_por_prova > 0 && (
                     <div className="flex justify-between">
                       <span>Custo por Prova:</span>
@@ -961,16 +991,16 @@ export function CreateConvocatoriaDialog({ open, onOpenChange, onSuccess, editin
                     </div>
                   )}
                   {(!selectedEvent?.custo_inscricao_por_prova && !selectedEvent?.custo_inscricao_por_salto && !selectedEvent?.custo_inscricao_estafeta) && (
-                    <p className="text-muted-foreground text-center py-2">
-                      Nenhum custo definido para este evento
+                    <p className="text-muted-foreground text-center py-1">
+                      Nenhum custo definido
                     </p>
                   )}
                 </div>
               </Card>
 
-              <Card className="p-4 bg-primary/5">
-                <h4 className="font-semibold text-sm mb-3">Cálculo das Taxas de Inscrição</h4>
-                <div className="space-y-2 text-sm">
+              <Card className="p-3 bg-primary/5">
+                <h4 className="font-semibold text-xs mb-2">Cálculo das Taxas de Inscrição</h4>
+                <div className="space-y-1 text-xs">
                   <div className="flex justify-between">
                     <span>Total de Atletas:</span>
                     <span className="font-medium">{selectedAtletas.length}</span>
@@ -994,13 +1024,13 @@ export function CreateConvocatoriaDialog({ open, onOpenChange, onSuccess, editin
                       }, 0)}
                     </span>
                   </div>
-                  <Separator />
-                  <div className="flex justify-between font-semibold text-base">
+                  <Separator className="my-1" />
+                  <div className="flex justify-between font-semibold text-sm">
                     <span>Valor Total:</span>
                     <span className="text-primary">€{valorInscricaoCalculado.toFixed(2)}</span>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Será criado um movimento financeiro individual para cada atleta com as suas provas
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Movimentos individuais serão criados para cada atleta
                   </p>
                 </div>
               </Card>
@@ -1008,33 +1038,36 @@ export function CreateConvocatoriaDialog({ open, onOpenChange, onSuccess, editin
               <Separator />
 
               <div className="space-y-2">
-                <Label htmlFor="hora-encontro">Hora de Encontro</Label>
+                <Label htmlFor="hora-encontro" className="text-sm">Hora de Encontro</Label>
                 <Input
                   id="hora-encontro"
                   type="time"
                   value={horaEncontro}
                   onChange={(e) => setHoraEncontro(e.target.value)}
+                  className="text-sm"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="local-encontro">Local de Encontro</Label>
+                <Label htmlFor="local-encontro" className="text-sm">Local de Encontro</Label>
                 <Input
                   id="local-encontro"
                   value={localEncontro}
                   onChange={(e) => setLocalEncontro(e.target.value)}
                   placeholder="Ex: Sede do Clube"
+                  className="text-sm"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="observacoes">Observações</Label>
+                <Label htmlFor="observacoes" className="text-sm">Observações</Label>
                 <Textarea
                   id="observacoes"
                   value={observacoes}
                   onChange={(e) => setObservacoes(e.target.value)}
                   placeholder="Informações adicionais..."
-                  rows={3}
+                  rows={2}
+                  className="text-sm"
                 />
               </div>
             </div>

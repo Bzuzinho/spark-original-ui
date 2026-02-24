@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { usePage, router } from '@inertiajs/react';
+import { useMemo, useState } from 'react';
+import { router } from '@inertiajs/react';
 import { Button } from '@/Components/ui/button';
 import { Card } from '@/Components/ui/card';
 import { Input } from '@/Components/ui/input';
@@ -36,6 +36,7 @@ import { Checkbox } from '@/Components/ui/checkbox';
 import {
   Plus,
   MagnifyingGlass,
+  CalendarBlank,
   Pencil,
   Trash,
   MapPin,
@@ -45,14 +46,6 @@ import {
 } from '@phosphor-icons/react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/Components/ui/table';
 import { toast } from 'sonner';
 
 interface Event {
@@ -155,15 +148,20 @@ export function EventosList({
     recorrencia_dias_semana: [] as string[],
   });
 
-  const filteredEvents = events.filter((event) => {
-    const matchesSearch = event.titulo
-      .toLowerCase()
-      .includes(searchTerm.toLowerCase());
-    const matchesType = typeFilter === 'todos' || event.tipo === typeFilter;
-    const matchesStatus = statusFilter === 'todos' || event.estado === statusFilter;
+  const filteredEvents = useMemo(() => {
+    return events
+      .filter((event) => {
+        const matchesSearch =
+          event.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (event.descricao || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (event.local || '').toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesType = typeFilter === 'todos' || event.tipo === typeFilter;
+        const matchesStatus = statusFilter === 'todos' || event.estado === statusFilter;
 
-    return matchesSearch && matchesType && matchesStatus;
-  });
+        return matchesSearch && matchesType && matchesStatus;
+      })
+      .sort((a, b) => new Date(b.data_inicio).getTime() - new Date(a.data_inicio).getTime());
+  }, [events, searchTerm, typeFilter, statusFilter]);
 
   const handleSave = async () => {
     if (!formData.titulo.trim()) {
@@ -303,58 +301,95 @@ export function EventosList({
     }
   };
 
+  const getEventTypeClass = (tipo: string) => {
+    switch (tipo) {
+      case 'prova':
+        return 'bg-red-100 text-red-700';
+      case 'treino':
+        return 'bg-green-100 text-green-700';
+      case 'estagio':
+      case 'competicao':
+        return 'bg-blue-100 text-blue-700';
+      case 'evento_interno':
+        return 'bg-purple-100 text-purple-700';
+      default:
+        return 'bg-gray-100 text-gray-700';
+    }
+  };
+
+  const getEventTypeLabel = (tipo: string) => {
+    switch (tipo) {
+      case 'prova':
+        return 'Prova';
+      case 'treino':
+        return 'Treino';
+      case 'estagio':
+        return 'Estágio';
+      case 'reuniao':
+        return 'Reunião';
+      case 'evento_interno':
+        return 'Evento Interno';
+      case 'competicao':
+        return 'Competição';
+      default:
+        return 'Outro';
+    }
+  };
+
+  const getEventStatusClass = (estado: string) => {
+    switch (estado) {
+      case 'agendado':
+        return 'bg-green-100 text-green-700';
+      case 'em_curso':
+        return 'bg-blue-100 text-blue-700';
+      case 'concluido':
+        return 'bg-slate-100 text-slate-700';
+      case 'cancelado':
+        return 'bg-red-100 text-red-700';
+      default:
+        return 'bg-gray-100 text-gray-700';
+    }
+  };
+
+  const getEventStatusLabel = (estado: string) => {
+    switch (estado) {
+      case 'agendado':
+        return 'Agendado';
+      case 'em_curso':
+        return 'Em Curso';
+      case 'concluido':
+        return 'Concluído';
+      case 'cancelado':
+        return 'Cancelado';
+      case 'rascunho':
+        return 'Rascunho';
+      default:
+        return estado;
+    }
+  };
+
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col gap-2 sm:gap-3 md:flex-row md:items-center md:justify-between">
-        <div className="flex gap-2 flex-1">
-          <div className="flex-1">
-            <Input
-              placeholder="Pesquisar eventos..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="h-9"
-            />
-          </div>
-          <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger className="w-40">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos os tipos</SelectItem>
-              <SelectItem value="treino">Treino</SelectItem>
-              <SelectItem value="prova">Prova</SelectItem>
-              <SelectItem value="evento_interno">Evento Interno</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-40">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos os estados</SelectItem>
-              <SelectItem value="agendado">Agendado</SelectItem>
-              <SelectItem value="em_curso">Em Curso</SelectItem>
-              <SelectItem value="concluido">Concluído</SelectItem>
-              <SelectItem value="cancelado">Cancelado</SelectItem>
-            </SelectContent>
-          </Select>
+    <div className="space-y-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="text-sm text-muted-foreground">
+          {filteredEvents.length} de {events.length} eventos
         </div>
 
         <div className="flex gap-2">
           {selectedEvents.size > 0 && (
             <Button
-              size="sm"
               variant="destructive"
               onClick={() => setIsBulkDeleteDialogOpen(true)}
+              className="h-8 text-xs"
             >
-              <Trash size={16} className="mr-2" />
+              <Trash size={14} className="mr-1.5" />
               Eliminar ({selectedEvents.size})
             </Button>
           )}
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button onClick={() => resetForm()} size="sm">
-                <Plus size={16} className="mr-2" />
+              <Button onClick={() => resetForm()} className="h-8 text-xs">
+                <Plus size={14} className="mr-1.5" />
                 Novo Evento
               </Button>
             </DialogTrigger>
@@ -897,127 +932,171 @@ export function EventosList({
       </div>
       </div>
 
-      <Card>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-12">
-                <Checkbox
-                  checked={
-                    selectedEvents.size === filteredEvents.length &&
-                    filteredEvents.length > 0
-                  }
-                  onCheckedChange={toggleSelectAll}
-                  aria-label="Selecionar todos"
-                />
-              </TableHead>
-              <TableHead>Título</TableHead>
-              <TableHead>Data</TableHead>
-              <TableHead>Local</TableHead>
-              <TableHead>Tipo</TableHead>
-              <TableHead>Estado</TableHead>
-              <TableHead className="text-right">Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredEvents.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                  Nenhum evento encontrado
-                </TableCell>
-              </TableRow>
-            ) : (
-              filteredEvents.map((event) => (
-                <TableRow
-                  key={event.id}
-                  className={selectedEvents.has(event.id) ? 'bg-muted/50' : ''}
-                >
-                  <TableCell>
-                    <Checkbox
-                      checked={selectedEvents.has(event.id)}
-                      onCheckedChange={() => toggleEventSelection(event.id)}
-                      aria-label={`Selecionar ${event.titulo}`}
-                    />
-                  </TableCell>
-                  <TableCell className="font-medium">{event.titulo}</TableCell>
-                  <TableCell>
-                    {format(
-                      new Date(event.data_inicio),
-                      "dd 'de' MMM 'de' yyyy",
-                      { locale: ptBR }
-                    )}
-                  </TableCell>
-                  <TableCell>{event.local}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{event.tipo}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={
-                        event.estado === 'concluido'
-                          ? 'default'
-                          : event.estado === 'agendado'
-                            ? 'secondary'
-                            : 'outline'
-                      }
-                    >
-                      {event.estado}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right space-x-2">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => {
-                        setEditingEvent(event);
-                        setFormData({
-                          titulo: event.titulo,
-                          descricao: event.descricao || '',
-                          data_inicio: event.data_inicio,
-                          hora_inicio: event.hora_inicio || '',
-                          data_fim: (event as any).data_fim || '',
-                          hora_fim: (event as any).hora_fim || '',
-                          local: event.local,
-                          local_detalhes: (event as any).local_detalhes || '',
-                          tipo: event.tipo,
-                          tipo_piscina: (event as any).tipo_piscina || '',
-                          visibilidade: (event as any).visibilidade || 'publico',
-                          escaloes_elegiveis: resolveEscalaoIds(event.escaloes_elegiveis || []),
-                          transporte_necessario: (event as any).transporte_necessario || false,
-                          transporte_detalhes: (event as any).transporte_detalhes || '',
-                          hora_partida: (event as any).hora_partida || '',
-                          local_partida: (event as any).local_partida || '',
-                          taxa_inscricao: (event as any).taxa_inscricao || '',
-                          custo_inscricao_por_prova: (event as any).custo_inscricao_por_prova || '',
-                          custo_inscricao_por_salto: (event as any).custo_inscricao_por_salto || '',
-                          custo_inscricao_estafeta: (event as any).custo_inscricao_estafeta || '',
-                          centro_custo_id: (event as any).centro_custo_id || '',
-                          observacoes: (event as any).observacoes || '',
-                          estado: event.estado,
-                          recorrente: (event as any).recorrente || false,
-                          recorrencia_data_inicio: (event as any).recorrencia_data_inicio || '',
-                          recorrencia_data_fim: (event as any).recorrencia_data_fim || '',
-                          recorrencia_dias_semana: (event as any).recorrencia_dias_semana || [],
-                        });
-                        setDialogOpen(true);
-                      }}
-                    >
-                      <Pencil size={16} />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => handleDelete(event.id)}
-                    >
-                      <Trash size={16} className="text-red-500" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+      <Card className="p-2.5">
+        <div className="space-y-2">
+          <div className="flex flex-col gap-2 md:flex-row">
+            <div className="relative flex-1">
+              <MagnifyingGlass className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" size={14} />
+              <Input
+                placeholder="Pesquisar eventos..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="h-7 pl-8 text-xs"
+              />
+            </div>
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <SelectTrigger className="h-7 w-full md:w-[170px] text-xs">
+                <SelectValue placeholder="Tipo" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos os Tipos</SelectItem>
+                <SelectItem value="prova">Prova</SelectItem>
+                <SelectItem value="treino">Treino</SelectItem>
+                <SelectItem value="estagio">Estágio</SelectItem>
+                <SelectItem value="evento_interno">Evento Interno</SelectItem>
+                <SelectItem value="reuniao">Reunião</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="h-7 w-full md:w-[170px] text-xs">
+                <SelectValue placeholder="Estado" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos os Estados</SelectItem>
+                <SelectItem value="agendado">Agendado</SelectItem>
+                <SelectItem value="em_curso">Em Curso</SelectItem>
+                <SelectItem value="concluido">Concluído</SelectItem>
+                <SelectItem value="cancelado">Cancelado</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {filteredEvents.length > 0 && (
+            <div className="flex items-center gap-2 border-t pt-1.5">
+              <Button variant="outline" onClick={toggleSelectAll} className="h-7 text-xs">
+                <CheckSquare size={14} className="mr-1.5" />
+                {selectedEvents.size === filteredEvents.length ? 'Desselecionar Todos' : 'Selecionar Todos'}
+              </Button>
+              <span className="text-xs text-muted-foreground">
+                Selecione eventos para eliminar múltiplos de uma vez
+              </span>
+            </div>
+          )}
+        </div>
       </Card>
+
+      {filteredEvents.length === 0 ? (
+        <Card className="p-8">
+          <div className="text-center">
+            <CalendarBlank className="mx-auto mb-2 text-muted-foreground" size={34} weight="thin" />
+            <h3 className="text-sm font-semibold">Nenhum evento encontrado</h3>
+            <p className="text-xs text-muted-foreground">Crie o seu primeiro evento para começar.</p>
+          </div>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3">
+          {filteredEvents.map((event) => (
+            <Card
+              key={event.id}
+              className={`relative p-2 transition-all hover:shadow-sm ${
+                selectedEvents.has(event.id) ? 'border-primary bg-primary/5' : ''
+              }`}
+            >
+              <div className="absolute left-2 top-2">
+                <Checkbox
+                  checked={selectedEvents.has(event.id)}
+                  onCheckedChange={() => toggleEventSelection(event.id)}
+                  aria-label={`Selecionar ${event.titulo}`}
+                />
+              </div>
+
+              <div className="space-y-1 pl-6">
+                <div className="flex items-start justify-between gap-1.5">
+                  <h3 className="line-clamp-2 text-[13px] font-semibold leading-4">{event.titulo}</h3>
+                  <Badge className={`${getEventTypeClass(event.tipo)} text-xs`}>{getEventTypeLabel(event.tipo)}</Badge>
+                </div>
+
+                {event.descricao && <p className="line-clamp-1 text-[11px] text-muted-foreground">{event.descricao}</p>}
+
+                <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                  <CalendarBlank size={11} />
+                  <span>
+                    {format(new Date(event.data_inicio), "d 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                    {event.hora_inicio && ` às ${event.hora_inicio}`}
+                  </span>
+                </div>
+
+                {event.local && (
+                  <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                    <MapPin size={11} />
+                    <span className="truncate">{event.local}</span>
+                  </div>
+                )}
+
+                <div className="flex flex-wrap items-center gap-1 pt-0.5">
+                  <Badge className={`${getEventStatusClass(event.estado)} text-xs`}>{getEventStatusLabel(event.estado)}</Badge>
+                  {event.escaloes_elegiveis && event.escaloes_elegiveis.length > 0 && (
+                    <Badge variant="outline" className="text-[11px]">
+                      <Users size={11} className="mr-1" />
+                      {event.escaloes_elegiveis.length} escalão
+                      {event.escaloes_elegiveis.length > 1 ? 'ões' : ''}
+                    </Badge>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-end gap-0.5 pt-0.5">
+                  <Button
+                    variant="ghost"
+                    className="h-5 px-1"
+                    onClick={() => {
+                      setEditingEvent(event);
+                      setFormData({
+                        titulo: event.titulo,
+                        descricao: event.descricao || '',
+                        data_inicio: event.data_inicio,
+                        hora_inicio: event.hora_inicio || '',
+                        data_fim: (event as any).data_fim || '',
+                        hora_fim: (event as any).hora_fim || '',
+                        local: event.local,
+                        local_detalhes: (event as any).local_detalhes || '',
+                        tipo: event.tipo,
+                        tipo_piscina: (event as any).tipo_piscina || '',
+                        visibilidade: (event as any).visibilidade || 'publico',
+                        escaloes_elegiveis: resolveEscalaoIds(event.escaloes_elegiveis || []),
+                        transporte_necessario: (event as any).transporte_necessario || false,
+                        transporte_detalhes: (event as any).transporte_detalhes || '',
+                        hora_partida: (event as any).hora_partida || '',
+                        local_partida: (event as any).local_partida || '',
+                        taxa_inscricao: (event as any).taxa_inscricao || '',
+                        custo_inscricao_por_prova: (event as any).custo_inscricao_por_prova || '',
+                        custo_inscricao_por_salto: (event as any).custo_inscricao_por_salto || '',
+                        custo_inscricao_estafeta: (event as any).custo_inscricao_estafeta || '',
+                        centro_custo_id: (event as any).centro_custo_id || '',
+                        observacoes: (event as any).observacoes || '',
+                        estado: event.estado,
+                        recorrente: (event as any).recorrente || false,
+                        recorrencia_data_inicio: (event as any).recorrencia_data_inicio || '',
+                        recorrencia_data_fim: (event as any).recorrencia_data_fim || '',
+                        recorrencia_dias_semana: (event as any).recorrencia_dias_semana || [],
+                      });
+                      setDialogOpen(true);
+                    }}
+                  >
+                    <Pencil size={12} />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    className="h-5 px-1"
+                    onClick={() => handleDelete(event.id)}
+                  >
+                    <Trash size={12} className="text-red-500" />
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
 
       {/* AlertDialog - Confirmação de Eliminação em Massa */}
       <AlertDialog open={isBulkDeleteDialogOpen} onOpenChange={setIsBulkDeleteDialogOpen}>

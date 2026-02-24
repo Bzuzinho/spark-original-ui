@@ -76,7 +76,7 @@ export default function AuthenticatedLayout({
     };
 
     const handleLogout = () => {
-        router.post('/logout');
+        router.post(route('logout'));
     };
 
     const isActive = (itemId: string) => {

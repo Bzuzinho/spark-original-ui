@@ -6,6 +6,7 @@ use App\Models\ConvocationAthlete;
 use App\Models\ConvocationGroup;
 use App\Models\ConvocationMovement;
 use App\Models\ConvocationMovementItem;
+use App\Models\AgeGroup;
 use App\Models\Event;
 use App\Models\EventAttendance;
 use App\Models\EventConvocation;
@@ -233,7 +234,7 @@ class EventosKeyValueService
 
     private function getEventResults(): array
     {
-        return EventResult::query()
+        return EventResult::with('ageGroup:id,nome')
             ->orderBy('registado_em', 'desc')
             ->get()
             ->map(function (EventResult $result) {
@@ -245,7 +246,8 @@ class EventosKeyValueService
                     'tempo' => $result->tempo,
                     'classificacao' => $result->classificacao,
                     'piscina' => $result->piscina,
-                    'escalao' => $result->escalao,
+                    'age_group_id' => $result->age_group_id,
+                    'escalao' => $result->ageGroup?->nome ?? $result->escalao,
                     'observacoes' => $result->observacoes,
                     'epoca' => $result->epoca,
                     'registado_por' => $result->registado_por,
@@ -320,6 +322,7 @@ class EventosKeyValueService
                     'valor_inscricao_unitaria' => $group->valor_inscricao_unitaria,
                     'valor_inscricao_calculado' => $group->valor_inscricao_calculado,
                     'movimento_id' => $group->movimento_id,
+                    'centro_custo_id' => $group->centro_custo_id,
                 ];
             })
             ->all();
@@ -529,6 +532,9 @@ class EventosKeyValueService
                         'tempo' => $item['tempo'] ?? null,
                         'classificacao' => $item['classificacao'] ?? null,
                         'piscina' => $item['piscina'] ?? null,
+                        'age_group_id' => $this->resolveAgeGroupId(
+                            $item['age_group_id'] ?? $item['escalao'] ?? null
+                        ),
                         'escalao' => $item['escalao'] ?? null,
                         'observacoes' => $item['observacoes'] ?? null,
                         'epoca' => $item['epoca'] ?? null,
@@ -650,6 +656,7 @@ class EventosKeyValueService
                         'valor_inscricao_unitaria' => $item['valor_inscricao_unitaria'] ?? null,
                         'valor_inscricao_calculado' => $item['valor_inscricao_calculado'] ?? null,
                         'movimento_id' => $item['movimento_id'] ?? null,
+                        'centro_custo_id' => $item['centro_custo_id'] ?? null,
                     ]
                 );
             }
@@ -678,18 +685,20 @@ class EventosKeyValueService
                 $athleteIds = $athletes->pluck('atleta_id')->filter()->values();
 
                 foreach ($athletes as $item) {
-                    ConvocationAthlete::updateOrCreate(
-                        [
-                            'convocatoria_grupo_id' => $item['convocatoria_grupo_id'],
-                            'atleta_id' => $item['atleta_id'],
-                        ],
-                        [
-                            'provas' => $item['provas'] ?? [],
-                            'estafetas' => $item['estafetas'] ?? 0,
-                            'presente' => $item['presente'] ?? false,
-                            'confirmado' => $item['confirmado'] ?? false,
-                        ]
-                    );
+                    // Delete existing record first
+                    ConvocationAthlete::where('convocatoria_grupo_id', $item['convocatoria_grupo_id'])
+                        ->where('atleta_id', $item['atleta_id'])
+                        ->delete();
+                    
+                    // Then create new record
+                    ConvocationAthlete::create([
+                        'convocatoria_grupo_id' => $item['convocatoria_grupo_id'],
+                        'atleta_id' => $item['atleta_id'],
+                        'provas' => $item['provas'] ?? [],
+                        'estafetas' => $item['estafetas'] ?? 0,
+                        'presente' => $item['presente'] ?? false,
+                        'confirmado' => $item['confirmado'] ?? false,
+                    ]);
                 }
 
                 ConvocationAthlete::where('convocatoria_grupo_id', $groupId)
@@ -782,6 +791,26 @@ class EventosKeyValueService
         }
 
         return User::query()->value('id');
+    }
+
+    private function resolveAgeGroupId(mixed $candidate): ?string
+    {
+        if (!is_string($candidate)) {
+            return null;
+        }
+
+        $trimmedValue = trim($candidate);
+        if ($trimmedValue === '') {
+            return null;
+        }
+
+        if (AgeGroup::query()->whereKey($trimmedValue)->exists()) {
+            return $trimmedValue;
+        }
+
+        return AgeGroup::query()
+            ->whereRaw('LOWER(nome) = ?', [mb_strtolower($trimmedValue)])
+            ->value('id');
     }
 
     private function deleteConvocationMovements(): bool

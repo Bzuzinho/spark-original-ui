@@ -84,9 +84,15 @@ interface PresencasListProps {
   events: any[];
   attendances?: Attendance[];
   users?: any[];
+  ageGroups?: any[];
 }
 
-export function PresencasList({ events = [], attendances: initialAttendances = [], users = [] }: PresencasListProps) {
+export function PresencasList({
+  events = [],
+  attendances: initialAttendances = [],
+  users = [],
+  ageGroups = [],
+}: PresencasListProps) {
   const [attendances, setAttendances] = useState<Attendance[]>(initialAttendances);
   const [searchTerm, setSearchTerm] = useState('');
   const [eventFilter, setEventFilter] = useState('todos');
@@ -100,6 +106,22 @@ export function PresencasList({ events = [], attendances: initialAttendances = [
   const [editingGroup, setEditingGroup] = useState<AttendanceGroup | null>(null);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(false);
+
+  const ageGroupIdByName = new Map(
+    (ageGroups || [])
+      .map((group: any) => [String(group?.nome || '').toLowerCase().trim(), group?.id] as const)
+      .filter(([name, id]) => Boolean(name) && Boolean(id))
+  );
+
+  const normalizeEscaloes = (escaloes: string[] = []) => {
+    return (escaloes || [])
+      .map((value) => {
+        if (!value) return value;
+        const trimmedValue = String(value).trim();
+        return ageGroupIdByName.get(trimmedValue.toLowerCase()) || trimmedValue;
+      })
+      .filter(Boolean);
+  };
 
   // Carregar presenças
   const loadAttendances = async () => {
@@ -146,9 +168,10 @@ export function PresencasList({ events = [], attendances: initialAttendances = [
     
     // Pré-selecionar atletas do escalão do evento
     if (event && event.escaloes_elegiveis && event.escaloes_elegiveis.length > 0) {
+      const normalizedEventEscaloes = normalizeEscaloes(event.escaloes_elegiveis || []);
       const athletesInEscaloes = users.filter((user: any) => {
-        const userEscaloes = Array.isArray(user.escalao) ? user.escalao : [];
-        return event.escaloes_elegiveis.some((e: string) => userEscaloes.includes(e));
+        const userEscaloes = normalizeEscaloes(Array.isArray(user.escalao) ? user.escalao : []);
+        return normalizedEventEscaloes.some((e: string) => userEscaloes.includes(e));
       });
       setSelectedAthletes(athletesInEscaloes.map((a: any) => a.id));
     } else {

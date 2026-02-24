@@ -95,55 +95,55 @@ export default function EventosIndex({
 
       <div className="container mx-auto px-2 sm:px-4 py-3 sm:py-4 max-w-7xl space-y-2 sm:space-y-3">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-3">
-          <TabsList className="grid grid-cols-7 w-full h-auto p-1">
+          <TabsList className="grid w-full h-9 grid-cols-7 p-1">
             <TabsTrigger
               value="dashboard"
-              className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-2 px-1 text-xs"
+              className="flex items-center gap-1.5 px-1 py-1 text-xs"
             >
               <ChartBar size={16} className="flex-shrink-0" />
-              <span className="hidden sm:inline">Dashboard</span>
+              <span>Dashboard</span>
             </TabsTrigger>
             <TabsTrigger
               value="calendario"
-              className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-2 px-1 text-xs"
+              className="flex items-center gap-1.5 px-1 py-1 text-xs"
             >
               <CalendarBlank size={16} className="flex-shrink-0" />
-              <span className="hidden sm:inline">Calendário</span>
+              <span>Calendário</span>
             </TabsTrigger>
             <TabsTrigger
               value="eventos"
-              className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-2 px-1 text-xs"
+              className="flex items-center gap-1.5 px-1 py-1 text-xs"
             >
               <ListChecks size={16} className="flex-shrink-0" />
-              <span className="hidden sm:inline">Eventos</span>
+              <span>Eventos</span>
             </TabsTrigger>
             <TabsTrigger
               value="convocatorias"
-              className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-2 px-1 text-xs"
+              className="flex items-center gap-1.5 px-1 py-1 text-xs"
             >
               <PaperPlaneTilt size={16} className="flex-shrink-0" />
-              <span className="hidden sm:inline">Convocatórias</span>
+              <span>Convocatórias</span>
             </TabsTrigger>
             <TabsTrigger
               value="presencas"
-              className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-2 px-1 text-xs"
+              className="flex items-center gap-1.5 px-1 py-1 text-xs"
             >
               <ClipboardText size={16} className="flex-shrink-0" />
-              <span className="hidden sm:inline">Presenças</span>
+              <span>Presenças</span>
             </TabsTrigger>
             <TabsTrigger
               value="resultados"
-              className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-2 px-1 text-xs"
+              className="flex items-center gap-1.5 px-1 py-1 text-xs"
             >
               <Trophy size={16} className="flex-shrink-0" />
-              <span className="hidden sm:inline">Resultados</span>
+              <span>Resultados</span>
             </TabsTrigger>
             <TabsTrigger
               value="relatorios"
-              className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-2 px-1 text-xs"
+              className="flex items-center gap-1.5 px-1 py-1 text-xs"
             >
               <ChartBar size={16} className="flex-shrink-0" />
-              <span className="hidden sm:inline">Relatórios</span>
+              <span>Relatórios</span>
             </TabsTrigger>
           </TabsList>
 
@@ -169,7 +169,13 @@ export default function EventosIndex({
           </TabsContent>
 
           <TabsContent value="convocatorias" className="space-y-3">
-            <ConvocatoriasList events={eventos} convocations={convocations} />
+            <ConvocatoriasList
+              events={eventos}
+              convocations={convocations}
+              users={users}
+              ageGroups={ageGroups}
+              costCenters={costCenters}
+            />
           </TabsContent>
 
           <TabsContent value="presencas" className="space-y-3">
@@ -177,6 +183,7 @@ export default function EventosIndex({
               events={eventos}
               attendances={attendances}
               users={users}
+              ageGroups={ageGroups}
             />
           </TabsContent>
 
@@ -185,6 +192,7 @@ export default function EventosIndex({
               events={eventos}
               results={results}
               users={users}
+              ageGroups={ageGroups}
             />
           </TabsContent>
 
@@ -193,6 +201,8 @@ export default function EventosIndex({
               events={eventos}
               attendances={attendances}
               results={results}
+              users={users}
+              ageGroups={ageGroups}
             />
           </TabsContent>
         </Tabs>

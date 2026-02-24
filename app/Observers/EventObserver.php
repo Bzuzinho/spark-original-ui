@@ -4,6 +4,7 @@ namespace App\Observers;
 
 use App\Models\Event;
 use App\Models\EventAttendance;
+use App\Models\AgeGroup;
 use App\Models\User;
 use Illuminate\Support\Facades\Log;
 
@@ -128,10 +129,34 @@ class EventObserver
             return collect([]);
         }
 
+        $ageGroups = AgeGroup::query()->get(['id', 'nome']);
+
+        $ageGroupNameToId = $ageGroups
+            ->filter(fn (AgeGroup $group) => !empty($group->nome))
+            ->mapWithKeys(fn (AgeGroup $group) => [mb_strtolower(trim($group->nome)) => (string) $group->id]);
+
+        $eligibleEscaloes = collect($event->escaloes_elegiveis)
+            ->filter(fn ($value) => is_string($value) && trim($value) !== '')
+            ->map(function (string $value) use ($ageGroupNameToId, $ageGroups) {
+                $trimmed = trim($value);
+
+                if ($ageGroups->firstWhere('id', $trimmed)) {
+                    return $trimmed;
+                }
+
+                return $ageGroupNameToId[mb_strtolower($trimmed)] ?? $trimmed;
+            })
+            ->unique()
+            ->values();
+
+        if ($eligibleEscaloes->isEmpty()) {
+            return collect([]);
+        }
+
         $query = User::where('estado', 'ativo');
 
-        $query->where(function ($builder) use ($event) {
-            foreach ($event->escaloes_elegiveis as $escalao) {
+        $query->where(function ($builder) use ($eligibleEscaloes) {
+            foreach ($eligibleEscaloes as $escalao) {
                 $builder->orWhereJsonContains('escalao', $escalao);
             }
         });

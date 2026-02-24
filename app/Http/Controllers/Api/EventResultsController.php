@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\AgeGroup;
 use App\Models\EventResult;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -11,7 +12,7 @@ class EventResultsController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = EventResult::with(['event', 'athlete', 'registeredBy']);
+        $query = EventResult::with(['event', 'athlete', 'registeredBy', 'ageGroup']);
 
         // Filter by event
         if ($request->has('evento_id')) {
@@ -28,9 +29,16 @@ class EventResultsController extends Controller
             $query->where('prova', 'like', '%' . $request->get('prova') . '%');
         }
 
-        // Filter by escalao
-        if ($request->has('escalao')) {
-            $query->where('escalao', $request->get('escalao'));
+        if ($request->filled('age_group_id')) {
+            $query->where('age_group_id', $request->string('age_group_id'));
+        } elseif ($request->filled('escalao')) {
+            $resolvedAgeGroupId = $this->resolveAgeGroupId($request->string('escalao')->toString());
+
+            if ($resolvedAgeGroupId) {
+                $query->where('age_group_id', $resolvedAgeGroupId);
+            } else {
+                $query->where('escalao', $request->get('escalao'));
+            }
         }
 
         // Filter by piscina
@@ -61,6 +69,7 @@ class EventResultsController extends Controller
             'tempo' => 'nullable|string|max:255',
             'classificacao' => 'nullable|integer|min:1',
             'piscina' => 'nullable|in:25m,50m,aguas_abertas',
+            'age_group_id' => 'nullable|uuid|exists:age_groups,id',
             'escalao' => 'nullable|string|max:255',
             'observacoes' => 'nullable|string',
             'epoca' => 'nullable|string|max:255',
@@ -68,17 +77,22 @@ class EventResultsController extends Controller
             'registado_em' => 'nullable|date',
         ]);
 
+        $validated['age_group_id'] = $validated['age_group_id'] ?? $this->resolveAgeGroupId($validated['escalao'] ?? null);
+        $validated['escalao'] = $validated['age_group_id']
+            ? optional(AgeGroup::find($validated['age_group_id']))->nome
+            : ($validated['escalao'] ?? null);
+
         $validated['registado_por'] = $validated['registado_por'] ?? auth()->id();
         $validated['registado_em'] = $validated['registado_em'] ?? now();
 
         $result = EventResult::create($validated);
         
-        return response()->json($result->load(['event', 'athlete', 'registeredBy']), 201);
+        return response()->json($result->load(['event', 'athlete', 'registeredBy', 'ageGroup']), 201);
     }
 
     public function show(string $id): JsonResponse
     {
-        $result = EventResult::with(['event', 'athlete', 'registeredBy'])->findOrFail($id);
+        $result = EventResult::with(['event', 'athlete', 'registeredBy', 'ageGroup'])->findOrFail($id);
         return response()->json($result);
     }
 
@@ -93,13 +107,22 @@ class EventResultsController extends Controller
             'tempo' => 'nullable|string|max:255',
             'classificacao' => 'nullable|integer|min:1',
             'piscina' => 'nullable|in:25m,50m,aguas_abertas',
+            'age_group_id' => 'nullable|uuid|exists:age_groups,id',
             'escalao' => 'nullable|string|max:255',
             'observacoes' => 'nullable|string',
             'epoca' => 'nullable|string|max:255',
         ]);
 
+        if (array_key_exists('age_group_id', $validated) || array_key_exists('escalao', $validated)) {
+            $resolvedAgeGroupId = $validated['age_group_id'] ?? $this->resolveAgeGroupId($validated['escalao'] ?? null);
+            $validated['age_group_id'] = $resolvedAgeGroupId;
+            $validated['escalao'] = $resolvedAgeGroupId
+                ? optional(AgeGroup::find($resolvedAgeGroupId))->nome
+                : ($validated['escalao'] ?? null);
+        }
+
         $result->update($validated);
-        return response()->json($result->load(['event', 'athlete', 'registeredBy']));
+        return response()->json($result->load(['event', 'athlete', 'registeredBy', 'ageGroup']));
     }
 
     public function destroy(string $id): JsonResponse
@@ -145,5 +168,23 @@ class EventResultsController extends Controller
             'terceiros_lugares' => $terceirosLugares,
             'resultados_por_prova' => $resultadosPorProva,
         ]);
+    }
+
+    private function resolveAgeGroupId(?string $value): ?string
+    {
+        if (!$value) {
+            return null;
+        }
+
+        $trimmedValue = trim($value);
+        if ($trimmedValue === '') {
+            return null;
+        }
+
+        if (AgeGroup::where('id', $trimmedValue)->exists()) {
+            return $trimmedValue;
+        }
+
+        return AgeGroup::whereRaw('LOWER(nome) = ?', [mb_strtolower($trimmedValue)])->value('id');
     }
 }

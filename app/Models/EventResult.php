@@ -19,6 +19,7 @@ class EventResult extends Model
         'tempo',
         'classificacao',
         'piscina',
+        'age_group_id',
         'escalao',
         'observacoes',
         'epoca',
@@ -44,5 +45,10 @@ class EventResult extends Model
     public function registeredBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'registado_por');
+    }
+
+    public function ageGroup(): BelongsTo
+    {
+        return $this->belongsTo(AgeGroup::class, 'age_group_id');
     }
 }

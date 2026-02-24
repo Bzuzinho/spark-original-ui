@@ -7,6 +7,7 @@ use App\Http\Requests\UpdateEventRequest;
 use App\Models\Event;
 use App\Models\EventTypeConfig;
 use App\Models\EventConvocation;
+use App\Models\ConvocationGroup;
 use App\Models\EventAttendance;
 use App\Models\EventResult;
 use App\Models\CostCenter;
@@ -44,21 +45,49 @@ class EventosController extends Controller
             })->count(),
         ];
 
+        $ageGroups = AgeGroup::where('ativo', true)
+            ->orderBy('idade_minima')
+            ->get(['id', 'nome', 'idade_minima', 'idade_maxima', 'ativo']);
+
         return Inertia::render('Eventos/Index', [
             'eventos' => Event::with(['creator', 'convocations', 'attendances'])
                 ->orderBy('data_inicio', 'desc')
-                ->get(),
+                ->get()
+                ->map(function (Event $event) use ($ageGroups) {
+                    $event->escaloes_elegiveis = $this->normalizeEscaloesToIds($event->escaloes_elegiveis ?? [], $ageGroups);
+                    return $event;
+                }),
             'stats' => $stats,
-            'users' => User::where('estado', 'ativo')->get(['id', 'nome_completo', 'perfil', 'email']),
+            'users' => User::with(['athleteSportsData:id,user_id,escalao_id'])
+                ->where('estado', 'ativo')
+                ->get([
+                    'id',
+                    'nome_completo',
+                    'perfil',
+                    'email',
+                    'numero_socio',
+                    'estado',
+                    'tipo_membro',
+                    'escalao',
+                ])
+                ->map(function (User $user) {
+                    $userEscaloes = $user->escalao;
+
+                    if ((!is_array($userEscaloes) || count($userEscaloes) === 0) && $user->athleteSportsData?->escalao_id) {
+                        $user->escalao = [(string) $user->athleteSportsData->escalao_id];
+                    }
+
+                    unset($user->athleteSportsData);
+
+                    return $user;
+                }),
             'costCenters' => CostCenter::where('ativo', true)
                 ->orderBy('nome')
                 ->get(['id', 'codigo', 'nome', 'ativo']),
-            'ageGroups' => AgeGroup::where('ativo', true)
-                ->orderBy('idade_minima')
-                ->get(['id', 'nome', 'idade_minima', 'idade_maxima', 'ativo']),
-            'convocations' => EventConvocation::with('event', 'user')->get(),
+            'ageGroups' => $ageGroups,
+            'convocations' => ConvocationGroup::all(),
             'attendances' => EventAttendance::with('event', 'user')->get(),
-            'results' => EventResult::with('event', 'user')->get(),
+            'results' => EventResult::with(['event', 'user', 'ageGroup'])->get(),
         ]);
     }
 
@@ -73,6 +102,7 @@ class EventosController extends Controller
     public function store(StoreEventRequest $request): RedirectResponse
     {
         $data = $request->validated();
+        $data['escaloes_elegiveis'] = $this->normalizeEscaloesToIds($data['escaloes_elegiveis'] ?? []);
         $data['criado_por'] = $data['criado_por'] ?? auth()->id();
         $data['descricao'] = $data['descricao'] ?? '';
         
@@ -159,6 +189,7 @@ class EventosController extends Controller
     public function update(UpdateEventRequest $request, Event $evento): RedirectResponse
     {
         $data = $request->validated();
+        $data['escaloes_elegiveis'] = $this->normalizeEscaloesToIds($data['escaloes_elegiveis'] ?? []);
         $data['descricao'] = $data['descricao'] ?? $evento->descricao ?? '';
         
         // If this is a parent recurring event, handle updates
@@ -315,5 +346,32 @@ class EventosController extends Controller
                 ->whereYear('data_inicio', $now->year)
                 ->count(),
         ]);
+    }
+
+    private function normalizeEscaloesToIds(array $values, $ageGroups = null): array
+    {
+        if (!is_array($values) || count($values) === 0) {
+            return [];
+        }
+
+        $source = $ageGroups ?? AgeGroup::query()->get(['id', 'nome']);
+        $ageGroupsById = $source->mapWithKeys(fn (AgeGroup $group) => [(string) $group->id => (string) $group->id]);
+        $ageGroupsByName = $source
+            ->filter(fn (AgeGroup $group) => !empty($group->nome))
+            ->mapWithKeys(fn (AgeGroup $group) => [mb_strtolower(trim($group->nome)) => (string) $group->id]);
+
+        return collect($values)
+            ->filter(fn ($value) => is_string($value) && trim($value) !== '')
+            ->map(function (string $value) use ($ageGroupsById, $ageGroupsByName) {
+                $trimmedValue = trim($value);
+
+                return $ageGroupsById[$trimmedValue]
+                    ?? $ageGroupsByName[mb_strtolower($trimmedValue)]
+                    ?? null;
+            })
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
     }
 }

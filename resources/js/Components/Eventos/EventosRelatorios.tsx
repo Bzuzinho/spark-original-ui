@@ -28,6 +28,7 @@ interface EventosRelatoriosProps {
   attendances?: any[];
   results?: any[];
   users?: any[];
+  ageGroups?: any[];
 }
 
 export function EventosRelatorios({
@@ -36,8 +37,22 @@ export function EventosRelatorios({
   attendances = [],
   results = [],
   users = [],
+  ageGroups = [],
 }: EventosRelatoriosProps) {
   const [activeTab, setActiveTab] = useState('geral');
+
+  const getEscaloesNames = (escaloes: string[] = []) => {
+    if (!Array.isArray(escaloes) || escaloes.length === 0) {
+      return '-';
+    }
+
+    const labels = escaloes.map((escalaoId) => {
+      const ageGroup = ageGroups.find((group: any) => group.id === escalaoId);
+      return ageGroup?.nome || escalaoId;
+    });
+
+    return labels.join(', ');
+  };
 
   // Relatório Geral
   const relatorioGeral = useMemo(() => {
@@ -155,7 +170,7 @@ export function EventosRelatorios({
       return {
         id: user.id,
         nome: user.nome_completo,
-        escalao: Array.isArray(user.escalao) ? user.escalao.join(', ') : user.escalao || '-',
+        escalao: getEscaloesNames(Array.isArray(user.escalao) ? user.escalao : []),
         convocatorias: userConvocatorias.length,
         presentes,
         ausentes,
@@ -165,7 +180,7 @@ export function EventosRelatorios({
         podios,
       };
     });
-  }, [users, convocatorias, attendances, results]);
+  }, [users, convocatorias, attendances, results, ageGroups]);
 
   const exportToCSV = (data: any[], filename: string) => {
     if (data.length === 0) return;

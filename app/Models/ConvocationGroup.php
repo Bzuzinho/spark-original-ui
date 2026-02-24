@@ -20,6 +20,7 @@ class ConvocationGroup extends Model
     protected $table = 'convocation_groups';
 
     protected $fillable = [
+        'id',  // ✅ IMPORTANTE: Precisa estar aqui para updateOrCreate respeitar o ID
         'evento_id',
         'data_criacao',
         'criado_por',
@@ -33,6 +34,7 @@ class ConvocationGroup extends Model
         'valor_inscricao_unitaria',
         'valor_inscricao_calculado',
         'movimento_id',
+        'centro_custo_id',
     ];
 
     protected $casts = [

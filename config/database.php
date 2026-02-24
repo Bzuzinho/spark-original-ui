@@ -52,10 +52,15 @@ return [
             'sslmode' => env('DB_SSLMODE', 'prefer'),
             
             // PostgreSQL Performance Optimizations
-            'options' => [
-                PDO::ATTR_TIMEOUT => 5,
-                PDO::ATTR_PERSISTENT => true,
-            ],
+            'options' => extension_loaded('pdo_pgsql')
+                ? array_replace([
+                    PDO::ATTR_TIMEOUT => 5,
+                    PDO::ATTR_PERSISTENT => env('DB_PERSISTENT', false),
+                    PDO::ATTR_EMULATE_PREPARES => env('DB_EMULATE_PREPARES', false),
+                ], defined('PDO::PGSQL_ATTR_DISABLE_PREPARES')
+                    ? [PDO::PGSQL_ATTR_DISABLE_PREPARES => env('DB_DISABLE_PREPARES', true)]
+                    : [])
+                : [],
         ],
     ],
 

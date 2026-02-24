@@ -27,6 +27,7 @@ class StoreEventRequest extends FormRequest
             'tipo_piscina' => ['nullable', 'in:piscina_25m,piscina_50m,aguas_abertas'],
             'visibilidade' => ['nullable', 'in:publico,privado,restrito'],
             'escaloes_elegiveis' => ['nullable', 'array'],
+            'escaloes_elegiveis.*' => ['uuid', 'exists:age_groups,id'],
             'transporte_necessario' => ['nullable', 'boolean'],
             'transporte_detalhes' => ['nullable', 'string'],
             'hora_partida' => ['nullable', 'date_format:H:i'],

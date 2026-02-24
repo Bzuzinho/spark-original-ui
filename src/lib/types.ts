@@ -162,6 +162,7 @@ export interface ConvocatoriaGrupo {
   valor_inscricao_unitaria?: number;
   valor_inscricao_calculado?: number;
   movimento_id?: string;
+  centro_custo_id?: string;
 }
 
 export interface ConvocatoriaAtleta {

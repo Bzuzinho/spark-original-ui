@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\ProvasController;
 use App\Http\Controllers\Api\ResultsController;
 use App\Http\Controllers\Api\EventAttendancesController;
 use App\Http\Controllers\Api\EventResultsController;
+use App\Http\Controllers\Api\ProvaTiposController;
 
 /*
 |--------------------------------------------------------------------------
@@ -40,6 +41,7 @@ Route::middleware(['auth'])->group(function () {
     Route::apiResource('event-attendances', EventAttendancesController::class);
     Route::apiResource('event-results', EventResultsController::class);
     Route::get('event-results-stats', [EventResultsController::class, 'stats']);
+    Route::get('prova-tipos', [ProvaTiposController::class, 'index']);
 
     // Settings APIs
     Route::apiResource('user-types', TiposUtilizadorController::class);

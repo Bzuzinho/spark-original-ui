@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Button } from '@/Components/ui/button';
 import { Card } from '@/Components/ui/card';
 import { Input } from '@/Components/ui/input';
-import { Label } from '@/Components/ui/label';
 import { Badge } from '@/Components/ui/badge';
+import { useKV } from '@/hooks/useKV';
+import { CreateConvocatoriaDialog } from './CreateConvocatoriaDialog';
+import { EditConvocatoriaDialog } from './EditConvocatoriaDialog';
 import {
   Select,
   SelectContent,
@@ -31,13 +33,11 @@ import {
 } from '@/Components/ui/alert-dialog';
 import {
   Plus,
-  Eye,
+  MagnifyingGlass,
   Trash,
   Users,
   PencilSimple,
   FilePdf,
-  Printer,
-  X,
 } from '@phosphor-icons/react';
 import {
   Table,
@@ -80,48 +80,102 @@ interface ConvocationGroup {
   convocations: Convocation[];
 }
 
+interface CostCenter {
+  id: string;
+  nome: string;
+  ativo?: boolean;
+}
+
 interface ConvocationProps {
   events: any[];
   convocations?: Convocation[];
   users?: any[];
+  ageGroups?: any[];
+  costCenters?: CostCenter[];
 }
 
 export function ConvocatoriasList({
   events = [],
   convocations: initialConvocations = [],
   users = [],
+  ageGroups = [],
+  costCenters = [],
 }: ConvocationProps) {
-  const [convocations, setConvocations] = useState<Convocation[]>(initialConvocations);
+  // ✅ Carregar TUDO de convocationGroups - é a fonte única de verdade
+  const [kvConvocationGroups, setKvConvocationGroups] = useKV<any[]>('club-convocatorias-grupo', []);
+  
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [tipoFilter, setTipoFilter] = useState('todos');
+  const [eventFilter, setEventFilter] = useState('todos');
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState<ConvocationGroup | null>(null);
   const [deletingGroup, setDeletingGroup] = useState<ConvocationGroup | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Agrupar convocatórias por evento
-  const convocationGroups: ConvocationGroup[] = events
-    .filter((e) =>
-      convocations.some((c) => c.evento_id === e.id)
-    )
-    .map((event) => {
-      const eventConvocations = convocations.filter((c) => c.evento_id === event.id);
-      return {
+  // ✅ Converter grupos em convocações para o formato esperado
+  const convocations: Convocation[] = useMemo(() => {
+    return kvConvocationGroups
+      .flatMap((group: any) => {
+        // Para cada atleta do grupo, criar uma convocação
+        return (group.atletas_ids || []).map((athleteId: string) => {
+          const athlete = users.find((u: any) => u.id === athleteId);
+          const event = events.find((e: any) => e.id === group.evento_id);
+          
+          return {
+            id: `${group.id}-${athleteId}`, // ID único baseado no grupo e atleta
+            evento_id: group.evento_id,
+            user_id: athleteId,
+            data_convocatoria: group.data_criacao || new Date().toISOString(),
+            estado_confirmacao: 'pendente',
+            transporte_clube: false,
+            event: event ? {
+              id: event.id,
+              titulo: event.titulo,
+              data_inicio: event.data_inicio,
+              tipo: event.tipo,
+            } : undefined,
+            user: athlete ? {
+              id: athlete.id,
+              nome_completo: athlete.nome_completo || athlete.name || 'Sem nome',
+            } : {
+              id: athleteId,
+              nome_completo: 'Atleta Desconhecido',
+            },
+          };
+        });
+      });
+  }, [kvConvocationGroups, users, events]);
+
+  const allConvocationGroups: ConvocationGroup[] = useMemo(() => {
+    return events
+      .filter((event) => convocations.some((conv) => conv.evento_id === event.id))
+      .map((event) => ({
         evento_id: event.id,
         evento_titulo: event.titulo,
         evento_data: event.data_inicio,
         evento_tipo: event.tipo,
-        convocations: eventConvocations,
-      };
-    })
-    .filter((group) => {
-      const matchesTipo = tipoFilter === 'todos' || group.evento_tipo === tipoFilter;
+        convocations: convocations.filter((conv) => conv.evento_id === event.id),
+      }))
+      .sort((a, b) => new Date(b.evento_data).getTime() - new Date(a.evento_data).getTime());
+  }, [events, convocations]);
+
+  const convocationGroups: ConvocationGroup[] = useMemo(() => {
+    return allConvocationGroups.filter((group) => {
+      const matchesEvent = eventFilter === 'todos' || group.evento_id === eventFilter;
       const matchesSearch = group.evento_titulo
         .toLowerCase()
         .includes(searchTerm.toLowerCase());
-      return matchesTipo && matchesSearch;
+
+      return matchesEvent && matchesSearch;
     });
+  }, [allConvocationGroups, eventFilter, searchTerm]);
+
+  const eventsWithConvocations = useMemo(() => {
+    return events
+      .filter((event) => convocations.some((conv) => conv.evento_id === event.id))
+      .sort((a, b) => a.titulo.localeCompare(b.titulo));
+  }, [events, convocations]);
 
   const handleView = (group: ConvocationGroup) => {
     setSelectedGroup(group);
@@ -273,244 +327,140 @@ export function ConvocatoriasList({
     return { confirmados, pendentes, recusados };
   };
 
-  const clearFilters = () => {
-    setSearchTerm('');
-    setTipoFilter('todos');
-  };
-
-  const hasActiveFilters = searchTerm || tipoFilter !== 'todos';
-
   return (
     <div className="space-y-4">
-      <Card className="p-4">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
-          <div>
-            <h3 className="text-lg font-semibold">Convocatórias</h3>
-            <p className="text-sm text-muted-foreground">
-              {convocationGroups.length} evento(s) com convocatórias
-            </p>
-          </div>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="text-sm text-muted-foreground">
+          {convocationGroups.length} de {allConvocationGroups.length} convocatórias
         </div>
 
-        {/* Filtros */}
-        <div className="flex gap-2 items-center flex-wrap mb-4">
-          <Input
-            placeholder="Pesquisar evento..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="flex-1 min-w-64"
-          />
-          <Select value={tipoFilter} onValueChange={setTipoFilter}>
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="Tipo de Evento" />
+        <Button
+          className="h-8 text-xs"
+          onClick={() => setIsCreateDialogOpen(true)}
+        >
+          <Plus size={14} className="mr-1.5" />
+          Nova Convocatória
+        </Button>
+      </div>
+
+      <CreateConvocatoriaDialog
+        open={isCreateDialogOpen}
+        onOpenChange={setIsCreateDialogOpen}
+        events={events}
+        users={users}
+        ageGroups={ageGroups}
+        costCenters={costCenters}
+        onCreated={(newConvocations) => {
+          // ✅ Com useKV, não precisa fazer nada - os dados recarregam automaticamente
+          // O hook invalidaQueries quando novos atletas são adicionados via PUT
+          setIsCreateDialogOpen(false);
+        }}
+      />
+
+      <Card className="p-2.5">
+        <div className="flex flex-col gap-2 md:flex-row">
+          <div className="relative flex-1">
+            <MagnifyingGlass className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" size={14} />
+            <Input
+              placeholder="Pesquisar convocatórias..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="h-7 pl-8 text-xs"
+            />
+          </div>
+          <Select value={eventFilter} onValueChange={setEventFilter}>
+            <SelectTrigger className="h-7 w-full md:w-[180px] text-xs">
+              <SelectValue placeholder="Evento" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="todos">Todos os tipos</SelectItem>
-              <SelectItem value="treino">Treino</SelectItem>
-              <SelectItem value="prova">Prova</SelectItem>
-              <SelectItem value="competicao">Competição</SelectItem>
-              <SelectItem value="evento">Evento</SelectItem>
+              <SelectItem value="todos">Todos os Eventos</SelectItem>
+              {eventsWithConvocations.map((event) => (
+                <SelectItem key={event.id} value={event.id}>
+                  {event.titulo}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
-          {hasActiveFilters && (
-            <Button variant="outline" size="sm" onClick={clearFilters}>
-              <X size={14} className="mr-1" />
-              Limpar
-            </Button>
-          )}
-        </div>
-
-        {/* Tabela de Convocatórias */}
-        <div className="space-y-3">
-          {convocationGroups.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <p>Nenhuma convocatória encontrada</p>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Evento</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead>Data</TableHead>
-                  <TableHead className="text-center">Atletas</TableHead>
-                  <TableHead className="text-center">Confirmados</TableHead>
-                  <TableHead className="text-center">Pendentes</TableHead>
-                  <TableHead className="text-center">Recusados</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {convocationGroups.map((group) => {
-                  const stats = getEstadoStats(group);
-                  return (
-                    <TableRow key={group.evento_id}>
-                      <TableCell className="font-medium">{group.evento_titulo}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="capitalize">
-                          {group.evento_tipo}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {format(new Date(group.evento_data), "dd 'de' MMM", {
-                          locale: ptBR,
-                        })}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Badge variant="secondary">
-                          <Users size={14} className="mr-1" />
-                          {group.convocations.length}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <span className="text-green-600 font-medium">{stats.confirmados}</span>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <span className="text-yellow-600 font-medium">{stats.pendentes}</span>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <span className="text-red-600 font-medium">{stats.recusados}</span>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleView(group)}
-                            title="Ver detalhes"
-                          >
-                            <Eye size={16} />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => generatePDF(group)}
-                            title="Gerar PDF"
-                          >
-                            <FilePdf size={16} className="text-red-600" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleDelete(group)}
-                            title="Eliminar"
-                            className="text-destructive"
-                          >
-                            <Trash size={16} />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          )}
         </div>
       </Card>
 
-      {/* Dialog - Ver Detalhes */}
-      <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Detalhes da Convocatória</DialogTitle>
-            <DialogDescription>
-              {selectedGroup && (
-                <>
-                  {selectedGroup.evento_titulo} -{' '}
-                  {format(new Date(selectedGroup.evento_data), "dd 'de' MMMM 'de' yyyy", {
-                    locale: ptBR,
-                  })}
-                </>
-              )}
-            </DialogDescription>
-          </DialogHeader>
+      <div className="space-y-2">
+        {convocationGroups.length === 0 ? (
+          <Card className="p-6 text-center text-sm text-muted-foreground">
+            Nenhuma convocatória encontrada
+          </Card>
+        ) : (
+          convocationGroups.map((group) => {
+            const stats = getEstadoStats(group);
 
-          {selectedGroup && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-3 gap-4">
-                <Card className="p-3">
-                  <div className="text-sm text-muted-foreground">Confirmados</div>
-                  <div className="text-2xl font-bold text-green-600">
-                    {getEstadoStats(selectedGroup).confirmados}
-                  </div>
-                </Card>
-                <Card className="p-3">
-                  <div className="text-sm text-muted-foreground">Pendentes</div>
-                  <div className="text-2xl font-bold text-yellow-600">
-                    {getEstadoStats(selectedGroup).pendentes}
-                  </div>
-                </Card>
-                <Card className="p-3">
-                  <div className="text-sm text-muted-foreground">Recusados</div>
-                  <div className="text-2xl font-bold text-red-600">
-                    {getEstadoStats(selectedGroup).recusados}
-                  </div>
-                </Card>
-              </div>
+            return (
+              <Card key={group.evento_id} className="p-2.5">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="truncate text-sm font-semibold">{group.evento_titulo}</h3>
+                      <Badge variant="secondary" className="text-xs">
+                        <Users size={12} className="mr-1" />
+                        {group.convocations.length} atletas
+                      </Badge>
+                    </div>
 
-              <div className="border rounded-lg overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Atleta</TableHead>
-                      <TableHead>Estado</TableHead>
-                      <TableHead>Data Convocatória</TableHead>
-                      <TableHead>Transporte</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {selectedGroup.convocations.map((conv) => (
-                      <TableRow key={conv.id}>
-                        <TableCell>{conv.user?.nome_completo || 'N/A'}</TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={
-                              conv.estado_confirmacao === 'confirmado'
-                                ? 'default'
-                                : conv.estado_confirmacao === 'recusado'
-                                ? 'destructive'
-                                : 'secondary'
-                            }
-                          >
-                            {conv.estado_confirmacao}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {format(new Date(conv.data_convocatoria), 'dd/MM/yyyy')}
-                        </TableCell>
-                        <TableCell>
-                          {conv.transporte_clube ? (
-                            <Badge variant="outline" className="text-blue-600">
-                              Sim
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="text-gray-500">
-                              Não
-                            </Badge>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </div>
-          )}
+                    <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                      <span>
+                        Data: {format(new Date(group.evento_data), "d 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                      </span>
+                      <span>•</span>
+                      <span className="capitalize">{group.evento_tipo}</span>
+                    </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsViewDialogOpen(false)}>
-              Fechar
-            </Button>
-            {selectedGroup && (
-              <Button onClick={() => generatePDF(selectedGroup)}>
-                <FilePdf size={16} className="mr-2" />
-                Gerar PDF
-              </Button>
-            )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+                    <div className="mt-1 flex flex-wrap items-center gap-1 text-xs">
+                      <Badge variant="outline" className="h-5 px-1.5 text-[11px] text-green-700">C {stats.confirmados}</Badge>
+                      <Badge variant="outline" className="h-5 px-1.5 text-[11px] text-amber-700">P {stats.pendentes}</Badge>
+                      <Badge variant="outline" className="h-5 px-1.5 text-[11px] text-red-700">R {stats.recusados}</Badge>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="outline"
+                      className="h-7 px-2 text-xs"
+                      onClick={() => handleView(group)}
+                    >
+                      <PencilSimple size={12} className="mr-1" />
+                      Editar
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="h-7 px-2 text-xs"
+                      onClick={() => generatePDF(group)}
+                    >
+                      <FilePdf size={12} className="mr-1" />
+                      PDF
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      className="h-7 px-2"
+                      onClick={() => handleDelete(group)}
+                    >
+                      <Trash size={12} />
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            );
+          })
+        )}
+      </div>
+
+      {/* Dialog - Editar Convocatória */}
+      <EditConvocatoriaDialog
+        open={isViewDialogOpen}
+        onOpenChange={setIsViewDialogOpen}
+        group={selectedGroup}
+        events={events}
+        users={users}
+        costCenters={costCenters}
+      />
 
       {/* Dialog - Confirmação de Eliminação */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>

@@ -51,6 +51,7 @@ interface EventResult {
   tempo?: string;
   classificacao?: number;
   piscina?: string;
+  age_group_id?: string;
   escalao?: string;
   observacoes?: string;
   epoca?: string;
@@ -64,6 +65,10 @@ interface EventResult {
   athlete?: {
     id: string;
     nome_completo: string;
+  };
+  ageGroup?: {
+    id: string;
+    nome: string;
   };
 }
 
@@ -80,10 +85,17 @@ interface User {
   email: string;
 }
 
+interface AgeGroup {
+  id: string;
+  nome: string;
+  ativo?: boolean;
+}
+
 interface EventosResultadosProps {
   events: Event[];
   results?: EventResult[];
   users?: User[];
+  ageGroups?: AgeGroup[];
 }
 
 interface ResultFormData {
@@ -93,7 +105,7 @@ interface ResultFormData {
   tempo: string;
   classificacao: string;
   piscina: string;
-  escalao: string;
+  age_group_id: string;
   observacoes: string;
   epoca: string;
 }
@@ -105,7 +117,7 @@ const emptyForm: ResultFormData = {
   tempo: '',
   classificacao: '',
   piscina: '',
-  escalao: '',
+  age_group_id: '',
   observacoes: '',
   epoca: new Date().getFullYear().toString(),
 };
@@ -114,6 +126,7 @@ export function EventosResultados({
   events = [],
   results: initialResults = [],
   users = [],
+  ageGroups = [],
 }: EventosResultadosProps) {
   const [results, setResults] = useState<EventResult[]>(initialResults);
   const [filteredResults, setFilteredResults] = useState<EventResult[]>(initialResults);
@@ -138,7 +151,7 @@ export function EventosResultados({
       const params = new URLSearchParams();
       if (filterEvento) params.append('evento_id', filterEvento);
       if (filterProva) params.append('prova', filterProva);
-      if (filterEscalao) params.append('escalao', filterEscalao);
+      if (filterEscalao) params.append('age_group_id', filterEscalao);
       if (filterPiscina) params.append('piscina', filterPiscina);
       if (filterEpoca) params.append('epoca', filterEpoca);
       if (filterClassificacao) params.append('classificacao', filterClassificacao);
@@ -174,7 +187,7 @@ export function EventosResultados({
       tempo: result.tempo || '',
       classificacao: result.classificacao?.toString() || '',
       piscina: result.piscina || '',
-      escalao: result.escalao || '',
+      age_group_id: result.age_group_id || '',
       observacoes: result.observacoes || '',
       epoca: result.epoca || new Date().getFullYear().toString(),
     });
@@ -261,7 +274,19 @@ export function EventosResultados({
 
   // Obter lista única de valores para filtros
   const uniqueProvas = Array.from(new Set(results.map((r) => r.prova).filter(Boolean)));
-  const uniqueEscaloes = Array.from(new Set(results.map((r) => r.escalao).filter(Boolean)));
+  const getEscalaoLabel = (ageGroupId?: string) => {
+    if (!ageGroupId) return '-';
+    const group = ageGroups.find((item) => item.id === ageGroupId);
+    return group?.nome || ageGroupId;
+  };
+
+  const uniqueEscaloes = Array.from(
+    new Set(
+      results
+        .map((r) => r.age_group_id)
+        .filter((value): value is string => Boolean(value))
+    )
+  );
   const uniqueEpocas = Array.from(new Set(results.map((r) => r.epoca).filter(Boolean)));
 
   return (
@@ -326,9 +351,9 @@ export function EventosResultados({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos</SelectItem>
-                {uniqueEscaloes.map((escalao) => (
-                  <SelectItem key={escalao} value={escalao || ''}>
-                    {escalao}
+                {uniqueEscaloes.map((escalaoId) => (
+                  <SelectItem key={escalaoId} value={escalaoId}>
+                    {getEscalaoLabel(escalaoId)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -431,7 +456,7 @@ export function EventosResultados({
                         '-'
                       )}
                     </TableCell>
-                    <TableCell>{result.escalao || '-'}</TableCell>
+                    <TableCell>{getEscalaoLabel(result.age_group_id)}</TableCell>
                     <TableCell>{result.epoca || '-'}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
@@ -585,15 +610,27 @@ export function EventosResultados({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="escalao">Escalão</Label>
-                <Input
-                  id="escalao"
-                  value={formData.escalao}
-                  onChange={(e) =>
-                    setFormData({ ...formData, escalao: e.target.value })
+                <Label htmlFor="age_group_id">Escalão</Label>
+                <Select
+                  value={formData.age_group_id || 'none'}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, age_group_id: value === 'none' ? '' : value })
                   }
-                  placeholder="Ex: Juvenis"
-                />
+                >
+                  <SelectTrigger id="age_group_id">
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sem escalão</SelectItem>
+                    {ageGroups
+                      .filter((group) => group.ativo !== false)
+                      .map((group) => (
+                        <SelectItem key={group.id} value={group.id}>
+                          {group.nome}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2 col-span-2">
