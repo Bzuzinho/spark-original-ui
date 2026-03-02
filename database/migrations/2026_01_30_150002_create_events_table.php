@@ -24,7 +24,7 @@ return new class extends Migration
             $table->uuid('tipo_config_id')->nullable();
             $table->string('tipo_piscina', 30)->nullable();
             $table->string('visibilidade', 20)->default('publico');
-            $table->json('escaloes_elegiveis')->nullable();
+            // ❌ REMOVIDO: escaloes_elegiveis (JSON) - substituído por pivot table event_age_group
             $table->boolean('transporte_necessario')->default(false);
             $table->text('transporte_detalhes')->nullable();
             $table->time('hora_partida')->nullable();

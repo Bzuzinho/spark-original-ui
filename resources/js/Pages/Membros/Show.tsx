@@ -5,6 +5,7 @@ import { Button } from '@/Components/ui/button';
 import { Card } from '@/Components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs';
 import { toast } from 'sonner';
+import { DashboardTab } from '@/Components/Members/Tabs/DashboardTab';
 import { PersonalTab } from '@/Components/Members/Tabs/PersonalTab';
 import { FinancialTab } from '@/Components/Members/Tabs/FinancialTab';
 import { SportsTab } from '@/Components/Members/Tabs/SportsTab';
@@ -146,10 +147,13 @@ export default function Show({ member, allUsers, userTypes, ageGroups, faturas, 
         >
             <Head title={`Membro - ${user.nome_completo || 'Novo Membro'}`} />
 
-            <Card className="p-2 sm:p-3">
-                <Tabs defaultValue="personal" className="space-y-2">
+            <Card className="p-2 sm:p-3 bg-white border-0">
+                <Tabs defaultValue="dashboard" className="space-y-2">
                     <div className="w-full overflow-x-auto -mx-2 px-2 sm:mx-0 sm:px-0 pb-1">
                         <TabsList className="inline-flex w-auto min-w-full sm:min-w-0 h-9 sm:h-8">
+                            <TabsTrigger value="dashboard" className="whitespace-nowrap text-xs px-3 sm:px-2 py-1">
+                                Dashboard
+                            </TabsTrigger>
                             <TabsTrigger value="personal" className="whitespace-nowrap text-xs px-3 sm:px-2 py-1">
                                 Pessoal
                             </TabsTrigger>
@@ -167,7 +171,11 @@ export default function Show({ member, allUsers, userTypes, ageGroups, faturas, 
                         </TabsList>
                     </div>
 
-                    <TabsContent value="personal" className="space-y-2 mt-2">
+                    <TabsContent value="dashboard" className="space-y-2 mt-2 bg-white p-3 rounded-lg">
+                        <DashboardTab user={user} faturas={faturas} />
+                    </TabsContent>
+
+                    <TabsContent value="personal" className="space-y-2 mt-2 bg-white p-3 rounded-lg">
                         <PersonalTab 
                             user={user}
                             onChange={handleChange}
@@ -178,7 +186,7 @@ export default function Show({ member, allUsers, userTypes, ageGroups, faturas, 
                         />
                     </TabsContent>
 
-                    <TabsContent value="financial" className="space-y-2 mt-2">
+                    <TabsContent value="financial" className="space-y-2 mt-2 bg-white p-3 rounded-lg">
                         <FinancialTab 
                             user={user}
                             onChange={handleChange}
@@ -191,7 +199,7 @@ export default function Show({ member, allUsers, userTypes, ageGroups, faturas, 
                     </TabsContent>
 
                     {showSportsTab && (
-                        <TabsContent value="sports" className="space-y-2 mt-2">
+                        <TabsContent value="sports" className="space-y-2 mt-2 bg-white p-3 rounded-lg">
                             <SportsTab 
                                 user={user}
                                 onChange={handleChange}
@@ -200,7 +208,7 @@ export default function Show({ member, allUsers, userTypes, ageGroups, faturas, 
                         </TabsContent>
                     )}
 
-                    <TabsContent value="configuration" className="space-y-2 mt-2">
+                    <TabsContent value="configuration" className="space-y-2 mt-2 bg-white p-3 rounded-lg">
                         <ConfigurationTab 
                             user={user}
                             onChange={handleChange}

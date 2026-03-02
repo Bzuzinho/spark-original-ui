@@ -203,8 +203,8 @@ export function ConvocatoriasList({
       setDeletingGroup(null);
 
       // Recarregar convocatórias
-      const response = await axios.get('/api/event-convocations');
-      setConvocations(response.data);
+      const response = await axios.get('/api/event-convocations/groups');
+      setKvConvocationGroups(response.data);
     } catch (error: any) {
       console.error('Erro ao eliminar convocatórias:', error);
       toast.error(error.response?.data?.message || 'Erro ao eliminar convocatórias');

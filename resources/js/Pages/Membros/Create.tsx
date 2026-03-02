@@ -138,7 +138,7 @@ export default function Create({ allUsers, userTypes, ageGroups, nextMemberNumbe
                         </TabsList>
                     </div>
 
-                    <TabsContent value="personal" className="space-y-2 mt-2">
+                    <TabsContent value="personal" className="space-y-2 mt-2 bg-white p-3 rounded-lg">
                         <PersonalTab 
                             user={user}
                             onChange={handleChange}
@@ -148,7 +148,7 @@ export default function Create({ allUsers, userTypes, ageGroups, nextMemberNumbe
                         />
                     </TabsContent>
 
-                    <TabsContent value="financial" className="space-y-2 mt-2">
+                    <TabsContent value="financial" className="space-y-2 mt-2 bg-white p-3 rounded-lg">
                         <FinancialTab 
                             user={user}
                             onChange={handleChange}
@@ -159,7 +159,7 @@ export default function Create({ allUsers, userTypes, ageGroups, nextMemberNumbe
                     </TabsContent>
 
                     {showSportsTab && (
-                        <TabsContent value="sports" className="space-y-2 mt-2">
+                        <TabsContent value="sports" className="space-y-2 mt-2 bg-white p-3 rounded-lg">
                             <SportsTab 
                                 user={user}
                                 onChange={handleChange}
@@ -168,7 +168,7 @@ export default function Create({ allUsers, userTypes, ageGroups, nextMemberNumbe
                         </TabsContent>
                     )}
 
-                    <TabsContent value="configuration" className="space-y-2 mt-2">
+                    <TabsContent value="configuration" className="space-y-2 mt-2 bg-white p-3 rounded-lg">
                         <ConfigurationTab 
                             user={user}
                             onChange={handleChange}

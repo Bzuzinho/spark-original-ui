@@ -7,7 +7,9 @@ use App\Models\User;
 use App\Models\UserType;
 use App\Models\AgeGroup;
 use App\Models\EventType;
-use App\Models\CostCenter;
+use App\Models\Prova;
+use App\Models\ProvaTipo;
+use App\Models\MonthlyFee;
 use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
@@ -37,30 +39,10 @@ class DatabaseSeeder extends Seeder
         ]);
 
         // Create user types
-        $userTypes = [
-            ['nome' => 'Atleta', 'descricao' => 'Atleta do clube', 'ativo' => true],
-            ['nome' => 'Treinador', 'descricao' => 'Treinador/Staff', 'ativo' => true],
-            ['nome' => 'Sócio', 'descricao' => 'Sócio do clube', 'ativo' => true],
-            ['nome' => 'Encarregado de Educação', 'descricao' => 'Encarregado de educação', 'ativo' => true],
-        ];
+        $this->call(UserTypeSeeder::class);
 
-        foreach ($userTypes as $type) {
-            UserType::create($type);
-        }
-
-        // Create age groups
-        $ageGroups = [
-            ['nome' => 'Sub-10', 'descricao' => 'Até 10 anos', 'idade_minima' => 0, 'idade_maxima' => 10, 'ativo' => true],
-            ['nome' => 'Sub-12', 'descricao' => '11-12 anos', 'idade_minima' => 11, 'idade_maxima' => 12, 'ativo' => true],
-            ['nome' => 'Infantis', 'descricao' => '13-14 anos', 'idade_minima' => 13, 'idade_maxima' => 14, 'ativo' => true],
-            ['nome' => 'Juvenis', 'descricao' => '15-16 anos', 'idade_minima' => 15, 'idade_maxima' => 16, 'ativo' => true],
-            ['nome' => 'Juniores', 'descricao' => '17-19 anos', 'idade_minima' => 17, 'idade_maxima' => 19, 'ativo' => true],
-            ['nome' => 'Seniores', 'descricao' => '20+ anos', 'idade_minima' => 20, 'idade_maxima' => null, 'ativo' => true],
-        ];
-
-        foreach ($ageGroups as $group) {
-            AgeGroup::create($group);
-        }
+        // Create age groups (escalões)
+        $this->call(AgeGroupSeeder::class);
 
         // Create event types
         $eventTypes = [
@@ -75,16 +57,19 @@ class DatabaseSeeder extends Seeder
             EventType::create($type);
         }
 
-        // Create cost centers  
-        $costCenters = [
-            ['codigo' => 'FMD', 'nome' => 'Formação Desportiva', 'descricao' => 'Custos de formação', 'ativo' => true],
-            ['codigo' => 'ADM', 'nome' => 'Administrativo', 'descricao' => 'Custos administrativos', 'ativo' => true],
-            ['codigo' => 'EQP', 'nome' => 'Equipamentos', 'descricao' => 'Material desportivo', 'ativo' => true],
-            ['codigo' => 'EVT', 'nome' => 'Eventos', 'descricao' => 'Organização de eventos', 'ativo' => true],
-        ];
+        // Create cost centers
+        $this->call(CostCenterSeeder::class);
 
-        foreach ($costCenters as $center) {
-            CostCenter::create($center);
-        }
+        // Create event types
+        $this->call(EventTypeSeeder::class);
+
+        // Create monthly fees (mensalidades)
+        $this->call(MonthlyFeeSeeder::class);
+
+        // Create swimming races (provas)
+        $this->call(ProvaSeeder::class);
+
+        // Create swimming race types for configs (prova tipos)
+        $this->call(ProvaTipoSeeder::class);
     }
 }

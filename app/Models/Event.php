@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Event extends Model
@@ -25,7 +26,7 @@ class Event extends Model
         'tipo_config_id',
         'tipo_piscina',
         'visibilidade',
-        'escaloes_elegiveis',
+        // 'escaloes_elegiveis', // Removido - usar ageGroups() relationship
         'transporte_necessario',
         'transporte_detalhes',
         'hora_partida',
@@ -54,13 +55,27 @@ class Event extends Model
         'recorrente' => 'boolean',
         'recorrencia_data_inicio' => 'date',
         'recorrencia_data_fim' => 'date',
-        'escaloes_elegiveis' => 'array',
+        // 'escaloes_elegiveis' => 'array', // Removido - usar ageGroups() relationship
         'recorrencia_dias_semana' => 'array',
         'taxa_inscricao' => 'decimal:2',
         'custo_inscricao_por_prova' => 'decimal:2',
         'custo_inscricao_por_salto' => 'decimal:2',
         'custo_inscricao_estafeta' => 'decimal:2',
     ];
+
+    /**
+     * ✅ Escalões elegíveis (N:N via pivot table)
+     * SUBSTITUI: escaloes_elegiveis (JSON)
+     */
+    public function ageGroups(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            AgeGroup::class,
+            'event_age_group',
+            'event_id',
+            'age_group_id'
+        )->withTimestamps();
+    }
 
     public function tipoConfig(): BelongsTo
     {
@@ -125,5 +140,91 @@ class Event extends Model
     public function convocationMovements(): HasMany
     {
         return $this->hasMany(ConvocationMovement::class, 'evento_id');
+    }
+
+    // ===== ACCESSORS/MUTATORS =====
+
+    /**
+     * ✅ Accessor para compatibilidade com código frontend
+     * Retorna array de UUIDs dos age_groups
+     */
+    public function getEscaloesElegiveisAttribute(): array
+    {
+        if ($this->relationLoaded('ageGroups')) {
+            return $this->ageGroups->pluck('id')->toArray();
+        }
+        
+        return $this->ageGroups()->pluck('age_groups.id')->toArray();
+    }
+
+    /**
+     * ✅ Mutator para compatibilidade com código frontend
+     * Aceita array de UUIDs e sincroniza pivot table
+     */
+    public function setEscaloesElegiveisAttribute($value): void
+    {
+        if (is_array($value) && $this->exists) {
+            $this->ageGroups()->sync($value);
+        }
+    }
+
+    /**
+     * ✅ Sincronizar escalões e atualizar presenças automaticamente (para treinos)
+     */
+    public function syncAgeGroups(array $ageGroupIds): void
+    {
+        $this->ageGroups()->sync($ageGroupIds);
+        
+        // Se for treino, atualizar presenças automaticamente
+        if ($this->tipo === 'treino') {
+            $this->syncAttendances();
+        }
+    }
+
+    /**
+     * ✅ Sincronizar presenças baseado nos escalões elegíveis
+     */
+    public function syncAttendances(): void
+    {
+        $ageGroupIds = $this->ageGroups()->pluck('age_groups.id')->toArray();
+        
+        if (empty($ageGroupIds)) {
+            // Se não há escalões, remover todas as presenças
+            $this->attendances()->delete();
+            return;
+        }
+
+        // ✅ Buscar users que têm algum dos escalões no JSON array
+        $eligibleUsers = User::where('estado', 'ativo')
+            ->where(function($query) use ($ageGroupIds) {
+                foreach ($ageGroupIds as $ageGroupId) {
+                    $query->orWhereJsonContains('escalao', $ageGroupId);
+                }
+            })
+            ->get();
+        
+        $eligibleUserIds = $eligibleUsers->pluck('id')->toArray();
+
+        // Get existing attendance records
+        $existingUserIds = $this->attendances()->pluck('user_id')->toArray();
+
+        // Add new users
+        $newUserIds = array_diff($eligibleUserIds, $existingUserIds);
+        foreach ($newUserIds as $userId) {
+            EventAttendance::create([
+                'evento_id' => $this->id,
+                'user_id' => $userId,
+                'estado' => 'ausente',
+                'registado_por' => auth()->id() ?? $this->criado_por,
+                'registado_em' => now(),
+                'observacoes' => 'Adicionado automaticamente',
+            ]);
+        }
+
+        // Remove users who are no longer eligible
+        $removedUserIds = array_diff($existingUserIds, $eligibleUserIds);
+        if (!empty($removedUserIds)) {
+            $this->attendances()->whereIn('user_id', $removedUserIds)->delete();
+        }
     }
 }

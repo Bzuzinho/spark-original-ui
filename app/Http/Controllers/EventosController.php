@@ -50,13 +50,9 @@ class EventosController extends Controller
             ->get(['id', 'nome', 'idade_minima', 'idade_maxima', 'ativo']);
 
         return Inertia::render('Eventos/Index', [
-            'eventos' => Event::with(['creator', 'convocations', 'attendances'])
+            'eventos' => Event::with(['creator', 'convocations', 'attendances', 'ageGroups']) // ✅ Carregar ageGroups
                 ->orderBy('data_inicio', 'desc')
-                ->get()
-                ->map(function (Event $event) use ($ageGroups) {
-                    $event->escaloes_elegiveis = $this->normalizeEscaloesToIds($event->escaloes_elegiveis ?? [], $ageGroups);
-                    return $event;
-                }),
+                ->get(),
             'stats' => $stats,
             'users' => User::with(['athleteSportsData:id,user_id,escalao_id'])
                 ->where('estado', 'ativo')
@@ -102,7 +98,11 @@ class EventosController extends Controller
     public function store(StoreEventRequest $request): RedirectResponse
     {
         $data = $request->validated();
-        $data['escaloes_elegiveis'] = $this->normalizeEscaloesToIds($data['escaloes_elegiveis'] ?? []);
+        
+        // ✅ Extrair escaloes_elegiveis para sync posterior
+        $escaloesElegiveis = $this->normalizeEscaloesToIds($data['escaloes_elegiveis'] ?? []);
+        unset($data['escaloes_elegiveis']); // Remover do array (não é campo da tabela)
+        
         $data['criado_por'] = $data['criado_por'] ?? auth()->id();
         $data['descricao'] = $data['descricao'] ?? '';
         
@@ -114,10 +114,21 @@ class EventosController extends Controller
         // Handle recurrence
         if ($data['recorrente'] ?? false) {
             $parentEvent = Event::create($data);
-            $this->generateRecurringEvents($parentEvent, $data);
+            
+            // ✅ Sync escalões e criar presenças
+            if (!empty($escaloesElegiveis)) {
+                $parentEvent->syncAgeGroups($escaloesElegiveis);
+            }
+            
+            $this->generateRecurringEvents($parentEvent, $data, $escaloesElegiveis);
             $event = $parentEvent;
         } else {
             $event = Event::create($data);
+            
+            // ✅ Sync escalões e criar presenças
+            if (!empty($escaloesElegiveis)) {
+                $event->syncAgeGroups($escaloesElegiveis);
+            }
         }
 
         return redirect()->route('eventos.index')
@@ -127,7 +138,7 @@ class EventosController extends Controller
     /**
      * Generate recurring events
      */
-    private function generateRecurringEvents(Event $parentEvent, array $data): void
+    private function generateRecurringEvents(Event $parentEvent, array $data, array $escaloesElegiveis = []): void
     {
         if (!($data['recorrente'] ?? false)) {
             return;
@@ -159,7 +170,12 @@ class EventosController extends Controller
                     $eventData['data_fim'] = $date->addDays($daysOffset)->toDateString();
                 }
 
-                Event::create($eventData);
+                $childEvent = Event::create($eventData);
+                
+                // ✅ Sync escalões e criar presenças
+                if (!empty($escaloesElegiveis)) {
+                    $childEvent->syncAgeGroups($escaloesElegiveis);
+                }
             }
         }
     }
@@ -189,7 +205,11 @@ class EventosController extends Controller
     public function update(UpdateEventRequest $request, Event $evento): RedirectResponse
     {
         $data = $request->validated();
-        $data['escaloes_elegiveis'] = $this->normalizeEscaloesToIds($data['escaloes_elegiveis'] ?? []);
+        
+        // ✅ Extrair escaloes_elegiveis para sync posterior
+        $escaloesElegiveis = $this->normalizeEscaloesToIds($data['escaloes_elegiveis'] ?? []);
+        unset($data['escaloes_elegiveis']); // Remover do array (não é campo da tabela)
+        
         $data['descricao'] = $data['descricao'] ?? $evento->descricao ?? '';
         
         // If this is a parent recurring event, handle updates
@@ -197,9 +217,16 @@ class EventosController extends Controller
             // Delete old child events and regenerate
             $evento->childEvents()->delete();
             $evento->update($data);
-            $this->generateRecurringEvents($evento, $data);
+            
+            // ✅ Sync escalões e atualizar presenças
+            $evento->syncAgeGroups($escaloesElegiveis);
+            
+            $this->generateRecurringEvents($evento, $data, $escaloesElegiveis);
         } else {
             $evento->update($data);
+            
+            // ✅ Sync escalões e atualizar presenças
+            $evento->syncAgeGroups($escaloesElegiveis);
         }
 
         return redirect()->route('eventos.index')

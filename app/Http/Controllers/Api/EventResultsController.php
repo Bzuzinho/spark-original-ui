@@ -12,7 +12,7 @@ class EventResultsController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = EventResult::with(['event', 'athlete', 'registeredBy', 'ageGroup']);
+        $query = EventResult::with(['event', 'athlete.ageGroup', 'registeredBy', 'ageGroupSnapshot']); // ✅ Carregar snapshot
 
         // Filter by event
         if ($request->has('evento_id')) {
@@ -29,16 +29,14 @@ class EventResultsController extends Controller
             $query->where('prova', 'like', '%' . $request->get('prova') . '%');
         }
 
+        // ✅ Filter by age_group (snapshot OU primeiro escalão do user)
         if ($request->filled('age_group_id')) {
-            $query->where('age_group_id', $request->string('age_group_id'));
-        } elseif ($request->filled('escalao')) {
-            $resolvedAgeGroupId = $this->resolveAgeGroupId($request->string('escalao')->toString());
-
-            if ($resolvedAgeGroupId) {
-                $query->where('age_group_id', $resolvedAgeGroupId);
-            } else {
-                $query->where('escalao', $request->get('escalao'));
-            }
+            $query->where(function($q) use ($request) {
+                $q->where('age_group_snapshot_id', $request->string('age_group_id'))
+                  ->orWhereHas('athlete', function($q2) use ($request) {
+                      $q2->whereJsonContains('escalao', $request->string('age_group_id'));
+                  });
+            });
         }
 
         // Filter by piscina
@@ -69,25 +67,23 @@ class EventResultsController extends Controller
             'tempo' => 'nullable|string|max:255',
             'classificacao' => 'nullable|integer|min:1',
             'piscina' => 'nullable|in:25m,50m,aguas_abertas',
-            'age_group_id' => 'nullable|uuid|exists:age_groups,id',
-            'escalao' => 'nullable|string|max:255',
+            // ❌ REMOVIDO: 'age_group_id', 'escalao' (snapshot automático)
             'observacoes' => 'nullable|string',
             'epoca' => 'nullable|string|max:255',
             'registado_por' => 'nullable|uuid|exists:users,id',
             'registado_em' => 'nullable|date',
         ]);
 
-        $validated['age_group_id'] = $validated['age_group_id'] ?? $this->resolveAgeGroupId($validated['escalao'] ?? null);
-        $validated['escalao'] = $validated['age_group_id']
-            ? optional(AgeGroup::find($validated['age_group_id']))->nome
-            : ($validated['escalao'] ?? null);
-
+        // ✅ age_group_snapshot_id é preenchido automaticamente via EventResult::creating()
         $validated['registado_por'] = $validated['registado_por'] ?? auth()->id();
         $validated['registado_em'] = $validated['registado_em'] ?? now();
 
         $result = EventResult::create($validated);
         
-        return response()->json($result->load(['event', 'athlete', 'registeredBy', 'ageGroup']), 201);
+        return response()->json(
+            $result->load(['event', 'athlete.ageGroup', 'registeredBy', 'ageGroupSnapshot']), 
+            201
+        );
     }
 
     public function show(string $id): JsonResponse
@@ -107,22 +103,16 @@ class EventResultsController extends Controller
             'tempo' => 'nullable|string|max:255',
             'classificacao' => 'nullable|integer|min:1',
             'piscina' => 'nullable|in:25m,50m,aguas_abertas',
-            'age_group_id' => 'nullable|uuid|exists:age_groups,id',
-            'escalao' => 'nullable|string|max:255',
+            // ❌ REMOVIDO: 'age_group_id', 'escalao'
+            // O snapshot NÃO deve mudar após criação (é histórico)
             'observacoes' => 'nullable|string',
             'epoca' => 'nullable|string|max:255',
         ]);
 
-        if (array_key_exists('age_group_id', $validated) || array_key_exists('escalao', $validated)) {
-            $resolvedAgeGroupId = $validated['age_group_id'] ?? $this->resolveAgeGroupId($validated['escalao'] ?? null);
-            $validated['age_group_id'] = $resolvedAgeGroupId;
-            $validated['escalao'] = $resolvedAgeGroupId
-                ? optional(AgeGroup::find($resolvedAgeGroupId))->nome
-                : ($validated['escalao'] ?? null);
-        }
-
         $result->update($validated);
-        return response()->json($result->load(['event', 'athlete', 'registeredBy', 'ageGroup']));
+        return response()->json(
+            $result->load(['event', 'athlete.ageGroup', 'registeredBy', 'ageGroupSnapshot'])
+        );
     }
 
     public function destroy(string $id): JsonResponse

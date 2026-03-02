@@ -73,10 +73,16 @@ export default function EventosIndex({
   costCenters = [],
   ageGroups = [],
   convocations = [],
-  attendances = [],
+  attendances: initialAttendances = [],
   results = [],
 }: Props) {
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [attendances, setAttendances] = useState(initialAttendances);
+
+  // Callback para atualizar attendances quando houver mudanças
+  const handleAttendancesUpdate = (updatedAttendances: any[]) => {
+    setAttendances(updatedAttendances);
+  };
 
   return (
     <AuthenticatedLayout
@@ -184,6 +190,7 @@ export default function EventosIndex({
               attendances={attendances}
               users={users}
               ageGroups={ageGroups}
+              onUpdate={handleAttendancesUpdate}
             />
           </TabsContent>
 

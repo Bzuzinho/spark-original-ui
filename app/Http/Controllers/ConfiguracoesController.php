@@ -124,6 +124,12 @@ class ConfiguracoesController extends Controller
             'descricao' => 'nullable|string',
             'categoria' => 'nullable|string',
             'cor' => 'nullable|string',
+            'icon' => 'nullable|string|max:50',
+            'visibilidade_default' => 'nullable|string|in:publico,restrito,privado',
+            'gera_taxa' => 'boolean',
+            'permite_convocatoria' => 'boolean',
+            'gera_presencas' => 'boolean',
+            'requer_transporte' => 'boolean',
             'ativo' => 'boolean',
         ]);
 
@@ -140,6 +146,12 @@ class ConfiguracoesController extends Controller
             'descricao' => 'nullable|string',
             'categoria' => 'nullable|string',
             'cor' => 'nullable|string',
+            'icon' => 'nullable|string|max:50',
+            'visibilidade_default' => 'nullable|string|in:publico,restrito,privado',
+            'gera_taxa' => 'boolean',
+            'permite_convocatoria' => 'boolean',
+            'gera_presencas' => 'boolean',
+            'requer_transporte' => 'boolean',
             'ativo' => 'boolean',
         ]);
 

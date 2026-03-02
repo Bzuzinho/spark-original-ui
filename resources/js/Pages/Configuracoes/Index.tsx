@@ -1,7 +1,7 @@
 import { useState, useEffect, FormEventHandler } from 'react';
 import { Head, router, useForm } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/Components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/Components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs';
 import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
@@ -12,6 +12,8 @@ import { Switch } from '@/Components/ui/switch';
 import { Separator } from '@/Components/ui/separator';
 import { Textarea } from '@/Components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select';
+import { Badge } from '@/Components/ui/badge';
+import { Checkbox } from '@/Components/ui/checkbox';
 import { Plus, PencilSimple, Trash, FloppyDisk } from '@phosphor-icons/react';
 import { FileUpload } from '@/Components/FileUpload';
 import { toast } from 'sonner';
@@ -38,6 +40,12 @@ interface EventType {
     descricao?: string;
     categoria?: string;
     cor?: string;
+    icon?: string;
+    visibilidade_default?: string;
+    gera_taxa?: boolean;
+    permite_convocatoria?: boolean;
+    gera_presencas?: boolean;
+    requer_transporte?: boolean;
     ativo: boolean;
 }
 
@@ -789,57 +797,88 @@ export default function SettingsIndex({
                                 </CardDescription>
                             </CardHeader>
                             <CardContent>
-                                <div className="flex justify-end mb-3">
+                                <div className="flex justify-end mb-4">
                                     <Button onClick={() => openAddDialog('event-type')} size="sm">
                                         <Plus className="mr-2" size={16} />
                                         Adicionar Tipo
                                     </Button>
                                 </div>
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Nome</TableHead>
-                                            <TableHead>Descricao</TableHead>
-                                            <TableHead>Categoria</TableHead>
-                                            <TableHead className="text-right">Ações</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {eventTypes.length === 0 ? (
-                                            <TableRow>
-                                                <TableCell colSpan={4} className="text-center text-muted-foreground">
-                                                    Nenhum tipo de evento cadastrado
-                                                </TableCell>
-                                            </TableRow>
-                                        ) : (
-                                            eventTypes.map((type) => (
-                                                <TableRow key={type.id}>
-                                                    <TableCell className="font-medium">{type.nome}</TableCell>
-                                                    <TableCell>{type.descricao || '-'}</TableCell>
-                                                    <TableCell>{type.categoria || '-'}</TableCell>
-                                                    <TableCell className="text-right">
-                                                        <div className="flex justify-end gap-2">
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                onClick={() => openEditDialog(type, 'event-type')}
-                                                            >
-                                                                <PencilSimple size={16} />
-                                                            </Button>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                onClick={() => handleDelete(type.id, 'event-type')}
-                                                            >
-                                                                <Trash size={16} />
-                                                            </Button>
-                                                        </div>
-                                                    </TableCell>
-                                                </TableRow>
-                                            ))
-                                        )}
-                                    </TableBody>
-                                </Table>
+                                {eventTypes.length === 0 ? (
+                                    <div className="text-center py-8 text-muted-foreground">
+                                        Nenhum tipo de evento cadastrado
+                                    </div>
+                                ) : (
+                                    <div className="grid gap-1.5 sm:gap-2 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                                        {eventTypes.map((type) => (
+                                            <Card key={type.id} className="flex flex-col p-0 border">
+                                                <div className="flex items-center justify-between gap-0 px-2 py-0 text-xs">
+                                                    <div className="flex items-center gap-0 flex-1 min-w-0">
+                                                        {type.cor && (
+                                                            <div
+                                                                className="w-2 h-2 rounded-full shrink-0 mr-0.5"
+                                                                style={{ backgroundColor: type.cor }}
+                                                            />
+                                                        )}
+                                                        <span className="truncate font-medium text-sm leading-none">{type.nome}</span>
+                                                    </div>
+                                                    {type.ativo && (
+                                                        <span className="shrink-0 text-xs font-medium py-0 px-1.5 bg-blue-100 text-blue-700 rounded text-nowrap leading-none ml-0.5">
+                                                            Ativo
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div className="px-2 py-0 -mt-0.5" style={{ lineHeight: '1' }}>
+                                                    <div className="flex flex-wrap gap-0" style={{ fontSize: '11px' }}>
+                                                        {type.gera_taxa && (
+                                                            <span className="bg-amber-100 text-amber-700 px-0.5 py-0 rounded text-xs leading-none h-4 flex items-center mr-0.5">
+                                                                Gera Taxa
+                                                            </span>
+                                                        )}
+                                                        {type.permite_convocatoria && (
+                                                            <span className="bg-blue-100 text-blue-700 px-0.5 py-0 rounded text-xs leading-none h-4 flex items-center mr-0.5">
+                                                                Permite Conv.
+                                                            </span>
+                                                        )}
+                                                        {type.gera_presencas && (
+                                                            <span className="bg-purple-100 text-purple-700 px-0.5 py-0 rounded text-xs leading-none h-4 flex items-center mr-0.5">
+                                                                Presenças
+                                                            </span>
+                                                        )}
+                                                        {type.requer_transporte && (
+                                                            <span className="bg-green-100 text-green-700 px-0.5 py-0 rounded text-xs leading-none h-4 flex items-center mr-0.5">
+                                                                Transporte
+                                                            </span>
+                                                        )}
+                                                        {type.visibilidade_default && (
+                                                            <span className="bg-gray-100 text-gray-700 px-0.5 py-0 rounded text-xs leading-none h-4 flex items-center">
+                                                                {type.visibilidade_default}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <div className="border-t flex gap-1 px-2 py-0 mt-0">
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="flex-1 h-5 text-xs py-0 px-1"
+                                                        onClick={() => openEditDialog(type, 'event-type')}
+                                                    >
+                                                        <PencilSimple size={8} className="mr-0.5" />
+                                                        Editar
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="h-5 w-5 py-0 px-0 flex items-center justify-center"
+                                                        onClick={() => handleDelete(type.id, 'event-type')}
+                                                    >
+                                                        <Trash size={12} />
+                                                    </Button>
+                                                </div>
+                                            </Card>
+                                        ))}
+                                    </div>
+                                )}
                             </CardContent>
                         </Card>
 
@@ -1676,15 +1715,96 @@ export default function SettingsIndex({
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label htmlFor="cor">Cor (Hex)</Label>
-                                        <Input
-                                            id="cor"
-                                            value={data.cor || ''}
-                                            onChange={e => setData('cor', e.target.value)}
-                                            placeholder="#000000"
-                                        />
+                                        <Label>Cor</Label>
+                                        <div className="flex gap-2">
+                                            <Input
+                                                type="color"
+                                                value={data.cor || '#000000'}
+                                                onChange={e => setData('cor', e.target.value)}
+                                                className="w-20 h-10 cursor-pointer"
+                                            />
+                                            <Input
+                                                value={data.cor || ''}
+                                                onChange={e => setData('cor', e.target.value)}
+                                                placeholder="#000000"
+                                            />
+                                        </div>
                                     </div>
-                                    <div className="flex items-center space-x-2">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="icon">Ícone</Label>
+                                        <Select
+                                            value={data.icon || ''}
+                                            onValueChange={(value) => setData('icon', value)}
+                                        >
+                                            <SelectTrigger id="icon">
+                                                <SelectValue placeholder="Selecionar ícone" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="medal">🏅 Medal</SelectItem>
+                                                <SelectItem value="dumbbell">💪 Dumbbell</SelectItem>
+                                                <SelectItem value="users">👥 Users</SelectItem>
+                                                <SelectItem value="swimmer">🏊 Swimmer</SelectItem>
+                                                <SelectItem value="target">🎯 Target</SelectItem>
+                                                <SelectItem value="trophy">🏆 Trophy</SelectItem>
+                                                <SelectItem value="star">⭐ Star</SelectItem>
+                                                <SelectItem value="zap">⚡ Zap</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="visibilidade_default">Visibilidade Padrão</Label>
+                                        <Select
+                                            value={data.visibilidade_default || 'publico'}
+                                            onValueChange={(value) => setData('visibilidade_default', value)}
+                                        >
+                                            <SelectTrigger id="visibilidade_default">
+                                                <SelectValue placeholder="Selecionar" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="publico">🌍 Público</SelectItem>
+                                                <SelectItem value="restrito">🔒 Restrito</SelectItem>
+                                                <SelectItem value="privado">🔐 Privado</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="space-y-3 pt-4 border-t">
+                                        <Label className="text-base font-semibold">Configurações</Label>
+                                        <div className="space-y-3">
+                                            <div className="flex items-center space-x-2">
+                                                <Checkbox
+                                                    id="gera_taxa"
+                                                    checked={data.gera_taxa ?? false}
+                                                    onCheckedChange={checked => setData('gera_taxa', checked)}
+                                                />
+                                                <Label htmlFor="gera_taxa" className="font-normal cursor-pointer">Gera taxa de inscrição</Label>
+                                            </div>
+                                            <div className="flex items-center space-x-2">
+                                                <Checkbox
+                                                    id="permite_convocatoria"
+                                                    checked={data.permite_convocatoria ?? false}
+                                                    onCheckedChange={checked => setData('permite_convocatoria', checked)}
+                                                />
+                                                <Label htmlFor="permite_convocatoria" className="font-normal cursor-pointer">Permite convocatória</Label>
+                                            </div>
+                                            <div className="flex items-center space-x-2">
+                                                <Checkbox
+                                                    id="gera_presencas"
+                                                    checked={data.gera_presencas ?? false}
+                                                    onCheckedChange={checked => setData('gera_presencas', checked)}
+                                                />
+                                                <Label htmlFor="gera_presencas" className="font-normal cursor-pointer">Gera presenças</Label>
+                                            </div>
+                                            <div className="flex items-center space-x-2">
+                                                <Checkbox
+                                                    id="requer_transporte"
+                                                    checked={data.requer_transporte ?? false}
+                                                    onCheckedChange={checked => setData('requer_transporte', checked)}
+                                                />
+                                                <Label htmlFor="requer_transporte" className="font-normal cursor-pointer">Requer transporte</Label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center space-x-2 pt-4 border-t">
                                         <Switch
                                             id="ativo"
                                             checked={data.ativo ?? true}

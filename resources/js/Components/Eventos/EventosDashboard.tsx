@@ -51,7 +51,7 @@ export function EventosDashboard({
       return dataEvento >= now;
     }).length;
 
-    const totalPresentes = attendances.filter((a: any) => a.presente).length;
+    const totalPresentes = attendances.filter((a: any) => a.estado === 'presente').length;
     const totalPresencas = attendances.length;
     const taxaPresencaMedia =
       totalPresencas > 0 ? (totalPresentes / totalPresencas) * 100 : 0;

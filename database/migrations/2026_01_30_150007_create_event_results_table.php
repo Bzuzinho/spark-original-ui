@@ -18,7 +18,14 @@ return new class extends Migration
             $table->string('tempo')->nullable();
             $table->integer('classificacao')->nullable();
             $table->string('piscina')->nullable();
-            $table->string('escalao')->nullable();
+            
+            // ✅ Snapshot do escalão NO MOMENTO do resultado (preserva histórico)
+            $table->uuid('age_group_snapshot_id')->nullable();
+            $table->foreign('age_group_snapshot_id')
+                  ->references('id')
+                  ->on('age_groups')
+                  ->onDelete('set null');
+            
             $table->text('observacoes')->nullable();
             $table->string('epoca')->nullable();
             $table->uuid('registado_por');
@@ -29,9 +36,10 @@ return new class extends Migration
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
             $table->foreign('registado_por')->references('id')->on('users')->onDelete('cascade');
             
-            $table->index('evento_id');
-            $table->index('user_id');
-            $table->index('prova');
+            $table->index(['evento_id', 'user_id']);
+            $table->index('age_group_snapshot_id');
+            $table->index('epoca');
+            $table->index(['prova', 'piscina']);
         });
     }
 

@@ -15,38 +15,33 @@ class UserTypeSeeder extends Seeder
         $types = [
             [
                 'nome' => 'Atleta',
-                'descricao' => 'Membro praticante de atividades desportivas',
-                'ativo' => true,
-            ],
-            [
-                'nome' => 'Encarregado de Educação',
-                'descricao' => 'Responsável legal por atleta menor',
+                'descricao' => 'Atleta',
                 'ativo' => true,
             ],
             [
                 'nome' => 'Treinador',
-                'descricao' => 'Profissional responsável pelo treino de atletas',
+                'descricao' => 'Treinador',
+                'ativo' => true,
+            ],
+            [
+                'nome' => 'Encarregado de Educação',
+                'descricao' => 'Encarregado de Educação',
                 'ativo' => true,
             ],
             [
                 'nome' => 'Dirigente',
-                'descricao' => 'Membro da direção do clube',
-                'ativo' => true,
-            ],
-            [
-                'nome' => 'Funcionário',
-                'descricao' => 'Colaborador do clube',
+                'descricao' => 'Dirigente',
                 'ativo' => true,
             ],
             [
                 'nome' => 'Sócio',
-                'descricao' => 'Membro não praticante',
+                'descricao' => 'Sócio',
                 'ativo' => true,
             ],
         ];
 
         foreach ($types as $type) {
-            UserType::firstOrCreate(
+            UserType::updateOrCreate(
                 ['nome' => $type['nome']],
                 $type
             );

@@ -1,5 +1,5 @@
 import { User, ConvocatoriaAtleta, ConvocatoriaGrupo, Event } from '@/lib/types';
-import { useKV } from '@github/spark/hooks';
+import { useKV } from '@/hooks/useKV';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';

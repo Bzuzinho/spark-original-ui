@@ -85,6 +85,7 @@ interface PresencasListProps {
   attendances?: Attendance[];
   users?: any[];
   ageGroups?: any[];
+  onUpdate?: (attendances: Attendance[]) => void;
 }
 
 export function PresencasList({
@@ -92,6 +93,7 @@ export function PresencasList({
   attendances: initialAttendances = [],
   users = [],
   ageGroups = [],
+  onUpdate,
 }: PresencasListProps) {
   const [attendances, setAttendances] = useState<Attendance[]>(initialAttendances);
   const [searchTerm, setSearchTerm] = useState('');
@@ -128,14 +130,20 @@ export function PresencasList({
     try {
       const response = await axios.get('/api/event-attendances');
       setAttendances(response.data);
+      // Notificar componente pai sobre a atualização
+      if (onUpdate) {
+        onUpdate(response.data);
+      }
     } catch (error) {
       console.error('Erro ao carregar presenças:', error);
     }
   };
 
   useEffect(() => {
-    setAttendances(initialAttendances);
-  }, [initialAttendances]);
+    // Carregar dados do servidor ao montar o componente
+    loadAttendances();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Agrupar presenças por evento
   const attendanceGroups: AttendanceGroup[] = events
@@ -207,7 +215,7 @@ export function PresencasList({
       await Promise.all(promises);
       toast.success('Grupo de presenças criado com sucesso!');
       setIsCreateDialogOpen(false);
-      loadAttendances();
+      await loadAttendances();
     } catch (error: any) {
       console.error('Erro ao criar presenças:', error);
       toast.error(error.response?.data?.message || 'Erro ao criar presenças');
@@ -220,7 +228,7 @@ export function PresencasList({
     try {
       await axios.put(`/api/event-attendances/${attendanceId}`, { estado });
       toast.success('Presença atualizada!');
-      loadAttendances();
+      await loadAttendances();
     } catch (error: any) {
       console.error('Erro ao atualizar presença:', error);
       toast.error('Erro ao atualizar presença');
@@ -235,7 +243,7 @@ export function PresencasList({
       );
       await Promise.all(promises);
       toast.success('Todos marcados como presentes!');
-      loadAttendances();
+      await loadAttendances();
     } catch (error) {
       toast.error('Erro ao atualizar presenças');
     } finally {
@@ -251,7 +259,7 @@ export function PresencasList({
       );
       await Promise.all(promises);
       toast.success('Todos marcados como ausentes!');
-      loadAttendances();
+      await loadAttendances();
     } catch (error) {
       toast.error('Erro ao atualizar presenças');
     } finally {
@@ -276,7 +284,7 @@ export function PresencasList({
       toast.success('Grupo eliminado com sucesso!');
       setIsDeleteDialogOpen(false);
       setDeletingGroup(null);
-      loadAttendances();
+      await loadAttendances();
     } catch (error) {
       toast.error('Erro ao eliminar grupo');
     } finally {
@@ -305,7 +313,7 @@ export function PresencasList({
       await Promise.all(promises);
       toast.success('Atletas adicionados!');
       setIsAddAthleteDialogOpen(false);
-      loadAttendances();
+      await loadAttendances();
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Erro ao adicionar atletas');
     } finally {
@@ -317,7 +325,7 @@ export function PresencasList({
     try {
       await axios.delete(`/api/event-attendances/${attendanceId}`);
       toast.success('Atleta removido!');
-      loadAttendances();
+      await loadAttendances();
     } catch (error) {
       toast.error('Erro ao remover atleta');
     }

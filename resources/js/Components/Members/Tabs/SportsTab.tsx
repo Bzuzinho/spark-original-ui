@@ -32,10 +32,10 @@ export function SportsTab({ user, onChange, isAdmin, onNavigate }: SportsTabProp
   }
 
   return (
-    <div className="space-y-2">
-      <Tabs defaultValue="dados" className="space-y-2">
+    <div className="space-y-1">
+      <Tabs defaultValue="dados" className="space-y-1">
         <div className="w-full overflow-x-auto -mx-2 px-2 sm:mx-0 sm:px-0 pb-1">
-          <TabsList className="inline-flex w-auto min-w-full sm:min-w-0 h-9">
+          <TabsList className="inline-flex w-auto min-w-full sm:min-w-0 h-8 bg-slate-200">
             <TabsTrigger value="dados" className="whitespace-nowrap text-xs px-3 py-1">
               Dados Desportivos
             </TabsTrigger>
@@ -57,27 +57,27 @@ export function SportsTab({ user, onChange, isAdmin, onNavigate }: SportsTabProp
           </TabsList>
         </div>
 
-        <TabsContent value="dados" className="mt-2">
+        <TabsContent value="dados" className="mt-1 bg-white p-2 rounded-lg border border-gray-200">
           <DadosDesportivosTab user={user} onChange={onChange} isAdmin={isAdmin} />
         </TabsContent>
 
-        <TabsContent value="convocatorias" className="mt-2">
+        <TabsContent value="convocatorias" className="mt-1 bg-white p-2 rounded-lg border border-gray-200">
           <ConvocatoriasTab user={user} onNavigate={onNavigate} />
         </TabsContent>
 
-        <TabsContent value="presencas" className="mt-2">
+        <TabsContent value="presencas" className="mt-1 bg-white p-2 rounded-lg border border-gray-200">
           <RegistoPresencasTab user={user} />
         </TabsContent>
 
-        <TabsContent value="resultados" className="mt-2">
+        <TabsContent value="resultados" className="mt-1 bg-white p-2 rounded-lg border border-gray-200">
           <ResultadosTab user={user} isAdmin={isAdmin} />
         </TabsContent>
 
-        <TabsContent value="treinos" className="mt-2">
+        <TabsContent value="treinos" className="mt-1 bg-white p-2 rounded-lg border border-gray-200">
           <TreinosTab user={user} />
         </TabsContent>
 
-        <TabsContent value="planeamento" className="mt-2">
+        <TabsContent value="planeamento" className="mt-1 bg-white p-2 rounded-lg border border-gray-200">
           <PlaneamentoTab user={user} />
         </TabsContent>
       </Tabs>
