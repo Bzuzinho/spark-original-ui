@@ -310,7 +310,7 @@ export function EventosResultados({
           <div className="space-y-1">
             <Label className="text-xs">Evento</Label>
             <Select value={filterEvento || 'all'} onValueChange={(value) => setFilterEvento(value === 'all' ? '' : value)}>
-              <SelectTrigger className="h-9">
+              <SelectTrigger className="h-9 bg-white">
                 <SelectValue placeholder="Todos" />
               </SelectTrigger>
               <SelectContent>
@@ -329,7 +329,7 @@ export function EventosResultados({
           <div className="space-y-1">
             <Label className="text-xs">Prova</Label>
             <Select value={filterProva || 'all'} onValueChange={(value) => setFilterProva(value === 'all' ? '' : value)}>
-              <SelectTrigger className="h-9">
+              <SelectTrigger className="h-9 bg-white">
                 <SelectValue placeholder="Todas" />
               </SelectTrigger>
               <SelectContent>
@@ -346,7 +346,7 @@ export function EventosResultados({
           <div className="space-y-1">
             <Label className="text-xs">Escalão</Label>
             <Select value={filterEscalao || 'all'} onValueChange={(value) => setFilterEscalao(value === 'all' ? '' : value)}>
-              <SelectTrigger className="h-9">
+              <SelectTrigger className="h-9 bg-white">
                 <SelectValue placeholder="Todos" />
               </SelectTrigger>
               <SelectContent>
@@ -363,7 +363,7 @@ export function EventosResultados({
           <div className="space-y-1">
             <Label className="text-xs">Piscina</Label>
             <Select value={filterPiscina || 'all'} onValueChange={(value) => setFilterPiscina(value === 'all' ? '' : value)}>
-              <SelectTrigger className="h-9">
+              <SelectTrigger className="h-9 bg-white">
                 <SelectValue placeholder="Todas" />
               </SelectTrigger>
               <SelectContent>
@@ -378,7 +378,7 @@ export function EventosResultados({
           <div className="space-y-1">
             <Label className="text-xs">Época</Label>
             <Select value={filterEpoca || 'all'} onValueChange={(value) => setFilterEpoca(value === 'all' ? '' : value)}>
-              <SelectTrigger className="h-9">
+              <SelectTrigger className="h-9 bg-white">
                 <SelectValue placeholder="Todas" />
               </SelectTrigger>
               <SelectContent>
@@ -395,7 +395,7 @@ export function EventosResultados({
           <div className="space-y-1">
             <Label className="text-xs">Classificação</Label>
             <Select value={filterClassificacao || 'all'} onValueChange={(value) => setFilterClassificacao(value === 'all' ? '' : value)}>
-              <SelectTrigger className="h-9">
+              <SelectTrigger className="h-9 bg-white">
                 <SelectValue placeholder="Todas" />
               </SelectTrigger>
               <SelectContent>
@@ -510,7 +510,7 @@ export function EventosResultados({
                   }
                   required
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="bg-white">
                     <SelectValue placeholder="Selecione o evento" />
                   </SelectTrigger>
                   <SelectContent>
@@ -536,7 +536,7 @@ export function EventosResultados({
                   }
                   required
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="bg-white">
                     <SelectValue placeholder="Selecione o atleta" />
                   </SelectTrigger>
                   <SelectContent>
@@ -561,6 +561,7 @@ export function EventosResultados({
                   }
                   placeholder="Ex: 100m Livres"
                   required
+                  className="bg-white"
                 />
               </div>
 
@@ -573,6 +574,7 @@ export function EventosResultados({
                     setFormData({ ...formData, tempo: e.target.value })
                   }
                   placeholder="Ex: 01:15.45"
+                  className="bg-white"
                 />
               </div>
 
@@ -587,6 +589,7 @@ export function EventosResultados({
                     setFormData({ ...formData, classificacao: e.target.value })
                   }
                   placeholder="Ex: 1, 2, 3..."
+                  className="bg-white"
                 />
               </div>
 
@@ -598,7 +601,7 @@ export function EventosResultados({
                     setFormData({ ...formData, piscina: value })
                   }
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="bg-white">
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
                   <SelectContent>
@@ -617,7 +620,7 @@ export function EventosResultados({
                     setFormData({ ...formData, age_group_id: value === 'none' ? '' : value })
                   }
                 >
-                  <SelectTrigger id="age_group_id">
+                  <SelectTrigger id="age_group_id" className="bg-white">
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
                   <SelectContent>
@@ -642,6 +645,7 @@ export function EventosResultados({
                     setFormData({ ...formData, epoca: e.target.value })
                   }
                   placeholder={`Ex: ${new Date().getFullYear()}`}
+                  className="bg-white"
                 />
               </div>
 
@@ -655,6 +659,7 @@ export function EventosResultados({
                   }
                   placeholder="Observações adicionais..."
                   rows={3}
+                  className="bg-white"
                 />
               </div>
             </div>

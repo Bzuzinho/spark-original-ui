@@ -58,7 +58,7 @@ export default function Create({ allUsers, userTypes, ageGroups, guardians, mont
     });
     const [hasChanges, setHasChanges] = useState(false);
 
-    const handleChange = (field: keyof User, value: any) => {
+    const handleChange = (field: any, value: any) => {
         setUser(prev => ({ ...prev, [field]: value }));
         setHasChanges(true);
     };
@@ -147,7 +147,7 @@ export default function Create({ allUsers, userTypes, ageGroups, guardians, mont
                         </TabsList>
                     </div>
 
-                    <TabsContent value="personal" className="space-y-2 mt-2 bg-white p-3 rounded-lg">
+                    <TabsContent value="personal" className="space-y-2 mt-2 bg-white p-0 rounded-lg">
                         <PersonalTab 
                             user={user}
                             onChange={handleChange}
@@ -156,7 +156,7 @@ export default function Create({ allUsers, userTypes, ageGroups, guardians, mont
                         />
                     </TabsContent>
 
-                    <TabsContent value="financial" className="space-y-2 mt-2 bg-white p-3 rounded-lg">
+                    <TabsContent value="financial" className="space-y-2 mt-2 bg-white p-0 rounded-lg">
                         <FinancialTab 
                             user={user}
                             onChange={handleChange}
@@ -167,16 +167,16 @@ export default function Create({ allUsers, userTypes, ageGroups, guardians, mont
                     </TabsContent>
 
                     {showSportsTab && (
-                        <TabsContent value="sports" className="space-y-2 mt-2 bg-white p-3 rounded-lg">
+                        <TabsContent value="sports" className="space-y-2 mt-2 bg-white p-0 rounded-lg">
                             <SportsTab 
-                                user={user}
+                                user={user as any}
                                 onChange={handleChange}
                                 isAdmin={true}
                             />
                         </TabsContent>
                     )}
 
-                    <TabsContent value="configuration" className="space-y-2 mt-2 bg-white p-3 rounded-lg">
+                    <TabsContent value="configuration" className="space-y-2 mt-2 bg-white p-0 rounded-lg">
                         <ConfigurationTab 
                             user={user}
                             onChange={handleChange}

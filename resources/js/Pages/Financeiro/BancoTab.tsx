@@ -13,7 +13,6 @@ import { Textarea } from '@/Components/ui/textarea';
 import { Plus, ArrowsLeftRight, Check, Bank, PencilSimple, X, FileArrowUp, Gear, Trash } from '@phosphor-icons/react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
-import { ScrollArea } from '@/Components/ui/scroll-area';
 
 interface BancoTabProps {
   extratos: ExtratoBancario[];
@@ -71,6 +70,21 @@ export function BancoTab({
 
     const parsed = parseFloat(normalized);
     return Number.isNaN(parsed) ? fallback : parsed;
+  };
+  const getMovementDateKey = (value: string | Date | null | undefined): string => {
+    if (!value) return '';
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (/^\d{4}-\d{2}-\d{2}/.test(trimmed)) {
+        return trimmed.slice(0, 10);
+      }
+      const parsed = new Date(trimmed);
+      if (!Number.isNaN(parsed.getTime())) {
+        return format(parsed, 'yyyy-MM-dd');
+      }
+      return trimmed;
+    }
+    return format(value, 'yyyy-MM-dd');
   };
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogCatalogOpen, setDialogCatalogOpen] = useState(false);
@@ -187,6 +201,31 @@ export function BancoTab({
       return true;
     });
   }, [extratos, conciliadoFilter]);
+
+  const extratosTabela = useMemo(() => {
+    const sortedAsc = [...filteredExtratos].sort((a, b) => {
+      const keyA = getMovementDateKey(a.data_movimento);
+      const keyB = getMovementDateKey(b.data_movimento);
+      const dateDiff = keyA.localeCompare(keyB);
+      if (dateDiff !== 0) return dateDiff;
+
+      const valorDiff = toNumber(a.valor) - toNumber(b.valor);
+      if (valorDiff !== 0) return valorDiff;
+
+      return a.id.localeCompare(b.id);
+    });
+
+    let runningSaldo = 0;
+    const withRunningSaldo = sortedAsc.map((extrato) => {
+      runningSaldo += toNumber(extrato.valor);
+      return {
+        ...extrato,
+        saldo_calculado: runningSaldo,
+      };
+    });
+
+    return withRunningSaldo.reverse();
+  }, [filteredExtratos]);
 
   const sugestoesAutomaticas = useMemo(() => {
     if (!selectedExtrato) return [];
@@ -562,18 +601,6 @@ export function BancoTab({
   }, [extratos]);
 
   const saldoConta = useMemo(() => {
-    const extratosOrdenados = [...(extratos || [])].sort(
-      (a, b) => new Date(a.data_movimento).getTime() - new Date(b.data_movimento).getTime()
-    );
-
-    if (extratosOrdenados.length === 0) return 0;
-
-    const ultimoExtrato = extratosOrdenados[extratosOrdenados.length - 1];
-    const ultimoSaldo = toNumber(ultimoExtrato.saldo);
-    if (ultimoSaldo !== 0) {
-      return ultimoSaldo;
-    }
-
     return (extratos || []).reduce((sum, e) => sum + toNumber(e.valor), 0);
   }, [extratos]);
 
@@ -669,56 +696,111 @@ export function BancoTab({
           return;
         }
 
-        const novosExtratos: ExtratoBancario[] = [];
+        const extratosImportados: Array<ExtratoBancario & { _sourceIndex: number }> = [];
         let importedCount = 0;
         let errorCount = 0;
 
-        jsonData.forEach((row, index) => {
+        // Função auxiliar para extrair valor de coluna com fallback automático
+        const getColumnValue = (
+          row: Record<string, any>,
+          field: 'data' | 'descricao' | 'valor' | 'saldo' | 'conta' | 'referencia'
+        ) => {
+          const mappedColumn = columnMapping?.[field];
+          if (mappedColumn && mappedColumn !== '__auto__' && mappedColumn !== '' && row[mappedColumn]) {
+            return row[mappedColumn];
+          }
+
+          const defaultColumns: Record<string, string[]> = {
+            data: ['Data', 'data', 'DATE', 'Data Movimento', 'Data Mov', 'Data do Movimento', 'Data Valor'],
+            descricao: [
+              'Descricao',
+              'descrição',
+              'Descricao do Movimento',
+              'Descrição do Movimento',
+              'DESCRIPTION',
+              'Historico',
+            ],
+            valor: ['Valor', 'valor', 'VALUE', 'Montante', 'montante', 'Debito/Credito', 'Débito/Crédito'],
+            saldo: ['Saldo', 'saldo', 'BALANCE'],
+            conta: ['Conta', 'conta', 'NIB', 'nib'],
+            referencia: ['Referencia', 'referencia', 'REFERENCE', 'Ref'],
+          };
+
+          const possibleColumns = defaultColumns[field] || [];
+          const normalizedCandidates = possibleColumns.map((col) => col.toLowerCase());
+          for (const key of Object.keys(row)) {
+            const normalizedKey = key.toLowerCase();
+            const stripped = key.includes(' - ')
+              ? key.split(' - ').slice(1).join(' - ').toLowerCase()
+              : normalizedKey;
+            if (normalizedCandidates.includes(normalizedKey) || normalizedCandidates.includes(stripped)) {
+              return row[key];
+            }
+          }
+          return null;
+        };
+
+        // Função melhorada para parse de datas do Excel
+        const parseExcelDate = (value: any): string => {
+          if (!value) return format(new Date(), 'yyyy-MM-dd');
+          
           try {
-            const getColumnValue = (
-              field: 'data' | 'descricao' | 'valor' | 'saldo' | 'conta' | 'referencia'
-            ) => {
-              const mappedColumn = columnMapping?.[field];
-              if (mappedColumn && mappedColumn !== '__auto__' && mappedColumn !== '' && row[mappedColumn]) {
-                return row[mappedColumn];
+            // Valor numérico do Excel (serial date)
+            if (typeof value === 'number') {
+              // Excel serial date: dias desde 1900-01-01 (com bug do ano 1900)
+              const excelEpoch = new Date(1899, 11, 30); // 30 de dezembro de 1899
+              const date = new Date(excelEpoch.getTime() + value * 86400000);
+              return format(date, 'yyyy-MM-dd');
+            }
+            
+            // Objeto Date do JavaScript
+            if (value instanceof Date) {
+              return format(value, 'yyyy-MM-dd');
+            }
+            
+            // String de data
+            if (typeof value === 'string') {
+              const trimmed = value.trim();
+              
+              // Formato ISO ou similar
+              const dateObj = new Date(trimmed);
+              if (!isNaN(dateObj.getTime())) {
+                return format(dateObj, 'yyyy-MM-dd');
               }
-
-              const defaultColumns: Record<string, string[]> = {
-                data: ['Data', 'data', 'DATE', 'Data Movimento', 'Data Mov', 'Data do Movimento', 'Data Valor'],
-                descricao: [
-                  'Descricao',
-                  'descrição',
-                  'Descricao do Movimento',
-                  'Descrição do Movimento',
-                  'DESCRIPTION',
-                  'Historico',
-                ],
-                valor: ['Valor', 'valor', 'VALUE', 'Montante', 'montante', 'Debito/Credito'],
-                saldo: ['Saldo', 'saldo', 'BALANCE'],
-                conta: ['Conta', 'conta', 'NIB', 'nib'],
-                referencia: ['Referencia', 'referencia', 'REFERENCE', 'Ref'],
-              };
-
-              const possibleColumns = defaultColumns[field] || [];
-              const normalizedCandidates = possibleColumns.map((col) => col.toLowerCase());
-              for (const key of Object.keys(row)) {
-                const normalizedKey = key.toLowerCase();
-                const stripped = key.includes(' - ')
-                  ? key.split(' - ').slice(1).join(' - ').toLowerCase()
-                  : normalizedKey;
-                if (normalizedCandidates.includes(normalizedKey) || normalizedCandidates.includes(stripped)) {
-                  return row[key];
+              
+              // Formatos comuns PT: dd/mm/yyyy, dd-mm-yyyy
+              const ptFormats = [
+                /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/,  // dd/mm/yyyy
+                /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2})$/,   // dd/mm/yy
+              ];
+              
+              for (const regex of ptFormats) {
+                const match = trimmed.match(regex);
+                if (match) {
+                  const day = parseInt(match[1], 10);
+                  const month = parseInt(match[2], 10) - 1; // JS months são 0-indexed
+                  let year = parseInt(match[3], 10);
+                  if (year < 100) year += 2000; // Converte 25 → 2025
+                  
+                  const parsed = new Date(year, month, day);
+                  return format(parsed, 'yyyy-MM-dd');
                 }
               }
-              return null;
-            };
+            }
+          } catch (e) {
+          }
 
-            const data_movimento = getColumnValue('data');
-            const descricao = getColumnValue('descricao');
-            const valor = getColumnValue('valor');
-            const saldo = getColumnValue('saldo');
-            const conta = getColumnValue('conta');
-            const referencia = getColumnValue('referencia');
+          return format(new Date(), 'yyyy-MM-dd');
+        };
+
+        // Processar todas as linhas
+        jsonData.forEach((row, index) => {
+          try {
+            const data_movimento = getColumnValue(row, 'data');
+            const descricao = getColumnValue(row, 'descricao');
+            const valor = getColumnValue(row, 'valor');
+            const conta = getColumnValue(row, 'conta');
+            const referencia = getColumnValue(row, 'referencia');
 
             if (!descricao) {
               errorCount++;
@@ -726,44 +808,79 @@ export function BancoTab({
             }
 
             const parsedValor = parsePtNumber(valor);
-            const parsedSaldo = parsePtNumber(saldo);
+            const parsedData = parseExcelDate(data_movimento);
 
-            let parsedData = format(new Date(), 'yyyy-MM-dd');
-            if (data_movimento) {
-              try {
-                if (typeof data_movimento === 'number') {
-                  const excelDate = new Date((data_movimento - 25569) * 86400 * 1000);
-                  parsedData = format(excelDate, 'yyyy-MM-dd');
-                } else {
-                  const dateObj = new Date(data_movimento);
-                  if (!isNaN(dateObj.getTime())) {
-                    parsedData = format(dateObj, 'yyyy-MM-dd');
-                  }
-                }
-              } catch (e) {
-              }
-            }
-
-            const novoExtrato: ExtratoBancario = {
+            const novoExtrato: ExtratoBancario & { _sourceIndex: number } = {
               id: crypto.randomUUID(),
               conta: conta?.toString() || '',
               data_movimento: parsedData,
               descricao: descricao.toString(),
               valor: parsedValor,
-              saldo: parsedSaldo,
+              saldo: 0, // Será calculado após ordenação
               referencia: referencia?.toString(),
               ficheiro_id: importFile?.name,
               centro_custo_id: importCentroCusto,
               conciliado: false,
               created_at: new Date().toISOString(),
+              _sourceIndex: index,
             };
 
-            novosExtratos.push(novoExtrato);
+            extratosImportados.push(novoExtrato);
             importedCount++;
           } catch (error) {
             errorCount++;
           }
         });
+
+        // Ordenar por data e manter ordem original para a mesma data
+        extratosImportados.sort((a, b) => {
+          const keyA = getMovementDateKey(a.data_movimento);
+          const keyB = getMovementDateKey(b.data_movimento);
+          if (keyA !== keyB) {
+            return keyA.localeCompare(keyB);
+          }
+          return a._sourceIndex - b._sourceIndex;
+        });
+
+        // Se os saldos da mesma data não ficarem crescentes, inverter o bloco da data
+        const computeRunningBalances = (items: Array<ExtratoBancario & { _sourceIndex: number }>) => {
+          let running = 0;
+          return items.map((item) => {
+            running += toNumber(item.valor);
+            return running;
+          });
+        };
+
+        const provisionalSaldos = computeRunningBalances(extratosImportados);
+        let blocoInicio = 0;
+        while (blocoInicio < extratosImportados.length) {
+          let blocoFim = blocoInicio;
+          while (blocoFim + 1 < extratosImportados.length) {
+            const keyAtual = getMovementDateKey(extratosImportados[blocoFim].data_movimento);
+            const keySeguinte = getMovementDateKey(extratosImportados[blocoFim + 1].data_movimento);
+            if (keyAtual !== keySeguinte) break;
+            blocoFim++;
+          }
+
+          const saldosBloco = provisionalSaldos.slice(blocoInicio, blocoFim + 1);
+          const crescente = saldosBloco.every((saldo, idx) => idx === 0 || saldo >= saldosBloco[idx - 1]);
+
+          if (!crescente && blocoFim > blocoInicio) {
+            const blocoInvertido = extratosImportados.slice(blocoInicio, blocoFim + 1).reverse();
+            extratosImportados.splice(blocoInicio, blocoInvertido.length, ...blocoInvertido);
+          }
+
+          blocoInicio = blocoFim + 1;
+        }
+
+        // Calcular saldos acumulados
+        let saldoAcumulado = 0;
+        extratosImportados.forEach((extrato, index) => {
+          saldoAcumulado += toNumber(extrato.valor);
+          extrato.saldo = saldoAcumulado;
+        });
+
+        const novosExtratos: ExtratoBancario[] = extratosImportados.map(({ _sourceIndex, ...extrato }) => extrato);
 
         if (novosExtratos.length > 0) {
           const response = await fetch(route('financeiro.extratos.bulk'), {
@@ -1111,31 +1228,28 @@ export function BancoTab({
       </div>
 
       <Card className="overflow-hidden">
-        <div className="overflow-x-auto">
-          <ScrollArea className="h-[400px]">
-            <Table>
+        <div className="max-h-[400px] overflow-auto">
+            <table className="w-full caption-bottom text-sm">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="sticky top-0 bg-card z-10 text-xs md:text-sm whitespace-nowrap">Data</TableHead>
-                  <TableHead className="sticky top-0 bg-card z-10 text-xs md:text-sm whitespace-nowrap">Descricao</TableHead>
-                  <TableHead className="sticky top-0 bg-card z-10 text-xs md:text-sm whitespace-nowrap">Valor</TableHead>
-                  <TableHead className="sticky top-0 bg-card z-10 text-xs md:text-sm whitespace-nowrap">Saldo</TableHead>
-                  <TableHead className="sticky top-0 bg-card z-10 text-xs md:text-sm whitespace-nowrap">Centro Custo</TableHead>
-                  <TableHead className="sticky top-0 bg-card z-10 text-xs md:text-sm whitespace-nowrap">Estado</TableHead>
-                  <TableHead className="sticky top-0 bg-card z-10 text-xs md:text-sm text-right whitespace-nowrap">Acoes</TableHead>
+                  <TableHead className="sticky top-0 bg-card z-20 text-xs md:text-sm whitespace-nowrap">Data</TableHead>
+                  <TableHead className="sticky top-0 bg-card z-20 text-xs md:text-sm whitespace-nowrap">Descricao</TableHead>
+                  <TableHead className="sticky top-0 bg-card z-20 text-xs md:text-sm whitespace-nowrap">Valor</TableHead>
+                  <TableHead className="sticky top-0 bg-card z-20 text-xs md:text-sm whitespace-nowrap">Saldo</TableHead>
+                  <TableHead className="sticky top-0 bg-card z-20 text-xs md:text-sm whitespace-nowrap">Centro Custo</TableHead>
+                  <TableHead className="sticky top-0 bg-card z-20 text-xs md:text-sm whitespace-nowrap">Estado</TableHead>
+                  <TableHead className="sticky top-0 bg-card z-20 text-xs md:text-sm text-right whitespace-nowrap">Acoes</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredExtratos.length === 0 ? (
+                {extratosTabela.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                       Nenhum movimento encontrado
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredExtratos
-                    .sort((a, b) => new Date(b.data_movimento).getTime() - new Date(a.data_movimento).getTime())
-                    .map((extrato) => (
+                  extratosTabela.map((extrato) => (
                       <TableRow key={extrato.id}>
                         <TableCell className="text-xs md:text-sm whitespace-nowrap">
                           {format(new Date(extrato.data_movimento), 'dd/MM/yyyy')}
@@ -1145,7 +1259,7 @@ export function BancoTab({
                           {toNumber(extrato.valor) >= 0 ? '+' : ''}€{toNumber(extrato.valor).toFixed(2)}
                         </TableCell>
                         <TableCell className="text-xs md:text-sm whitespace-nowrap">
-                          {extrato.saldo !== undefined ? `€${toNumber(extrato.saldo).toFixed(2)}` : '-'}
+                          €{toNumber(extrato.saldo_calculado).toFixed(2)}
                         </TableCell>
                         <TableCell className="text-xs md:text-sm max-w-[100px] md:max-w-none truncate">
                           {getCentroCustoName(extrato.centro_custo_id)}
@@ -1211,8 +1325,7 @@ export function BancoTab({
                     ))
                 )}
               </TableBody>
-            </Table>
-          </ScrollArea>
+            </table>
         </div>
       </Card>
 

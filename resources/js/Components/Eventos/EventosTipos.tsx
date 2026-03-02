@@ -127,6 +127,7 @@ export function EventosTipos({ types = [], onTypeCreate, onTypeUpdate, onTypeDel
                     setFormData({ ...formData, nome: e.target.value })
                   }
                   placeholder="Ex: Prova, Treino"
+                  className="bg-white"
                 />
               </div>
 

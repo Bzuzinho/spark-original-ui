@@ -419,6 +419,7 @@ export function EventosList({
                       setFormData({ ...formData, titulo: e.target.value })
                     }
                     placeholder="Nome do evento"
+                    className="bg-white"
                   />
                 </div>
 
@@ -435,7 +436,7 @@ export function EventosList({
                         })
                       }
                     >
-                      <SelectTrigger id="tipo">
+                      <SelectTrigger id="tipo" className="bg-white">
                         <SelectValue placeholder="Selecionar..." />
                       </SelectTrigger>
                       <SelectContent>
@@ -456,7 +457,7 @@ export function EventosList({
                         setFormData({ ...formData, centro_custo_id: value === 'none' ? '' : value })
                       }
                     >
-                      <SelectTrigger id="centro_custo_id">
+                      <SelectTrigger id="centro_custo_id" className="bg-white">
                         <SelectValue placeholder="Selecionar..." />
                       </SelectTrigger>
                       <SelectContent>
@@ -483,6 +484,7 @@ export function EventosList({
                     }
                     placeholder="Detalhes do evento"
                     rows={3}
+                    className="bg-white"
                   />
                 </div>
               </div>
@@ -502,6 +504,7 @@ export function EventosList({
                         setFormData({ ...formData, data_inicio: e.target.value })
                       }
                       placeholder="dd/mm/aaaa"
+                      className="bg-white"
                     />
                   </div>
                   <div className="space-y-2">
@@ -514,6 +517,7 @@ export function EventosList({
                         setFormData({ ...formData, hora_inicio: e.target.value })
                       }
                       placeholder="--:--"
+                      className="bg-white"
                     />
                   </div>
                 </div>
@@ -529,6 +533,7 @@ export function EventosList({
                         setFormData({ ...formData, data_fim: e.target.value })
                       }
                       placeholder="dd/mm/aaaa"
+                      className="bg-white"
                     />
                   </div>
                   <div className="space-y-2">
@@ -541,6 +546,7 @@ export function EventosList({
                         setFormData({ ...formData, hora_fim: e.target.value })
                       }
                       placeholder="--:--"
+                      className="bg-white"
                     />
                   </div>
                 </div>
@@ -560,6 +566,7 @@ export function EventosList({
                         setFormData({ ...formData, local: e.target.value })
                       }
                       placeholder="Nome do local"
+                      className="bg-white"
                     />
                   </div>
 
@@ -572,7 +579,7 @@ export function EventosList({
                           setFormData({ ...formData, tipo_piscina: value })
                         }
                       >
-                        <SelectTrigger id="tipo_piscina">
+                        <SelectTrigger id="tipo_piscina" className="bg-white">
                           <SelectValue placeholder="Selecionar..." />
                         </SelectTrigger>
                         <SelectContent>
@@ -595,6 +602,7 @@ export function EventosList({
                     }
                     placeholder="Morada completa"
                     rows={2}
+                    className="bg-white"
                   />
                 </div>
               </div>
@@ -675,6 +683,7 @@ export function EventosList({
                           onChange={(e) =>
                             setFormData({ ...formData, hora_partida: e.target.value })
                           }
+                          className="bg-white"
                         />
                       </div>
                       <div className="space-y-2">
@@ -686,6 +695,7 @@ export function EventosList({
                             setFormData({ ...formData, local_partida: e.target.value })
                           }
                           placeholder="Ponto de encontro"
+                          className="bg-white"
                         />
                       </div>
                     </div>
@@ -698,6 +708,7 @@ export function EventosList({
                           setFormData({ ...formData, transporte_detalhes: e.target.value })
                         }
                         placeholder="Informações adicionais sobre o transporte"
+                        className="bg-white"
                         rows={2}
                       />
                     </div>
@@ -722,6 +733,7 @@ export function EventosList({
                           setFormData({ ...formData, taxa_inscricao: e.target.value })
                         }
                         placeholder="0.00"
+                        className="bg-white"
                       />
                     </div>
                     <div className="space-y-2">
@@ -735,6 +747,7 @@ export function EventosList({
                           setFormData({ ...formData, custo_inscricao_por_prova: e.target.value })
                         }
                         placeholder="0.00"
+                        className="bg-white"
                       />
                     </div>
                   </div>
@@ -750,6 +763,7 @@ export function EventosList({
                           setFormData({ ...formData, custo_inscricao_por_salto: e.target.value })
                         }
                         placeholder="0.00"
+                        className="bg-white"
                       />
                     </div>
                     <div className="space-y-2">
@@ -763,6 +777,7 @@ export function EventosList({
                           setFormData({ ...formData, custo_inscricao_estafeta: e.target.value })
                         }
                         placeholder="0.00"
+                        className="bg-white"
                       />
                     </div>
                   </div>
@@ -781,6 +796,7 @@ export function EventosList({
                     }
                     placeholder="Notas adicionais"
                     rows={3}
+                    className="bg-white"
                   />
                 </div>
 
@@ -793,7 +809,7 @@ export function EventosList({
                         setFormData({ ...formData, visibilidade: value })
                       }
                     >
-                      <SelectTrigger id="visibilidade">
+                      <SelectTrigger id="visibilidade" className="bg-white">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -811,7 +827,7 @@ export function EventosList({
                         setFormData({ ...formData, estado: value })
                       }
                     >
-                      <SelectTrigger id="estado">
+                      <SelectTrigger id="estado" className="bg-white">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -941,11 +957,11 @@ export function EventosList({
                 placeholder="Pesquisar eventos..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="h-7 pl-8 text-xs"
+                className="h-7 pl-8 text-xs bg-white"
               />
             </div>
             <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger className="h-7 w-full md:w-[170px] text-xs">
+              <SelectTrigger className="h-7 w-full md:w-[170px] text-xs bg-white">
                 <SelectValue placeholder="Tipo" />
               </SelectTrigger>
               <SelectContent>
@@ -958,7 +974,7 @@ export function EventosList({
               </SelectContent>
             </Select>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="h-7 w-full md:w-[170px] text-xs">
+              <SelectTrigger className="h-7 w-full md:w-[170px] text-xs bg-white">
                 <SelectValue placeholder="Estado" />
               </SelectTrigger>
               <SelectContent>

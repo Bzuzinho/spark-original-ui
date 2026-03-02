@@ -156,7 +156,7 @@ export function EventosCalendar({ events = [] }: EventosCalendarProps) {
         </div>
 
         <Select value={typeFilter} onValueChange={setTypeFilter}>
-          <SelectTrigger className="w-full sm:w-[180px] h-8">
+          <SelectTrigger className="w-full sm:w-[180px] h-8 bg-white">
             <SelectValue placeholder="Tipo de Evento" />
           </SelectTrigger>
           <SelectContent>

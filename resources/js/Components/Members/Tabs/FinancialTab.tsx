@@ -162,7 +162,7 @@ export function FinancialTab({
               onValueChange={(value) => onChange('tipo_mensalidade', value)}
               disabled={!isAdmin}
             >
-              <SelectTrigger id="tipo_mensalidade" className="h-7 text-xs">
+              <SelectTrigger id="tipo_mensalidade" className="h-7 text-xs bg-white">
                 <SelectValue placeholder="Selecionar" />
               </SelectTrigger>
               <SelectContent>
@@ -199,7 +199,7 @@ export function FinancialTab({
                 }}
                 disabled={!isAdmin}
               >
-                <SelectTrigger className="h-7 text-xs">
+                <SelectTrigger className="h-7 text-xs bg-white">
                   <SelectValue placeholder="Selecionar" />
                 </SelectTrigger>
                 <SelectContent>
@@ -236,7 +236,7 @@ export function FinancialTab({
             value={user.conta_corrente_manual ?? 0}
             disabled={!isAdmin}
             onChange={(e) => onChange('conta_corrente_manual', Number(e.target.value))}
-            className="h-7 text-xs"
+            className="h-7 text-xs bg-white"
           />
         </Card>
       </div>

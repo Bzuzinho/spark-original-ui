@@ -10,23 +10,14 @@ import { FinancialTab } from '@/Components/Members/Tabs/FinancialTab';
 import { SportsTab } from '@/Components/Members/Tabs/SportsTab';
 import { ConfigurationTab } from '@/Components/Members/Tabs/ConfigurationTab';
 import { createEmptyUser, generateMemberNumber } from '@/lib/user-helpers';
+import type { User as AppUser } from '@/lib/types';
 
-interface User {
-    id: string;
-    numero_socio: string;
-    nome_completo: string;
-    email_utilizador?: string;
-    foto_perfil?: string;
-    estado: string;
-    tipo_membro: string[];
-    data_nascimento: string;
-    perfil: string;
-    // ... other fields
+type User = AppUser & {
     [key: string]: any;
-}
+};
 
 interface Props {
-    allUsers: User[];
+    allUsers: AppUser[];
     userTypes: any[];
     ageGroups: any[];
     nextMemberNumber?: string;
@@ -138,7 +129,7 @@ export default function Create({ allUsers, userTypes, ageGroups, nextMemberNumbe
                         </TabsList>
                     </div>
 
-                    <TabsContent value="personal" className="space-y-2 mt-2 bg-white p-3 rounded-lg">
+                    <TabsContent value="personal" className="space-y-2 mt-2 bg-white p-0 rounded-lg">
                         <PersonalTab 
                             user={user}
                             onChange={handleChange}
@@ -148,7 +139,7 @@ export default function Create({ allUsers, userTypes, ageGroups, nextMemberNumbe
                         />
                     </TabsContent>
 
-                    <TabsContent value="financial" className="space-y-2 mt-2 bg-white p-3 rounded-lg">
+                    <TabsContent value="financial" className="space-y-2 mt-2 bg-white p-0 rounded-lg">
                         <FinancialTab 
                             user={user}
                             onChange={handleChange}
@@ -159,7 +150,7 @@ export default function Create({ allUsers, userTypes, ageGroups, nextMemberNumbe
                     </TabsContent>
 
                     {showSportsTab && (
-                        <TabsContent value="sports" className="space-y-2 mt-2 bg-white p-3 rounded-lg">
+                        <TabsContent value="sports" className="space-y-2 mt-2 bg-white p-0 rounded-lg">
                             <SportsTab 
                                 user={user}
                                 onChange={handleChange}
@@ -168,7 +159,7 @@ export default function Create({ allUsers, userTypes, ageGroups, nextMemberNumbe
                         </TabsContent>
                     )}
 
-                    <TabsContent value="configuration" className="space-y-2 mt-2 bg-white p-3 rounded-lg">
+                    <TabsContent value="configuration" className="space-y-2 mt-2 bg-white p-0 rounded-lg">
                         <ConfigurationTab 
                             user={user}
                             onChange={handleChange}

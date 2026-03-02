@@ -133,85 +133,160 @@ export function PersonalTab({ user, allUsers, onChange, isAdmin, userTypes = [],
 
   return (
     <div className="space-y-1">
-      {/* Perfil e Dados Básicos */}
-      <Card className="p-2">
-        <div className="flex gap-2">
-          <div className="flex flex-col items-center gap-1">
-            <Avatar className="h-16 w-16">
-              <AvatarImage src={user.foto_perfil} />
-              <AvatarFallback className="bg-primary/10 text-primary">
-                {getInitials(user.nome_completo || 'U')}
-              </AvatarFallback>
-            </Avatar>
-            {isAdmin && (
-              <>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileChange}
-                  className="hidden"
-                />
-                <Button 
-                  type="button"
-                  variant="outline" 
-                  size="sm" 
-                  onClick={handleUploadClick}
-                  className="h-6 text-xs"
-                >
-                  Upload
-                </Button>
-              </>
-            )}
-          </div>
-
-          <div className="flex-1 space-y-1">
-            <div>
-              <Label htmlFor="nome_completo" className="text-xs">Nome Completo *</Label>
-              <Input
-                id="nome_completo"
-                value={user.nome_completo}
-                onChange={(e) => onChange('nome_completo', e.target.value)}
-                disabled={!isAdmin}
-                className="h-7 text-xs"
-              />
+      {/* Linha 1: Perfil e Tipo de Membro */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-1">
+        {/* Perfil e Dados Básicos */}
+        <Card className="p-2">
+          <div className="flex gap-2">
+            <div className="flex flex-col items-center gap-1">
+              <Avatar className="h-16 w-16">
+                <AvatarImage src={user.foto_perfil} />
+                <AvatarFallback className="bg-primary/10 text-primary">
+                  {getInitials(user.nome_completo || 'U')}
+                </AvatarFallback>
+              </Avatar>
+              {isAdmin && (
+                <>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                  <Button 
+                    type="button"
+                    variant="outline" 
+                    size="sm" 
+                    onClick={handleUploadClick}
+                    className="h-6 text-xs"
+                  >
+                    Upload
+                  </Button>
+                </>
+              )}
             </div>
-            <div className="grid grid-cols-3 gap-1">
+
+            <div className="flex-1 space-y-1">
               <div>
-                <Label htmlFor="numero_socio" className="text-xs">Nº Sócio</Label>
+                <Label htmlFor="nome_completo" className="text-xs">Nome Completo *</Label>
                 <Input
-                  id="numero_socio"
-                  value={user.numero_socio}
-                  disabled
-                  className="h-7 text-xs bg-muted"
+                  id="nome_completo"
+                  value={user.nome_completo}
+                  onChange={(e) => onChange('nome_completo', e.target.value)}
+                  disabled={!isAdmin}
+                  className="h-7 text-xs bg-white"
                 />
               </div>
-              <div>
-                <Label htmlFor="nif" className="text-xs">NIF</Label>
-                <Input
-                  id="nif"
-                  value={user.nif || ''}
-                  onChange={(e) => onChange('nif', e.target.value)}
-                  disabled={!isAdmin}
-                  className="h-7 text-xs"
-                />
+              <div className="grid grid-cols-3 gap-1">
+                <div>
+                  <Label htmlFor="numero_socio" className="text-xs">Nº Sócio</Label>
+                  <Input
+                    id="numero_socio"
+                    value={user.numero_socio}
+                    disabled
+                    className="h-7 text-xs bg-muted"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="nif" className="text-xs">NIF</Label>
+                  <Input
+                    id="nif"
+                    value={user.nif || ''}
+                    onChange={(e) => onChange('nif', e.target.value)}
+                    disabled={!isAdmin}
+                    className="h-7 text-xs bg-white"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="cc" className="text-xs">CC</Label>
+                  <Input
+                    id="cc"
+                    value={user.cc || ''}
+                    onChange={(e) => onChange('cc', e.target.value)}
+                    disabled={!isAdmin}
+                    className="h-7 text-xs bg-white"
+                  />
+                </div>
               </div>
-              <div>
-                <Label htmlFor="cc" className="text-xs">CC</Label>
-                <Input
-                  id="cc"
-                  value={user.cc || ''}
-                  onChange={(e) => onChange('cc', e.target.value)}
+            </div>
+          </div>
+        </Card>
+
+        {/* Tipo de Membro */}
+        <Card className="p-2">
+          <h3 className="text-xs font-semibold mb-1">Tipo de Membro *</h3>
+          <div className="grid grid-cols-3 gap-2">
+            {/* Coluna 1 e 2: Checkboxes dos tipos */}
+            <div className="col-span-2 grid grid-cols-2 gap-x-2 gap-y-0.5">
+              {resolvedUserTypes && resolvedUserTypes.length > 0 ? (
+                resolvedUserTypes.map((tipo) => {
+                  const displayName = tipo?.nome || tipo?.name || '';
+                  const typeMapping: Record<string, string> = {
+                    'Atleta': 'atleta',
+                    'Encarregado de Educação': 'encarregado_educacao',
+                    'Treinador': 'treinador',
+                    'Dirigente': 'dirigente',
+                    'Sócio': 'socio',
+                    'Funcionario': 'funcionario',
+                    'Funcionário': 'funcionario',
+                  };
+                  const normalizedName = displayName
+                    .toLowerCase()
+                    .normalize('NFD')
+                    .replace(/[\u0300-\u036f]/g, '')
+                    .replace(/\s+/g, '_');
+                  const tipoValue = typeMapping[displayName] || normalizedName;
+
+                  return (
+                    <div key={tipo.id} className="flex items-center space-x-1">
+                      <input
+                        type="checkbox"
+                        id={`tipo_${tipo.id}`}
+                        checked={user.tipo_membro?.includes(tipoValue as any) || false}
+                        onChange={(e) => {
+                          const currentTypes = user.tipo_membro || [];
+                          if (e.target.checked) {
+                            onChange('tipo_membro', [...currentTypes, tipoValue]);
+                          } else {
+                            onChange('tipo_membro', currentTypes.filter((t: string) => t !== tipoValue));
+                          }
+                        }}
+                        disabled={!isAdmin}
+                        className="h-3 w-3 rounded"
+                      />
+                      <Label htmlFor={`tipo_${tipo.id}`} className="font-normal cursor-pointer text-xs">
+                        {displayName || 'Tipo'}
+                      </Label>
+                    </div>
+                  );
+                })
+              ) : (
+                <p className="col-span-2 text-xs text-muted-foreground">Nenhum tipo configurado</p>
+              )}
+            </div>
+
+            {/* Coluna 3: Menor de Idade */}
+            <div className="flex items-start">
+              <div className="flex flex-col items-center justify-between p-1.5 border rounded bg-slate-50 h-full w-full">
+                <div className="text-center">
+                  <Label htmlFor="menor" className="text-xs block">Menor de Idade</Label>
+                  <p className="text-xs text-muted-foreground leading-tight">Ativa campos de encarregado</p>
+                </div>
+                <Switch
+                  id="menor"
+                  checked={user.menor}
+                  onCheckedChange={(checked) => onChange('menor', checked)}
                   disabled={!isAdmin}
-                  className="h-7 text-xs"
+                  className="mt-2"
                 />
               </div>
             </div>
           </div>
-        </div>
-      </Card>
+        </Card>
+      </div>
 
-      {/* Informações Pessoais, Localização e Contacto - Layout Horizontal */}
+      {/* Linha 2: Informações Pessoais, Localização e Contacto */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-1">
         {/* Informações Pessoais */}
         <Card className="p-2">
@@ -219,7 +294,7 @@ export function PersonalTab({ user, allUsers, onChange, isAdmin, userTypes = [],
             <UserCircle size={14} />
             Informações Pessoais
           </h3>
-          <div className="space-y-1">
+          <div className="grid grid-cols-2 gap-1">
             <div>
               <Label htmlFor="data_nascimento" className="text-xs">Data Nascimento {userAge !== null && `(${userAge}a)`}</Label>
               <Input
@@ -229,7 +304,7 @@ export function PersonalTab({ user, allUsers, onChange, isAdmin, userTypes = [],
                 onChange={(e) => onChange('data_nascimento', e.target.value)}
                 disabled={!isAdmin}
                 max={format(new Date(), 'yyyy-MM-dd')}
-                className="h-7 text-xs"
+                className="h-7 text-xs bg-white"
               />
             </div>
             <div>
@@ -240,7 +315,7 @@ export function PersonalTab({ user, allUsers, onChange, isAdmin, userTypes = [],
                 onChange={(e) => onChange('nacionalidade', e.target.value)}
                 disabled={!isAdmin}
                 placeholder="Portuguesa"
-                className="h-7 text-xs"
+                className="h-7 text-xs bg-white"
               />
             </div>
 
@@ -251,7 +326,7 @@ export function PersonalTab({ user, allUsers, onChange, isAdmin, userTypes = [],
                 onValueChange={(value) => onChange('estado_civil', value)}
                 disabled={!isAdmin}
               >
-                <SelectTrigger id="estado_civil" className="h-7 text-xs">
+                <SelectTrigger id="estado_civil" className="h-7 text-xs bg-white">
                   <SelectValue placeholder="Selecionar" />
                 </SelectTrigger>
                 <SelectContent>
@@ -281,7 +356,7 @@ export function PersonalTab({ user, allUsers, onChange, isAdmin, userTypes = [],
               </RadioGroup>
             </div>
 
-            <div>
+            <div className="col-span-2">
               <Label className="text-xs">Estado</Label>
               <RadioGroup
                 value={user.estado}
@@ -311,15 +386,15 @@ export function PersonalTab({ user, allUsers, onChange, isAdmin, userTypes = [],
             <MapPin size={14} />
             Localização
           </h3>
-          <div className="space-y-1">
-            <div>
+          <div className="grid grid-cols-2 gap-1">
+            <div className="col-span-2">
               <Label htmlFor="morada" className="text-xs">Morada</Label>
               <Input
                 id="morada"
                 value={user.morada || ''}
                 onChange={(e) => onChange('morada', e.target.value)}
                 disabled={!isAdmin}
-                className="h-7 text-xs"
+                className="h-7 text-xs bg-white"
               />
             </div>
             <div>
@@ -329,7 +404,7 @@ export function PersonalTab({ user, allUsers, onChange, isAdmin, userTypes = [],
                 value={user.codigo_postal || ''}
                 onChange={(e) => onChange('codigo_postal', e.target.value)}
                 disabled={!isAdmin}
-                className="h-7 text-xs"
+                className="h-7 text-xs bg-white"
               />
             </div>
             <div>
@@ -339,7 +414,7 @@ export function PersonalTab({ user, allUsers, onChange, isAdmin, userTypes = [],
                 value={user.localidade || ''}
                 onChange={(e) => onChange('localidade', e.target.value)}
                 disabled={!isAdmin}
-                className="h-7 text-xs"
+                className="h-7 text-xs bg-white"
               />
             </div>
           </div>
@@ -351,7 +426,7 @@ export function PersonalTab({ user, allUsers, onChange, isAdmin, userTypes = [],
             <Phone size={14} />
             Contacto
           </h3>
-          <div className="space-y-1">
+          <div className="grid grid-cols-2 gap-1">
             <div>
               <Label htmlFor="contacto_telefonico" className="text-xs">Telefone</Label>
               <Input
@@ -359,7 +434,7 @@ export function PersonalTab({ user, allUsers, onChange, isAdmin, userTypes = [],
                 value={user.contacto_telefonico || ''}
                 onChange={(e) => onChange('contacto_telefonico', e.target.value)}
                 disabled={!isAdmin}
-                className="h-7 text-xs"
+                className="h-7 text-xs bg-white"
               />
             </div>
             <div>
@@ -370,7 +445,7 @@ export function PersonalTab({ user, allUsers, onChange, isAdmin, userTypes = [],
                 value={user.email_secundario || ''}
                 onChange={(e) => onChange('email_secundario', e.target.value)}
                 disabled={!isAdmin}
-                className="h-7 text-xs"
+                className="h-7 text-xs bg-white"
               />
             </div>
             <div>
@@ -382,21 +457,22 @@ export function PersonalTab({ user, allUsers, onChange, isAdmin, userTypes = [],
                 onChange={(e) => onChange('numero_irmaos', parseInt(e.target.value) || 0)}
                 disabled={!isAdmin}
                 min="0"
-                className="h-7 text-xs"
+                className="h-7 text-xs bg-white"
               />
             </div>
           </div>
         </Card>
       </div>
 
-      {/* Profissão e Educação */}
-      <Card className="p-2">
-        <h3 className="text-xs font-semibold mb-1 flex items-center gap-1">
-          <Briefcase size={14} />
-          Profissão e Educação
-        </h3>
-        <div className="space-y-1">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-1">
+      {/* Linha 3: Profissão e Educação + Relações Familiares */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-1">
+        {/* Profissão e Educação */}
+        <Card className="p-2">
+          <h3 className="text-xs font-semibold mb-1 flex items-center gap-1">
+            <Briefcase size={14} />
+            Profissão e Educação
+          </h3>
+          <div className="space-y-1">
             <div>
               <Label htmlFor="ocupacao" className="text-xs">Ocupação</Label>
               <Input
@@ -404,7 +480,7 @@ export function PersonalTab({ user, allUsers, onChange, isAdmin, userTypes = [],
                 value={user.ocupacao || ''}
                 onChange={(e) => onChange('ocupacao', e.target.value)}
                 disabled={!isAdmin}
-                className="h-7 text-xs"
+                className="h-7 text-xs bg-white"
               />
             </div>
             <div>
@@ -414,7 +490,7 @@ export function PersonalTab({ user, allUsers, onChange, isAdmin, userTypes = [],
                 value={user.empresa || ''}
                 onChange={(e) => onChange('empresa', e.target.value)}
                 disabled={!isAdmin}
-                className="h-7 text-xs"
+                className="h-7 text-xs bg-white"
               />
             </div>
             <div>
@@ -424,192 +500,131 @@ export function PersonalTab({ user, allUsers, onChange, isAdmin, userTypes = [],
                 value={user.escola || ''}
                 onChange={(e) => onChange('escola', e.target.value)}
                 disabled={!isAdmin}
-                className="h-7 text-xs"
+                className="h-7 text-xs bg-white"
               />
             </div>
           </div>
-        </div>
-      </Card>
+        </Card>
 
-      {/* Tipo de Membro */}
-      <Card className="p-2">
-        <h3 className="text-xs font-semibold mb-1">Tipo de Membro *</h3>
-        <div className="space-y-0.5">
-          {resolvedUserTypes && resolvedUserTypes.length > 0 ? (
-            resolvedUserTypes.map((tipo) => {
-              const displayName = tipo?.nome || tipo?.name || '';
-              const typeMapping: Record<string, string> = {
-                'Atleta': 'atleta',
-                'Encarregado de Educação': 'encarregado_educacao',
-                'Treinador': 'treinador',
-                'Dirigente': 'dirigente',
-                'Sócio': 'socio',
-                'Funcionario': 'funcionario',
-                'Funcionário': 'funcionario',
-              };
-              const normalizedName = displayName
-                .toLowerCase()
-                .normalize('NFD')
-                .replace(/[\u0300-\u036f]/g, '')
-                .replace(/\s+/g, '_');
-              const tipoValue = typeMapping[displayName] || normalizedName;
-
-              return (
-                <div key={tipo.id} className="flex items-center space-x-1">
-                  <input
-                    type="checkbox"
-                    id={`tipo_${tipo.id}`}
-                    checked={user.tipo_membro?.includes(tipoValue as any) || false}
-                    onChange={(e) => {
-                      const currentTypes = user.tipo_membro || [];
-                      if (e.target.checked) {
-                        onChange('tipo_membro', [...currentTypes, tipoValue]);
-                      } else {
-                        onChange('tipo_membro', currentTypes.filter((t: string) => t !== tipoValue));
+        {/* Relações Familiares */}
+        <div className="space-y-1">
+          {/* Encarregado de Educação */}
+          {user.menor && (
+            <Card className="p-2">
+              <h3 className="text-xs font-semibold mb-1">Encarregado de Educação</h3>
+              {isAdmin && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-6 text-xs mb-1"
+                  onClick={() => {
+                    const currentGuardians = user.encarregado_educacao || [];
+                    if (availableGuardians.length > 0) {
+                      const firstAvailable = availableGuardians.find(
+                        (g: any) => !currentGuardians.includes(g.id)
+                      );
+                      if (firstAvailable) {
+                        onChange('encarregado_educacao', [...currentGuardians, firstAvailable.id]);
+                        toast.success('Encarregado adicionado');
                       }
-                    }}
-                    disabled={!isAdmin}
-                    className="h-3 w-3 rounded"
-                  />
-                  <Label htmlFor={`tipo_${tipo.id}`} className="font-normal cursor-pointer text-xs">
-                    {displayName || 'Tipo'}
-                  </Label>
+                    }
+                  }}
+                >
+                  + Adicionar
+                </Button>
+              )}
+              
+              {user.encarregado_educacao && user.encarregado_educacao.length > 0 ? (
+                <div className="space-y-1">
+                  {user.encarregado_educacao.map((guardianId: string, index: number) => {
+                    const guardian = allUsers.find((u: any) => u.id === guardianId);
+                    return guardian ? (
+                      <div key={guardianId} className="flex items-center justify-between p-2 border rounded text-xs">
+                        <span>{guardian.nome_completo}</span>
+                        {isAdmin && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 text-destructive"
+                            onClick={() => {
+                              const currentGuardians = user.encarregado_educacao || [];
+                              onChange('encarregado_educacao', currentGuardians.filter((_: string, i: number) => i !== index));
+                            }}
+                          >
+                            ×
+                          </Button>
+                        )}
+                      </div>
+                    ) : null;
+                  })}
                 </div>
-              );
-            })
-          ) : (
-            <p className="text-xs text-muted-foreground">Nenhum tipo configurado</p>
+              ) : (
+                <p className="text-xs text-muted-foreground">Nenhum encarregado associado</p>
+              )}
+            </Card>
+          )}
+
+          {/* Educandos */}
+          {isGuardian && (
+            <Card className="p-2">
+              <h3 className="text-xs font-semibold mb-1">Educandos</h3>
+              {isAdmin && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-6 text-xs mb-1"
+                  onClick={() => {
+                    const currentEducandos = user.educandos || [];
+                    if (availableAthletes.length > 0) {
+                      const firstAvailable = availableAthletes.find(
+                        (a: any) => !currentEducandos.includes(a.id)
+                      );
+                      if (firstAvailable) {
+                        onChange('educandos', [...currentEducandos, firstAvailable.id]);
+                        toast.success('Educando adicionado');
+                      }
+                    }
+                  }}
+                >
+                  + Adicionar
+                </Button>
+              )}
+              
+              {user.educandos && user.educandos.length > 0 ? (
+                <div className="space-y-1">
+                  {user.educandos.map((educandoId: string, index: number) => {
+                    const educando = allUsers.find((u: any) => u.id === educandoId);
+                    return educando ? (
+                      <div key={educandoId} className="flex items-center justify-between p-2 border rounded text-xs">
+                        <span>{educando.nome_completo}</span>
+                        {isAdmin && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 text-destructive"
+                            onClick={() => {
+                              const currentEducandos = user.educandos || [];
+                              onChange('educandos', currentEducandos.filter((_: string, i: number) => i !== index));
+                            }}
+                          >
+                            ×
+                          </Button>
+                        )}
+                      </div>
+                    ) : null;
+                  })}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">Nenhum educando associado</p>
+              )}
+            </Card>
           )}
         </div>
-
-        <div className="flex items-center justify-between p-1 border rounded mt-1.5 bg-slate-50">
-          <div>
-            <Label htmlFor="menor" className="text-xs">Menor de Idade</Label>
-            <p className="text-xs text-muted-foreground leading-tight">Ativa campos de encarregado</p>
-          </div>
-          <Switch
-            id="menor"
-            checked={user.menor}
-            onCheckedChange={(checked) => onChange('menor', checked)}
-            disabled={!isAdmin}
-          />
-        </div>
-      </Card>
-
-      {/* Encarregado e Educandos */}
-      {user.menor && (
-        <Card className="p-2">
-          <h3 className="text-xs font-semibold mb-1">Encarregado de Educação</h3>
-          {isAdmin && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-6 text-xs mb-1"
-              onClick={() => {
-                const currentGuardians = user.encarregado_educacao || [];
-                if (availableGuardians.length > 0) {
-                  const firstAvailable = availableGuardians.find(
-                    (g: any) => !currentGuardians.includes(g.id)
-                  );
-                  if (firstAvailable) {
-                    onChange('encarregado_educacao', [...currentGuardians, firstAvailable.id]);
-                    toast.success('Encarregado adicionado');
-                  }
-                }
-              }}
-            >
-              + Adicionar
-            </Button>
-          )}
-          
-          {user.encarregado_educacao && user.encarregado_educacao.length > 0 ? (
-            <div className="space-y-1">
-              {user.encarregado_educacao.map((guardianId: string, index: number) => {
-                const guardian = allUsers.find((u: any) => u.id === guardianId);
-                return guardian ? (
-                  <div key={guardianId} className="flex items-center justify-between p-2 border rounded text-xs">
-                    <span>{guardian.nome_completo}</span>
-                    {isAdmin && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 text-destructive"
-                        onClick={() => {
-                          const currentGuardians = user.encarregado_educacao || [];
-                          onChange('encarregado_educacao', currentGuardians.filter((_: string, i: number) => i !== index));
-                        }}
-                      >
-                        ×
-                      </Button>
-                    )}
-                  </div>
-                ) : null;
-              })}
-            </div>
-          ) : (
-            <p className="text-xs text-muted-foreground">Nenhum encarregado associado</p>
-          )}
-        </Card>
-      )}
-
-      {isGuardian && (
-        <Card className="p-2">
-          <h3 className="text-xs font-semibold mb-1">Educandos</h3>
-          {isAdmin && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-6 text-xs mb-1"
-              onClick={() => {
-                const currentEducandos = user.educandos || [];
-                if (availableAthletes.length > 0) {
-                  const firstAvailable = availableAthletes.find(
-                    (a: any) => !currentEducandos.includes(a.id)
-                  );
-                  if (firstAvailable) {
-                    onChange('educandos', [...currentEducandos, firstAvailable.id]);
-                    toast.success('Educando adicionado');
-                  }
-                }
-              }}
-            >
-              + Adicionar
-            </Button>
-          )}
-          
-          {user.educandos && user.educandos.length > 0 ? (
-            <div className="space-y-1">
-              {user.educandos.map((educandoId: string, index: number) => {
-                const educando = allUsers.find((u: any) => u.id === educandoId);
-                return educando ? (
-                  <div key={educandoId} className="flex items-center justify-between p-2 border rounded text-xs">
-                    <span>{educando.nome_completo}</span>
-                    {isAdmin && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 text-destructive"
-                        onClick={() => {
-                          const currentEducandos = user.educandos || [];
-                          onChange('educandos', currentEducandos.filter((_: string, i: number) => i !== index));
-                        }}
-                      >
-                        ×
-                      </Button>
-                    )}
-                  </div>
-                ) : null;
-              })}
-            </div>
-          ) : (
-            <p className="text-xs text-muted-foreground">Nenhum educando associado</p>
-          )}
-        </Card>
-      )}
+      </div>
     </div>
   );
 }

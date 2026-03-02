@@ -171,11 +171,11 @@ export default function Show({ member, allUsers, userTypes, ageGroups, faturas, 
                         </TabsList>
                     </div>
 
-                    <TabsContent value="dashboard" className="space-y-2 mt-2 bg-white p-3 rounded-lg">
-                        <DashboardTab user={user} faturas={faturas} />
+                    <TabsContent value="dashboard" className="space-y-2 mt-2 bg-white p-0 rounded-lg">
+                        <DashboardTab user={user as any} faturas={faturas} />
                     </TabsContent>
 
-                    <TabsContent value="personal" className="space-y-2 mt-2 bg-white p-3 rounded-lg">
+                    <TabsContent value="personal" className="space-y-2 mt-2 bg-white p-0 rounded-lg">
                         <PersonalTab 
                             user={user}
                             onChange={handleChange}
@@ -186,7 +186,7 @@ export default function Show({ member, allUsers, userTypes, ageGroups, faturas, 
                         />
                     </TabsContent>
 
-                    <TabsContent value="financial" className="space-y-2 mt-2 bg-white p-3 rounded-lg">
+                    <TabsContent value="financial" className="space-y-2 mt-2 bg-white p-0 rounded-lg">
                         <FinancialTab 
                             user={user}
                             onChange={handleChange}
@@ -199,16 +199,16 @@ export default function Show({ member, allUsers, userTypes, ageGroups, faturas, 
                     </TabsContent>
 
                     {showSportsTab && (
-                        <TabsContent value="sports" className="space-y-2 mt-2 bg-white p-3 rounded-lg">
+                        <TabsContent value="sports" className="space-y-2 mt-2 bg-white p-0 rounded-lg">
                             <SportsTab 
-                                user={user}
+                                user={user as any}
                                 onChange={handleChange}
                                 isAdmin={true}
                             />
                         </TabsContent>
                     )}
 
-                    <TabsContent value="configuration" className="space-y-2 mt-2 bg-white p-3 rounded-lg">
+                    <TabsContent value="configuration" className="space-y-2 mt-2 bg-white p-0 rounded-lg">
                         <ConfigurationTab 
                             user={user}
                             onChange={handleChange}

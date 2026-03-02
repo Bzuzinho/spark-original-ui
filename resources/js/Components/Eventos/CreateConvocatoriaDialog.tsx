@@ -526,7 +526,7 @@ export function CreateConvocatoriaDialog({
                 <div className="space-y-2">
                   <Label>Evento *</Label>
                   <Select value={selectedEventId} onValueChange={setSelectedEventId}>
-                    <SelectTrigger>
+                    <SelectTrigger className="bg-white">
                       <SelectValue placeholder="Selecionar evento agendado..." />
                     </SelectTrigger>
                     <SelectContent>
@@ -544,7 +544,7 @@ export function CreateConvocatoriaDialog({
                 <div className="space-y-2">
                   <Label>Filtrar por Escalão</Label>
                   <Select value={selectedEscalao} onValueChange={setSelectedEscalao}>
-                    <SelectTrigger className="w-[220px]">
+                    <SelectTrigger className="w-[220px] bg-white">
                       <SelectValue placeholder="Todos os escalões" />
                     </SelectTrigger>
                     <SelectContent>
@@ -561,7 +561,7 @@ export function CreateConvocatoriaDialog({
                 <div className="space-y-2">
                   <Label htmlFor="centro-custo">Centro de Custos</Label>
                   <Select value={centroCustoId} onValueChange={setCentroCustoId}>
-                    <SelectTrigger id="centro-custo">
+                    <SelectTrigger id="centro-custo" className="bg-white">
                       <SelectValue placeholder="Selecionar centro de custos (opcional)" />
                     </SelectTrigger>
                     <SelectContent>
@@ -677,15 +677,15 @@ export function CreateConvocatoriaDialog({
 
                 <div className="space-y-2">
                   <Label>Hora de Encontro</Label>
-                  <Input type="time" value={horaEncontro} onChange={(e) => setHoraEncontro(e.target.value)} />
+                  <Input type="time" value={horaEncontro} onChange={(e) => setHoraEncontro(e.target.value)} className="bg-white" />
                 </div>
                 <div className="space-y-2">
                   <Label>Local de Encontro</Label>
-                  <Input value={localEncontro} onChange={(e) => setLocalEncontro(e.target.value)} placeholder="Ex: Sede do Clube" />
+                  <Input value={localEncontro} onChange={(e) => setLocalEncontro(e.target.value)} placeholder="Ex: Sede do Clube" className="bg-white" />
                 </div>
                 <div className="space-y-2">
                   <Label>Observações</Label>
-                  <Textarea value={observacoes} onChange={(e) => setObservacoes(e.target.value)} placeholder="Informações adicionais..." rows={2} />
+                  <Textarea value={observacoes} onChange={(e) => setObservacoes(e.target.value)} placeholder="Informações adicionais..." rows={2} className="bg-white" />
                 </div>
               </>
             )}

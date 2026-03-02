@@ -149,7 +149,7 @@ export function EditConvocatoriaDialog({
                 value={horaEncontro}
                 onChange={(e) => setHoraEncontro(e.target.value)}
                 placeholder="HH:mm"
-                className="text-xs"
+                className="text-xs bg-white"
               />
 
               <Label>Local de Encontro</Label>
@@ -157,12 +157,12 @@ export function EditConvocatoriaDialog({
                 value={localEncontro}
                 onChange={(e) => setLocalEncontro(e.target.value)}
                 placeholder="Ex: Sede do Clube"
-                className="text-xs"
+                className="text-xs bg-white"
               />
 
               <Label>Centro de Custos</Label>
               <Select value={centroCustoId} onValueChange={setCentroCustoId}>
-                <SelectTrigger className="text-xs">
+                <SelectTrigger className="text-xs bg-white">
                   <SelectValue placeholder="Selecionar..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -180,7 +180,7 @@ export function EditConvocatoriaDialog({
                 value={observacoes}
                 onChange={(e) => setObservacoes(e.target.value)}
                 placeholder="Notas adicionais..."
-                className="text-xs"
+                className="text-xs bg-white"
                 rows={3}
               />
             </div>

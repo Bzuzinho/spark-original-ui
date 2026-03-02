@@ -34,50 +34,48 @@ export function SportsTab({ user, onChange, isAdmin, onNavigate }: SportsTabProp
   return (
     <div className="space-y-1">
       <Tabs defaultValue="dados" className="space-y-1">
-        <div className="w-full overflow-x-auto -mx-2 px-2 sm:mx-0 sm:px-0 pb-1">
-          <TabsList className="inline-flex w-auto min-w-full sm:min-w-0 h-8 bg-slate-200">
-            <TabsTrigger value="dados" className="whitespace-nowrap text-xs px-3 py-1">
-              Dados Desportivos
-            </TabsTrigger>
-            <TabsTrigger value="convocatorias" className="whitespace-nowrap text-xs px-3 py-1">
-              Convocatórias
-            </TabsTrigger>
-            <TabsTrigger value="presencas" className="whitespace-nowrap text-xs px-3 py-1">
-              Registo Presenças
-            </TabsTrigger>
-            <TabsTrigger value="resultados" className="whitespace-nowrap text-xs px-3 py-1">
-              Resultados
-            </TabsTrigger>
-            <TabsTrigger value="treinos" className="whitespace-nowrap text-xs px-3 py-1">
-              Treinos
-            </TabsTrigger>
-            <TabsTrigger value="planeamento" className="whitespace-nowrap text-xs px-3 py-1">
-              Planeamento
-            </TabsTrigger>
-          </TabsList>
-        </div>
+        <TabsList className="h-8 bg-slate-200">
+          <TabsTrigger value="dados" className="whitespace-nowrap text-xs px-3 py-1">
+            Dados Desportivos
+          </TabsTrigger>
+          <TabsTrigger value="convocatorias" className="whitespace-nowrap text-xs px-3 py-1">
+            Convocatórias
+          </TabsTrigger>
+          <TabsTrigger value="presencas" className="whitespace-nowrap text-xs px-3 py-1">
+            Registo Presenças
+          </TabsTrigger>
+          <TabsTrigger value="resultados" className="whitespace-nowrap text-xs px-3 py-1">
+            Resultados
+          </TabsTrigger>
+          <TabsTrigger value="treinos" className="whitespace-nowrap text-xs px-3 py-1">
+            Treinos
+          </TabsTrigger>
+          <TabsTrigger value="planeamento" className="whitespace-nowrap text-xs px-3 py-1">
+            Planeamento
+          </TabsTrigger>
+        </TabsList>
 
-        <TabsContent value="dados" className="mt-1 bg-white p-2 rounded-lg border border-gray-200">
+        <TabsContent value="dados" className="mt-1 bg-white p-0 rounded-lg border border-white">
           <DadosDesportivosTab user={user} onChange={onChange} isAdmin={isAdmin} />
         </TabsContent>
 
-        <TabsContent value="convocatorias" className="mt-1 bg-white p-2 rounded-lg border border-gray-200">
+        <TabsContent value="convocatorias" className="mt-1 bg-white p-0 rounded-lg border border-white">
           <ConvocatoriasTab user={user} onNavigate={onNavigate} />
         </TabsContent>
 
-        <TabsContent value="presencas" className="mt-1 bg-white p-2 rounded-lg border border-gray-200">
+        <TabsContent value="presencas" className="mt-1 bg-white p-0 rounded-lg border border-white">
           <RegistoPresencasTab user={user} />
         </TabsContent>
 
-        <TabsContent value="resultados" className="mt-1 bg-white p-2 rounded-lg border border-gray-200">
+        <TabsContent value="resultados" className="mt-1 bg-white p-0 rounded-lg border border-white">
           <ResultadosTab user={user} isAdmin={isAdmin} />
         </TabsContent>
 
-        <TabsContent value="treinos" className="mt-1 bg-white p-2 rounded-lg border border-gray-200">
+        <TabsContent value="treinos" className="mt-1 bg-white p-0 rounded-lg border border-white">
           <TreinosTab user={user} />
         </TabsContent>
 
-        <TabsContent value="planeamento" className="mt-1 bg-white p-2 rounded-lg border border-gray-200">
+        <TabsContent value="planeamento" className="mt-1 bg-white p-0 rounded-lg border border-white">
           <PlaneamentoTab user={user} />
         </TabsContent>
       </Tabs>

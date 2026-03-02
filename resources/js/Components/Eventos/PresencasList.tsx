@@ -395,10 +395,10 @@ export function PresencasList({
             placeholder="Pesquisar evento..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="flex-1 min-w-64"
+            className="flex-1 min-w-64 bg-white"
           />
           <Select value={eventFilter} onValueChange={setEventFilter}>
-            <SelectTrigger className="w-48">
+            <SelectTrigger className="w-48 bg-white">
               <SelectValue placeholder="Tipo de Evento" />
             </SelectTrigger>
             <SelectContent>
@@ -516,7 +516,7 @@ export function PresencasList({
                                       handleUpdateAttendance(att.id, value)
                                     }
                                   >
-                                    <SelectTrigger className="w-40">
+                                    <SelectTrigger className="w-40 bg-white">
                                       <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -600,7 +600,7 @@ export function PresencasList({
                 Evento <span className="text-destructive">*</span>
               </Label>
               <Select value={selectedEvento} onValueChange={handleSelectEvent}>
-                <SelectTrigger>
+                <SelectTrigger className="bg-white">
                   <SelectValue placeholder="Selecione o evento" />
                 </SelectTrigger>
                 <SelectContent>

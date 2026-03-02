@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Calendar } from '@/Components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/Components/ui/popover';
 import { Button } from '@/Components/ui/button';
+import { Card } from '@/Components/ui/card';
 import { format } from 'date-fns';
 import { pt } from 'date-fns/locale';
 import { FileUpload } from '@/Components/FileUpload';
@@ -56,23 +57,25 @@ export function DadosDesportivosTab({ user, onChange, isAdmin }: DadosDesportivo
   };
 
   return (
-    <div className="space-y-3">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
-        <div className="flex items-center justify-between p-2 border rounded-lg">
-          <div className="space-y-0">
-            <Label htmlFor="ativo_desportivo" className="text-xs">Ativo</Label>
-            <p className="text-[10px] text-muted-foreground">Atleta ativo</p>
+    <div className="space-y-1">
+      {/* Linha 1: Dados Básicos */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-1">
+        <Card className="p-2">
+          <div className="flex items-center justify-between">
+            <div>
+              <Label htmlFor="ativo_desportivo" className="text-xs">Ativo</Label>
+              <p className="text-[10px] text-muted-foreground">Atleta ativo</p>
+            </div>
+            <Switch
+              id="ativo_desportivo"
+              checked={user.ativo_desportivo}
+              onCheckedChange={(checked) => onChange('ativo_desportivo', checked)}
+              disabled={!isAdmin}
+            />
           </div>
-          <Switch
-            id="ativo_desportivo"
-            checked={user.ativo_desportivo}
-            onCheckedChange={(checked) => onChange('ativo_desportivo', checked)}
-            disabled={!isAdmin}
-            className="scale-75"
-          />
-        </div>
+        </Card>
 
-        <div className="space-y-1">
+        <Card className="p-2">
           <Label htmlFor="num_federacao" className="text-xs">Nº de Federação</Label>
           <Input
             id="num_federacao"
@@ -80,11 +83,11 @@ export function DadosDesportivosTab({ user, onChange, isAdmin }: DadosDesportivo
             onChange={(e) => onChange('num_federacao', e.target.value)}
             disabled={!isAdmin}
             placeholder="Número"
-            className="h-8 text-xs"
+            className="h-7 text-xs bg-white mt-1"
           />
-        </div>
+        </Card>
 
-        <div className="space-y-1">
+        <Card className="p-2">
           <Label htmlFor="numero_pmb" className="text-xs">Número PMB</Label>
           <Input
             id="numero_pmb"
@@ -92,11 +95,11 @@ export function DadosDesportivosTab({ user, onChange, isAdmin }: DadosDesportivo
             onChange={(e) => onChange('numero_pmb', e.target.value)}
             disabled={!isAdmin}
             placeholder="Número"
-            className="h-8 text-xs"
+            className="h-7 text-xs bg-white mt-1"
           />
-        </div>
+        </Card>
 
-        <div className="space-y-1">
+        <Card className="p-2">
           <Label htmlFor="escalao" className="text-xs">Escalão</Label>
           <Select
             value={selectedEscalao}
@@ -106,7 +109,7 @@ export function DadosDesportivosTab({ user, onChange, isAdmin }: DadosDesportivo
             }}
             disabled={!isAdmin || isLoading || ageGroups.length === 0}
           >
-            <SelectTrigger id="escalao" className="h-8 text-xs">
+            <SelectTrigger id="escalao" className="h-7 text-xs bg-white mt-1">
               <SelectValue placeholder={isLoading ? "A carregar..." : "Selecionar"} />
             </SelectTrigger>
             <SelectContent>
@@ -125,15 +128,16 @@ export function DadosDesportivosTab({ user, onChange, isAdmin }: DadosDesportivo
               )}
             </SelectContent>
           </Select>
-        </div>
+        </Card>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-        <div className="space-y-1">
+      {/* Linha 2: Documentação */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-1">
+        <Card className="p-2">
           <Label htmlFor="cartao_federacao" className="text-xs">Cartão Federação</Label>
           {user.cartao_federacao && (
-            <div 
-              className="w-full h-16 border-2 border-border rounded-lg overflow-hidden cursor-pointer hover:border-primary transition-colors mb-1"
+            <div
+              className="w-full h-16 border-2 border-border rounded-lg overflow-hidden cursor-pointer hover:border-primary transition-colors my-1"
               onClick={() => setShowCardPreview(true)}
             >
               <img src={user.cartao_federacao} alt="Cartão" className="w-full h-full object-contain" />
@@ -147,13 +151,13 @@ export function DadosDesportivosTab({ user, onChange, isAdmin }: DadosDesportivo
             placeholder="Carregar imagem"
             maxSizeMB={5}
           />
-        </div>
+        </Card>
 
-        <div className="space-y-1">
+        <Card className="p-2">
           <Label htmlFor="data_inscricao" className="text-xs">Data de Inscrição</Label>
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" className="w-full justify-start text-left font-normal h-8 text-xs" disabled={!isAdmin}>
+              <Button variant="outline" className="w-full justify-start text-left font-normal h-7 text-xs bg-white mt-1" disabled={!isAdmin}>
                 {user.data_inscricao ? format(new Date(user.data_inscricao), 'PPP', { locale: pt }) : 'Selecionar data'}
               </Button>
             </PopoverTrigger>
@@ -167,9 +171,9 @@ export function DadosDesportivosTab({ user, onChange, isAdmin }: DadosDesportivo
               />
             </PopoverContent>
           </Popover>
-        </div>
+        </Card>
 
-        <div className="space-y-1">
+        <Card className="p-2">
           <Label htmlFor="inscricao" className="text-xs">Inscrição</Label>
           <FileUpload
             value={user.inscricao || ''}
@@ -178,17 +182,16 @@ export function DadosDesportivosTab({ user, onChange, isAdmin }: DadosDesportivo
             accept=".pdf,.doc,.docx,image/*"
             placeholder="Carregar ficheiro"
           />
-        </div>
+        </Card>
       </div>
 
-      <div className="border-t pt-3">
-        <h3 className="text-xs font-semibold mb-2">Atestado Médico</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-          <div className="space-y-1">
-            <Label htmlFor="data_atestado_medico" className="text-xs">Data Atestado Médico</Label>
+      {/* Linha 3: Atestado Médico */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-1">
+        <Card className="p-2">
+          <Label htmlFor="data_atestado_medico" className="text-xs">Data Atestado Médico</Label>
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" className="w-full justify-start text-left font-normal h-8 text-xs" disabled={!isAdmin}>
+                <Button variant="outline" className="w-full justify-start text-left font-normal h-7 text-xs bg-white mt-1" disabled={!isAdmin}>
                   {user.data_atestado_medico ? format(new Date(user.data_atestado_medico), 'PPP', { locale: pt }) : 'Selecionar data'}
                 </Button>
               </PopoverTrigger>
@@ -202,10 +205,10 @@ export function DadosDesportivosTab({ user, onChange, isAdmin }: DadosDesportivo
                 />
               </PopoverContent>
             </Popover>
-          </div>
+        </Card>
 
-          <div className="space-y-1">
-            <Label htmlFor="arquivo_atestado_medico" className="text-xs">Arquivo Atestado Médico</Label>
+        <Card className="p-2">
+          <Label htmlFor="arquivo_atestado_medico" className="text-xs">Arquivo Atestado Médico</Label>
             <FileUpload
               value={user.arquivo_atestado_medico || []}
               onChange={(value) => onChange('arquivo_atestado_medico', value)}
@@ -214,21 +217,20 @@ export function DadosDesportivosTab({ user, onChange, isAdmin }: DadosDesportivo
               multiple={true}
               placeholder="Carregar ficheiros"
             />
-          </div>
+        </Card>
 
-          <div className="space-y-1">
-            <Label htmlFor="informacoes_medicas" className="text-xs">Informações Médicas</Label>
+        <Card className="p-2">
+          <Label htmlFor="informacoes_medicas" className="text-xs">Informações Médicas</Label>
             <Textarea
               id="informacoes_medicas"
               value={user.informacoes_medicas || ''}
               onChange={(e) => onChange('informacoes_medicas', e.target.value)}
               disabled={!isAdmin}
               placeholder="Alergias, condições, medicação..."
-              rows={2}
-              className="text-xs"
+              rows={3}
+              className="text-xs bg-white mt-1"
             />
-          </div>
-        </div>
+        </Card>
       </div>
 
       <Dialog open={showCardPreview} onOpenChange={setShowCardPreview}>

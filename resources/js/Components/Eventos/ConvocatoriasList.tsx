@@ -365,11 +365,11 @@ export function ConvocatoriasList({
               placeholder="Pesquisar convocatórias..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="h-7 pl-8 text-xs"
+              className="h-7 pl-8 text-xs bg-white"
             />
           </div>
           <Select value={eventFilter} onValueChange={setEventFilter}>
-            <SelectTrigger className="h-7 w-full md:w-[180px] text-xs">
+            <SelectTrigger className="h-7 w-full md:w-[180px] text-xs bg-white">
               <SelectValue placeholder="Evento" />
             </SelectTrigger>
             <SelectContent>
