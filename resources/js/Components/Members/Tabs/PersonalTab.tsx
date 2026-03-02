@@ -211,14 +211,15 @@ export function PersonalTab({ user, allUsers, onChange, isAdmin, userTypes = [],
         </div>
       </Card>
 
-      {/* Informações Pessoais */}
-      <Card className="p-2">
-        <h3 className="text-xs font-semibold mb-1 flex items-center gap-1">
-          <UserCircle size={14} />
-          Informações Pessoais
-        </h3>
-        <div className="space-y-1">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-1">
+      {/* Informações Pessoais, Localização e Contacto - Layout Horizontal */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-1">
+        {/* Informações Pessoais */}
+        <Card className="p-2">
+          <h3 className="text-xs font-semibold mb-1 flex items-center gap-1">
+            <UserCircle size={14} />
+            Informações Pessoais
+          </h3>
+          <div className="space-y-1">
             <div>
               <Label htmlFor="data_nascimento" className="text-xs">Data Nascimento {userAge !== null && `(${userAge}a)`}</Label>
               <Input
@@ -242,9 +243,7 @@ export function PersonalTab({ user, allUsers, onChange, isAdmin, userTypes = [],
                 className="h-7 text-xs"
               />
             </div>
-          </div>
 
-          <div className="grid grid-cols-2 gap-1">
             <div>
               <Label htmlFor="estado_civil" className="text-xs">Est. Civil</Label>
               <Select
@@ -263,6 +262,7 @@ export function PersonalTab({ user, allUsers, onChange, isAdmin, userTypes = [],
                 </SelectContent>
               </Select>
             </div>
+
             <div>
               <Label className="text-xs">Sexo</Label>
               <RadioGroup
@@ -280,50 +280,48 @@ export function PersonalTab({ user, allUsers, onChange, isAdmin, userTypes = [],
                 </div>
               </RadioGroup>
             </div>
-          </div>
 
-          <div>
-            <Label className="text-xs">Estado</Label>
-            <RadioGroup
-              value={user.estado}
-              onValueChange={(value) => onChange('estado', value)}
-              className="flex gap-2 mt-1"
-            >
-              <div className="flex items-center space-x-1">
-                <RadioGroupItem value="ativo" id="ativo" className="h-3 w-3" />
-                <Label htmlFor="ativo" className="text-xs">Ativo</Label>
-              </div>
-              <div className="flex items-center space-x-1">
-                <RadioGroupItem value="inativo" id="inativo" className="h-3 w-3" />
-                <Label htmlFor="inativo" className="text-xs">Inativo</Label>
-              </div>
-              <div className="flex items-center space-x-1">
-                <RadioGroupItem value="suspenso" id="suspenso" className="h-3 w-3" />
-                <Label htmlFor="suspenso" className="text-xs">Suspenso</Label>
-              </div>
-            </RadioGroup>
+            <div>
+              <Label className="text-xs">Estado</Label>
+              <RadioGroup
+                value={user.estado}
+                onValueChange={(value) => onChange('estado', value)}
+                className="flex gap-2 mt-1"
+              >
+                <div className="flex items-center space-x-1">
+                  <RadioGroupItem value="ativo" id="ativo" className="h-3 w-3" />
+                  <Label htmlFor="ativo" className="text-xs">Ativo</Label>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <RadioGroupItem value="inativo" id="inativo" className="h-3 w-3" />
+                  <Label htmlFor="inativo" className="text-xs">Inativo</Label>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <RadioGroupItem value="suspenso" id="suspenso" className="h-3 w-3" />
+                  <Label htmlFor="suspenso" className="text-xs">Suspenso</Label>
+                </div>
+              </RadioGroup>
+            </div>
           </div>
-        </div>
-      </Card>
+        </Card>
 
-      {/* Localização */}
-      <Card className="p-2">
-        <h3 className="text-xs font-semibold mb-1 flex items-center gap-1">
-          <MapPin size={14} />
-          Localização
-        </h3>
-        <div className="space-y-1">
-          <div>
-            <Label htmlFor="morada" className="text-xs">Morada</Label>
-            <Input
-              id="morada"
-              value={user.morada || ''}
-              onChange={(e) => onChange('morada', e.target.value)}
-              disabled={!isAdmin}
-              className="h-7 text-xs"
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-1">
+        {/* Localização */}
+        <Card className="p-2">
+          <h3 className="text-xs font-semibold mb-1 flex items-center gap-1">
+            <MapPin size={14} />
+            Localização
+          </h3>
+          <div className="space-y-1">
+            <div>
+              <Label htmlFor="morada" className="text-xs">Morada</Label>
+              <Input
+                id="morada"
+                value={user.morada || ''}
+                onChange={(e) => onChange('morada', e.target.value)}
+                disabled={!isAdmin}
+                className="h-7 text-xs"
+              />
+            </div>
             <div>
               <Label htmlFor="codigo_postal" className="text-xs">Cód. Postal</Label>
               <Input
@@ -345,17 +343,15 @@ export function PersonalTab({ user, allUsers, onChange, isAdmin, userTypes = [],
               />
             </div>
           </div>
-        </div>
-      </Card>
+        </Card>
 
-      {/* Contacto */}
-      <Card className="p-2">
-        <h3 className="text-xs font-semibold mb-1 flex items-center gap-1">
-          <Phone size={14} />
-          Contacto
-        </h3>
-        <div className="space-y-1">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-1">
+        {/* Contacto */}
+        <Card className="p-2">
+          <h3 className="text-xs font-semibold mb-1 flex items-center gap-1">
+            <Phone size={14} />
+            Contacto
+          </h3>
+          <div className="space-y-1">
             <div>
               <Label htmlFor="contacto_telefonico" className="text-xs">Telefone</Label>
               <Input
@@ -377,21 +373,21 @@ export function PersonalTab({ user, allUsers, onChange, isAdmin, userTypes = [],
                 className="h-7 text-xs"
               />
             </div>
+            <div>
+              <Label htmlFor="numero_irmaos" className="text-xs">Nº Irmãos</Label>
+              <Input
+                id="numero_irmaos"
+                type="number"
+                value={user.numero_irmaos || ''}
+                onChange={(e) => onChange('numero_irmaos', parseInt(e.target.value) || 0)}
+                disabled={!isAdmin}
+                min="0"
+                className="h-7 text-xs"
+              />
+            </div>
           </div>
-          <div>
-            <Label htmlFor="numero_irmaos" className="text-xs">Nº Irmãos</Label>
-            <Input
-              id="numero_irmaos"
-              type="number"
-              value={user.numero_irmaos || ''}
-              onChange={(e) => onChange('numero_irmaos', parseInt(e.target.value) || 0)}
-              disabled={!isAdmin}
-              min="0"
-              className="h-7 text-xs"
-            />
-          </div>
-        </div>
-      </Card>
+        </Card>
+      </div>
 
       {/* Profissão e Educação */}
       <Card className="p-2">
