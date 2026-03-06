@@ -15,7 +15,8 @@ export function EventosRelatorios() {
   const [convocatorias] = useKV<EventoConvocatoria[]>('club-convocatorias', []);
   const [presencas] = useKV<EventoPresenca[]>('club-presencas', []);
   const [resultados] = useKV<EventoResultado[]>('club-resultados', []);
-  const [users] = useKV<User[]>('club-users', []);
+  // Disabled: club-users returns 500
+  const [users] = useState<User[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<string>('todos');
   const [selectedAthlete, setSelectedAthlete] = useState<string>('todos');
   const [selectedEpoca, setSelectedEpoca] = useState<string>(new Date().getFullYear().toString());

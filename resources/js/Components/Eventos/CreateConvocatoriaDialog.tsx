@@ -125,9 +125,8 @@ export function CreateConvocatoriaDialog({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiProvas, setApiProvas] = useState<Prova[]>([]);
 
-  const [kvUsers] = useKV<UserItem[]>('club-users', []);
-  const [provas] = useKV<Prova[]>('settings-provas', []);
-  const [kvAgeGroups] = useKV<AgeGroup[]>('settings-age-groups', []);
+  const [kvUsers] = useKV<UserItem[]>('club-convocatorias-atleta', []);
+  const [kvAgeGroups] = useKV<AgeGroup[]>('club-convocatorias-grupo', []);
   const [convocatoriaGroups, setConvocatoriaGroups] = useKV<any[]>('club-convocatorias-grupo', []);
 
   const normalizeProvaLabel = (prova: Prova): string => {
@@ -143,12 +142,12 @@ export function CreateConvocatoriaDialog({
   };
 
   const provaOptions = useMemo(() => {
-    const source = apiProvas.length > 0 ? apiProvas : provas || [];
+    const source = apiProvas.length > 0 ? apiProvas : [];
 
     return source
       .filter((prova) => Boolean(prova?.id))
       .map((prova) => ({ id: prova.id, name: normalizeProvaLabel(prova) }));
-  }, [apiProvas, provas]);
+  }, [apiProvas]);
 
   const ageGroupSource = useMemo(() => {
     return (providedAgeGroups && providedAgeGroups.length > 0 ? providedAgeGroups : kvAgeGroups) || [];
@@ -436,18 +435,25 @@ export function CreateConvocatoriaDialog({
       
       console.log('✅ Grupo CONFIRMADO no BD! Incluindo atletas...');
       
-      // ✅ Os atletas já estão no newGroup.atletas_ids, nenhuma ação separada necessária
-
-      // NOTE: POST para /participantes já não é necessário pois os atletas
-      // são sincronizados via useKV e criados automaticamente no BD
-      // await Promise.allSettled(
-      //   selectedAthletes.map((athleteId) =>
-      //     axios.post(`/eventos/${selectedEventId}/participantes`, {
-      //       user_id: athleteId,
-      //       estado_confirmacao: 'pendente',
-      //     })
-      //   )
-      // );
+      // ✅ Agora criar registos de presença (attendances) com as provas
+      try {
+        await Promise.all(
+          selectedAthletes.map((athleteId) =>
+            axios.post(`/api/eventos/${selectedEventId}/attendances`, {
+              user_id: athleteId,
+              estado: 'pendente',
+              data_presenca: new Date(selectedEvent.data_inicio).toISOString().split('T')[0],
+              provas: athleteProvas[athleteId] || [],
+            }).catch((error) => {
+              console.warn(`Aviso ao criar attendance para ${athleteId}:`, error);
+              return null;
+            })
+          )
+        );
+        console.log('✅ Attendances criados com provas!');
+      } catch (error) {
+        console.warn('Aviso: Houve algum problema ao criar attendances, mas o grupo foi criado', error);
+      }
 
       const athleteMap = new Map(userSource.map((user) => [user.id, user]));
       const newConvocations: Convocation[] = selectedAthletes.map((athleteId) => {

@@ -19,8 +19,6 @@ import { getEscaloesNames } from '@/lib/user-helpers';
 export function PresencasList() {
   const [events] = useKV<Event[]>('club-events', []);
   const [presencas, setPresencas] = useKV<EventoPresenca[]>('club-presencas', []);
-  const [users] = useKV<User[]>('club-users', []);
-  const [ageGroups] = useKV<any[]>('settings-age-groups', []);
   const [searchTerm, setSearchTerm] = useState('');
   const [eventFilter, setEventFilter] = useState<string>('todos');
   const [presenceFilter, setPresenceFilter] = useState<string>('todos');

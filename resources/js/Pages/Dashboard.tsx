@@ -106,6 +106,7 @@ export default function Dashboard({ stats, recentEvents = [], recentActivity = [
 
     return (
         <AuthenticatedLayout
+            fullWidth
             header={
                 <div>
                     <h1 className="text-lg sm:text-xl font-semibold tracking-tight">Dashboard</h1>
@@ -117,7 +118,7 @@ export default function Dashboard({ stats, recentEvents = [], recentActivity = [
 
             <div className="space-y-2 sm:space-y-3">
                 {/* Stats Cards - 5 cards */}
-                <div className="grid gap-2 grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+                <div className="grid gap-2 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
                     {statsConfig.map((stat) => {
                         const Icon = stat.icon;
                         return (

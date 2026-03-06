@@ -25,8 +25,6 @@ interface AgeGroup {
 export function EventosResultados() {
   const [events] = useKV<Event[]>('club-events', []);
   const [resultados, setResultados] = useKV<EventoResultado[]>('club-resultados', []);
-  const [users] = useKV<User[]>('club-users', []);
-  const [ageGroups] = useKV<AgeGroup[]>('settings-age-groups', []);
   const [searchTerm, setSearchTerm] = useState('');
   const [eventFilter, setEventFilter] = useState<string>('todos');
   const [dialogOpen, setDialogOpen] = useState(false);

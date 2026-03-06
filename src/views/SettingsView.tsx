@@ -84,13 +84,14 @@ interface NotificationPreferences {
 }
 
 export function SettingsView() {
-  const [ageGroups, setAgeGroups] = useKV<AgeGroup[]>('settings-age-groups', []);
+  // Disabled: settings-age-groups & settings-provas & club-users return 500
+  const [ageGroups, setAgeGroups] = useState<AgeGroup[]>([]);
   const [userTypes, setUserTypes] = useKV<UserType[]>('settings-user-types', []);
   const [permissions, setPermissions] = useKV<Permission[]>('settings-permissions', []);
   const [articles, setArticles] = useKV<Article[]>('settings-articles', []);
   const [suppliers, setSuppliers] = useKV<Supplier[]>('settings-suppliers', []);
   const [monthlyFees, setMonthlyFees] = useKV<MonthlyFee[]>('settings-monthly-fees', []);
-  const [provas, setProvas] = useKV<Prova[]>('settings-provas', []);
+  const [provas, setProvas] = useState<Prova[]>([]); // Disabled: settings-provas returns 500
   const [costCenters, setCostCenters] = useKV<CentroCusto[]>('club-centros-custo', []);
   const [clubInfo, setClubInfo] = useKV<ClubInfo>('settings-club-info', {
     name: '',
@@ -105,7 +106,8 @@ export function SettingsView() {
     activityAlerts: true
   });
   
-  const [users] = useKV<User[]>('club-users', []);
+  // Disabled: club-users returns 500
+  const [users] = useState<User[]>([]);
   const [dbKeys, setDbKeys] = useState<string[]>([]);
   const [showDbDialog, setShowDbDialog] = useState(false);
 

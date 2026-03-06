@@ -13,6 +13,7 @@ use App\Models\Movement;
 use App\Models\MovementItem;
 use App\Models\Sale;
 use App\Models\Sponsor;
+use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 
@@ -347,13 +348,38 @@ class BackfillFinanceiroIntegracoes extends Command
             return false;
         }
 
-        $emissao = $group->data_criacao ? Carbon::parse($group->data_criacao) : Carbon::now();
-        $vencimento = $this->addBusinessDays($emissao->copy(), 8);
+        $athleteIds = collect($athletes)
+            ->filter(fn ($athleteId) => is_string($athleteId) && $athleteId !== '')
+            ->unique()
+            ->values();
+
+        if ($athleteIds->isEmpty()) {
+            return false;
+        }
+
+        $emissao = $group->created_at
+            ? Carbon::parse($group->created_at)
+            : ($group->data_criacao ? Carbon::parse($group->data_criacao) : Carbon::now());
+        $vencimento = $event->data_inicio
+            ? Carbon::parse($event->data_inicio)
+            : $emissao->copy();
+
+        // Load tipo_config to determine movement type
+        $eventTypeConfig = $event->tipoConfig ?? null;
+        $geraTaxa = $eventTypeConfig ? (bool) $eventTypeConfig->gera_taxa : false;
+        $isProva = strtolower((string) ($event->tipo ?? '')) === 'prova';
+        $movementType = ($geraTaxa || $isProva) ? 'inscricao' : 'outro';
 
         $totalAggregate = 0;
         $athleteCount = 0;
+        $movementItemsData = [];
 
-        foreach ($athletes as $athleteId) {
+        foreach ($athleteIds as $athleteId) {
+            $user = User::find($athleteId);
+            if (!$user) {
+                continue;
+            }
+
             $provaCount = $this->getProvasCount($group->id, $athleteId);
             $estafetaCount = $this->getEstafetasCount($group->id, $athleteId);
             $valor = $this->calcularCustoConvocatoria($group, $event, $provaCount, $estafetaCount);
@@ -361,31 +387,17 @@ class BackfillFinanceiroIntegracoes extends Command
                 continue;
             }
 
-            $movement = Movement::create([
-                'user_id' => $athleteId,
-                'classificacao' => 'receita',
-                'data_emissao' => $emissao->toDateString(),
-                'data_vencimento' => $vencimento->toDateString(),
-                'valor_total' => abs($valor),
-                'estado_pagamento' => 'pendente',
-                'centro_custo_id' => $event->centro_custo_id,
-                'tipo' => 'inscricao',
-                'origem_tipo' => 'evento',
-                'origem_id' => $event->id,
-                'observacoes' => "Convocatoria {$event->titulo}",
-            ]);
-
-            MovementItem::create([
-                'movimento_id' => $movement->id,
-                'descricao' => "Convocatoria - {$event->titulo}",
-                'valor_unitario' => $valor,
+            $valorLinha = abs($valor);
+            $movementItemsData[] = [
+                'descricao' => "{$user->nome_completo} - {$event->titulo}",
+                'valor_unitario' => $valorLinha,
                 'quantidade' => 1,
                 'imposto_percentual' => 0,
-                'total_linha' => $valor,
+                'total_linha' => $valorLinha,
                 'centro_custo_id' => $event->centro_custo_id,
-            ]);
+            ];
 
-            $totalAggregate += $valor;
+            $totalAggregate += $valorLinha;
             $athleteCount += 1;
         }
 
@@ -393,30 +405,28 @@ class BackfillFinanceiroIntegracoes extends Command
             return false;
         }
 
+        // Create movement with DESPESA classification, always negative value
         $aggregateMovement = Movement::create([
             'user_id' => null,
             'nome_manual' => "Convocatoria {$event->titulo}",
-            'classificacao' => 'receita',
+            'classificacao' => 'despesa',
             'data_emissao' => $emissao->toDateString(),
             'data_vencimento' => $vencimento->toDateString(),
-            'valor_total' => abs($totalAggregate),
+            'valor_total' => -abs($totalAggregate),
             'estado_pagamento' => 'pendente',
             'centro_custo_id' => $event->centro_custo_id,
-            'tipo' => 'inscricao',
+            'tipo' => $movementType,
             'origem_tipo' => 'evento',
             'origem_id' => $event->id,
-            'observacoes' => "Convocatoria agregada ({$athleteCount} atletas)",
+            'observacoes' => "Convocatoria ({$athleteCount} atletas)",
         ]);
 
-        MovementItem::create([
-            'movimento_id' => $aggregateMovement->id,
-            'descricao' => "Convocatoria agregada - {$event->titulo}",
-            'valor_unitario' => $totalAggregate,
-            'quantidade' => 1,
-            'imposto_percentual' => 0,
-            'total_linha' => $totalAggregate,
-            'centro_custo_id' => $event->centro_custo_id,
-        ]);
+        foreach ($movementItemsData as $itemData) {
+            MovementItem::create([
+                ...$itemData,
+                'movimento_id' => $aggregateMovement->id,
+            ]);
+        }
 
         $group->update(['movimento_id' => $aggregateMovement->id]);
 

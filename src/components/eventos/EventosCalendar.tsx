@@ -22,7 +22,6 @@ interface AgeGroup {
 
 export function EventosCalendar() {
   const [events, setEvents] = useKV<Event[]>('club-events', []);
-  const [ageGroups] = useKV<AgeGroup[]>('settings-age-groups', []);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [typeFilter, setTypeFilter] = useState<string>('todos');
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);

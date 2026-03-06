@@ -23,8 +23,7 @@ interface PresencasTabProps {
 export function PresencasTab({ onNavigate }: PresencasTabProps) {
   const [treinos] = useKV<Treino[]>('treinos', []);
   const [presencas, setPresencas] = useKV<TreinoAtleta[]>('treino-atletas', []);
-  const [users] = useKV<User[]>('club-users', []);
-  const [escaloes] = useKV<any[]>('settings-age-groups', []);
+  // Disabled: club-users & settings-age-groups return 500
   
   const [searchTerm, setSearchTerm] = useState('');
   const [treinoFilter, setTreinoFilter] = useState<string>('todos');

@@ -6,7 +6,7 @@ import { MegaphoneSimple, ShareNetwork, EnvelopeSimple, ChartLine, Users, TrendU
 
 export function MarketingView() {
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [users] = useKV<any[]>('club-users', []);
+  const [users] = useState<any[]>([]); // Disabled: club-users returns 500
   const [sponsors] = useKV<any[]>('club-sponsors', []);
 
   const [stats, setStats] = useState({

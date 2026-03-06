@@ -41,7 +41,8 @@ export function UserList({ users, onSelectUser, onCreateUser, onDeleteUser, isAd
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importPreview, setImportPreview] = useState<any[]>([]);
   const [availableColumns, setAvailableColumns] = useState<string[]>([]);
-  const [usersState, setUsersState] = useKV<User[]>('club-users', []);
+  // Disabled: club-users returns 500
+  const [usersState, setUsersState] = useState<User[]>([]);
   const [showColumnMapping, setShowColumnMapping] = useState(false);
   const [userTypes] = useKV<Array<{ id: string; name: string; description: string }>>('settings-user-types', []);
   const [columnMapping, setColumnMapping] = useState<{

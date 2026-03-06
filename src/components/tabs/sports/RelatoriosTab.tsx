@@ -20,7 +20,7 @@ import {
 import type { User, TreinoAtleta, ResultadoProva, Fatura, MovimentoConvocatoria, ConvocatoriaAtleta } from '@/lib/types';
 
 export function RelatoriosTab() {
-  const [users] = useKV<User[]>('club-users', []);
+  // Disabled: club-users returns 500
   const [treinosAtleta] = useKV<TreinoAtleta[]>('treino-atletas', []);
   const [resultados] = useKV<ResultadoProva[]>('evento-resultados', []);
   const [faturas] = useKV<Fatura[]>('club-faturas', []);

@@ -10,21 +10,12 @@ import { Checkbox } from '@/Components/ui/checkbox';
 import { Badge } from '@/Components/ui/badge';
 import { ScrollArea } from '@/Components/ui/scroll-area';
 import { Textarea } from '@/Components/ui/textarea';
-import { Separator } from '@/Components/ui/separator';
-import { Users, FilePdf } from '@phosphor-icons/react';
+import { Users } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import { useKV } from '@/hooks/useKV';
 import axios from 'axios';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-
-interface ConvocationGroup {
-  evento_id: string;
-  evento_titulo: string;
-  evento_data: string;
-  evento_tipo: string;
-  convocations: any[];
-}
 
 interface Prova {
   id: string;
@@ -33,6 +24,14 @@ interface Prova {
   distancia?: number;
   unidade?: string;
   modalidade?: string;
+}
+
+interface ConvocationGroup {
+  evento_id: string;
+  evento_titulo: string;
+  evento_data: string;
+  evento_tipo: string;
+  convocations: any[];
 }
 
 interface CostCenter {
@@ -59,25 +58,64 @@ export function EditConvocatoriaDialog({
   costCenters = [],
 }: EditConvocatoriaDialogProps) {
   const { auth } = usePage<any>().props;
-  const currentUserId = auth?.user?.id;
 
   const [step, setStep] = useState(1);
   const [selectedAthletes, setSelectedAthletes] = useState<string[]>([]);
+  const [initialAthletes, setInitialAthletes] = useState<string[]>([]);
   const [horaEncontro, setHoraEncontro] = useState('');
   const [localEncontro, setLocalEncontro] = useState('');
   const [observacoes, setObservacoes] = useState('');
   const [centroCustoId, setCentroCustoId] = useState('none');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [apiProvas, setApiProvas] = useState<Prova[]>([]);
+  const [athleteProvas, setAthleteProvas] = useState<Record<string, string[]>>({});
+  const [initialAthleteProvas, setInitialAthleteProvas] = useState<Record<string, string[]>>({});
 
   const [convocationGroups, setConvocationGroups] = useKV<any[]>('club-convocatorias-grupo', []);
+
+  const normalizeProvaLabel = (prova: Prova): string => {
+    if (prova.name && prova.name.trim() !== '') {
+      return prova.name.trim();
+    }
+
+    if (prova.nome && prova.nome.trim() !== '') {
+      return prova.nome.trim();
+    }
+
+    return 'Prova';
+  };
+
+  const provaOptions = useMemo(() => {
+    const source = apiProvas.length > 0 ? apiProvas : [];
+
+    return source
+      .filter((prova) => Boolean(prova?.id))
+      .map((prova) => ({ id: prova.id, name: normalizeProvaLabel(prova) }));
+  }, [apiProvas]);
+
+  // Carregar provas do evento
+  useEffect(() => {
+    if (!open || !group) {
+      return;
+    }
+
+    const loadProvas = async () => {
+      try {
+        const response = await axios.get('/api/prova-tipos');
+        setApiProvas(Array.isArray(response.data) ? response.data : []);
+      } catch {
+        setApiProvas([]);
+      }
+    };
+
+    loadProvas();
+  }, [open, group]);
 
   // Carregar dados do grupo quando abre
   useEffect(() => {
     if (group && open) {
-      const groupData = convocationGroups.find((g: any) => {
-        // Matching by event and athletes to identify the group
-        return g.evento_id === group.evento_id;
-      });
+      // Primeiro, tenta carregar do KV store
+      const groupData = convocationGroups.find((g: any) => g.evento_id === group.evento_id);
 
       if (groupData) {
         setHoraEncontro(groupData.hora_encontro || '');
@@ -85,9 +123,70 @@ export function EditConvocatoriaDialog({
         setObservacoes(groupData.observacoes || '');
         setCentroCustoId(groupData.centro_custo_id || 'none');
         
-        const athleteIds = group.convocations.map((c: any) => c.user_id);
+        const athleteIds = groupData.atletas_ids || [];
         setSelectedAthletes(athleteIds);
+        setInitialAthletes(athleteIds);
+
+        // Carregar provas atuais de cada atleta da API
+        const loadAthleteProvas = async () => {
+          try {
+            const response = await axios.get(`/api/eventos/${group.evento_id}/attendances`);
+            const attendances = response.data || [];
+            
+            const provMap: Record<string, string[]> = {};
+            attendances.forEach((att: any) => {
+              if (att.user_id && att.provas) {
+                provMap[att.user_id] = att.provas;
+              }
+            });
+            
+            setAthleteProvas(provMap);
+            setInitialAthleteProvas(provMap);
+          } catch (error) {
+            console.warn('Não foi possível carregar as provas dos atletas:', error);
+            setAthleteProvas({});
+            setInitialAthleteProvas({});
+          }
+        };
+
+        loadAthleteProvas();
+      } else {
+        // Fallback: usar convocations do group se KV store ainda não tem dados
+        const athleteIds = group.convocations?.map((c: any) => c.user_id) || [];
+        setSelectedAthletes(athleteIds);
+        setInitialAthletes(athleteIds);
+        setHoraEncontro('');
+        setLocalEncontro('');
+        setObservacoes('');
+        setCentroCustoId('none');
+
+        // Ainda assim tenta carregar as provas de cada atleta
+        const loadAthleteProvas = async () => {
+          try {
+            const response = await axios.get(`/api/eventos/${group.evento_id}/attendances`);
+            const attendances = response.data || [];
+            
+            const provMap: Record<string, string[]> = {};
+            attendances.forEach((att: any) => {
+              if (att.user_id && att.provas) {
+                provMap[att.user_id] = att.provas;
+              }
+            });
+            
+            setAthleteProvas(provMap);
+            setInitialAthleteProvas(provMap);
+          } catch (error) {
+            console.warn('Não foi possível carregar as provas dos atletas:', error);
+            setAthleteProvas({});
+            setInitialAthleteProvas({});
+          }
+        };
+
+        loadAthleteProvas();
       }
+      
+      // Reset step quando abre
+      setStep(1);
     }
   }, [group, open, convocationGroups]);
 
@@ -96,11 +195,16 @@ export function EditConvocatoriaDialog({
 
     setIsSubmitting(true);
     try {
+      // Detectar mudanças nos atletas
+      const removedAthletes = initialAthletes.filter(id => !selectedAthletes.includes(id));
+      const addedAthletes = selectedAthletes.filter(id => !initialAthletes.includes(id));
+
       // Atualizar grupo
       const updatedGroups = convocationGroups.map((g: any) => {
         if (g.evento_id === group.evento_id) {
           return {
             ...g,
+            atletas_ids: selectedAthletes,
             hora_encontro: horaEncontro || null,
             local_encontro: localEncontro || null,
             observacoes: observacoes || null,
@@ -111,6 +215,49 @@ export function EditConvocatoriaDialog({
       });
 
       setConvocationGroups(updatedGroups);
+
+      // Se houve mudanças nos atletas, apagar e recriar registos de presença
+      if (removedAthletes.length > 0 || addedAthletes.length > 0) {
+        try {
+          // Apagar registos de presença dos atletas removidos
+          if (removedAthletes.length > 0) {
+            await Promise.all(
+              removedAthletes.map(athleteId =>
+                axios.delete(`/api/eventos/${group.evento_id}/attendances/user/${athleteId}`).catch(() => null)
+              )
+            );
+          }
+
+          // Criar registos de presença para os atletas adicionados
+          if (addedAthletes.length > 0) {
+            await Promise.all(
+              addedAthletes.map(athleteId =>
+                axios.post(`/api/eventos/${group.evento_id}/attendances`, {
+                  user_id: athleteId,
+                  estado: 'pendente',
+                  data_presenca: new Date(group.evento_data).toISOString().split('T')[0],
+                  provas: athleteProvas[athleteId] || [],
+                }).catch(() => null)
+              )
+            );
+          }
+        } catch (error) {
+          console.error('Erro ao sincronizar presencas:', error);
+        }
+      }
+
+      // Atualizar as provas de todos os atletas selecionados
+      try {
+        await Promise.all(
+          selectedAthletes.map(athleteId =>
+            axios.patch(`/api/eventos/${group.evento_id}/attendances/user/${athleteId}`, {
+              provas: athleteProvas[athleteId] || [],
+            }).catch(() => null)
+          )
+        );
+      } catch (error) {
+        console.error('Erro ao atualizar provas:', error);
+      }
 
       toast.success('Convocatória atualizada com sucesso!');
       onOpenChange(false);
@@ -123,28 +270,174 @@ export function EditConvocatoriaDialog({
     }
   };
 
-  if (!group) return null;
-
-  const selectedEvent = events.find((e) => e.id === group.evento_id);
+  const selectedEvent = events.find((e) => e.id === group?.evento_id);
   const eventCost = selectedEvent?.taxa_inscricao || 0;
   const totalCost = selectedAthletes.length * eventCost;
+
+  // Atletas disponíveis para convocatória
+  const availableAthletes = useMemo(() => {
+    return (users || []).filter((u: any) => {
+      const isActive = u.estado === 'ativo' || u.status === 'ativo';
+      const isAthlete = (u.tipo_membro || []).includes('atleta') || (u.tipo_membro || []).includes('Atleta');
+      return isActive && isAthlete;
+    });
+  }, [users]);
+
+  const toggleAthlete = (athleteId: string) => {
+    setSelectedAthletes(prev =>
+      prev.includes(athleteId)
+        ? prev.filter(id => id !== athleteId)
+        : [...prev, athleteId]
+    );
+  };
+
+  const handleSelectAll = () => {
+    if (selectedAthletes.length === availableAthletes.length) {
+      setSelectedAthletes([]);
+    } else {
+      setSelectedAthletes(availableAthletes.map(a => a.id));
+    }
+  };
+
+  const toggleProva = (athleteId: string, provaId: string) => {
+    setAthleteProvas(prev => {
+      const current = prev[athleteId] || [];
+      return {
+        ...prev,
+        [athleteId]: current.includes(provaId)
+          ? current.filter(id => id !== provaId)
+          : [...current, provaId]
+      };
+    });
+  };
+
+  const removedCount = initialAthletes.filter(id => !selectedAthletes.includes(id)).length;
+  const addedCount = selectedAthletes.filter(id => !initialAthletes.includes(id)).length;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Editar Convocatória - Passo {step} de 3</DialogTitle>
-          <DialogDescription>
-            {group.evento_titulo} - {format(new Date(group.evento_data), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
-          </DialogDescription>
-        </DialogHeader>
+        {group ? (
+          <>
+            <DialogHeader>
+              <DialogTitle>Editar Convocatória - Passo {step} de 5</DialogTitle>
+              <DialogDescription>
+                {group.evento_titulo || 'Evento sem nome'} - {group.evento_data ? format(new Date(group.evento_data), "dd 'de' MMMM 'de' yyyy", { locale: ptBR }) : 'Data não disponível'}
+              </DialogDescription>
+            </DialogHeader>
 
-        <div className="space-y-4">
-          {/* Passo 1: Informações Logísticas */}
+            <div className="space-y-4">
+          {/* Passo 1: Gerenciar Atletas */}
           {step === 1 && (
             <div className="space-y-4">
-              <Label>Hora de Encontro</Label>
+              <div className="flex items-center justify-between">
+                <Label className="font-semibold">Atletas Convocados ({selectedAthletes.length})</Label>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSelectAll}
+                  className="h-7 text-xs"
+                >
+                  {selectedAthletes.length === availableAthletes.length ? 'Desselecionar Todos' : 'Selecionar Todos'}
+                </Button>
+              </div>
+
+              <ScrollArea className="h-96 border rounded-lg p-3">
+                <div className="space-y-2">
+                  {availableAthletes.length === 0 ? (
+                    <p className="text-xs text-muted-foreground text-center py-4">Nenhum atleta disponível</p>
+                  ) : (
+                    availableAthletes.map((athlete) => (
+                      <div
+                        key={athlete.id}
+                        className="flex items-center gap-2 p-2 hover:bg-slate-50 rounded cursor-pointer"
+                        onClick={() => toggleAthlete(athlete.id)}
+                      >
+                        <Checkbox
+                          checked={selectedAthletes.includes(athlete.id)}
+                          onCheckedChange={() => toggleAthlete(athlete.id)}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">
+                            {athlete.nome_completo || athlete.name}
+                          </p>
+                          {athlete.numero_socio && (
+                            <p className="text-xs text-muted-foreground">Nº {athlete.numero_socio}</p>
+                          )}
+                        </div>
+                        {initialAthletes.includes(athlete.id) && (
+                          <Badge variant="outline" className="text-[10px]">Atual</Badge>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </ScrollArea>
+
+              {(removedCount > 0 || addedCount > 0) && (
+                <Card className="p-3 bg-blue-50 border-blue-200">
+                  <p className="text-xs text-blue-900">
+                    <strong>Resumo de mudanças:</strong>{' '}
+                    {addedCount > 0 && `${addedCount} atleta(s) será(ão) adicionado(s). `}
+                    {removedCount > 0 && `${removedCount} atleta(s) será(ão) removido(s).`}
+                  </p>
+                </Card>
+              )}
+            </div>
+          )}
+
+          {/* Passo 2: Editar Provas */}
+          {step === 2 && (
+            <div className="space-y-4">
+              <Card className="p-3">
+                <p className="text-base font-semibold flex items-center gap-2">
+                  <Users size={16} />
+                  {selectedAthletes.length} atletas selecionados
+                </p>
+                <p className="text-sm text-muted-foreground">Selecione as provas que cada atleta irá realizar</p>
+              </Card>
+
+              <ScrollArea className="h-96 border rounded-lg p-3">
+                <div className="space-y-3">
+                  {selectedAthletes.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-4">Nenhum atleta selecionado</p>
+                  ) : (
+                    selectedAthletes.map((athleteId) => {
+                      const athlete = users.find((u: any) => u.id === athleteId);
+                      if (!athlete) return null;
+
+                      return (
+                        <Card key={athleteId} className="p-3 bg-slate-50">
+                          <p className="font-semibold text-sm mb-2">{athlete.nome_completo || athlete.name}</p>
+                          <div className="space-y-2">
+                            {provaOptions.map((prova) => (
+                              <label key={prova.id} className="flex items-center gap-2 cursor-pointer">
+                                <Checkbox
+                                  checked={(athleteProvas[athleteId] || []).includes(prova.id)}
+                                  onCheckedChange={() => toggleProva(athleteId, prova.id)}
+                                />
+                                <span className="text-sm">{prova.name}</span>
+                              </label>
+                            ))}
+                            {provaOptions.length === 0 && (
+                              <p className="text-xs text-muted-foreground">Sem provas configuradas.</p>
+                            )}
+                          </div>
+                        </Card>
+                      );
+                    })
+                  )}
+                </div>
+              </ScrollArea>
+            </div>
+          )}
+
+          {/* Passo 3: Informações Logísticas */}
+          {step === 3 && (
+            <div className="space-y-4">
+              <Label htmlFor="hora_encontro">Hora de Encontro</Label>
               <Input
+                id="hora_encontro"
                 type="time"
                 value={horaEncontro}
                 onChange={(e) => setHoraEncontro(e.target.value)}
@@ -152,17 +445,18 @@ export function EditConvocatoriaDialog({
                 className="text-xs bg-white"
               />
 
-              <Label>Local de Encontro</Label>
+              <Label htmlFor="local_encontro">Local de Encontro</Label>
               <Input
+                id="local_encontro"
                 value={localEncontro}
                 onChange={(e) => setLocalEncontro(e.target.value)}
                 placeholder="Ex: Sede do Clube"
                 className="text-xs bg-white"
               />
 
-              <Label>Centro de Custos</Label>
+              <Label htmlFor="centro_custo_id">Centro de Custos</Label>
               <Select value={centroCustoId} onValueChange={setCentroCustoId}>
-                <SelectTrigger className="text-xs bg-white">
+                <SelectTrigger id="centro_custo_id" className="text-xs bg-white">
                   <SelectValue placeholder="Selecionar..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -175,8 +469,9 @@ export function EditConvocatoriaDialog({
                 </SelectContent>
               </Select>
 
-              <Label>Observações</Label>
+              <Label htmlFor="observacoes">Observações</Label>
               <Textarea
+                id="observacoes"
                 value={observacoes}
                 onChange={(e) => setObservacoes(e.target.value)}
                 placeholder="Notas adicionais..."
@@ -186,8 +481,8 @@ export function EditConvocatoriaDialog({
             </div>
           )}
 
-          {/* Passo 2: Resumo da Convocatória */}
-          {step === 2 && (
+          {/* Passo 4: Resumo */}
+          {step === 4 && (
             <div className="space-y-4">
               <Card className="p-3 bg-slate-50">
                 <div className="grid grid-cols-2 gap-4 text-sm">
@@ -221,64 +516,41 @@ export function EditConvocatoriaDialog({
                   )}
                 </div>
               </Card>
-
-              <div className="border rounded-lg overflow-hidden">
-                <div className="bg-slate-50 p-3 font-semibold text-sm">Atletas Convocados</div>
-                <ScrollArea className="h-64">
-                  <div className="space-y-2 p-3">
-                    {group.convocations.map((conv) => (
-                      <div key={conv.id} className="flex items-center justify-between p-2 border rounded text-sm">
-                        <span>{conv.user?.nome_completo || 'N/A'}</span>
-                        <Badge variant={conv.estado_confirmacao === 'confirmado' ? 'default' : 'secondary'}>
-                          {conv.estado_confirmacao}
-                        </Badge>
-                      </div>
-                    ))}
-                  </div>
-                </ScrollArea>
-              </div>
             </div>
           )}
 
-          {/* Passo 3: Confirmação */}
-          {step === 3 && (
+          {/* Passo 5: Confirmação */}
+          {step === 5 && (
             <div className="space-y-4">
               <Card className="p-4 bg-blue-50 border-blue-200">
                 <h3 className="font-semibold text-sm mb-3">Resumo das Alterações</h3>
                 <div className="space-y-2 text-sm">
-                  <div>
-                    <span className="text-muted-foreground">Hora de Encontro:</span>
-                    <p className="font-semibold">{horaEncontro || '---'}</p>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Local de Encontro:</span>
-                    <p className="font-semibold">{localEncontro || '---'}</p>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Centro de Custos:</span>
-                    <p className="font-semibold">
-                      {centroCustoId === 'none'
-                        ? 'Sem Centro de Custos'
-                        : costCenters.find((cc) => cc.id === centroCustoId)?.nome || '---'}
-                    </p>
-                  </div>
-                  {observacoes && (
-                    <div>
-                      <span className="text-muted-foreground">Observações:</span>
-                      <p className="font-semibold">{observacoes}</p>
+                  {addedCount > 0 && (
+                    <div className="text-green-700">
+                      ✓ {addedCount} atleta(s) será(ão) adicionado(s)
+                    </div>
+                  )}
+                  {removedCount > 0 && (
+                    <div className="text-orange-700">
+                      ⚠ {removedCount} atleta(s) será(ão) removido(s) (registos de presença serão apagados)
+                    </div>
+                  )}
+                  {addedCount === 0 && removedCount === 0 && (
+                    <div className="text-blue-700">
+                      Nenhuma mudança nos atletas
                     </div>
                   )}
                 </div>
               </Card>
 
               <p className="text-sm text-muted-foreground">
-                Clique em "Guardar" para confirmar as alterações à convocatória.
+                Clique em "Guardar Alterações" para confirmar todas as mudanças à convocatória.
               </p>
             </div>
           )}
-        </div>
+            </div>
 
-        <DialogFooter className="flex gap-2 justify-between">
+            <DialogFooter className="flex gap-2 justify-between">
           <div className="flex gap-2">
             {step > 1 && (
               <Button variant="outline" onClick={() => setStep(step - 1)} disabled={isSubmitting}>
@@ -288,13 +560,13 @@ export function EditConvocatoriaDialog({
           </div>
 
           <div className="flex gap-2">
-            {step < 3 && (
-              <Button onClick={() => setStep(step + 1)} disabled={isSubmitting}>
+            {step < 5 && (
+              <Button onClick={() => setStep(step + 1)} disabled={isSubmitting || (step === 1 && selectedAthletes.length === 0)}>
                 Próximo
               </Button>
             )}
 
-            {step === 3 && (
+            {step === 5 && (
               <Button onClick={handleSave} disabled={isSubmitting} className="bg-blue-600 hover:bg-blue-700">
                 {isSubmitting ? '⏳ Guardando...' : '✓ Guardar Alterações'}
               </Button>
@@ -305,6 +577,10 @@ export function EditConvocatoriaDialog({
             </Button>
           </div>
         </DialogFooter>
+          </>        ) : (
+          <div className="flex items-center justify-center py-8">
+            <p className="text-muted-foreground">A carregar dados da convocatória...</p>
+          </div>        )}
       </DialogContent>
     </Dialog>
   );

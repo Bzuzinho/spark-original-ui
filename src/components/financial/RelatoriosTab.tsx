@@ -20,16 +20,14 @@ export function RelatoriosTab() {
   const [faturas] = useKV<Fatura[]>('club-faturas', []);
   const [lancamentos] = useKV<LancamentoFinanceiro[]>('club-lancamentos', []);
   const [centrosCusto] = useKV<CentroCusto[]>('club-centros-custo', []);
-  const [users] = useKV<User[]>('club-users', []);
-  const [ageGroups] = useKV<AgeGroup[]>('settings-age-groups', []);
 
   const [tipoRelatorio, setTipoRelatorio] = useState<TipoRelatorio>('escalao');
   const [escalaoFilter, setEscalaoFilter] = useState<string>('all');
   const [centroCustoFilter, setCentroCustoFilter] = useState<string>('all');
 
   const getEscalaoName = (escalaoId: string) => {
-    const ageGroup = (ageGroups || []).find(ag => ag.id === escalaoId);
-    return ageGroup?.name || escalaoId;
+    // Age group lookup disabled: settings-age-groups returns 500
+    return escalaoId;
   };
 
   const escaloes = useMemo(() => {
@@ -74,7 +72,7 @@ export function RelatoriosTab() {
     }
 
     return data.sort((a, b) => b.receitas - a.receitas);
-  }, [escaloes, users, lancamentos, faturas, escalaoFilter, ageGroups]);
+  }, [escaloes, users, lancamentos, faturas, escalaoFilter]);
 
   const relatorioCentroCusto = useMemo(() => {
     const data = (centrosCusto || []).filter(cc => cc.ativo).map(cc => {
@@ -134,7 +132,7 @@ export function RelatoriosTab() {
       });
 
     return data.sort((a, b) => b.pesoFinanceiro - a.pesoFinanceiro);
-  }, [users, faturas, lancamentos, ageGroups]);
+  }, [users, faturas, lancamentos]);
 
   const chartData = useMemo(() => {
     if (tipoRelatorio === 'escalao') {

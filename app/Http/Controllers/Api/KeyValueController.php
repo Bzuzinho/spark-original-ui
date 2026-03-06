@@ -46,7 +46,7 @@ class KeyValueController extends Controller
     public function update(Request $request, string $key): JsonResponse
     {
         $validated = $request->validate([
-            'value' => 'required',
+            'value' => 'present',
             'scope' => 'sometimes|in:global,user',
         ]);
 

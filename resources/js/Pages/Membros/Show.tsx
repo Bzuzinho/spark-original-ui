@@ -111,6 +111,7 @@ export default function Show({ member, allUsers, userTypes, ageGroups, faturas, 
 
     return (
         <AuthenticatedLayout
+            fullWidth
             header={
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex items-center gap-2">

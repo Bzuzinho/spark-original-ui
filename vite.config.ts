@@ -33,6 +33,7 @@ export default defineConfig({
     resolve: {
         alias: {
             '@': '/resources/js',
+            '@github/spark/hooks': '/resources/js/hooks',
         },
     },
 });

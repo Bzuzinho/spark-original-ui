@@ -20,11 +20,13 @@ class EventAttendance extends Model
         'observacoes',
         'registado_por',
         'registado_em',
+        'provas',
     ];
 
     protected $casts = [
         'hora_chegada' => 'datetime',
         'registado_em' => 'datetime',
+        'provas' => 'array',
     ];
 
     public function event(): BelongsTo

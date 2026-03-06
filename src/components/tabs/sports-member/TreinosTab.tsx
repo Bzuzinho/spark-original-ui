@@ -29,7 +29,8 @@ interface EscalaoInfo {
 export function TreinosTab({ user }: TreinosTabProps) {
   const [treinos] = useKV<Treino[]>('treinos', []);
   const [treinosAtleta, setTreinosAtleta] = useKV<TreinoAtleta[]>('treinos-atleta', []);
-  const [escaloes] = useKV<EscalaoInfo[]>('settings-age-groups', []);
+  // Disabled: settings-age-groups returns 500
+  const [escaloes] = useState<EscalaoInfo[]>([]);
   
   const [selectedTreino, setSelectedTreino] = useState<Treino | null>(null);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);

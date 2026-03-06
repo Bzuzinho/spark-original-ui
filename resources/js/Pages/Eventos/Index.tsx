@@ -55,11 +55,19 @@ interface AgeGroup {
   ativo?: boolean;
 }
 
+interface EventType {
+  id: string;
+  nome: string;
+  visibilidade_default?: string;
+  ativo?: boolean;
+}
+
 interface Props {
     eventos: Event[];
     stats: EventStats;
     users: User[];
   costCenters: CostCenter[];
+  eventTypes: EventType[];
   ageGroups: AgeGroup[];
     convocations?: any[];
     attendances?: any[];
@@ -71,6 +79,7 @@ export default function EventosIndex({
   stats,
   users = [],
   costCenters = [],
+  eventTypes = [],
   ageGroups = [],
   convocations = [],
   attendances: initialAttendances = [],
@@ -86,6 +95,7 @@ export default function EventosIndex({
 
   return (
     <AuthenticatedLayout
+      fullWidth
       header={
         <div>
           <h1 className="text-lg sm:text-xl font-semibold tracking-tight">
@@ -99,7 +109,7 @@ export default function EventosIndex({
     >
       <Head title="Gestão de Eventos" />
 
-      <div className="container mx-auto px-2 sm:px-4 py-3 sm:py-4 max-w-7xl space-y-2 sm:space-y-3">
+      <div className="w-full space-y-2 sm:space-y-3">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-3">
           <TabsList className="grid w-full h-9 grid-cols-7 p-1">
             <TabsTrigger
@@ -170,6 +180,7 @@ export default function EventosIndex({
               events={eventos}
               users={users}
               costCenters={costCenters}
+              eventTypes={eventTypes}
               ageGroups={ageGroups}
             />
           </TabsContent>

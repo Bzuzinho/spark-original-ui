@@ -43,6 +43,12 @@ Route::middleware(['auth'])->group(function () {
     Route::get('event-results-stats', [EventResultsController::class, 'stats']);
     Route::get('prova-tipos', [ProvaTiposController::class, 'index']);
 
+    // Nested Event Attendances Routes
+    Route::get('/eventos/{eventId}/attendances', [EventAttendancesController::class, 'getEventAttendances']);
+    Route::post('/eventos/{eventId}/attendances', [EventAttendancesController::class, 'createEventAttendance']);
+    Route::patch('/eventos/{eventId}/attendances/user/{userId}', [EventAttendancesController::class, 'updateUserProvas']);
+    Route::delete('/eventos/{eventId}/attendances/user/{userId}', [EventAttendancesController::class, 'deleteUserAttendance']);
+
     // Settings APIs
     Route::apiResource('user-types', TiposUtilizadorController::class);
     Route::apiResource('age-groups', EscaloesController::class);

@@ -28,7 +28,6 @@ export function ConvocatoriasTab({ user, onNavigate }: ConvocatoriasTabProps) {
   const [convocatoriasAtleta] = useKV<ConvocatoriaAtleta[]>('club-convocatorias-atleta', []);
   const [convocatoriasGrupo] = useKV<ConvocatoriaGrupo[]>('club-convocatorias-grupo', []);
   const [events] = useKV<Event[]>('club-events', []);
-  const [provas] = useKV<Prova[]>('settings-provas', []);
 
   const atletaConvocatorias = useMemo(() => {
     const atletaConvs = (convocatoriasAtleta || []).filter(ca => ca.atleta_id === user.id);
@@ -79,9 +78,8 @@ export function ConvocatoriasTab({ user, onNavigate }: ConvocatoriasTabProps) {
           <TableBody>
             {atletaConvocatorias.map((ca) => {
               const evento = ca.evento!;
-              const provaNames = ca.provas
-                .map(provaId => provas?.find(p => p.id === provaId)?.name)
-                .filter(Boolean);
+              // Provas names lookup disabled: settings-provas returns 500
+              const provaNames: string[] = [];
 
               return (
                 <TableRow 

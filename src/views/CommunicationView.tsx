@@ -66,8 +66,7 @@ interface ComunicacaoAutomatica {
 export function CommunicationView() {
   const [comunicacoes, setComunicacoes] = useKV<Comunicacao[]>('club-comunicacoes', []);
   const [comunicacoesAutomaticas, setComunicacoesAutomaticas] = useKV<ComunicacaoAutomatica[]>('club-comunicacoes-automaticas', []);
-  const [users] = useKV<User[]>('club-users', []);
-  const [escaloes] = useKV<any[]>('settings-age-groups', []);
+  // Disabled problematic hooks: club-users & settings-age-groups return 500
   const [userTypes] = useKV<any[]>('settings-user-types', []);
   const [currentUser] = useKV<User | null>('authenticated-user', null);
 

@@ -6,6 +6,7 @@ use App\Http\Requests\StoreEventRequest;
 use App\Http\Requests\UpdateEventRequest;
 use App\Models\Event;
 use App\Models\EventTypeConfig;
+use App\Models\EventType;
 use App\Models\EventConvocation;
 use App\Models\ConvocationGroup;
 use App\Models\EventAttendance;
@@ -80,6 +81,14 @@ class EventosController extends Controller
             'costCenters' => CostCenter::where('ativo', true)
                 ->orderBy('nome')
                 ->get(['id', 'codigo', 'nome', 'ativo']),
+            'eventTypes' => EventType::where('ativo', true)
+                ->orderBy('nome')
+                ->get([
+                    'id',
+                    'nome',
+                    'visibilidade_default',
+                    'ativo',
+                ]),
             'ageGroups' => $ageGroups,
             'convocations' => ConvocationGroup::all(),
             'attendances' => EventAttendance::with('event', 'user')->get(),

@@ -67,6 +67,7 @@ export default function FinanceiroIndex({
 
   return (
     <AuthenticatedLayout
+      fullWidth
       header={
         <div>
           <h1 className="text-lg sm:text-xl font-semibold tracking-tight">Modulo Financeiro</h1>
@@ -76,7 +77,7 @@ export default function FinanceiroIndex({
     >
       <Head title="Gestao Financeira" />
 
-      <div className="container mx-auto px-2 sm:px-4 py-3 sm:py-4 max-w-7xl">
+      <div className="w-full">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-2 sm:space-y-3">
           <div className="w-full overflow-x-auto -mx-2 px-2 sm:mx-0 sm:px-0">
             <TabsList className="inline-flex w-auto sm:grid sm:w-full sm:grid-cols-5 h-9 sm:h-8 text-xs min-w-full sm:min-w-0">

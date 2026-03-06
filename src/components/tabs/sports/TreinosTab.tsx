@@ -28,7 +28,8 @@ interface TreinosTabProps {
 export function TreinosTab({ onNavigate }: TreinosTabProps) {
   const [treinos, setTreinos] = useKV<Treino[]>('treinos', []);
   const [events, setEvents] = useKV<Event[]>('club-events', []);
-  const [escaloes] = useKV<Array<{ id: string; name: string; minAge: number; maxAge: number }>>('settings-age-groups', []);
+  // Disabled: settings-age-groups returns 500
+  const [escaloes] = useState<Array<{ id: string; name: string; minAge: number; maxAge: number }>>([]);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);

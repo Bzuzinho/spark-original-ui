@@ -19,9 +19,8 @@ type LocalEntrega = 'clube' | 'morada_atleta' | 'outro';
 export function EncomendasTab() {
   const [encomendas, setEncomendas] = useKV<EncomendaArtigo[]>('loja-encomendas', []);
   const [artigos] = useKV<ArtigoLoja[]>('loja-artigos', []);
-  const [users] = useKV<User[]>('club-users', []);
+  // Disabled: club-users & settings-age-groups return 500
   const [centrosCusto] = useKV<CentroCusto[]>('club-centros-custo', []);
-  const [escaloes] = useKV<any[]>('settings-age-groups', []);
   
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingEncomenda, setEditingEncomenda] = useState<EncomendaArtigo | null>(null);

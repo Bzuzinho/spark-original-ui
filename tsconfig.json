@@ -25,6 +25,9 @@
       "@/*": [
         "./src/*",
         "./resources/js/*"
+      ],
+      "@github/spark/hooks": [
+        "./resources/js/hooks"
       ]
     },
   },

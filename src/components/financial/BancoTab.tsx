@@ -20,7 +20,6 @@ export function BancoTab() {
   const [lancamentos, setLancamentos] = useKV<LancamentoFinanceiro[]>('club-lancamentos', []);
   const [faturas] = useKV<Fatura[]>('club-faturas', []);
   const [centrosCusto] = useKV<CentroCusto[]>('club-centros-custo', []);
-  const [users] = useKV<User[]>('club-users', []);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogCatalogOpen, setDialogCatalogOpen] = useState(false);

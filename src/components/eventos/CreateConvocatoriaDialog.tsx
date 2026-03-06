@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useKV } from '@github/spark/hooks';
-import { Event, User, ConvocatoriaGrupo, ConvocatoriaAtleta, Movimento, MovimentoItem, EventoResultado, ResultadoProva, MovimentoConvocatoria, MovimentoConvocatoriaItem } from '@/lib/types';
+import { Event, User, ConvocatoriaGrupo, ConvocatoriaAtleta, Movimento, MovimentoItem, EventoResultado, ResultadoProva, MovimentoConvocatoria, MovimentoConvocatoriaItem, EventoTipoConfig } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -40,22 +40,29 @@ interface CreateConvocatoriaDialogProps {
 
 export function CreateConvocatoriaDialog({ open, onOpenChange, onSuccess, editingConvocatoria }: CreateConvocatoriaDialogProps) {
   const [events] = useKV<Event[]>('club-events', []);
-  const [users] = useKV<User[]>('club-users', []);
-  const [provas] = useKV<Prova[]>('settings-provas', []);
-  const [ageGroups] = useKV<AgeGroup[]>('settings-age-groups', []);
+  const [tiposEvento] = useKV<EventoTipoConfig[]>('club-eventos-tipos', []);
   const [convocatoriasGrupo, setConvocatoriasGrupo] = useKV<ConvocatoriaGrupo[]>('club-convocatorias-grupo', []);
   const [convocatoriasAtleta, setConvocatoriasAtleta] = useKV<ConvocatoriaAtleta[]>('club-convocatorias-atleta', []);
   const [movimentos, setMovimentos] = useKV<Movimento[]>('club-movimentos', []);
-  const [movimentoItems, setMovimentoItems] = useKV<MovimentoItem[]>('club-movimento-items', []);
+  const [movimentoItems, setMovimentoItems] = useKV<MovimentoItem[]>('club-movimento-itens', []);
   const [movimentosConvocatoria, setMovimentosConvocatoria] = useKV<MovimentoConvocatoria[]>('movimentos-convocatoria', []);
   const [resultados, setResultados] = useKV<EventoResultado[]>('club-resultados', []);
   const [resultadosProvas, setResultadosProvas] = useKV<ResultadoProva[]>('club-resultados-provas', []);
   const [currentUser] = useKV<User | null>('authenticated-user', null);
   const [clubInfo] = useKV<any>('settings-club-info', null);
 
+  // Users disabled: club-users returns 500
+  const users: any[] = [];
+  
+  // Provas disabled: settings-provas returns 500
+  const provas: any[] = [];
+  
+  // Age groups disabled: settings-age-groups returns 500
+  const ageGroups: any[] = [];
+
   const getEscalaoName = (escalaoId: string): string => {
-    const escalao = (ageGroups || []).find(ag => ag.id === escalaoId);
-    return escalao?.name || escalaoId;
+    // Age group lookup disabled: settings-age-groups returns 500
+    return escalaoId;
   };
 
   const [step, setStep] = useState(1);
@@ -104,8 +111,16 @@ export function CreateConvocatoriaDialog({ open, onOpenChange, onSuccess, editin
   }, [atletasAtivos, selectedEscalao]);
 
   const selectedEvent = useMemo(() => {
-    return events?.find(e => e.id === selectedEventId);
-  }, [events, selectedEventId]);
+    const event = events?.find(e => e.id === selectedEventId);
+    if (!event) return undefined;
+    
+    // Enrich event with tipoConfig info for gera_taxa detection
+    const tipoConfig = tiposEvento?.find(t => t.nome === event.tipo);
+    return {
+      ...event,
+      tipoConfig: tipoConfig,
+    };
+  }, [events, selectedEventId, tiposEvento]);
 
     const valorInscricaoCalculado = useMemo(() => {
     if (!selectedEvent) return 0;
@@ -263,9 +278,13 @@ export function CreateConvocatoriaDialog({ open, onOpenChange, onSuccess, editin
     setStep(prev => prev - 1);
   };
 
-  const createMovimentosFinanceiros = async (convocatoriaId: string, atletasIds?: string[]): Promise<void> => {
+  const createMovimentosFinanceiros = async (
+    convocatoriaId: string,
+    atletasIds: string[],
+    existingMovimentoId?: string
+  ): Promise<string | undefined> => {
     if (!selectedEvent || !currentUser) {
-      return;
+      return undefined;
     }
 
     const taxaInscricao = selectedEvent.taxa_inscricao || 0;
@@ -273,11 +292,11 @@ export function CreateConvocatoriaDialog({ open, onOpenChange, onSuccess, editin
     const custoSalto = selectedEvent.custo_inscricao_por_salto || 0;
     const custoEstafeta = selectedEvent.custo_inscricao_estafeta || 0;
 
-    const movimentosList: Movimento[] = [];
+    const atletasParaProcessar = Array.from(new Set((atletasIds || []).filter(Boolean)));
     const movimentoItemsList: MovimentoItem[] = [];
     const movimentosConvocatoriaList: MovimentoConvocatoria[] = [];
 
-    const atletasParaProcessar = atletasIds || selectedAtletas;
+    let valorTotalMovimento = 0;
 
     for (const atletaId of atletasParaProcessar) {
       const atleta = users?.find(u => u.id === atletaId);
@@ -290,7 +309,7 @@ export function CreateConvocatoriaDialog({ open, onOpenChange, onSuccess, editin
         const prova = provas?.find(p => p.id === provaId);
         return prova && !prova.name.toLowerCase().includes('estafeta');
       });
-      
+
       const provasEstafetas = provasAtleta.filter(provaId => {
         const prova = provas?.find(p => p.id === provaId);
         return prova && prova.name.toLowerCase().includes('estafeta');
@@ -305,104 +324,73 @@ export function CreateConvocatoriaDialog({ open, onOpenChange, onSuccess, editin
         (custoSalto * numProvasNaoEstafetas) +
         custoEstafetaPorAtleta;
 
-      console.log(`[Movimento Financeiro Atleta ${atletaId}]`, {
-        atleta: atleta?.nome_completo,
-        taxaInscricao,
-        custoProva,
-        custoSalto,
-        numProvasNaoEstafetas,
-        custoEstafeta,
-        numEstafetas,
-        custoEstafetaPorAtleta,
-        custoAtleta
-      });
-
       if (custoAtleta <= 0) continue;
 
-      const movimentoId = crypto.randomUUID();
-      const itemId = crypto.randomUUID();
-
-      const movimento: Movimento = {
-        id: movimentoId,
-        user_id: atletaId,
-        classificacao: 'receita',
-        data_emissao: selectedEvent.data_inicio,
-        data_vencimento: selectedEvent.data_inicio,
-        valor_total: custoAtleta,
-        estado_pagamento: 'pendente',
-        tipo: 'inscricao',
-        observacoes: `Taxa de inscrição - ${selectedEvent.titulo} (${numProvasNaoEstafetas} prova${numProvasNaoEstafetas !== 1 ? 's' : ''}${numEstafetas > 0 ? `, ${numEstafetas} estafeta${numEstafetas !== 1 ? 's' : ''}` : ''})`,
-        created_at: new Date().toISOString(),
-      };
-
       const detalhes: string[] = [];
+
       if (taxaInscricao > 0) {
-        detalhes.push(`Taxa base: €${taxaInscricao.toFixed(2)}`);
+        detalhes.push(`Taxa: €${taxaInscricao.toFixed(2)}`);
       }
       if (custoProva > 0 && numProvasNaoEstafetas > 0) {
-        detalhes.push(`${numProvasNaoEstafetas} prova${numProvasNaoEstafetas !== 1 ? 's' : ''} × €${custoProva.toFixed(2)}`);
+        detalhes.push(`${numProvasNaoEstafetas}p × €${custoProva.toFixed(2)}`);
       }
       if (custoSalto > 0 && numProvasNaoEstafetas > 0) {
-        detalhes.push(`${numProvasNaoEstafetas} salto${numProvasNaoEstafetas !== 1 ? 's' : ''} × €${custoSalto.toFixed(2)}`);
+        detalhes.push(`${numProvasNaoEstafetas}s × €${custoSalto.toFixed(2)}`);
       }
       if (custoEstafeta > 0 && numEstafetas > 0) {
-        detalhes.push(`${numEstafetas} estafeta${numEstafetas !== 1 ? 's' : ''} × €${custoEstafeta.toFixed(2)}`);
+        detalhes.push(`${numEstafetas}e × €${custoEstafeta.toFixed(2)}`);
       }
 
-      const item: MovimentoItem = {
-        id: itemId,
-        movimento_id: movimentoId,
-        descricao: `${selectedEvent.titulo}${detalhes.length > 0 ? ` (${detalhes.join(' + ')})` : ''}`,
+      movimentoItemsList.push({
+        id: crypto.randomUUID(),
+        movimento_id: '',
+        descricao: `${atleta.nome_completo} - ${selectedEvent.titulo}${detalhes.length > 0 ? ` (${detalhes.join(' + ')})` : ''}`,
         valor_unitario: custoAtleta,
         quantidade: 1,
         imposto_percentual: 0,
         total_linha: custoAtleta,
+        centro_custo_id: centroCustoId || selectedEvent.centro_custo_id,
         created_at: new Date().toISOString(),
-      };
+      });
 
-      movimentosList.push(movimento);
-      movimentoItemsList.push(item);
+      valorTotalMovimento += custoAtleta;
 
       const movimentoConvocatoriaItens: MovimentoConvocatoriaItem[] = [];
-      
       if (taxaInscricao > 0) {
         movimentoConvocatoriaItens.push({
           id: crypto.randomUUID(),
-          movimento_convocatoria_id: movimentoId,
+          movimento_convocatoria_id: convocatoriaId,
           descricao: 'Taxa base de inscrição',
           valor: taxaInscricao,
         });
       }
-      
       if (custoProva > 0 && numProvasNaoEstafetas > 0) {
         movimentoConvocatoriaItens.push({
           id: crypto.randomUUID(),
-          movimento_convocatoria_id: movimentoId,
+          movimento_convocatoria_id: convocatoriaId,
           descricao: `Inscrição em ${numProvasNaoEstafetas} prova${numProvasNaoEstafetas !== 1 ? 's' : ''} (€${custoProva.toFixed(2)} × ${numProvasNaoEstafetas})`,
           valor: custoProva * numProvasNaoEstafetas,
         });
       }
-
       if (custoSalto > 0 && numProvasNaoEstafetas > 0) {
         movimentoConvocatoriaItens.push({
           id: crypto.randomUUID(),
-          movimento_convocatoria_id: movimentoId,
+          movimento_convocatoria_id: convocatoriaId,
           descricao: `Inscrição em ${numProvasNaoEstafetas} salto${numProvasNaoEstafetas !== 1 ? 's' : ''} (€${custoSalto.toFixed(2)} × ${numProvasNaoEstafetas})`,
           valor: custoSalto * numProvasNaoEstafetas,
         });
       }
-      
       if (custoEstafeta > 0 && numEstafetas > 0) {
         movimentoConvocatoriaItens.push({
           id: crypto.randomUUID(),
-          movimento_convocatoria_id: movimentoId,
+          movimento_convocatoria_id: convocatoriaId,
           descricao: `Inscrição em ${numEstafetas} estafeta${numEstafetas !== 1 ? 's' : ''} (€${custoEstafeta.toFixed(2)} × ${numEstafetas})`,
           valor: custoEstafetaPorAtleta,
         });
       }
 
-      const movimentoConvocatoria: MovimentoConvocatoria = {
-        id: movimentoId,
+      movimentosConvocatoriaList.push({
+        id: crypto.randomUUID(),
         user_id: atletaId,
         convocatoria_grupo_id: convocatoriaId,
         evento_id: selectedEventId,
@@ -412,18 +400,65 @@ export function CreateConvocatoriaDialog({ open, onOpenChange, onSuccess, editin
         valor: custoAtleta,
         itens: movimentoConvocatoriaItens,
         created_at: new Date().toISOString(),
-      };
-
-      movimentosConvocatoriaList.push(movimentoConvocatoria);
+      });
     }
 
-    if (movimentosList.length > 0) {
-      await Promise.all([
-        setMovimentos(current => [...(current || []), ...movimentosList]),
-        setMovimentoItems(current => [...(current || []), ...movimentoItemsList]),
-        setMovimentosConvocatoria(current => [...(current || []), ...movimentosConvocatoriaList]),
-      ]);
+    const movimentoId = existingMovimentoId || crypto.randomUUID();
+
+    if (movimentoItemsList.length === 0) {
+      if (existingMovimentoId) {
+        await Promise.all([
+          setMovimentos(current => (current || []).filter(m => m.id !== existingMovimentoId)),
+          setMovimentoItems(current => (current || []).filter(item => item.movimento_id !== existingMovimentoId)),
+          setMovimentosConvocatoria(current => (current || []).filter(mc => mc.convocatoria_grupo_id !== convocatoriaId)),
+        ]);
+      }
+
+      return undefined;
     }
+
+    // Determine movimento type based on event's gera_taxa
+    const geraTexa = selectedEvent.tipoConfig?.gera_taxa ?? false;
+    const movementType = geraTexa ? 'inscricao' : 'outro';
+
+    const movimento: Movimento = {
+      id: movimentoId,
+      user_id: undefined,
+      nome_manual: `Convocatória ${selectedEvent.titulo}`,
+      classificacao: 'despesa',
+      data_emissao: selectedEvent.data_inicio,
+      data_vencimento: selectedEvent.data_inicio,
+      valor_total: -Math.abs(valorTotalMovimento),
+      estado_pagamento: 'pendente',
+      centro_custo_id: centroCustoId || selectedEvent.centro_custo_id,
+      tipo: movementType,
+      observacoes: `Custos de inscrição - ${selectedEvent.titulo} (${movimentoItemsList.length} atleta${movimentoItemsList.length !== 1 ? 's' : ''})`,
+      created_at: new Date().toISOString(),
+    };
+
+    movimentoItemsList.forEach(item => {
+      item.movimento_id = movimentoId;
+    });
+
+    await Promise.all([
+      setMovimentos(current => {
+        const list = current || [];
+        const exists = list.some(m => m.id === movimentoId);
+        return exists
+          ? list.map(m => (m.id === movimentoId ? movimento : m))
+          : [...list, movimento];
+      }),
+      setMovimentoItems(current => [
+        ...((current || []).filter(item => item.movimento_id !== movimentoId)),
+        ...movimentoItemsList,
+      ]),
+      setMovimentosConvocatoria(current => [
+        ...((current || []).filter(mc => mc.convocatoria_grupo_id !== convocatoriaId)),
+        ...movimentosConvocatoriaList,
+      ]),
+    ]);
+
+    return movimentoId;
   };
 
   const handleFinalize = async () => {
@@ -434,67 +469,17 @@ export function CreateConvocatoriaDialog({ open, onOpenChange, onSuccess, editin
 
     const isEditing = !!editingConvocatoria;
     const convocatoriaId = isEditing ? editingConvocatoria.id : crypto.randomUUID();
+    const oldAtletasIds = isEditing
+      ? (convocatoriasAtleta || [])
+          .filter(ca => ca.convocatoria_grupo_id === convocatoriaId)
+          .map(ca => ca.atleta_id)
+      : [];
 
-    if (isEditing) {
-      const oldAtletasConvocados = (convocatoriasAtleta || []).filter(
-        ca => ca.convocatoria_grupo_id === convocatoriaId
-      );
-      const oldAtletasIds = oldAtletasConvocados.map(ca => ca.atleta_id);
-      const newAtletasIds = selectedAtletas;
-
-      const removedAtletas = oldAtletasIds.filter(id => !newAtletasIds.includes(id));
-      const addedAtletas = newAtletasIds.filter(id => !oldAtletasIds.includes(id));
-
-      if (removedAtletas.length > 0) {
-        const movimentosAtuais = await window.spark.kv.get<Movimento[]>('club-movimentos');
-        const eventoTitulo = selectedEvent?.titulo || '';
-        const movimentosToRemove = (movimentosAtuais || []).filter(m => 
-          m.user_id && removedAtletas.includes(m.user_id) && 
-          m.observacoes?.includes(eventoTitulo) &&
-          m.tipo === 'inscricao'
-        );
-        
-        const movimentosIdsToRemove = movimentosToRemove.map(m => m.id);
-        setMovimentos(current => (current || []).filter(m => !movimentosIdsToRemove.includes(m.id)));
-        
-        const movimentoItemsAtuais = await window.spark.kv.get<MovimentoItem[]>('club-movimento-items');
-        setMovimentoItems(current => (current || []).filter(mi => !movimentosIdsToRemove.includes(mi.movimento_id)));
-
-        const movimentosConvocatoriaAtuais = await window.spark.kv.get<MovimentoConvocatoria[]>('movimentos-convocatoria');
-        setMovimentosConvocatoria(current => (current || []).filter(mc => 
-          !(mc.convocatoria_grupo_id === convocatoriaId && removedAtletas.includes(mc.user_id))
-        ));
-      }
-
-      const resultadosAtuais = await window.spark.kv.get<EventoResultado[]>('club-resultados');
-      const resultadosToRemove = (resultadosAtuais || []).filter(r => 
-        r.evento_id === selectedEventId && removedAtletas.includes(r.user_id)
-      );
-      if (resultadosToRemove.length > 0) {
-        setResultados(current => (current || []).filter(r => 
-          !(r.evento_id === selectedEventId && removedAtletas.includes(r.user_id))
-        ));
-      }
-
-      const resultadosProvasAtuais = await window.spark.kv.get<ResultadoProva[]>('club-resultados-provas');
-      const resultadosProvasToRemove = (resultadosProvasAtuais || []).filter(r => 
-        r.evento_id === selectedEventId && removedAtletas.includes(r.atleta_id)
-      );
-      if (resultadosProvasToRemove.length > 0) {
-        setResultadosProvas(current => (current || []).filter(r => 
-          !(r.evento_id === selectedEventId && removedAtletas.includes(r.atleta_id))
-        ));
-      }
-
-      if (addedAtletas.length > 0 && valorInscricaoCalculado > 0) {
-        await createMovimentosFinanceiros(convocatoriaId, addedAtletas);
-      }
-    } else {
-      if (valorInscricaoCalculado > 0) {
-        await createMovimentosFinanceiros(convocatoriaId);
-      }
-    }
-
+    const movimentoId = await createMovimentosFinanceiros(
+      convocatoriaId,
+      selectedAtletas,
+      editingConvocatoria?.movimento_id
+    );
     const convocatoriaGrupo: ConvocatoriaGrupo = {
       id: convocatoriaId,
       evento_id: selectedEventId,
@@ -510,6 +495,7 @@ export function CreateConvocatoriaDialog({ open, onOpenChange, onSuccess, editin
       valor_por_estafeta: tipoCusto === 'por_salto' ? parseFloat(valorPorEstafeta) : undefined,
       valor_inscricao_unitaria: tipoCusto === 'por_atleta' ? parseFloat(valorInscricaoUnitaria) : undefined,
       valor_inscricao_calculado: valorInscricaoCalculado,
+      movimento_id: movimentoId,
     };
 
     const convocatoriasAtletaList: ConvocatoriaAtleta[] = selectedAtletas.map(atletaId => ({
@@ -545,15 +531,19 @@ export function CreateConvocatoriaDialog({ open, onOpenChange, onSuccess, editin
     const currentYear = new Date().getFullYear();
     
     if (isEditing) {
-      const existingResultados = await window.spark.kv.get<EventoResultado[]>('club-resultados');
-      const existingResultadosProvas = await window.spark.kv.get<ResultadoProva[]>('club-resultados-provas');
-      
-      setResultados(current => 
-        (current || []).filter(r => r.evento_id !== selectedEventId)
-      );
-      setResultadosProvas(current => 
-        (current || []).filter(r => r.evento_id !== selectedEventId)
-      );
+      const atletasRemovidos = oldAtletasIds.filter(id => !selectedAtletas.includes(id));
+      if (atletasRemovidos.length > 0) {
+        setResultados(current =>
+          (current || []).filter(
+            r => !(r.evento_id === selectedEventId && atletasRemovidos.includes(r.user_id))
+          )
+        );
+        setResultadosProvas(current =>
+          (current || []).filter(
+            r => !(r.evento_id === selectedEventId && atletasRemovidos.includes(r.atleta_id))
+          )
+        );
+      }
     }
     
     selectedAtletas.forEach(atletaId => {

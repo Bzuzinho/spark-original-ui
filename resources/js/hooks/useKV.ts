@@ -73,7 +73,8 @@ export function useKV<T>(
       ? (value as (prev: T) => T)(currentValue)
       : value;
     
-    mutation.mutate(newValue);
+    // ✅ Return promise so caller can await
+    return mutation.mutateAsync(newValue);
   };
 
   return [data ?? defaultValue, setValue];

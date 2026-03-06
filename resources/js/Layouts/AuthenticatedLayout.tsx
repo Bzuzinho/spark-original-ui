@@ -54,9 +54,10 @@ const settingsMenuItems = [
 ];
 
 export default function AuthenticatedLayout({ 
-    header, 
-    children 
-}: PropsWithChildren<{ header?: ReactNode }>) {
+    header,
+    children,
+    fullWidth = false,
+}: PropsWithChildren<{ header?: ReactNode; fullWidth?: boolean }>) {
     const { auth, clubSettings } = usePage<PageProps>().props;
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const currentRoute = route().current();
@@ -227,7 +228,11 @@ export default function AuthenticatedLayout({
                 {/* Page Header (if provided) - SEM border-b */}
                 {header && (
                     <header className="bg-background">
-                        <div className="spark-container py-4">
+                        <div
+                            className={cn(
+                                fullWidth ? 'w-full px-[10px] pt-[10px] pb-4' : 'spark-container py-4'
+                            )}
+                        >
                             {header}
                         </div>
                     </header>
@@ -235,7 +240,11 @@ export default function AuthenticatedLayout({
 
                 {/* Page Content */}
                 <main className="flex-1 overflow-auto">
-                    <div className="spark-container py-3 sm:py-4">
+                    <div
+                        className={cn(
+                            fullWidth ? 'w-full px-[10px] py-[10px] sm:py-4' : 'spark-container py-3 sm:py-4'
+                        )}
+                    >
                         {children}
                     </div>
                 </main>

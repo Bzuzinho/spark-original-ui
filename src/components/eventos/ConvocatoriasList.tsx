@@ -31,11 +31,9 @@ interface ConvocatoriasListProps {
 export function ConvocatoriasList({ selectedConvocatoriaId }: ConvocatoriasListProps) {
   const [events] = useKV<Event[]>('club-events', []);
   const [convocatoriasGrupo, setConvocatoriasGrupo] = useKV<ConvocatoriaGrupo[]>('club-convocatorias-grupo', []);
-  const [convocatoriasAtleta] = useKV<ConvocatoriaAtleta[]>('club-convocatorias-atleta', []);
+  const [convocatoriasAtleta, setConvocatoriasAtleta] = useKV<ConvocatoriaAtleta[]>('club-convocatorias-atleta', []);
   const [resultados, setResultados] = useKV<EventoResultado[]>('club-resultados', []);
   const [resultadosProvas, setResultadosProvas] = useKV<ResultadoProva[]>('club-resultados-provas', []);
-  const [users] = useKV<User[]>('club-users', []);
-  const [provas] = useKV<Prova[]>('settings-provas', []);
   const [clubInfo] = useKV<any>('settings-club-info', null);
   const [searchTerm, setSearchTerm] = useState('');
   const [eventFilter, setEventFilter] = useState<string>('todos');
@@ -76,25 +74,32 @@ export function ConvocatoriasList({ selectedConvocatoriaId }: ConvocatoriasListP
   const handleDeleteConvocatoria = async (convId: string) => {
     if (!confirm('Tem certeza que deseja eliminar esta convocatória?')) return;
 
-    const convocatoria = convocatoriasGrupo?.find(c => c.id === convId);
-    if (!convocatoria) return;
+    try {
+      const convocatoria = convocatoriasGrupo?.find(c => c.id === convId);
+      if (!convocatoria) return;
 
-    setConvocatoriasGrupo(current => (current || []).filter(c => c.id !== convId));
-    
-    const atletasAtletaRef = await window.spark.kv.get<ConvocatoriaAtleta[]>('club-convocatorias-atleta');
-    const updated = (atletasAtletaRef || []).filter(ca => ca.convocatoria_grupo_id !== convId);
-    await window.spark.kv.set('club-convocatorias-atleta', updated);
+      console.log('🗑️ Apagando convocatória:', convId);
+      console.log('📊 Convocatorias antes:', (convocatoriasGrupo || []).length);
 
-    const currentResultados = await window.spark.kv.get<EventoResultado[]>('club-resultados');
-    const updatedResultados = (currentResultados || []).filter(r => r.evento_id !== convocatoria.evento_id);
-    setResultados(() => updatedResultados);
+      // Remove from KV store with proper await to ensure persistence
+      await Promise.all([
+        setConvocatoriasGrupo(current => {
+          const filtered = (current || []).filter(c => c.id !== convId);
+          console.log('📊 Convocatorias depois do filtro:', filtered.length);
+          return filtered;
+        }),
+        setConvocatoriasAtleta(current => (current || []).filter(ca => ca.convocatoria_grupo_id !== convId)),
+        setResultados(current => (current || []).filter(r => r.evento_id !== convocatoria.evento_id)),
+        setResultadosProvas(current => (current || []).filter(r => r.evento_id !== convocatoria.evento_id)),
+      ]);
 
-    const currentResultadosProvas = await window.spark.kv.get<ResultadoProva[]>('club-resultados-provas');
-    const updatedResultadosProvas = (currentResultadosProvas || []).filter(r => r.evento_id !== convocatoria.evento_id);
-    setResultadosProvas(() => updatedResultadosProvas);
-
-    toast.success('Convocatória eliminada com sucesso!');
-    setDetailsDialogOpen(false);
+      console.log('✅ Promises resolvidas, convocatória apagada');
+      toast.success('Convocatória eliminada com sucesso!');
+      setDetailsDialogOpen(false);
+    } catch (error) {
+      console.error('❌ Erro ao eliminar convocatória:', error);
+      toast.error('Erro ao eliminar convocatória');
+    }
   };
 
   const exportToPDF = (conv: ConvocatoriaGrupo) => {

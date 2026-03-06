@@ -21,7 +21,7 @@ interface CompeticoesTabProps {
 export function CompeticoesTab({ onNavigate }: CompeticoesTabProps) {
   const [events] = useKV<Event[]>('club-events', []);
   const [resultados] = useKV<EventoResultado[]>('club-resultados', []);
-  const [users] = useKV<User[]>('club-users', []);
+  // Disabled: club-users returns 500
 
   const provas = (events || []).filter(e => e.tipo === 'prova');
   const sortedProvas = [...provas].sort((a, b) => {

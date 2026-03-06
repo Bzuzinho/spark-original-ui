@@ -35,10 +35,8 @@ interface AgeGroup {
 
 export function EventosList() {
   const [events, setEvents] = useKV<Event[]>('club-events', []);
-  const [users] = useKV<User[]>('club-users', []);
   const [presencas, setPresencas] = useKV<EventoPresenca[]>('club-presencas', []);
   const [centrosCusto] = useKV<CentroCusto[]>('club-centros-custo', []);
-  const [ageGroups] = useKV<AgeGroup[]>('settings-age-groups', []);
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('todos');
   const [statusFilter, setStatusFilter] = useState<string>('todos');

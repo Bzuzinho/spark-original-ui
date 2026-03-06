@@ -9,6 +9,7 @@ import { Input } from '@/Components/ui/input';
 import { Badge } from '@/Components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/Components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/Components/ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/Components/ui/alert-dialog';
 import MembrosDashboard from './Dashboard';
 import { 
@@ -113,6 +114,7 @@ export default function MembrosIndex({ members, userTypes, ageGroups, stats, tip
 
     return (
         <AuthenticatedLayout
+            fullWidth
             header={
                 <div>
                     <h1 className="text-lg sm:text-xl font-semibold tracking-tight">Gestão de Membros</h1>
@@ -230,53 +232,123 @@ export default function MembrosIndex({ members, userTypes, ageGroups, stats, tip
                         </div>
                     </Card>
 
-                    {/* Members Grid */}
+                    {/* Members View */}
                     {filteredUsers.length > 0 ? (
-                        <div className="grid gap-2.5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-                            {filteredUsers.map(user => (
-                                <Link key={user.id} href={route('membros.show', user.id)}>
-                                    <Card className="p-2.5 cursor-pointer transition-all hover:shadow-lg hover:border-primary/50 h-full">
-                                        <div className="flex items-start gap-2">
-                                            <Avatar className="h-9 w-9 flex-shrink-0">
-                                                <AvatarImage src={user.foto_perfil} />
-                                                <AvatarFallback className="bg-primary/10 text-primary font-semibold text-[10px]">
-                                                    {getInitials(user.nome_completo)}
-                                                </AvatarFallback>
-                                            </Avatar>
-                                            <div className="flex-1 min-w-0">
-                                                <h3 className="font-semibold text-[13px] truncate">{user.nome_completo || 'Sem nome'}</h3>
-                                                <p className="text-[10px] text-muted-foreground">Nº {user.numero_socio || '-'}</p>
-                                                <div className="flex flex-wrap gap-1 mt-1">
-                                                    <Badge variant="outline" className={`${getStatusColor(user.estado)} text-[10px] px-1.5 py-0`}>
-                                                        {getStatusLabel(user.estado)}
-                                                    </Badge>
-                                                    {Array.isArray(user.tipo_membro) && user.tipo_membro.slice(0, 2).map((type, idx) => (
-                                                        <Badge key={idx} variant="secondary" className="text-[10px] px-1.5 py-0">
-                                                            {getMemberTypeLabel(type)}
+                        viewMode === 'card' ? (
+                            <div className="grid gap-2.5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5">
+                                {filteredUsers.map(user => (
+                                    <Link key={user.id} href={route('membros.show', user.id)}>
+                                        <Card className="p-2.5 cursor-pointer transition-all hover:shadow-lg hover:border-primary/50 h-full">
+                                            <div className="flex items-start gap-2">
+                                                <Avatar className="h-9 w-9 flex-shrink-0">
+                                                    <AvatarImage src={user.foto_perfil} />
+                                                    <AvatarFallback className="bg-primary/10 text-primary font-semibold text-[10px]">
+                                                        {getInitials(user.nome_completo)}
+                                                    </AvatarFallback>
+                                                </Avatar>
+                                                <div className="flex-1 min-w-0">
+                                                    <h3 className="font-semibold text-[13px] truncate">{user.nome_completo || 'Sem nome'}</h3>
+                                                    <p className="text-[10px] text-muted-foreground">Nº {user.numero_socio || '-'}</p>
+                                                    <div className="flex flex-wrap gap-1 mt-1">
+                                                        <Badge variant="outline" className={`${getStatusColor(user.estado)} text-[10px] px-1.5 py-0`}>
+                                                            {getStatusLabel(user.estado)}
                                                         </Badge>
-                                                    ))}
-                                                    {Array.isArray(user.tipo_membro) && user.tipo_membro.length > 2 && (
-                                                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                                                            +{user.tipo_membro.length - 2}
-                                                        </Badge>
-                                                    )}
+                                                        {Array.isArray(user.tipo_membro) && user.tipo_membro.slice(0, 2).map((type, idx) => (
+                                                            <Badge key={idx} variant="secondary" className="text-[10px] px-1.5 py-0">
+                                                                {getMemberTypeLabel(type)}
+                                                            </Badge>
+                                                        ))}
+                                                        {Array.isArray(user.tipo_membro) && user.tipo_membro.length > 2 && (
+                                                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                                                                +{user.tipo_membro.length - 2}
+                                                            </Badge>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <div className="flex flex-col gap-1">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="h-7 w-7 p-0 hover:bg-destructive/10 hover:text-destructive"
+                                                        onClick={(e) => handleDeleteClick(user, e)}
+                                                    >
+                                                        <Trash size={14} />
+                                                    </Button>
                                                 </div>
                                             </div>
-                                            <div className="flex flex-col gap-1">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    className="h-7 w-7 p-0 hover:bg-destructive/10 hover:text-destructive"
-                                                    onClick={(e) => handleDeleteClick(user, e)}
-                                                >
-                                                    <Trash size={14} />
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    </Card>
-                                </Link>
-                            ))}
-                        </div>
+                                        </Card>
+                                    </Link>
+                                ))}
+                            </div>
+                        ) : (
+                            <Card className="p-0 overflow-hidden">
+                                <div className="w-full overflow-x-auto">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead className="w-16">Nº Sócio</TableHead>
+                                                <TableHead className="flex-1 min-w-[200px]">Nome</TableHead>
+                                                <TableHead className="hidden md:table-cell min-w-[180px]">Email</TableHead>
+                                                <TableHead className="hidden lg:table-cell w-24">Estado</TableHead>
+                                                <TableHead className="hidden xl:table-cell flex-1 min-w-[180px]">Tipo</TableHead>
+                                                <TableHead className="w-20 text-right">Ação</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {filteredUsers.map((user) => (
+                                                <TableRow key={user.id}>
+                                                    <TableCell className="text-xs font-medium">{user.numero_socio || '-'}</TableCell>
+                                                    <TableCell className="max-w-[200px]">
+                                                        <Link href={route('membros.show', user.id)} className="font-medium hover:underline truncate block">
+                                                            {user.nome_completo || 'Sem nome'}
+                                                        </Link>
+                                                    </TableCell>
+                                                    <TableCell className="hidden md:table-cell text-xs text-muted-foreground max-w-[180px] truncate">{user.email_utilizador || '-'}</TableCell>
+                                                    <TableCell className="hidden lg:table-cell">
+                                                        <Badge variant="outline" className={`${getStatusColor(user.estado)} text-[10px] px-1.5 py-0`}>
+                                                            {getStatusLabel(user.estado)}
+                                                        </Badge>
+                                                    </TableCell>
+                                                    <TableCell className="hidden xl:table-cell">
+                                                        <div className="flex flex-wrap gap-1">
+                                                            {Array.isArray(user.tipo_membro) && user.tipo_membro.length > 0 ? (
+                                                                user.tipo_membro.slice(0, 2).map((type, idx) => (
+                                                                    <Badge key={idx} variant="secondary" className="text-[10px] px-1.5 py-0">
+                                                                        {getMemberTypeLabel(type)}
+                                                                    </Badge>
+                                                                ))
+                                                            ) : (
+                                                                <span className="text-xs text-muted-foreground">-</span>
+                                                            )}
+                                                            {Array.isArray(user.tipo_membro) && user.tipo_membro.length > 2 && (
+                                                                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                                                                    +{user.tipo_membro.length - 2}
+                                                                </Badge>
+                                                            )}
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className="text-right">
+                                                        <div className="flex justify-end gap-1">
+                                                            <Link href={route('membros.show', user.id)}>
+                                                                <Button variant="outline" size="sm" className="h-7 px-2 text-xs">Ver</Button>
+                                                            </Link>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                className="h-7 w-7 p-0 hover:bg-destructive/10 hover:text-destructive"
+                                                                onClick={(e) => handleDeleteClick(user, e)}
+                                                            >
+                                                                <Trash size={14} />
+                                                            </Button>
+                                                        </div>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            </Card>
+                        )
                     ) : (
                         <Card className="p-8">
                             <div className="text-center">

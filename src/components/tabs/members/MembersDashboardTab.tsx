@@ -13,10 +13,8 @@ import {
 import type { User, DadosDesportivos } from '@/lib/types';
 
 export function MembersDashboardTab() {
-  const [users] = useKV<User[]>('club-users', []);
   const [dadosDesportivos] = useKV<DadosDesportivos[]>('dados-desportivos', []);
   const [userTypes] = useKV<Array<{ id: string; name: string }>>('settings-user-types', []);
-  const [escaloes] = useKV<Array<{ id: string; name: string }>>('settings-age-groups', []);
 
   const [stats, setStats] = useState({
     totalMembros: 0,

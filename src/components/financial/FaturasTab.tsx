@@ -27,7 +27,6 @@ export function FaturasTab() {
   const [faturas, setFaturas] = useKV<Fatura[]>('club-faturas', []);
   const [faturaItens, setFaturaItens] = useKV<FaturaItem[]>('club-fatura-itens', []);
   const [lancamentos, setLancamentos] = useKV<LancamentoFinanceiro[]>('club-lancamentos', []);
-  const [users] = useKV<User[]>('club-users', []);
   const [mensalidadesLegacy] = useKV<Mensalidade[]>('club-mensalidades', []);
   const [mensalidadesConfig] = useKV<MonthlyFee[]>('settings-monthly-fees', []);
   const [centrosCusto] = useKV<CentroCusto[]>('club-centros-custo', []);

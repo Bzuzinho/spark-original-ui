@@ -160,6 +160,7 @@ export default function MembrosEdit({
 
     return (
         <AuthenticatedLayout
+            fullWidth
             header={
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">

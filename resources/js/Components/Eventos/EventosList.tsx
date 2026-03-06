@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { router } from '@inertiajs/react';
 import { Button } from '@/Components/ui/button';
 import { Card } from '@/Components/ui/card';
@@ -33,6 +33,7 @@ import {
 import { Label } from '@/Components/ui/label';
 import { Textarea } from '@/Components/ui/textarea';
 import { Checkbox } from '@/Components/ui/checkbox';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/Components/ui/table';
 import {
   Plus,
   MagnifyingGlass,
@@ -43,6 +44,8 @@ import {
   Clock,
   Users,
   CheckSquare,
+  SquaresFour,
+  ListBullets,
 } from '@phosphor-icons/react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -77,12 +80,43 @@ interface AgeGroup {
   ativo?: boolean;
 }
 
+interface EventType {
+  id: string;
+  nome: string;
+  visibilidade_default?: string;
+  ativo?: boolean;
+}
+
 interface EventosListProps {
   events: Event[];
   users?: any[];
   costCenters?: CostCenter[];
+  eventTypes?: EventType[];
   ageGroups?: AgeGroup[];
 }
+
+const defaultEventTypeOptions = [
+  { value: 'treino', label: 'Treino', visibilidade_default: 'publico' },
+  { value: 'prova', label: 'Prova', visibilidade_default: 'publico' },
+  { value: 'competicao', label: 'Competição', visibilidade_default: 'publico' },
+  { value: 'evento_interno', label: 'Evento Interno', visibilidade_default: 'publico' },
+  { value: 'reuniao', label: 'Reunião', visibilidade_default: 'publico' },
+];
+
+const normalizeEventTypeValue = (value: string): string => {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+};
+
+const formatEventTypeLabel = (value: string): string => {
+  return value
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+};
 
 const daysOfWeek = [
   { id: 'segunda', label: 'Segunda', value: '1' },
@@ -98,6 +132,7 @@ export function EventosList({
   events = [],
   users = [],
   costCenters = [],
+  eventTypes = [],
   ageGroups = [],
 }: EventosListProps) {
   const resolveEscalaoIds = (escaloes: string[]) => {
@@ -113,10 +148,42 @@ export function EventosList({
   const [statusFilter, setStatusFilter] = useState('todos');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
+  const [viewMode, setViewMode] = useState<'card' | 'table'>('card');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedEvents, setSelectedEvents] = useState<Set<string>>(new Set());
   const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+
+  const eventTypeOptions = useMemo(() => {
+    const optionsFromSettings = (eventTypes || [])
+      .filter((type) => type.ativo !== false)
+      .map((type) => ({
+        value: normalizeEventTypeValue(type.nome),
+        label: type.nome,
+        visibilidade_default: type.visibilidade_default || 'publico',
+      }));
+
+    const options = optionsFromSettings.length > 0 ? optionsFromSettings : defaultEventTypeOptions;
+
+    const existingTypes = new Set(options.map((option) => option.value));
+    const missingFromExistingEvents = events
+      .map((event) => event.tipo)
+      .filter((tipo) => !!tipo && !existingTypes.has(tipo))
+      .map((tipo) => ({
+        value: tipo,
+        label: formatEventTypeLabel(tipo),
+        visibilidade_default: 'publico',
+      }));
+
+    return [...options, ...missingFromExistingEvents];
+  }, [eventTypes, events]);
+
+  const eventTypeLabelMap = useMemo(
+    () => new Map(eventTypeOptions.map((option) => [option.value, option.label])),
+    [eventTypeOptions]
+  );
+
+  const defaultEventTypeValue = eventTypeOptions[0]?.value || 'evento_interno';
 
   const [formData, setFormData] = useState({
     titulo: '',
@@ -127,7 +194,7 @@ export function EventosList({
     hora_fim: '',
     local: '',
     local_detalhes: '',
-    tipo: 'evento_interno',
+    tipo: defaultEventTypeValue,
     tipo_piscina: '',
     visibilidade: 'publico',
     escaloes_elegiveis: [] as string[],
@@ -147,6 +214,15 @@ export function EventosList({
     recorrencia_data_fim: '',
     recorrencia_dias_semana: [] as string[],
   });
+
+  useEffect(() => {
+    if (!eventTypeOptions.some((option) => option.value === formData.tipo)) {
+      setFormData((prev) => ({
+        ...prev,
+        tipo: defaultEventTypeValue,
+      }));
+    }
+  }, [eventTypeOptions, defaultEventTypeValue, formData.tipo]);
 
   const filteredEvents = useMemo(() => {
     return events
@@ -440,11 +516,11 @@ export function EventosList({
                         <SelectValue placeholder="Selecionar..." />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="treino">Treino</SelectItem>
-                        <SelectItem value="prova">Prova</SelectItem>
-                        <SelectItem value="competicao">Competição</SelectItem>
-                        <SelectItem value="evento_interno">Evento Interno</SelectItem>
-                        <SelectItem value="reuniao">Reunião</SelectItem>
+                        {eventTypeOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -966,11 +1042,11 @@ export function EventosList({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="todos">Todos os Tipos</SelectItem>
-                <SelectItem value="prova">Prova</SelectItem>
-                <SelectItem value="treino">Treino</SelectItem>
-                <SelectItem value="estagio">Estágio</SelectItem>
-                <SelectItem value="evento_interno">Evento Interno</SelectItem>
-                <SelectItem value="reuniao">Reunião</SelectItem>
+                {eventTypeOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -996,6 +1072,26 @@ export function EventosList({
               <span className="text-xs text-muted-foreground">
                 Selecione eventos para eliminar múltiplos de uma vez
               </span>
+              <div className="ml-auto flex gap-1 border rounded p-1 bg-muted">
+                <Button
+                  variant={viewMode === 'card' ? 'default' : 'ghost'}
+                  size="sm"
+                  className="h-7 w-7 p-0"
+                  onClick={() => setViewMode('card')}
+                  title="Visualização em cards"
+                >
+                  <SquaresFour size={16} />
+                </Button>
+                <Button
+                  variant={viewMode === 'table' ? 'default' : 'ghost'}
+                  size="sm"
+                  className="h-7 w-7 p-0"
+                  onClick={() => setViewMode('table')}
+                  title="Visualização em lista"
+                >
+                  <ListBullets size={16} />
+                </Button>
+              </div>
             </div>
           )}
         </div>
@@ -1009,7 +1105,7 @@ export function EventosList({
             <p className="text-xs text-muted-foreground">Crie o seu primeiro evento para começar.</p>
           </div>
         </Card>
-      ) : (
+      ) : viewMode === 'card' ? (
         <div className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3">
           {filteredEvents.map((event) => (
             <Card
@@ -1112,6 +1208,107 @@ export function EventosList({
             </Card>
           ))}
         </div>
+      ) : (
+        <Card className="p-0 overflow-hidden">
+          <div className="w-full overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-12">
+                    <Checkbox
+                      checked={selectedEvents.size === filteredEvents.length && filteredEvents.length > 0}
+                      onCheckedChange={toggleSelectAll}
+                    />
+                  </TableHead>
+                  <TableHead className="flex-1 min-w-[180px]">Título</TableHead>
+                  <TableHead className="hidden md:table-cell min-w-[120px]">Data</TableHead>
+                  <TableHead className="hidden lg:table-cell min-w-[130px]">Local</TableHead>
+                  <TableHead className="hidden sm:table-cell w-24">Tipo</TableHead>
+                  <TableHead className="hidden md:table-cell w-20 text-center">Estado</TableHead>
+                  <TableHead className="w-16 text-right">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredEvents.map((event) => (
+                  <TableRow key={event.id} className={selectedEvents.has(event.id) ? 'bg-primary/5' : ''}>
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedEvents.has(event.id)}
+                        onCheckedChange={() => toggleEventSelection(event.id)}
+                      />
+                    </TableCell>
+                    <TableCell className="font-medium text-xs max-w-[180px] truncate">{event.titulo}</TableCell>
+                    <TableCell className="hidden md:table-cell text-xs">{format(new Date(event.data_inicio), 'dd/MM/yyyy', { locale: ptBR })}</TableCell>
+                    <TableCell className="hidden lg:table-cell text-xs max-w-[130px] truncate">{event.local || '-'}</TableCell>
+                    <TableCell className="hidden sm:table-cell text-xs">
+                      <Badge variant="outline" className="text-[10px]">
+                        {getEventTypeLabel(event.tipo)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell text-xs text-center">
+                      <Badge variant={event.estado === 'concluido' ? 'default' : event.estado === 'cancelado' ? 'destructive' : 'outline'} className="text-[10px]">
+                        {getEventStatusLabel(event.estado)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0"
+                          onClick={() => {
+                            setEditingEvent(event);
+                            setFormData({
+                              titulo: event.titulo,
+                              descricao: event.descricao || '',
+                              data_inicio: event.data_inicio,
+                              hora_inicio: event.hora_inicio || '',
+                              data_fim: (event as any).data_fim || '',
+                              hora_fim: (event as any).hora_fim || '',
+                              local: event.local,
+                              local_detalhes: (event as any).local_detalhes || '',
+                              tipo: event.tipo,
+                              tipo_piscina: (event as any).tipo_piscina || '',
+                              visibilidade: (event as any).visibilidade || 'publico',
+                              escaloes_elegiveis: resolveEscalaoIds(event.escaloes_elegiveis || []),
+                              transporte_necessario: (event as any).transporte_necessario || false,
+                              transporte_detalhes: (event as any).transporte_detalhes || '',
+                              hora_partida: (event as any).hora_partida || '',
+                              local_partida: (event as any).local_partida || '',
+                              taxa_inscricao: (event as any).taxa_inscricao || '',
+                              custo_inscricao_por_prova: (event as any).custo_inscricao_por_prova || '',
+                              custo_inscricao_por_salto: (event as any).custo_inscricao_por_salto || '',
+                              custo_inscricao_estafeta: (event as any).custo_inscricao_estafeta || '',
+                              centro_custo_id: (event as any).centro_custo_id || '',
+                              observacoes: (event as any).observacoes || '',
+                              estado: event.estado,
+                              recorrente: (event as any).recorrente || false,
+                              recorrencia_data_inicio: (event as any).recorrencia_data_inicio || '',
+                              recorrencia_data_fim: (event as any).recorrencia_data_fim || '',
+                              recorrencia_dias_semana: (event as any).recorrencia_dias_semana || [],
+                            });
+                            setDialogOpen(true);
+                          }}
+                          title="Editar"
+                        >
+                          <Pencil size={14} />
+                        </Button>
+                        <button
+                          type="button"
+                          className="inline-flex h-7 px-2 items-center justify-center rounded-md hover:bg-accent"
+                          onClick={() => setSelectedEvents(new Set([event.id])) || setIsBulkDeleteDialogOpen(true)}
+                          title="Apagar"
+                        >
+                          <Trash size={14} />
+                        </button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </Card>
       )}
 
       {/* AlertDialog - Confirmação de Eliminação em Massa */}

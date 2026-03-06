@@ -26,11 +26,12 @@ interface EscalaoMetrics {
 }
 
 export function DashboardTab() {
-  const [users] = useKV<User[]>('club-users', []);
+  // Disabled: club-users & settings-age-groups return 500
   const [dadosDesportivos] = useKV<DadosDesportivos[]>('dados-desportivos', []);
   const [treinos] = useKV<Treino[]>('treinos', []);
   const [competicoes] = useKV<Competicao[]>('competicoes', []);
-  const [escaloes] = useKV<Array<{ id: string; name: string }>>('settings-age-groups', []);
+  // Disabled: settings-age-groups returns 500
+  const [escaloes] = useState<Array<{ id: string; name: string }>>([]);
 
   const [stats, setStats] = useState({
     atletasAtivos: 0,

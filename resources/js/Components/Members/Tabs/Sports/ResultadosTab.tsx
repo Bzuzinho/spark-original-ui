@@ -27,7 +27,8 @@ interface ResultadosTabProps {
 export function ResultadosTab({ user, isAdmin }: ResultadosTabProps) {
   const [resultadosProvas, setResultadosProvas] = useKV<ResultadoProva[]>('club-resultados-provas', []);
   const [events] = useKV<Event[]>('club-events', []);
-  const [provas] = useKV<Prova[]>('settings-provas', []);
+  // Disabled: settings-provas returns 500
+  const [provas] = useState<Prova[]>([]);
   
   const [resultDialogOpen, setResultDialogOpen] = useState(false);
   const [editingResult, setEditingResult] = useState<ResultadoProva | null>(null);

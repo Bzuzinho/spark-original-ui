@@ -9,7 +9,7 @@ interface HomeViewProps {
 }
 
 export function HomeView({ onNavigate }: HomeViewProps) {
-  const [users] = useKV<User[]>('club-users', []);
+  const [users] = useState<User[]>([]); // Disabled: club-users returns 500
   const [events] = useKV<Event[]>('club-events', []);
   const [lancamentos] = useKV<LancamentoFinanceiro[]>('club-lancamentos', []);
 

@@ -28,7 +28,8 @@ export function ConvocatoriasTab({ user, onNavigate }: ConvocatoriasTabProps) {
   const [convocatoriasAtleta] = useKV<ConvocatoriaAtleta[]>('club-convocatorias-atleta', []);
   const [convocatoriasGrupo] = useKV<ConvocatoriaGrupo[]>('club-convocatorias-grupo', []);
   const [events] = useKV<Event[]>('club-events', []);
-  const [provas] = useKV<Prova[]>('settings-provas', []);
+  // Disabled: settings-provas returns 500
+  const [provas] = useState<Prova[]>([]);
 
   const atletaConvocatorias = useMemo(() => {
     const atletaConvs = (convocatoriasAtleta || []).filter(ca => ca.atleta_id === user.id);

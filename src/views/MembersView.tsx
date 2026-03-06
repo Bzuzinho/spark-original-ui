@@ -21,7 +21,7 @@ interface MembersViewProps {
 }
 
 export function MembersView({ onNavigate }: MembersViewProps) {
-  const [users, setUsers] = useKV<User[]>('club-users', []);
+  const [users, setUsers] = useState<User[]>([]); // Disabled: club-users returns 500
   const [currentView, setCurrentView] = useState<View>('dashboard');
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [currentUser] = useKV<User | null>('authenticated-user', null);

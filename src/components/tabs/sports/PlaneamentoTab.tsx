@@ -24,7 +24,7 @@ import { toast } from 'sonner';
 export function PlaneamentoTab() {
   const [epocas, setEpocas] = useKV<Epoca[]>('epocas', []);
   const [macrociclos, setMacrociclos] = useKV<Macrociclo[]>('macrociclos', []);
-  const [escaloes] = useKV<any[]>('settings-age-groups', []);
+  // Disabled: settings-age-groups returns 500
 
   const [isEpocaDialogOpen, setIsEpocaDialogOpen] = useState(false);
   const [isMacrocicloDialogOpen, setIsMacrocicloDialogOpen] = useState(false);

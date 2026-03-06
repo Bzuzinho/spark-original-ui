@@ -37,7 +37,6 @@ function App() {
   const [currentView, setCurrentView] = useState<ViewType>('home');
   const [navigationContext, setNavigationContext] = useState<NavigationContext>({});
   const [currentUser, setCurrentUser] = useKV<User | null>('authenticated-user', null);
-  const [users, setUsers] = useKV<User[]>('club-users', []);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
@@ -113,7 +112,6 @@ function App() {
       
       if (hasChanges) {
         await spark.kv.set('club-users', updatedUsers);
-        setUsers(() => updatedUsers);
       }
     };
 
@@ -173,7 +171,6 @@ function App() {
 
       if (needsUpdate) {
         await spark.kv.set('club-users', updatedUsers);
-        setUsers(() => updatedUsers);
       }
     };
 
@@ -203,7 +200,6 @@ function App() {
 
       if (needsUpdate) {
         await spark.kv.set('club-users', updatedUsers);
-        setUsers(() => updatedUsers);
       }
     };
 

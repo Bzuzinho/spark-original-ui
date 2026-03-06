@@ -12,7 +12,7 @@ import { Badge } from '@/Components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/Components/ui/table';
 import { Textarea } from '@/Components/ui/textarea';
 import { Checkbox } from '@/Components/ui/checkbox';
-import { Plus, MagicWand, X, Check, Trash, PencilSimple } from '@phosphor-icons/react';
+import { Plus, MagicWand, X, Check, Trash, PencilSimple, SquaresFour, ListBullets } from '@phosphor-icons/react';
 import { format, addMonths, isBefore, isAfter, startOfMonth } from 'date-fns';
 import { toast } from 'sonner';
 
@@ -52,6 +52,7 @@ export function FaturasTab({
   invoiceTypes,
 }: FaturasTabProps) {
   const [estadoFilter, setEstadoFilter] = useState<string>('all');
+  const [viewMode, setViewMode] = useState<'card' | 'table'>('table');
   const toNumber = (value: unknown, fallback = 0): number => {
     if (typeof value === 'number' && !Number.isNaN(value)) return value;
     if (typeof value === 'string' && value.trim() !== '') {
@@ -1104,6 +1105,26 @@ export function FaturasTab({
               Mostrar faturas futuras
             </Label>
           </div>
+          <div className="flex gap-1 border rounded p-1 bg-muted">
+            <Button
+              variant={viewMode === 'card' ? 'default' : 'ghost'}
+              size="sm"
+              className="h-7 w-7 p-0"
+              onClick={() => setViewMode('card')}
+              title="Visualização em cards"
+            >
+              <SquaresFour size={16} />
+            </Button>
+            <Button
+              variant={viewMode === 'table' ? 'default' : 'ghost'}
+              size="sm"
+              className="h-7 w-7 p-0"
+              onClick={() => setViewMode('table')}
+              title="Visualização em lista"
+            >
+              <ListBullets size={16} />
+            </Button>
+          </div>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
@@ -1513,188 +1534,130 @@ export function FaturasTab({
       </div>
 
       <Card>
-        <div className="hidden md:block">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-12">
-                  <Checkbox
-                    checked={selectedFaturas.size === filteredFaturas.length && filteredFaturas.length > 0}
-                    onCheckedChange={handleToggleAllFaturas}
-                  />
-                </TableHead>
-                <TableHead>Utilizador</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead>Data Emissao</TableHead>
-                <TableHead>Vencimento</TableHead>
-                <TableHead>Valor</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead>Centro Custo</TableHead>
-                <TableHead className="text-right">Acoes</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredFaturas.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
-                    Nenhuma fatura encontrada
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredFaturas
-                  .sort((a, b) => new Date(b.data_emissao).getTime() - new Date(a.data_emissao).getTime())
-                  .map((fatura) => (
-                    <TableRow key={fatura.id}>
-                      <TableCell>
-                        <Checkbox
-                          checked={selectedFaturas.has(fatura.id)}
-                          onCheckedChange={() => handleToggleFaturaSelection(fatura.id)}
-                        />
-                      </TableCell>
-                      <TableCell className="font-medium">{getUserName(fatura.user_id)}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{getInvoiceTypeLabel(fatura.tipo)}</Badge>
-                      </TableCell>
-                      <TableCell>{format(new Date(fatura.data_emissao), 'dd/MM/yyyy')}</TableCell>
-                      <TableCell>{format(new Date(fatura.data_vencimento), 'dd/MM/yyyy')}</TableCell>
-                      <TableCell className="font-semibold">€{toNumber(fatura.valor_total).toFixed(2)}</TableCell>
-                      <TableCell>{getEstadoBadge(fatura.estado_pagamento)}</TableCell>
-                      <TableCell className="text-sm">{getCentroCustoName(fatura.centro_custo_id)}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button size="sm" variant="ghost" onClick={() => handleEditarFatura(fatura.id)} title="Editar fatura">
-                            <PencilSimple size={16} />
+        {viewMode === 'card' ? (
+          <div className="grid gap-2.5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 p-4">
+            {filteredFaturas.length === 0 ? (
+              <div className="col-span-full text-center text-muted-foreground py-8">Nenhuma fatura encontrada</div>
+            ) : (
+              filteredFaturas
+                .sort((a, b) => new Date(b.data_emissao).getTime() - new Date(a.data_emissao).getTime())
+                .map((fatura) => {
+                  const userName = getUserName(fatura.user_id);
+                  return (
+                    <Card key={fatura.id} className="p-3 cursor-pointer transition-all hover:shadow-lg hover:border-primary/50">
+                      <div className="flex items-start gap-2">
+                        <Checkbox checked={selectedFaturas.has(fatura.id)} onCheckedChange={() => handleToggleFaturaSelection(fatura.id)} />
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-[12px] truncate">{userName}</h3>
+                          <p className="text-[10px] text-muted-foreground">{getInvoiceTypeLabel(fatura.tipo)}</p>
+                          <div className="text-sm font-semibold text-primary mt-1">€{toNumber(fatura.valor_total).toFixed(2)}</div>
+                          <div className="flex gap-1 mt-1">
+                            {getEstadoBadge(fatura.estado_pagamento)}
+                          </div>
+                          <div className="text-[10px] text-muted-foreground mt-1">
+                            Vence: {format(new Date(fatura.data_vencimento), 'dd/MM/yyyy')}
+                          </div>
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 w-7 p-0"
+                            onClick={() => handleEditarFatura(fatura.id)}
+                            title="Editar"
+                          >
+                            <PencilSimple size={14} />
                           </Button>
-                          {(fatura.estado_pagamento === 'pendente' || fatura.estado_pagamento === 'vencido') && (
-                            <Button size="sm" variant="outline" onClick={() => handleAbrirDialogoRecibo(fatura.id)}>
-                              <Check size={16} className="mr-1" />
-                              Liquidar
-                            </Button>
-                          )}
-                          {fatura.estado_pagamento === 'pago' && !fatura.numero_recibo && (
-                            <Button size="sm" variant="outline" onClick={() => handleAbrirDialogoRecibo(fatura.id)}>
-                              <Check size={16} className="mr-1" />
-                              Recibo
-                            </Button>
-                          )}
-                          {fatura.estado_pagamento === 'pago' && fatura.numero_recibo && (
-                            <div className="flex items-center gap-2">
-                              <div className="text-xs text-muted-foreground">Recibo: {fatura.numero_recibo}</div>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleAbrirDialogoRecibo(fatura.id, fatura.numero_recibo)}
-                              >
-                                Editar Recibo
-                              </Button>
-                            </div>
-                          )}
                           <button
                             type="button"
-                            title="Apagar fatura"
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-accent"
-                            onClick={(event) => {
-                              event.preventDefault();
-                              event.stopPropagation();
-                              handleDeleteSingleFatura(fatura.id);
-                            }}
+                            className="inline-flex h-7 w-7 items-center justify-center rounded-md hover:bg-accent"
+                            onClick={() => handleDeleteSingleFatura(fatura.id)}
+                            title="Apagar"
                           >
-                            <Trash size={16} />
+                            <Trash size={14} />
                           </button>
                         </div>
+                      </div>
+                    </Card>
+                  );
+                })
+            )}
+          </div>
+        ) : (
+          <div className="p-0 overflow-hidden">
+            <div className="w-full overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-12">
+                      <Checkbox
+                        checked={selectedFaturas.size === filteredFaturas.length && filteredFaturas.length > 0}
+                        onCheckedChange={handleToggleAllFaturas}
+                      />
+                    </TableHead>
+                    <TableHead className="hidden sm:table-cell flex-1 min-w-[150px]">Utilizador</TableHead>
+                    <TableHead className="hidden md:table-cell w-24">Tipo</TableHead>
+                    <TableHead className="hidden lg:table-cell w-28">Data Emissao</TableHead>
+                    <TableHead className="flex-1 min-w-[120px]">Vencimento</TableHead>
+                    <TableHead className="hidden sm:table-cell w-24 text-right">Valor</TableHead>
+                    <TableHead className="hidden md:table-cell w-20">Estado</TableHead>
+                    <TableHead className="w-20 text-right">Acoes</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredFaturas.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                        Nenhuma fatura encontrada
                       </TableCell>
                     </TableRow>
-                  ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
-
-        <div className="md:hidden divide-y">
-          {filteredFaturas.length === 0 ? (
-            <div className="text-center text-muted-foreground py-12 px-4">Nenhuma fatura encontrada</div>
-          ) : (
-            filteredFaturas
-              .sort((a, b) => new Date(b.data_emissao).getTime() - new Date(a.data_emissao).getTime())
-              .map((fatura) => {
-                const userName = getUserName(fatura.user_id);
-                const nameParts = userName.split(' ');
-                const firstName = nameParts[0];
-                const lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : '';
-                const shortName = lastName ? `${firstName} ${lastName}` : firstName;
-
-                return (
-                  <div key={fatura.id} className="p-3">
-                    <div className="flex items-center gap-2">
-                      <Checkbox checked={selectedFaturas.has(fatura.id)} onCheckedChange={() => handleToggleFaturaSelection(fatura.id)} />
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium text-sm truncate">{shortName}</div>
-                        <div className="flex items-center gap-1.5 mt-1">
-                          {getEstadoBadge(fatura.estado_pagamento)}
-                          <Badge variant="outline" className="text-xs">
-                            {getInvoiceTypeLabel(fatura.tipo)}
-                          </Badge>
-                        </div>
-                        <div className="text-sm font-semibold text-primary mt-1">€{toNumber(fatura.valor_total).toFixed(2)}</div>
-                      </div>
-                      <div className="flex items-center gap-1 flex-shrink-0">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleEditarFatura(fatura.id)}
-                          className="h-8 w-8 p-0"
-                        >
-                          <PencilSimple size={16} />
-                        </Button>
-                        {(fatura.estado_pagamento === 'pendente' || fatura.estado_pagamento === 'vencido') && (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleAbrirDialogoRecibo(fatura.id)}
-                            className="h-8 w-8 p-0"
-                          >
-                            <Check size={16} />
-                          </Button>
-                        )}
-                        {fatura.estado_pagamento === 'pago' && !fatura.numero_recibo && (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleAbrirDialogoRecibo(fatura.id)}
-                            className="h-8 w-8 p-0"
-                          >
-                            <Check size={16} />
-                          </Button>
-                        )}
-                        {fatura.estado_pagamento === 'pago' && fatura.numero_recibo && (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleAbrirDialogoRecibo(fatura.id, fatura.numero_recibo)}
-                            className="h-8 w-8 p-0"
-                          >
-                            <PencilSimple size={16} />
-                          </Button>
-                        )}
-                        <button
-                          type="button"
-                          title="Apagar fatura"
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-accent"
-                          onClick={(event) => {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            handleDeleteSingleFatura(fatura.id);
-                          }}
-                        >
-                          <Trash size={16} />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
-          )}
-        </div>
+                  ) : (
+                    filteredFaturas
+                      .sort((a, b) => new Date(b.data_emissao).getTime() - new Date(a.data_emissao).getTime())
+                      .map((fatura) => (
+                        <TableRow key={fatura.id}>
+                          <TableCell>
+                            <Checkbox
+                              checked={selectedFaturas.has(fatura.id)}
+                              onCheckedChange={() => handleToggleFaturaSelection(fatura.id)}
+                            />
+                          </TableCell>
+                          <TableCell className="hidden sm:table-cell font-medium text-xs max-w-[150px] truncate">{getUserName(fatura.user_id)}</TableCell>
+                          <TableCell className="hidden md:table-cell text-xs">
+                            <Badge variant="outline">{getInvoiceTypeLabel(fatura.tipo)}</Badge>
+                          </TableCell>
+                          <TableCell className="hidden lg:table-cell text-xs">{format(new Date(fatura.data_emissao), 'dd/MM/yyyy')}</TableCell>
+                          <TableCell className="text-xs">{format(new Date(fatura.data_vencimento), 'dd/MM/yyyy')}</TableCell>
+                          <TableCell className="hidden sm:table-cell font-semibold text-xs text-right">€{toNumber(fatura.valor_total).toFixed(2)}</TableCell>
+                          <TableCell className="hidden md:table-cell text-xs">{getEstadoBadge(fatura.estado_pagamento)}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center justify-end gap-1">
+                              <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => handleEditarFatura(fatura.id)} title="Editar">
+                                <PencilSimple size={14} />
+                              </Button>
+                              {(fatura.estado_pagamento === 'pendente' || fatura.estado_pagamento === 'vencido') && (
+                                <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => handleAbrirDialogoRecibo(fatura.id)} title="Liquidar">
+                                  <Check size={14} />
+                                </Button>
+                              )}
+                              <button
+                                type="button"
+                                className="inline-flex h-7 w-7 items-center justify-center rounded-md hover:bg-accent"
+                                onClick={() => handleDeleteSingleFatura(fatura.id)}
+                                title="Apagar"
+                              >
+                                <Trash size={14} />
+                              </button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        )}
       </Card>
 
       <Dialog open={dialogReciboOpen} onOpenChange={setDialogReciboOpen}>

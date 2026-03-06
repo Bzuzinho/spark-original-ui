@@ -50,6 +50,23 @@ export function MovimentosTab({
     }
     return fallback;
   };
+
+  const toDateInputValue = (value?: string | null): string => {
+    if (!value) return '';
+
+    const yyyyMmDdMatch = value.match(/^(\d{4}-\d{2}-\d{2})/);
+    if (yyyyMmDdMatch?.[1]) {
+      return yyyyMmDdMatch[1];
+    }
+
+    const parsedDate = new Date(value);
+    if (Number.isNaN(parsedDate.getTime())) {
+      return '';
+    }
+
+    return format(parsedDate, 'yyyy-MM-dd');
+  };
+
   const getCsrfToken = () => {
     const token = document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement | null;
     return token?.content || '';
@@ -180,17 +197,53 @@ export function MovimentosTab({
     observacoes: '',
   });
 
-  const [linhas, setLinhas] = useState<
-    Array<{
-      descricao: string;
-      valor_unitario: number;
-      quantidade: number;
-      imposto_percentual: number;
-      produto_id?: string;
-      fatura_id?: string;
-      tipo_fatura?: 'mensalidade' | 'movimento';
-    }>
-  >([{ descricao: '', valor_unitario: 0, quantidade: 1, imposto_percentual: 0 }]);
+  type LinhaMovimento = {
+    descricao: string;
+    valor_unitario: number;
+    quantidade: number;
+    imposto_percentual: number;
+    produto_id?: string;
+    fatura_id?: string;
+    tipo_fatura?: 'mensalidade' | 'movimento';
+    atleta_id?: string;
+  };
+
+  const stripAtletaMarker = (descricao: string) => descricao.replace(/^\[ATLETA:[^\]]+\]\s*/i, '');
+
+  const extractAtletaId = (descricao: string): string | undefined => {
+    const markerMatch = descricao.match(/^\[ATLETA:([^\]]+)\]/i);
+    if (markerMatch?.[1]) {
+      return markerMatch[1];
+    }
+
+    const cleanDescricao = stripAtletaMarker(descricao).toLowerCase();
+    const matchedUser = (users || []).find((user) =>
+      cleanDescricao.startsWith((user.nome_completo || '').toLowerCase())
+    );
+
+    return matchedUser?.id;
+  };
+
+  const normalizeDescricaoWithAtleta = (linha: LinhaMovimento) => {
+    const cleanDescricao = stripAtletaMarker(linha.descricao || '').trim();
+
+    if (!linha.atleta_id) {
+      return cleanDescricao;
+    }
+
+    const atleta = (users || []).find((user) => user.id === linha.atleta_id);
+    const nomeAtleta = atleta?.nome_completo || 'Atleta';
+
+    if (cleanDescricao.length === 0) {
+      return `[ATLETA:${linha.atleta_id}] ${nomeAtleta}`;
+    }
+
+    return `[ATLETA:${linha.atleta_id}] ${cleanDescricao}`;
+  };
+
+  const [linhas, setLinhas] = useState<LinhaMovimento[]>([
+    { descricao: '', valor_unitario: 0, quantidade: 1, imposto_percentual: 0 },
+  ]);
 
   const filteredMovimentos = useMemo(() => {
     const now = new Date();
@@ -366,13 +419,13 @@ export function MovimentosTab({
       return;
     }
 
-    if (linhas.every((l) => !l.descricao || l.valor_unitario <= 0)) {
+    if (linhas.every((l) => !normalizeDescricaoWithAtleta(l) || l.valor_unitario <= 0)) {
       toast.error('Adicione pelo menos uma linha valida');
       return;
     }
 
     if (editingMovimentoId) {
-      const linhasValidas = linhas.filter((l) => l.descricao && l.valor_unitario > 0);
+      const linhasValidas = linhas.filter((l) => normalizeDescricaoWithAtleta(l) && l.valor_unitario > 0);
       const totalAbsoluto = linhasValidas.reduce(
         (sum, l) => sum + l.valor_unitario * l.quantidade * (1 + l.imposto_percentual / 100),
         0
@@ -393,7 +446,7 @@ export function MovimentosTab({
         origem_id: formData.origem_id || null,
         observacoes: formData.observacoes || undefined,
         items: linhasValidas.map((linha) => ({
-          descricao: linha.descricao,
+          descricao: normalizeDescricaoWithAtleta(linha),
           quantidade: linha.quantidade,
           valor_unitario: linha.valor_unitario,
           imposto_percentual: linha.imposto_percentual,
@@ -421,7 +474,7 @@ export function MovimentosTab({
         return;
       }
     } else {
-      const linhasValidas = linhas.filter((l) => l.descricao && l.valor_unitario > 0);
+      const linhasValidas = linhas.filter((l) => normalizeDescricaoWithAtleta(l) && l.valor_unitario > 0);
       const totalAbsoluto = linhasValidas.reduce(
         (sum, l) => sum + l.valor_unitario * l.quantidade * (1 + l.imposto_percentual / 100),
         0
@@ -443,7 +496,7 @@ export function MovimentosTab({
         origem_id: formData.origem_id || null,
         observacoes: formData.observacoes || undefined,
         items: linhasValidas.map((linha) => ({
-          descricao: linha.descricao,
+          descricao: normalizeDescricaoWithAtleta(linha),
           quantidade: linha.quantidade,
           valor_unitario: linha.valor_unitario,
           imposto_percentual: linha.imposto_percentual,
@@ -509,8 +562,8 @@ export function MovimentosTab({
       classificacao: movimento.classificacao,
       tipo: movimento.tipo,
       valor_total: movimento.valor_total,
-      data_emissao: movimento.data_emissao,
-      data_vencimento: movimento.data_vencimento,
+      data_emissao: toDateInputValue(movimento.data_emissao),
+      data_vencimento: toDateInputValue(movimento.data_vencimento),
       centro_custo_id: movimento.centro_custo_id || '',
       origem_tipo: movimento.origem_tipo || null,
       origem_id: movimento.origem_id || '',
@@ -526,6 +579,7 @@ export function MovimentosTab({
           imposto_percentual: item.imposto_percentual,
           produto_id: item.produto_id || undefined,
           fatura_id: item.fatura_id || undefined,
+          atleta_id: extractAtletaId(item.descricao),
         }))
       );
     }
@@ -677,15 +731,15 @@ export function MovimentosTab({
                 Movimento
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] sm:max-w-6xl max-h-[90vh] overflow-y-auto overflow-x-hidden p-3 sm:p-6">
               <DialogHeader>
                 <DialogTitle>{editingMovimentoId ? 'Editar Movimento' : 'Criar Movimento'}</DialogTitle>
                 <DialogDescription>
                   {editingMovimentoId ? 'Altere os dados do movimento financeiro' : 'Registe uma nova receita ou despesa'}
                 </DialogDescription>
               </DialogHeader>
-              <div className="space-y-4">
-                <div className="flex items-center space-x-2 p-3 bg-muted rounded-lg">
+              <div className="space-y-3 overflow-x-hidden">
+                <div className="flex items-center space-x-2 p-2 bg-muted rounded-lg">
                   <Checkbox
                     id="usar-dados-utilizador"
                     checked={usarDadosUtilizador}
@@ -709,17 +763,17 @@ export function MovimentosTab({
                       }
                     }}
                   />
-                  <Label htmlFor="usar-dados-utilizador" className="cursor-pointer">
+                  <Label htmlFor="usar-dados-utilizador" className="cursor-pointer text-sm">
                     Usar dados de utilizador existente
                   </Label>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {usarDadosUtilizador ? (
-                    <div className="space-y-2 col-span-2">
-                      <Label>Utilizador *</Label>
+                    <div className="space-y-1 md:col-span-2 min-w-0">
+                      <Label className="text-sm">Utilizador *</Label>
                       <Select value={formData.user_id} onValueChange={handleUserChange}>
-                        <SelectTrigger>
+                        <SelectTrigger className="h-8 text-sm">
                           <SelectValue placeholder="Selecionar utilizador" />
                         </SelectTrigger>
                         <SelectContent>
@@ -733,25 +787,28 @@ export function MovimentosTab({
                     </div>
                   ) : (
                     <>
-                      <div className="space-y-2 col-span-2">
-                        <Label>Entidade</Label>
+                      <div className="space-y-1 md:col-span-2 min-w-0">
+                        <Label className="text-sm">Entidade</Label>
                         <Input
+                          className="h-8 text-sm"
                           value={formData.nome_manual}
                           onChange={(e) => setFormData({ ...formData, nome_manual: e.target.value })}
                           placeholder="Nome do cliente/fornecedor"
                         />
                       </div>
-                      <div className="space-y-2">
-                        <Label>NIF</Label>
+                      <div className="space-y-1 min-w-0">
+                        <Label className="text-sm">NIF</Label>
                         <Input
+                          className="h-8 text-sm"
                           value={formData.nif_manual}
                           onChange={(e) => setFormData({ ...formData, nif_manual: e.target.value })}
                           placeholder="Numero de contribuinte"
                         />
                       </div>
-                      <div className="space-y-2">
-                        <Label>Morada</Label>
+                      <div className="space-y-1 min-w-0">
+                        <Label className="text-sm">Morada</Label>
                         <Input
+                          className="h-8 text-sm"
                           value={formData.morada_manual}
                           onChange={(e) => setFormData({ ...formData, morada_manual: e.target.value })}
                           placeholder="Morada completa"
@@ -760,7 +817,7 @@ export function MovimentosTab({
                     </>
                   )}
 
-                  <div className="space-y-2">
+                  <div className="space-y-1 min-w-0">
                     <Label>Classificacao *</Label>
                     <Select
                       value={formData.classificacao}
@@ -776,7 +833,7 @@ export function MovimentosTab({
                     </Select>
                   </div>
 
-                  <div className="space-y-2">
+                  <div className="space-y-2 min-w-0">
                     <Label>Tipo *</Label>
                     <Select
                       value={formData.tipo}
@@ -810,7 +867,7 @@ export function MovimentosTab({
                     </Select>
                   </div>
 
-                  <div className="space-y-2">
+                  <div className="space-y-2 min-w-0">
                     <Label>Origem</Label>
                     <Select
                       value={formData.origem_tipo || 'none'}
@@ -835,7 +892,7 @@ export function MovimentosTab({
                   </div>
 
                   {formData.origem_tipo && (
-                    <div className="space-y-2">
+                    <div className="space-y-2 min-w-0">
                       <Label>Referencia</Label>
                       <Input
                         value={formData.origem_id}
@@ -845,17 +902,17 @@ export function MovimentosTab({
                     </div>
                   )}
 
-                  <div className="space-y-2">
+                  <div className="space-y-2 min-w-0">
                     <Label>Data Emissao</Label>
                     <Input type="date" value={formData.data_emissao} onChange={(e) => setFormData({ ...formData, data_emissao: e.target.value })} />
                   </div>
 
-                  <div className="space-y-2">
+                  <div className="space-y-2 min-w-0">
                     <Label>Data Vencimento</Label>
                     <Input type="date" value={formData.data_vencimento} onChange={(e) => setFormData({ ...formData, data_vencimento: e.target.value })} />
                   </div>
 
-                  <div className="space-y-2 col-span-2">
+                  <div className="space-y-2 md:col-span-2 min-w-0">
                     <Label>Centro de Custo</Label>
                     <Select
                       value={formData.centro_custo_id}
@@ -876,7 +933,7 @@ export function MovimentosTab({
                     </Select>
                   </div>
 
-                  <div className="space-y-2 col-span-2">
+                  <div className="space-y-2 md:col-span-2 min-w-0">
                     <Label>Documento Original (opcional)</Label>
                     <Input
                       type="file"
@@ -887,72 +944,111 @@ export function MovimentosTab({
 
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label>Linhas do Movimento</Label>
+                    <Label className="text-sm font-semibold">Linhas do Movimento</Label>
                     <Button type="button" size="sm" variant="outline" onClick={addLinha}>
                       <Plus size={16} className="mr-1" />
                       Adicionar Linha
                     </Button>
                   </div>
 
+                  <div className="hidden lg:grid lg:grid-cols-[minmax(200px,2.4fr)_minmax(180px,2fr)_minmax(85px,1fr)_minmax(70px,0.8fr)_minmax(75px,0.9fr)_minmax(90px,1fr)_48px] gap-2 px-2 py-1 bg-muted rounded border border-border">
+                    <span className="text-xxs font-bold whitespace-nowrap">Descrição</span>
+                    <span className="text-xxs font-bold whitespace-nowrap">Atleta</span>
+                    <span className="text-xxs font-bold whitespace-nowrap">V.Unit</span>
+                    <span className="text-xxs font-bold whitespace-nowrap">Qtd</span>
+                    <span className="text-xxs font-bold whitespace-nowrap">IVA %</span>
+                    <span className="text-xxs font-bold whitespace-nowrap">Total</span>
+                    <span className="text-xxs font-bold whitespace-nowrap text-center">Ação</span>
+                  </div>
+
                   <div className="space-y-2">
                     {linhas.map((linha, index) => (
-                      <Card key={index} className="p-4">
-                        <div className="space-y-3">
-                          <div className="grid grid-cols-12 gap-2">
-                            <div className="col-span-4 space-y-2">
-                              <Label className="text-xs">Descricao</Label>
+                      <Card key={index} className="p-2">
+                        <div className="space-y-1">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[minmax(200px,2.4fr)_minmax(180px,2fr)_minmax(85px,1fr)_minmax(70px,0.8fr)_minmax(75px,0.9fr)_minmax(90px,1fr)_48px] gap-2">
+                            <div className="sm:col-span-2 lg:col-span-1 space-y-1 min-w-0">
+                              <Label className="text-xxs font-semibold">Descrição</Label>
                               <Input
                                 placeholder="Item"
-                                value={linha.descricao}
+                                className="h-7 text-xs"
+                                value={stripAtletaMarker(linha.descricao)}
                                 onChange={(e) => updateLinha(index, 'descricao', e.target.value)}
                               />
                             </div>
-                            <div className="col-span-2 space-y-2">
-                              <Label className="text-xs">Valor Unit.</Label>
+                            <div className="sm:col-span-2 lg:col-span-1 space-y-1 min-w-0">
+                              <Label className="text-xxs font-semibold">Atleta</Label>
+                              <Select
+                                value={linha.atleta_id || 'none'}
+                                onValueChange={(v) => {
+                                  if (v && v !== 'none') {
+                                    updateLinha(index, 'atleta_id', v);
+                                  } else {
+                                    updateLinha(index, 'atleta_id', undefined);
+                                  }
+                                }}
+                              >
+                                <SelectTrigger className="h-7 text-xs">
+                                  <SelectValue placeholder="Nenhum" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="none">Nenhum</SelectItem>
+                                  {(users || []).map((user) => (
+                                    <SelectItem key={user.id} value={user.id}>
+                                      {user.nome_completo}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-1 min-w-0">
+                              <Label className="text-xxs font-semibold">V.Unit</Label>
                               <Input
                                 type="number"
                                 step="0.01"
                                 min="0"
+                                className="h-7 text-xs"
                                 value={linha.valor_unitario}
                                 onChange={(e) => updateLinha(index, 'valor_unitario', parseFloat(e.target.value) || 0)}
                               />
                             </div>
-                            <div className="col-span-2 space-y-2">
-                              <Label className="text-xs">Qtd.</Label>
+                            <div className="space-y-1 min-w-0">
+                              <Label className="text-xxs font-semibold">Qtd</Label>
                               <Input
                                 type="number"
                                 min="1"
+                                className="h-7 text-xs"
                                 value={linha.quantidade}
                                 onChange={(e) => updateLinha(index, 'quantidade', parseInt(e.target.value) || 1)}
                               />
                             </div>
-                            <div className="col-span-2 space-y-2">
-                              <Label className="text-xs">IVA %</Label>
+                            <div className="space-y-1 min-w-0">
+                              <Label className="text-xxs font-semibold">IVA %</Label>
                               <Input
                                 type="number"
                                 min="0"
+                                className="h-7 text-xs"
                                 value={linha.imposto_percentual}
                                 onChange={(e) => updateLinha(index, 'imposto_percentual', parseFloat(e.target.value) || 0)}
                               />
                             </div>
-                            <div className="col-span-1 space-y-2">
-                              <Label className="text-xs">Total</Label>
-                              <div className="text-sm font-medium pt-2">
+                            <div className="space-y-1 min-w-0">
+                              <Label className="text-xxs font-semibold">Total</Label>
+                              <div className="text-xs font-medium h-7 flex items-center">
                                 €{(linha.valor_unitario * linha.quantidade * (1 + linha.imposto_percentual / 100)).toFixed(2)}
                               </div>
                             </div>
-                            <div className="col-span-1 flex items-end">
+                            <div className="sm:col-span-2 lg:col-span-1 flex items-end pb-1 justify-end lg:justify-center">
                               {linhas.length > 1 && (
-                                <Button type="button" size="sm" variant="ghost" onClick={() => removeLinha(index)}>
-                                  <X size={16} />
+                                <Button type="button" size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => removeLinha(index)}>
+                                  <X size={14} />
                                 </Button>
                               )}
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-2 gap-2">
-                            <div className="space-y-2">
-                              <Label className="text-xs">Associar Mensalidade (opcional)</Label>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
+                            <div className="space-y-1">
+                              <Label className="text-xxs font-semibold">Mensalidade (opcional)</Label>
                               <Select
                                 value={linha.fatura_id && linha.tipo_fatura === 'mensalidade' ? linha.fatura_id : 'none'}
                                 onValueChange={(v) => {
@@ -977,7 +1073,7 @@ export function MovimentosTab({
                                   }
                                 }}
                               >
-                                <SelectTrigger>
+                                <SelectTrigger className="h-7 text-xs">
                                   <SelectValue placeholder="Nenhuma" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -997,8 +1093,8 @@ export function MovimentosTab({
                               </Select>
                             </div>
 
-                            <div className="space-y-2">
-                              <Label className="text-xs">Associar Movimento (opcional)</Label>
+                            <div className="space-y-1">
+                              <Label className="text-xxs font-semibold">Movimento (opcional)</Label>
                               <Select
                                 value={linha.fatura_id && linha.tipo_fatura === 'movimento' ? linha.fatura_id : 'none'}
                                 onValueChange={(v) => {
@@ -1025,7 +1121,7 @@ export function MovimentosTab({
                                   }
                                 }}
                               >
-                                <SelectTrigger>
+                                <SelectTrigger className="h-7 text-xs">
                                   <SelectValue placeholder="Nenhum" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -1053,9 +1149,10 @@ export function MovimentosTab({
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label>Observacoes</Label>
+                <div className="space-y-1">
+                  <Label className="text-sm">Observacoes</Label>
                   <Textarea
+                    className="h-16 text-sm"
                     placeholder="Notas adicionais"
                     value={formData.observacoes}
                     onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })}
@@ -1063,9 +1160,9 @@ export function MovimentosTab({
                   />
                 </div>
 
-                <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
-                  <span className="font-semibold">Total do Movimento:</span>
-                  <span className="text-2xl font-bold text-primary">
+                <div className="flex items-center justify-between p-2 bg-muted rounded-lg">
+                  <span className="text-sm font-semibold">Total do Movimento:</span>
+                  <span className="text-xl font-bold text-primary">
                     {formData.classificacao === 'despesa' ? '-' : ''}€{linhas
                       .reduce((sum, l) => sum + l.valor_unitario * l.quantidade * (1 + l.imposto_percentual / 100), 0)
                       .toFixed(2)}
@@ -1083,26 +1180,27 @@ export function MovimentosTab({
         </div>
       </div>
 
-      <Card>
-        <Table>
+      <Card className="w-full">
+        <div className="w-full overflow-x-auto">
+        <Table className="w-full min-w-[1180px]">
           <TableHeader>
             <TableRow>
-              <TableHead className="w-12">
+              <TableHead className="w-12 min-w-12">
                 <Checkbox
                   checked={selectedMovimentos.size === filteredMovimentos.length && filteredMovimentos.length > 0}
                   onCheckedChange={handleToggleAllMovimentos}
                 />
               </TableHead>
-              <TableHead>Nome</TableHead>
-              <TableHead>Classificacao</TableHead>
-              <TableHead>Tipo</TableHead>
-              <TableHead>Data Emissao</TableHead>
-              <TableHead>Vencimento</TableHead>
-              <TableHead>Valor</TableHead>
-              <TableHead>Estado</TableHead>
-              <TableHead>Centro Custo</TableHead>
-              <TableHead>Faturas Associadas</TableHead>
-              <TableHead className="text-right">Acoes</TableHead>
+              <TableHead className="min-w-[210px]">Nome</TableHead>
+              <TableHead className="min-w-[120px] whitespace-nowrap">Classificacao</TableHead>
+              <TableHead className="min-w-[110px]">Tipo</TableHead>
+              <TableHead className="min-w-[120px] whitespace-nowrap">Data Emissao</TableHead>
+              <TableHead className="min-w-[120px]">Vencimento</TableHead>
+              <TableHead className="min-w-[110px]">Valor</TableHead>
+              <TableHead className="min-w-[110px]">Estado</TableHead>
+              <TableHead className="min-w-[140px] whitespace-nowrap">Centro Custo</TableHead>
+              <TableHead className="min-w-[220px] whitespace-nowrap">Faturas Associadas</TableHead>
+              <TableHead className="text-right min-w-[250px]">Acoes</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -1125,20 +1223,20 @@ export function MovimentosTab({
                         onCheckedChange={() => handleToggleMovimentoSelection(movimento.id)}
                       />
                     </TableCell>
-                    <TableCell className="font-medium">{getNomeDisplay(movimento)}</TableCell>
+                    <TableCell className="font-medium whitespace-nowrap">{getNomeDisplay(movimento)}</TableCell>
                     <TableCell>{getClassificacaoBadge(movimento.classificacao)}</TableCell>
                     <TableCell>
-                      <Badge variant="outline">{movimento.tipo}</Badge>
+                      <Badge variant="outline" className="whitespace-nowrap">{movimento.tipo}</Badge>
                     </TableCell>
-                    <TableCell>{format(new Date(movimento.data_emissao), 'dd/MM/yyyy')}</TableCell>
-                    <TableCell>{format(new Date(movimento.data_vencimento), 'dd/MM/yyyy')}</TableCell>
-                    <TableCell className="font-semibold">
+                    <TableCell className="whitespace-nowrap">{format(new Date(movimento.data_emissao), 'dd/MM/yyyy')}</TableCell>
+                    <TableCell className="whitespace-nowrap">{format(new Date(movimento.data_vencimento), 'dd/MM/yyyy')}</TableCell>
+                    <TableCell className="font-semibold whitespace-nowrap">
                       <span className={movimentoValor < 0 ? 'text-red-600' : 'text-green-600'}>
                         €{movimentoValor.toFixed(2)}
                       </span>
                     </TableCell>
                     <TableCell>{getEstadoBadge(movimento.estado_pagamento)}</TableCell>
-                    <TableCell className="text-sm">{getCentroCustoName(movimento.centro_custo_id)}</TableCell>
+                    <TableCell className="text-sm whitespace-nowrap">{getCentroCustoName(movimento.centro_custo_id || undefined)}</TableCell>
                     <TableCell className="text-sm text-muted-foreground max-w-xs truncate">
                       {getFaturasAssociadas(movimento.id) || '-'}
                     </TableCell>
@@ -1182,6 +1280,7 @@ export function MovimentosTab({
             )}
           </TableBody>
         </Table>
+        </div>
       </Card>
 
       <Dialog open={dialogReciboOpen} onOpenChange={setDialogReciboOpen}>

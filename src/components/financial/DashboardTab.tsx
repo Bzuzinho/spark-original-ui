@@ -9,7 +9,6 @@ export function DashboardTab() {
   const [faturas] = useKV<Fatura[]>('club-faturas', []);
   const [lancamentos] = useKV<LancamentoFinanceiro[]>('club-lancamentos', []);
   const [centrosCusto] = useKV<CentroCusto[]>('club-centros-custo', []);
-  const [users] = useKV<User[]>('club-users', []);
 
   const stats = useMemo(() => {
     const now = new Date();

@@ -29,7 +29,7 @@ interface DadosDesportivosTabProps {
 }
 
 export function DadosDesportivosTab({ user, onChange, isAdmin }: DadosDesportivosTabProps) {
-  const [ageGroups] = useKV<AgeGroup[]>('settings-age-groups', []);
+  // Disabled: settings-age-groups returns 500
   const [showCardPreview, setShowCardPreview] = useState(false);
 
   const handlePrintCard = () => {

@@ -78,6 +78,13 @@ interface ConvocationGroup {
   evento_data: string;
   evento_tipo: string;
   convocations: Convocation[];
+  // Fields from KV store group
+  local_encontro?: string | null;
+  hora_encontro?: string | null;
+  observacoes?: string | null;
+  centro_custo_id?: string | null;
+  valor_inscricao_calculado?: number;
+  atletas_ids?: string[];
 }
 
 interface CostCenter {
@@ -150,15 +157,27 @@ export function ConvocatoriasList({
   const allConvocationGroups: ConvocationGroup[] = useMemo(() => {
     return events
       .filter((event) => convocations.some((conv) => conv.evento_id === event.id))
-      .map((event) => ({
-        evento_id: event.id,
-        evento_titulo: event.titulo,
-        evento_data: event.data_inicio,
-        evento_tipo: event.tipo,
-        convocations: convocations.filter((conv) => conv.evento_id === event.id),
-      }))
+      .map((event) => {
+        // Fetch additional data from KV store if available
+        const kvGroup = kvConvocationGroups.find((g: any) => g.evento_id === event.id);
+        
+        return {
+          evento_id: event.id,
+          evento_titulo: event.titulo,
+          evento_data: event.data_inicio,
+          evento_tipo: event.tipo,
+          convocations: convocations.filter((conv) => conv.evento_id === event.id),
+          // Include KV store data
+          local_encontro: kvGroup?.local_encontro || undefined,
+          hora_encontro: kvGroup?.hora_encontro || undefined,
+          observacoes: kvGroup?.observacoes || undefined,
+          centro_custo_id: kvGroup?.centro_custo_id || undefined,
+          valor_inscricao_calculado: kvGroup?.valor_inscricao_calculado || undefined,
+          atletas_ids: kvGroup?.atletas_ids || undefined,
+        };
+      })
       .sort((a, b) => new Date(b.evento_data).getTime() - new Date(a.evento_data).getTime());
-  }, [events, convocations]);
+  }, [events, convocations, kvConvocationGroups]);
 
   const convocationGroups: ConvocationGroup[] = useMemo(() => {
     return allConvocationGroups.filter((group) => {
@@ -192,30 +211,59 @@ export function ConvocatoriasList({
 
     setIsLoading(true);
     try {
-      // Eliminar todas as convocatórias do grupo
-      const promises = deletingGroup.convocations.map((conv) =>
-        axios.delete(`/api/event-convocations/${conv.id}`)
-      );
-      await Promise.all(promises);
+      // Eliminar do KV store
+      const eventId = deletingGroup.evento_id;
+      
+      // Remove from convocations grupo
+      await setKvConvocationGroups(current => (current || []).filter(g => g.evento_id !== eventId));
 
-      toast.success('Convocatórias eliminadas com sucesso!');
+      toast.success('Convocatória eliminada com sucesso!');
       setIsDeleteDialogOpen(false);
       setDeletingGroup(null);
-
-      // Recarregar convocatórias
-      const response = await axios.get('/api/event-convocations/groups');
-      setKvConvocationGroups(response.data);
     } catch (error: any) {
-      console.error('Erro ao eliminar convocatórias:', error);
-      toast.error(error.response?.data?.message || 'Erro ao eliminar convocatórias');
+      console.error('Erro ao eliminar convocatória:', error);
+      toast.error('Erro ao eliminar convocatória');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const generatePDF = (group: ConvocationGroup) => {
-    // Criar HTML para PDF
-    const htmlContent = `
+  const generatePDF = async (group: ConvocationGroup) => {
+    try {
+      // Fetch provas (race types) to map IDs to names
+      let provaMap: Map<string, string> = new Map();
+      try {
+        const provasResponse = await axios.get('/api/prova-tipos');
+        const provas = provasResponse.data || [];
+        provas.forEach((prova: any) => {
+          if (prova.id) {
+            const name = prova.nome || prova.name || 'Prova';
+            provaMap.set(prova.id, name.trim());
+          }
+        });
+      } catch (err) {
+        console.warn('Could not fetch provas data:', err);
+      }
+
+      // Fetch attendance data with provas for each athlete
+      let attendanceMap: Map<string, string[]> = new Map();
+      try {
+          const response = await axios.get(`/api/eventos/${group.evento_id}/attendances`);
+        const attendances = response.data || [];
+        
+        // Map athlete IDs to their provas (event races)
+        attendances.forEach((attendance: any) => {
+          if (attendance.user_id && attendance.provas) {
+            attendanceMap.set(attendance.user_id, attendance.provas);
+          }
+        });
+      } catch (err) {
+        console.warn('Could not fetch attendance provas data:', err);
+        // Continue without provas data
+      }
+
+      // Criar HTML para PDF
+      const htmlContent = `
       <!DOCTYPE html>
       <html>
       <head>
@@ -225,17 +273,20 @@ export function ConvocatoriasList({
           @page { size: A4; margin: 2cm; }
           body { font-family: Arial, sans-serif; font-size: 12pt; }
           h1 { color: #1e40af; text-align: center; margin-bottom: 20px; }
-          h2 { color: #475569; border-bottom: 2px solid #1e40af; padding-bottom: 5px; }
+          h2 { color: #475569; border-bottom: 2px solid #1e40af; padding-bottom: 5px; margin-top: 20px; }
           .info { margin: 20px 0; }
-          .info-row { margin: 10px 0; }
-          .info-label { font-weight: bold; display: inline-block; width: 120px; }
+          .info-row { margin: 8px 0; display: flex; }
+          .info-label { font-weight: bold; width: 150px; }
+          .info-value { flex: 1; }
           table { width: 100%; border-collapse: collapse; margin-top: 20px; }
           th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-          th { background-color: #1e40af; color: white; }
+          th { background-color: #1e40af; color: white; font-weight: bold; }
+          tr:nth-child(even) { background-color: #f9fafb; }
           .status-confirmado { color: #16a34a; font-weight: bold; }
           .status-pendente { color: #eab308; font-weight: bold; }
           .status-recusado { color: #dc2626; font-weight: bold; }
-          .footer { margin-top: 40px; text-align: center; font-size: 10pt; color: #666; }
+          .footer { margin-top: 40px; text-align: center; font-size: 10pt; color: #666; border-top: 1px solid #ccc; padding-top: 20px; }
+          .empty-value { color: #999; font-style: italic; }
         </style>
       </head>
       <body>
@@ -244,21 +295,29 @@ export function ConvocatoriasList({
         <div class="info">
           <div class="info-row">
             <span class="info-label">Evento:</span>
-            ${group.evento_titulo}
+            <span class="info-value">${group.evento_titulo}</span>
           </div>
           <div class="info-row">
             <span class="info-label">Tipo:</span>
-            ${group.evento_tipo}
+            <span class="info-value">${group.evento_tipo || '-'}</span>
           </div>
           <div class="info-row">
-            <span class="info-label">Data:</span>
-            ${format(new Date(group.evento_data), "dd 'de' MMMM 'de' yyyy", {
+            <span class="info-label">Data do Evento:</span>
+            <span class="info-value">${format(new Date(group.evento_data), "dd 'de' MMMM 'de' yyyy", {
               locale: ptBR,
-            })}
+            })}</span>
           </div>
           <div class="info-row">
-            <span class="info-label">Total Convocados:</span>
-            ${group.convocations.length}
+            <span class="info-label">Local de Encontro:</span>
+            <span class="info-value">${group.local_encontro || '-'}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Hora de Encontro:</span>
+            <span class="info-value">${group.hora_encontro || '-'}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Total de Convocados:</span>
+            <span class="info-value"><strong>${group.convocations.length}</strong></span>
           </div>
         </div>
 
@@ -266,25 +325,29 @@ export function ConvocatoriasList({
         <table>
           <thead>
             <tr>
-              <th>Nº</th>
+              <th style="width: 50px;">Nº</th>
               <th>Nome</th>
-              <th>Estado</th>
-              <th>Data Convocatória</th>
+              <th>Relação de Provas</th>
             </tr>
           </thead>
           <tbody>
             ${group.convocations
               .map(
-                (conv, index) => `
+                (conv, index) => {
+                  const provaIds = attendanceMap.get(conv.user_id) || [];
+                  // Map prova IDs to their names
+                  const provaNames = provaIds
+                    .map(id => provaMap.get(id) || id)
+                    .filter(name => name); // Remove empty values
+                  const provasText = provaNames.length > 0 ? provaNames.join(', ') : '-';
+                  return `
               <tr>
                 <td>${index + 1}</td>
                 <td>${conv.user?.nome_completo || 'N/A'}</td>
-                <td class="status-${conv.estado_confirmacao}">
-                  ${conv.estado_confirmacao.toUpperCase()}
-                </td>
-                <td>${format(new Date(conv.data_convocatoria), 'dd/MM/yyyy')}</td>
+                <td>${provasText}</td>
               </tr>
-            `
+            `;
+                }
               )
               .join('')}
           </tbody>
@@ -300,17 +363,21 @@ export function ConvocatoriasList({
       </html>
     `;
 
-    // Abrir em nova janela para impressão
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.write(htmlContent);
-      printWindow.document.close();
-      setTimeout(() => {
-        printWindow.print();
-      }, 250);
-    }
+      // Abrir em nova janela para impressão
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
+        setTimeout(() => {
+          printWindow.print();
+        }, 250);
+      }
 
-    toast.success('PDF gerado! Use Ctrl+P para salvar ou imprimir.');
+      toast.success('PDF gerado! Use Ctrl+P para salvar ou imprimir.');
+    } catch (error) {
+      console.error('Erro ao gerar PDF:', error);
+      toast.error('Erro ao gerar PDF');
+    }
   };
 
   const getEstadoStats = (group: ConvocationGroup) => {
@@ -432,7 +499,7 @@ export function ConvocatoriasList({
                     <Button
                       variant="outline"
                       className="h-7 px-2 text-xs"
-                      onClick={() => generatePDF(group)}
+                      onClick={() => generatePDF(group).catch(() => null)}
                     >
                       <FilePdf size={12} className="mr-1" />
                       PDF
@@ -470,14 +537,14 @@ export function ConvocatoriasList({
             <AlertDialogDescription>
               Tem a certeza que deseja eliminar todas as convocatórias deste evento? Esta
               ação não pode ser desfeita.
-              {deletingGroup && (
-                <div className="mt-2 p-2 bg-muted rounded text-sm">
-                  <strong>Evento:</strong> {deletingGroup.evento_titulo}
-                  <br />
-                  <strong>Convocatórias:</strong> {deletingGroup.convocations.length}
-                </div>
-              )}
             </AlertDialogDescription>
+            {deletingGroup && (
+              <div className="mt-2 p-2 bg-muted rounded text-sm">
+                <strong>Evento:</strong> {deletingGroup.evento_titulo}
+                <br />
+                <strong>Convocatórias:</strong> {deletingGroup.convocations.length}
+              </div>
+            )}
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isLoading}>Cancelar</AlertDialogCancel>

@@ -30,9 +30,10 @@ class EventAttendancesController extends Controller
         $validated = $request->validate([
             'evento_id' => 'required|uuid|exists:events,id',
             'user_id' => 'required|uuid|exists:users,id',
-            'estado' => 'required|in:presente,ausente,justificado',
+            'estado' => 'required|in:presente,ausente,justificado,pendente',
             'hora_chegada' => 'nullable|date_format:H:i',
             'observacoes' => 'nullable|string',
+            'provas' => 'nullable|array',
             'registado_por' => 'nullable|uuid|exists:users,id',
             'registado_em' => 'nullable|date',
         ]);
@@ -55,9 +56,10 @@ class EventAttendancesController extends Controller
         $attendance = EventAttendance::findOrFail($id);
         
         $validated = $request->validate([
-            'estado' => 'sometimes|in:presente,ausente,justificado',
+            'estado' => 'sometimes|in:presente,ausente,justificado,pendente',
             'hora_chegada' => 'sometimes|date_format:H:i',
             'observacoes' => 'sometimes|string',
+            'provas' => 'sometimes|array',
         ]);
 
         $attendance->update($validated);
@@ -67,6 +69,92 @@ class EventAttendancesController extends Controller
     public function destroy(string $id): JsonResponse
     {
         EventAttendance::findOrFail($id)->delete();
+        return response()->json(['message' => 'Attendance record deleted successfully']);
+    }
+
+    /**
+     * Get attendances for a specific event
+     */
+    public function getEventAttendances(string $eventId): JsonResponse
+    {
+        $attendances = EventAttendance::with(['user', 'event'])
+            ->where('evento_id', $eventId)
+            ->orderBy('registado_em', 'desc')
+            ->get();
+        
+        return response()->json($attendances);
+    }
+
+    /**
+     * Create attendance for an event
+     */
+    public function createEventAttendance(Request $request, string $eventId): JsonResponse
+    {
+        $validated = $request->validate([
+            'user_id' => 'required|uuid|exists:users,id',
+            'estado' => 'required|in:presente,ausente,justificado,pendente',
+            'hora_chegada' => 'nullable|date_format:H:i',
+            'observacoes' => 'nullable|string',
+            'provas' => 'nullable|array',
+            'data_presenca' => 'nullable|date',
+        ]);
+
+        $registadoPor = auth()->id() ?? $validated['user_id'];
+
+        $attendance = EventAttendance::updateOrCreate(
+            [
+                'evento_id' => $eventId,
+                'user_id' => $validated['user_id'],
+            ],
+            [
+                'estado' => $validated['estado'],
+                'hora_chegada' => $validated['hora_chegada'] ?? null,
+                'observacoes' => $validated['observacoes'] ?? null,
+                'provas' => $validated['provas'] ?? [],
+                'registado_por' => $registadoPor,
+                'registado_em' => now(),
+            ]
+        );
+
+        return response()->json($attendance, 200);
+    }
+
+    /**
+     * Update attendance provas for a user in an event
+     */
+    public function updateUserProvas(Request $request, string $eventId, string $userId): JsonResponse
+    {
+        $validated = $request->validate([
+            'provas' => 'required|array',
+        ]);
+
+        $registadoPor = auth()->id() ?? $userId;
+
+        $attendance = EventAttendance::updateOrCreate(
+            [
+                'evento_id' => $eventId,
+                'user_id' => $userId,
+            ],
+            [
+                'estado' => 'pendente',
+                'provas' => $validated['provas'],
+                'registado_por' => $registadoPor,
+                'registado_em' => now(),
+            ]
+        );
+
+        return response()->json($attendance);
+    }
+
+    /**
+     * Delete attendance for a user in an event
+     */
+    public function deleteUserAttendance(string $eventId, string $userId): JsonResponse
+    {
+        EventAttendance::where('evento_id', $eventId)
+            ->where('user_id', $userId)
+            ->delete();
+
         return response()->json(['message' => 'Attendance record deleted successfully']);
     }
 }
