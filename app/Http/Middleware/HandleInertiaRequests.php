@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Models\ClubSetting;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -41,7 +42,9 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user(),
             ],
-            'clubSettings' => ClubSetting::select('nome_clube', 'sigla', 'logo_url')->first(),
+            'clubSettings' => Cache::remember('club_settings_shared', now()->addMinutes(5), function () {
+                return ClubSetting::select('nome_clube', 'sigla', 'logo_url')->first();
+            }),
         ];
     }
 }
