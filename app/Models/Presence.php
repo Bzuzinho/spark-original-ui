@@ -15,14 +15,20 @@ class Presence extends Model
         'user_id',
         'data',
         'treino_id',
+        'escalao_id',
         'tipo',
+        'status',
         'justificacao',
         'presente',
+        'distancia_realizada_m',
+        'classificacao',
+        'notas',
     ];
 
     protected $casts = [
         'data' => 'date',
         'presente' => 'boolean',
+        'distancia_realizada_m' => 'integer',
     ];
 
     public function atleta(): BelongsTo
@@ -33,5 +39,10 @@ class Presence extends Model
     public function training(): BelongsTo
     {
         return $this->belongsTo(Training::class, 'treino_id');
+    }
+
+    public function escalao(): BelongsTo
+    {
+        return $this->belongsTo(AgeGroup::class, 'escalao_id');
     }
 }

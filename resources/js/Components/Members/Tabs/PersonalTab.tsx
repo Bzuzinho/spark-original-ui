@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { usePage } from '@inertiajs/react';
 import { Label } from '@/Components/ui/label';
 import { Input } from '@/Components/ui/input';
@@ -8,6 +8,8 @@ import { Switch } from '@/Components/ui/switch';
 import { Avatar, AvatarFallback, AvatarImage } from '@/Components/ui/avatar';
 import { Button } from '@/Components/ui/button';
 import { Card } from '@/Components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/Components/ui/dialog';
+import { ScrollArea } from '@/Components/ui/scroll-area';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { UserCircle, MapPin, Phone, Briefcase } from 'lucide-react';
@@ -56,6 +58,12 @@ export function PersonalTab({ user, allUsers, onChange, isAdmin, userTypes = [],
     ? userTypes
     : ((page.props as any)?.userTypes || []);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // State para gerenciar diálogos de seleção
+  const [showGuardianDialog, setShowGuardianDialog] = useState(false);
+  const [showEducandoDialog, setShowEducandoDialog] = useState(false);
+  const [selectedGuardianId, setSelectedGuardianId] = useState<string>('');
+  const [selectedEducandoId, setSelectedEducandoId] = useState<string>('');
 
   const getInitials = (name: string) => {
     return name
@@ -64,6 +72,26 @@ export function PersonalTab({ user, allUsers, onChange, isAdmin, userTypes = [],
       .slice(0, 2)
       .join('')
       .toUpperCase();
+  };
+
+  const handleAddGuardian = () => {
+    if (selectedGuardianId) {
+      const currentGuardians = user.encarregado_educacao || [];
+      onChange('encarregado_educacao', [...currentGuardians, selectedGuardianId]);
+      toast.success('Encarregado adicionado');
+      setShowGuardianDialog(false);
+      setSelectedGuardianId('');
+    }
+  };
+
+  const handleAddEducando = () => {
+    if (selectedEducandoId) {
+      const currentEducandos = user.educandos || [];
+      onChange('educandos', [...currentEducandos, selectedEducandoId]);
+      toast.success('Educando adicionado');
+      setShowEducandoDialog(false);
+      setSelectedEducandoId('');
+    }
   };
 
   const handleUploadClick = () => {
@@ -518,18 +546,7 @@ export function PersonalTab({ user, allUsers, onChange, isAdmin, userTypes = [],
                   variant="outline"
                   size="sm"
                   className="h-6 text-xs mb-1"
-                  onClick={() => {
-                    const currentGuardians = user.encarregado_educacao || [];
-                    if (availableGuardians.length > 0) {
-                      const firstAvailable = availableGuardians.find(
-                        (g: any) => !currentGuardians.includes(g.id)
-                      );
-                      if (firstAvailable) {
-                        onChange('encarregado_educacao', [...currentGuardians, firstAvailable.id]);
-                        toast.success('Encarregado adicionado');
-                      }
-                    }
-                  }}
+                  onClick={() => setShowGuardianDialog(true)}
                 >
                   + Adicionar
                 </Button>
@@ -576,18 +593,7 @@ export function PersonalTab({ user, allUsers, onChange, isAdmin, userTypes = [],
                   variant="outline"
                   size="sm"
                   className="h-6 text-xs mb-1"
-                  onClick={() => {
-                    const currentEducandos = user.educandos || [];
-                    if (availableAthletes.length > 0) {
-                      const firstAvailable = availableAthletes.find(
-                        (a: any) => !currentEducandos.includes(a.id)
-                      );
-                      if (firstAvailable) {
-                        onChange('educandos', [...currentEducandos, firstAvailable.id]);
-                        toast.success('Educando adicionado');
-                      }
-                    }
-                  }}
+                  onClick={() => setShowEducandoDialog(true)}
                 >
                   + Adicionar
                 </Button>
@@ -625,6 +631,112 @@ export function PersonalTab({ user, allUsers, onChange, isAdmin, userTypes = [],
           )}
         </div>
       </div>
+
+      {/* Diálogo para selecionar Encarregado de Educação */}
+      <Dialog open={showGuardianDialog} onOpenChange={setShowGuardianDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-sm">Selecionar Encarregado de Educação</DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="h-64 w-full rounded border">
+            <div className="p-4 space-y-2">
+              {availableGuardians
+                .filter((g: any) => !user.encarregado_educacao?.includes(g.id))
+                .map((guardian: any) => (
+                  <button
+                    key={guardian.id}
+                    onClick={() => setSelectedGuardianId(guardian.id)}
+                    className={`w-full text-left px-3 py-2 rounded text-xs border transition-colors ${
+                      selectedGuardianId === guardian.id
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'hover:bg-muted border-muted'
+                    }`}
+                  >
+                    {guardian.nome_completo}
+                  </button>
+                ))}
+              {availableGuardians.filter((g: any) => !user.encarregado_educacao?.includes(g.id)).length === 0 && (
+                <p className="text-xs text-muted-foreground text-center py-4">
+                  Nenhum encarregado disponível
+                </p>
+              )}
+            </div>
+          </ScrollArea>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setShowGuardianDialog(false)}
+              className="h-7 text-xs"
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={handleAddGuardian}
+              disabled={!selectedGuardianId}
+              className="h-7 text-xs"
+            >
+              Adicionar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Diálogo para selecionar Educando */}
+      <Dialog open={showEducandoDialog} onOpenChange={setShowEducandoDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-sm">Selecionar Educando</DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="h-64 w-full rounded border">
+            <div className="p-4 space-y-2">
+              {availableAthletes
+                .filter((a: any) => !user.educandos?.includes(a.id))
+                .map((athlete: any) => (
+                  <button
+                    key={athlete.id}
+                    onClick={() => setSelectedEducandoId(athlete.id)}
+                    className={`w-full text-left px-3 py-2 rounded text-xs border transition-colors ${
+                      selectedEducandoId === athlete.id
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'hover:bg-muted border-muted'
+                    }`}
+                  >
+                    {athlete.nome_completo}
+                  </button>
+                ))}
+              {availableAthletes.filter((a: any) => !user.educandos?.includes(a.id)).length === 0 && (
+                <p className="text-xs text-muted-foreground text-center py-4">
+                  Nenhum educando disponível
+                </p>
+              )}
+            </div>
+          </ScrollArea>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setShowEducandoDialog(false)}
+              className="h-7 text-xs"
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={handleAddEducando}
+              disabled={!selectedEducandoId}
+              className="h-7 text-xs"
+            >
+              Adicionar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

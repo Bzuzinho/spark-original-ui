@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { usePage } from '@inertiajs/react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/Components/ui/dialog';
 import { Button } from '@/Components/ui/button';
 import { Card } from '@/Components/ui/card';
@@ -57,12 +56,6 @@ interface AgeGroup {
   name?: string;
 }
 
-interface CostCenter {
-  id: string;
-  nome: string;
-  ativo?: boolean;
-}
-
 interface Convocation {
   id: string;
   evento_id: string;
@@ -88,7 +81,6 @@ interface CreateConvocatoriaDialogProps {
   events: EventItem[];
   users: UserItem[];
   ageGroups?: AgeGroup[];
-  costCenters?: CostCenter[];
   onCreated: (newConvocations: Convocation[]) => void;
 }
 
@@ -106,13 +98,8 @@ export function CreateConvocatoriaDialog({
   events,
   users,
   ageGroups: providedAgeGroups = [],
-  costCenters = [],
   onCreated,
 }: CreateConvocatoriaDialogProps) {
-  // Get current user at the top level
-  const { auth } = usePage<any>().props;
-  const currentUserId = auth?.user?.id;
-
   const [step, setStep] = useState(1);
   const [selectedEventId, setSelectedEventId] = useState('');
   const [selectedEscalao, setSelectedEscalao] = useState('todos');
@@ -121,13 +108,14 @@ export function CreateConvocatoriaDialog({
   const [horaEncontro, setHoraEncontro] = useState('');
   const [localEncontro, setLocalEncontro] = useState('');
   const [observacoes, setObservacoes] = useState('');
-  const [centroCustoId, setCentroCustoId] = useState('none');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiProvas, setApiProvas] = useState<Prova[]>([]);
 
-  const [kvUsers] = useKV<UserItem[]>('club-convocatorias-atleta', []);
-  const [kvAgeGroups] = useKV<AgeGroup[]>('club-convocatorias-grupo', []);
+  const [kvUsers] = useKV<UserItem[]>('club-users', []);
+  const [provas] = useKV<Prova[]>('settings-provas', []);
+  const [kvAgeGroups] = useKV<AgeGroup[]>('settings-age-groups', []);
   const [convocatoriaGroups, setConvocatoriaGroups] = useKV<any[]>('club-convocatorias-grupo', []);
+  const [convocatoriaAthletes, setConvocatoriaAthletes] = useKV<any[]>('club-convocatorias-atleta', []);
 
   const normalizeProvaLabel = (prova: Prova): string => {
     if (prova.name && prova.name.trim() !== '') {
@@ -142,12 +130,12 @@ export function CreateConvocatoriaDialog({
   };
 
   const provaOptions = useMemo(() => {
-    const source = apiProvas.length > 0 ? apiProvas : [];
+    const source = apiProvas.length > 0 ? apiProvas : provas || [];
 
     return source
       .filter((prova) => Boolean(prova?.id))
       .map((prova) => ({ id: prova.id, name: normalizeProvaLabel(prova) }));
-  }, [apiProvas]);
+  }, [apiProvas, provas]);
 
   const ageGroupSource = useMemo(() => {
     return (providedAgeGroups && providedAgeGroups.length > 0 ? providedAgeGroups : kvAgeGroups) || [];
@@ -287,7 +275,6 @@ export function CreateConvocatoriaDialog({
     setHoraEncontro('');
     setLocalEncontro('');
     setObservacoes('');
-    setCentroCustoId('none');
     setIsSubmitting(false);
   };
 
@@ -377,13 +364,10 @@ export function CreateConvocatoriaDialog({
         id: groupId,
         evento_id: selectedEventId,
         data_criacao: createdDate,
-        criado_por: currentUserId,
         atletas_ids: selectedAthletes,
         hora_encontro: horaEncontro || null,
         local_encontro: localEncontro || null,
         observacoes: observacoes || null,
-        tipo_custo: 'por_salto', // ✅ REQUIRED FIELD - NOT NULL em BD
-        centro_custo_id: centroCustoId === 'none' ? null : centroCustoId,
         valor_inscricao_calculado: Number(costSummary.valorTotal.toFixed(2)),
       };
 
@@ -395,65 +379,17 @@ export function CreateConvocatoriaDialog({
         created_at: createdDate,
       }));
 
-      console.log('📤 Enviando newGroup ao backend:', newGroup);
-      
-      // Salvar o grupo PRIMEIRO
-      console.log('⏳ Salvando grupo...');
       setConvocatoriaGroups([...(convocatoriaGroups || []), newGroup]);
-      
-      // AGUARDAR MAIS TEMPO para garantir sincronização do grupo
-      // O PUT para /api/kv/club-convocatorias-grupo precisa completar
-      // e a sincronização no backend precisa crear a linha na tabela
-      await new Promise(resolve => setTimeout(resolve, 4000));
-      
-      // Verificar que o grupo foi REALMENTE criado no BD
-      let groupConfirmed = false;
-      let attempts = 0;
-      
-      while (!groupConfirmed && attempts < 3) {
-        try {
-          // Fazer GET para confirmar que veio do BD
-          const response = await axios.get(`/api/kv/club-convocatorias-grupo`);
-          const groups = response.data.value || [];
-          groupConfirmed = groups.some((g: any) => g.id === groupId);
-          
-          if (!groupConfirmed) {
-            console.log(`⏳ Grupo ainda não no BD. Tentativa ${attempts + 1}/3. Aguardando mais...`);
-            await new Promise(resolve => setTimeout(resolve, 2000));
-            attempts++;
-          }
-        } catch (err) {
-          console.error('Erro ao verificar grupo:', err);
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          attempts++;
-        }
-      }
-      
-      if (!groupConfirmed) {
-        throw new Error('Grupo não foi criado no banco de dados após múltiplas tentativas');
-      }
-      
-      console.log('✅ Grupo CONFIRMADO no BD! Incluindo atletas...');
-      
-      // ✅ Agora criar registos de presença (attendances) com as provas
-      try {
-        await Promise.all(
-          selectedAthletes.map((athleteId) =>
-            axios.post(`/api/eventos/${selectedEventId}/attendances`, {
-              user_id: athleteId,
-              estado: 'pendente',
-              data_presenca: new Date(selectedEvent.data_inicio).toISOString().split('T')[0],
-              provas: athleteProvas[athleteId] || [],
-            }).catch((error) => {
-              console.warn(`Aviso ao criar attendance para ${athleteId}:`, error);
-              return null;
-            })
-          )
-        );
-        console.log('✅ Attendances criados com provas!');
-      } catch (error) {
-        console.warn('Aviso: Houve algum problema ao criar attendances, mas o grupo foi criado', error);
-      }
+      setConvocatoriaAthletes([...(convocatoriaAthletes || []), ...newAthletes]);
+
+      await Promise.allSettled(
+        selectedAthletes.map((athleteId) =>
+          axios.post(`/eventos/${selectedEventId}/participantes`, {
+            user_id: athleteId,
+            estado_confirmacao: 'pendente',
+          })
+        )
+      );
 
       const athleteMap = new Map(userSource.map((user) => [user.id, user]));
       const newConvocations: Convocation[] = selectedAthletes.map((athleteId) => {
@@ -480,9 +416,8 @@ export function CreateConvocatoriaDialog({
       onCreated(newConvocations);
       toast.success('Convocatória criada com sucesso!');
       onOpenChange(false);
-    } catch (error) {
-      console.error('❌ Erro ao criar convocatória:', error);
-      toast.error('Erro ao criar convocatória. Verifique os logs.');
+    } catch {
+      toast.error('Erro ao criar convocatória');
     } finally {
       setIsSubmitting(false);
     }
@@ -532,7 +467,7 @@ export function CreateConvocatoriaDialog({
                 <div className="space-y-2">
                   <Label>Evento *</Label>
                   <Select value={selectedEventId} onValueChange={setSelectedEventId}>
-                    <SelectTrigger className="bg-white">
+                    <SelectTrigger>
                       <SelectValue placeholder="Selecionar evento agendado..." />
                     </SelectTrigger>
                     <SelectContent>
@@ -550,7 +485,7 @@ export function CreateConvocatoriaDialog({
                 <div className="space-y-2">
                   <Label>Filtrar por Escalão</Label>
                   <Select value={selectedEscalao} onValueChange={setSelectedEscalao}>
-                    <SelectTrigger className="w-[220px] bg-white">
+                    <SelectTrigger className="w-[220px]">
                       <SelectValue placeholder="Todos os escalões" />
                     </SelectTrigger>
                     <SelectContent>
@@ -560,25 +495,6 @@ export function CreateConvocatoriaDialog({
                           {escalao.label}
                         </SelectItem>
                       ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="centro-custo">Centro de Custos</Label>
-                  <Select value={centroCustoId} onValueChange={setCentroCustoId}>
-                    <SelectTrigger id="centro-custo" className="bg-white">
-                      <SelectValue placeholder="Selecionar centro de custos (opcional)" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Sem centro de custos</SelectItem>
-                      {costCenters
-                        .filter((cc) => cc.ativo !== false)
-                        .map((cc) => (
-                          <SelectItem key={cc.id} value={cc.id}>
-                            {cc.nome}
-                          </SelectItem>
-                        ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -660,22 +576,22 @@ export function CreateConvocatoriaDialog({
 
             {step === 3 && (
               <>
-                <Card className="p-2">
-                  <p className="mb-1 text-xs font-semibold">Custos do Evento</p>
-                  <p className="text-xs">
+                <Card className="p-3">
+                  <p className="mb-2 text-xl font-semibold">Custos do Evento</p>
+                  <p className="text-base">
                     Custo por Prova: €{Number(selectedEvent?.custo_inscricao_por_prova || 0).toFixed(2)}
                   </p>
                 </Card>
 
-                <Card className="p-2">
-                  <p className="mb-1 text-xs font-semibold">Cálculo das Taxas de Inscrição</p>
-                  <div className="space-y-1 text-xs">
+                <Card className="p-3">
+                  <p className="mb-2 text-xl font-semibold">Cálculo das Taxas de Inscrição</p>
+                  <div className="space-y-1 text-base">
                     <div className="flex justify-between"><span>Total de Atletas:</span><span>{costSummary.totalAtletas}</span></div>
                     <div className="flex justify-between"><span>Total de Provas:</span><span>{costSummary.totalProvas}</span></div>
                     <div className="flex justify-between"><span>Nº de Estafetas:</span><span>{costSummary.totalEstafetas}</span></div>
                   </div>
-                  <Separator className="my-1" />
-                  <div className="flex justify-between text-sm font-bold text-primary">
+                  <Separator className="my-2" />
+                  <div className="flex justify-between text-2xl font-bold text-primary">
                     <span>Valor Total:</span>
                     <span>€{costSummary.valorTotal.toFixed(2)}</span>
                   </div>
@@ -683,15 +599,15 @@ export function CreateConvocatoriaDialog({
 
                 <div className="space-y-2">
                   <Label>Hora de Encontro</Label>
-                  <Input type="time" value={horaEncontro} onChange={(e) => setHoraEncontro(e.target.value)} className="bg-white" />
+                  <Input type="time" value={horaEncontro} onChange={(e) => setHoraEncontro(e.target.value)} />
                 </div>
                 <div className="space-y-2">
                   <Label>Local de Encontro</Label>
-                  <Input value={localEncontro} onChange={(e) => setLocalEncontro(e.target.value)} placeholder="Ex: Sede do Clube" className="bg-white" />
+                  <Input value={localEncontro} onChange={(e) => setLocalEncontro(e.target.value)} placeholder="Ex: Sede do Clube" />
                 </div>
                 <div className="space-y-2">
                   <Label>Observações</Label>
-                  <Textarea value={observacoes} onChange={(e) => setObservacoes(e.target.value)} placeholder="Informações adicionais..." rows={2} className="bg-white" />
+                  <Textarea value={observacoes} onChange={(e) => setObservacoes(e.target.value)} placeholder="Informações adicionais..." rows={3} />
                 </div>
               </>
             )}

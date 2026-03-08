@@ -56,7 +56,33 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('eventos/{event}/participantes/{user}', [EventosController::class, 'updateParticipantStatus'])->name('eventos.participantes.update');
     Route::get('eventos-stats', [EventosController::class, 'stats'])->name('eventos.stats');
     
-    Route::resource('desportivo', DesportivoController::class);
+    // Desportivo routes with tabs
+    Route::prefix('desportivo')->group(function () {
+        Route::get('/', [DesportivoController::class, 'index'])->name('desportivo.index');
+        Route::get('planeamento', [DesportivoController::class, 'planeamento'])->name('desportivo.planeamento');
+        Route::get('treinos', [DesportivoController::class, 'treinos'])->name('desportivo.treinos');
+        Route::get('presencas', [DesportivoController::class, 'presencas'])->name('desportivo.presencas');
+        Route::get('competicoes', [DesportivoController::class, 'competicoes'])->name('desportivo.competicoes');
+        Route::get('relatorios', [DesportivoController::class, 'relatorios'])->name('desportivo.relatorios');
+        
+        // Season (Época) operations
+        Route::post('epocas', [DesportivoController::class, 'storeSeason'])->name('desportivo.epoca.store');
+        Route::put('epocas/{season}', [DesportivoController::class, 'updateSeason'])->name('desportivo.epoca.update');
+        Route::delete('epocas/{season}', [DesportivoController::class, 'deleteSeason'])->name('desportivo.epoca.delete');
+        Route::post('macrociclos', [DesportivoController::class, 'storeMacrocycle'])->name('desportivo.macrociclo.store');
+        
+        // Training operations
+        Route::post('treinos', [DesportivoController::class, 'storeTraining'])->name('desportivo.treino.store');
+        Route::put('treinos/{training}', [DesportivoController::class, 'updateTraining'])->name('desportivo.treino.update');
+        Route::post('treinos/{training}/duplicar', [DesportivoController::class, 'duplicateTraining'])->name('desportivo.treino.duplicate');
+        Route::delete('treinos/{training}', [DesportivoController::class, 'deleteTraining'])->name('desportivo.treino.delete');
+        
+        // Presence operations
+        Route::put('presencas', [DesportivoController::class, 'updatePresencas'])->name('desportivo.presencas.update');
+        Route::post('presencas/marcar-presentes', [DesportivoController::class, 'markAllPresent'])->name('desportivo.presencas.mark-all-present');
+        Route::post('presencas/limpar', [DesportivoController::class, 'clearAllPresences'])->name('desportivo.presencas.clear-all');
+    });
+    
     Route::resource('financeiro', FinanceiroController::class);
     Route::post('financeiro/{financeiro}/apagar', [FinanceiroController::class, 'destroy'])->name('financeiro.destroy.post');
     Route::resource('loja', LojaController::class);

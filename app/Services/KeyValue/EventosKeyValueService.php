@@ -709,6 +709,10 @@ class EventosKeyValueService
             $groupIds = $grouped->keys()->filter()->values();
             if ($groupIds->isNotEmpty()) {
                 ConvocationAthlete::whereNotIn('convocatoria_grupo_id', $groupIds)->delete();
+
+                ConvocationGroup::whereIn('id', $groupIds)
+                    ->get()
+                    ->each(fn (ConvocationGroup $group) => $group->refreshFinancialMovement());
             }
         });
     }
