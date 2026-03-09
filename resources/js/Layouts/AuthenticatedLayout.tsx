@@ -43,10 +43,10 @@ const mainMenuItems = [
     { id: 'desportivo', label: 'Desportivo', icon: Trophy, route: '/desportivo' },
     { id: 'eventos', label: 'Eventos', icon: CalendarBlank, route: '/eventos' },
     { id: 'financeiro', label: 'Financeiro', icon: CurrencyCircleDollar, route: '/financeiro' },
-    { id: 'inventario', label: 'Inventário', icon: ShoppingCart, route: '/inventario' },
+    { id: 'inventario', label: 'Inventário', icon: ShoppingCart, route: '/loja' },
     { id: 'patrocinios', label: 'Patrocínios', icon: Handshake, route: '/patrocinios' },
     { id: 'comunicacao', label: 'Comunicação', icon: Envelope, route: '/comunicacao' },
-    { id: 'marketing', label: 'Marketing', icon: MegaphoneSimple, route: '/marketing' },
+    { id: 'marketing', label: 'Marketing', icon: MegaphoneSimple, route: '/campanhas-marketing' },
 ];
 
 const settingsMenuItems = [

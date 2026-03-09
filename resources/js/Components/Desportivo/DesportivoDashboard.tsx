@@ -71,7 +71,7 @@ export function DesportivoDashboard({
   ];
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
         {mainStats.map((stat) => {
           const Icon = stat.icon;
@@ -96,41 +96,41 @@ export function DesportivoDashboard({
         })}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="p-4">
-          <h3 className="text-sm font-semibold mb-3">Resumo de Treinos</h3>
+      <div className="grid gap-3 lg:grid-cols-3">
+        <Card className="p-3">
+          <h3 className="text-xs font-semibold mb-2">Resumo de Treinos</h3>
           <div className="space-y-2">
             <div className="flex items-center justify-between py-2 border-b last:border-0">
-              <span className="text-sm text-muted-foreground">Últimos 7 dias</span>
-              <span className="text-sm font-semibold text-blue-600">
+              <span className="text-xs text-muted-foreground">Últimos 7 dias</span>
+              <span className="text-xs font-semibold text-blue-600">
                 {stats.trainings7Days} treinos
               </span>
             </div>
             <div className="flex items-center justify-between py-2 border-b last:border-0">
-              <span className="text-sm text-muted-foreground">Últimos 30 dias</span>
-              <span className="text-sm font-semibold text-emerald-600">
+              <span className="text-xs text-muted-foreground">Últimos 30 dias</span>
+              <span className="text-xs font-semibold text-emerald-600">
                 {stats.trainings30Days} treinos
               </span>
             </div>
             <div className="flex items-center justify-between py-2 border-b last:border-0">
-              <span className="text-sm text-muted-foreground">Volume 7 dias</span>
-              <span className="text-sm font-semibold">{stats.km7Days} km</span>
+              <span className="text-xs text-muted-foreground">Volume 7 dias</span>
+              <span className="text-xs font-semibold">{stats.km7Days} km</span>
             </div>
           </div>
         </Card>
 
-        <Card className="p-4">
-          <h3 className="text-sm font-semibold mb-3">Volume Mensal</h3>
+        <Card className="p-3">
+          <h3 className="text-xs font-semibold mb-2">Volume Mensal</h3>
           <div className="flex flex-col gap-2">
             <p className="text-xs text-muted-foreground">
               Km treinados nos últimos 30 dias
             </p>
-            <p className="text-3xl font-bold">{stats.km30Days} km</p>
+            <p className="text-2xl font-bold">{stats.km30Days} km</p>
           </div>
         </Card>
 
-        <Card className="p-4">
-          <h3 className="text-sm font-semibold mb-3">Alertas</h3>
+        <Card className="p-3">
+          <h3 className="text-xs font-semibold mb-2">Alertas</h3>
           <div className="space-y-2">
             {alerts.length === 0 ? (
               <p className="text-xs text-muted-foreground">Sem alertas ativos</p>
