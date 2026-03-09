@@ -138,26 +138,36 @@ class DesportivoController extends Controller
             ];
         }
 
-        $lowAttendance = (clone $athletesQuery)
-            ->where('estado', 'ativo')
-            ->get()
-            ->filter(function ($user) use ($thirtyDaysAgo) {
-                $presenceCount = Presence::where('user_id', $user->id)
-                    ->where('data', '>=', $thirtyDaysAgo->format('Y-m-d'))
-                    ->where('status', 'presente')
-                    ->count();
+        $trainingsLast30Days = Training::where('data', '>=', $thirtyDaysAgo->format('Y-m-d'))->count();
 
-                $trainings = Training::where('data', '>=', $thirtyDaysAgo->format('Y-m-d'))->count();
+        $lowAttendanceCount = 0;
+        if ($trainingsLast30Days > 0) {
+            $activeAthleteIds = (clone $athletesQuery)
+                ->where('estado', 'ativo')
+                ->pluck('id');
 
-                return $trainings > 0 && ($presenceCount / $trainings) < 0.5;
-            });
+            $presenceByAthlete = Presence::whereIn('user_id', $activeAthleteIds)
+                ->where('data', '>=', $thirtyDaysAgo->format('Y-m-d'))
+                ->where('status', 'presente')
+                ->select('user_id', DB::raw('COUNT(*) as presentes'))
+                ->groupBy('user_id')
+                ->pluck('presentes', 'user_id');
 
-        if ($lowAttendance->count() > 0) {
+            foreach ($activeAthleteIds as $athleteId) {
+                $presenceCount = (int) ($presenceByAthlete[$athleteId] ?? 0);
+
+                if (($presenceCount / $trainingsLast30Days) < 0.5) {
+                    $lowAttendanceCount++;
+                }
+            }
+        }
+
+        if ($lowAttendanceCount > 0) {
             $alerts[] = [
                 'type' => 'warning',
                 'title' => 'Atletas com Baixa Presença',
-                'message' => $lowAttendance->count() . ' atletas com presença inferior a 50%',
-                'count' => $lowAttendance->count(),
+                'message' => $lowAttendanceCount . ' atletas com presença inferior a 50%',
+                'count' => $lowAttendanceCount,
             ];
         }
 
