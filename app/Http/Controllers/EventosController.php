@@ -96,14 +96,6 @@ class EventosController extends Controller
         ]);
     }
 
-    public function create(): Response
-    {
-        return Inertia::render('Eventos/Create', [
-            'eventTypes' => EventTypeConfig::where('ativo', true)->get(),
-            'users' => User::where('estado', 'ativo')->get(),
-        ]);
-    }
-
     public function store(StoreEventRequest $request): RedirectResponse
     {
         $data = $request->validated();
@@ -258,8 +250,19 @@ class EventosController extends Controller
     /**
      * Add a participant to an event
      */
-    public function addParticipant(Request $request, Event $evento): JsonResponse
+    public function addParticipant(Request $request, Event $event): JsonResponse
     {
+        if (!$event->canEditAttendances()) {
+            $trainingId = $event->trainings()->value('id');
+
+            return response()->json([
+                'message' => 'As presencas deste treino sao geridas no modulo Desportivo.',
+                'redirect' => $trainingId
+                    ? route('desportivo.presencas', ['training_id' => $trainingId])
+                    : route('desportivo.presencas'),
+            ], 403);
+        }
+
         $request->validate([
             'user_id' => 'required|exists:users,id',
             'estado_confirmacao' => 'nullable|in:confirmado,pendente,recusado',
@@ -272,7 +275,7 @@ class EventosController extends Controller
         $estadoConfirmacao = $request->input('estado_confirmacao', $request->input('status', 'pendente'));
 
         // Check if participant already exists
-        $existing = EventConvocation::where('evento_id', $evento->id)
+        $existing = EventConvocation::where('evento_id', $event->id)
             ->where('user_id', $request->user_id)
             ->first();
 
@@ -283,7 +286,7 @@ class EventosController extends Controller
         }
 
         $convocation = EventConvocation::create([
-            'evento_id' => $evento->id,
+            'evento_id' => $event->id,
             'user_id' => $request->user_id,
             'data_convocatoria' => now()->toDateString(),
             'estado_confirmacao' => $estadoConfirmacao,
@@ -301,9 +304,20 @@ class EventosController extends Controller
     /**
      * Remove a participant from an event
      */
-    public function removeParticipant(Event $evento, User $user): JsonResponse
+    public function removeParticipant(Event $event, User $user): JsonResponse
     {
-        $convocation = EventConvocation::where('evento_id', $evento->id)
+        if (!$event->canEditAttendances()) {
+            $trainingId = $event->trainings()->value('id');
+
+            return response()->json([
+                'message' => 'As presencas deste treino sao geridas no modulo Desportivo.',
+                'redirect' => $trainingId
+                    ? route('desportivo.presencas', ['training_id' => $trainingId])
+                    : route('desportivo.presencas'),
+            ], 403);
+        }
+
+        $convocation = EventConvocation::where('evento_id', $event->id)
             ->where('user_id', $user->id)
             ->first();
 
@@ -323,8 +337,19 @@ class EventosController extends Controller
     /**
      * Update participant status
      */
-    public function updateParticipantStatus(Request $request, Event $evento, User $user): JsonResponse
+    public function updateParticipantStatus(Request $request, Event $event, User $user): JsonResponse
     {
+        if (!$event->canEditAttendances()) {
+            $trainingId = $event->trainings()->value('id');
+
+            return response()->json([
+                'message' => 'As presencas deste treino sao geridas no modulo Desportivo.',
+                'redirect' => $trainingId
+                    ? route('desportivo.presencas', ['training_id' => $trainingId])
+                    : route('desportivo.presencas'),
+            ], 403);
+        }
+
         $request->validate([
             'estado_confirmacao' => 'nullable|in:confirmado,pendente,recusado',
             'status' => 'nullable|in:confirmado,pendente,recusado',
@@ -340,7 +365,7 @@ class EventosController extends Controller
             ], 422);
         }
 
-        $convocation = EventConvocation::where('evento_id', $evento->id)
+        $convocation = EventConvocation::where('evento_id', $event->id)
             ->where('user_id', $user->id)
             ->first();
 

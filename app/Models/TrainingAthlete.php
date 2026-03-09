@@ -22,6 +22,8 @@ class TrainingAthlete extends Model
         'observacoes_tecnicas',
         'registado_por',
         'registado_em',
+        'atualizado_por_utilizador_em',
+        'atualizado_por',
     ];
 
     protected $casts = [
@@ -29,6 +31,7 @@ class TrainingAthlete extends Model
         'volume_real_m' => 'integer',
         'rpe' => 'integer',
         'registado_em' => 'datetime',
+        'atualizado_por_utilizador_em' => 'datetime',
     ];
 
     public function training(): BelongsTo

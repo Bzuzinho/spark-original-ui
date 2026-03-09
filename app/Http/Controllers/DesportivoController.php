@@ -3,13 +3,19 @@
 namespace App\Http\Controllers;
 
 use App\Models\AgeGroup;
+use App\Models\AthleteStatusConfig;
 use App\Models\Season;
 use App\Models\Macrocycle;
 use App\Models\Training;
+use App\Models\TrainingAthlete;
 use App\Models\Presence;
 use App\Models\Event;
 use App\Models\EventResult;
 use App\Models\User;
+use App\Services\Desportivo\CreateTrainingAction;
+use App\Services\Desportivo\PrepareTrainingAthletesAction;
+use App\Services\Desportivo\SyncTrainingToEventAction;
+use App\Services\Desportivo\UpdateTrainingAthleteAction;
 use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Http\RedirectResponse;
@@ -210,19 +216,24 @@ class DesportivoController extends Controller
 
         $presences = collect();
         if ($selectedTraining) {
-            $presences = $selectedTraining->presences()
-                ->with(['atleta', 'escalao'])
+            $presences = $selectedTraining->athleteRecords()
+                ->with(['atleta'])
                 ->get()
-                ->map(function (Presence $p) {
+                ->map(function (TrainingAthlete $p) use ($selectedTraining) {
+                    $legacyPresence = Presence::where('treino_id', $p->treino_id)
+                        ->where('user_id', $p->user_id)
+                        ->first();
+
                     return [
                         'id' => $p->id,
+                        'legacy_presence_id' => $legacyPresence?->id,
                         'user_id' => $p->user_id,
                         'nome_atleta' => $p->atleta?->nome_completo,
-                        'data' => $p->data,
-                        'status' => $p->status,
-                        'distancia_realizada_m' => $p->distancia_realizada_m,
-                        'classificacao' => $p->classificacao,
-                        'notas' => $p->notas,
+                        'data' => Carbon::parse($selectedTraining->data)->toDateString(),
+                        'status' => $p->estado,
+                        'distancia_realizada_m' => $p->volume_real_m,
+                        'classificacao' => $legacyPresence?->classificacao,
+                        'notas' => $p->observacoes_tecnicas,
                     ];
                 });
         }
@@ -306,7 +317,12 @@ class DesportivoController extends Controller
             'selectedTraining' => $selectedTraining,
             'presences' => $presences,
             'athletes' => (clone $athletesQuery)->where('estado', 'ativo')->get(['id', 'nome_completo']),
-            'statusOptions' => ['presente', 'ausente', 'justificado', 'atestado_medico', 'outro'],
+            'statusOptions' => AthleteStatusConfig::query()
+                ->ativo()
+                ->ordenado()
+                ->pluck('codigo')
+                ->values()
+                ->all(),
             'classificacaoOptions' => ['Excelente', 'Bom', 'Satisfatório', 'Fraco'],
             'competitions' => $competitions,
             'results' => $results,
@@ -428,65 +444,25 @@ class DesportivoController extends Controller
             'notas_gerais' => 'nullable|string',
         ]);
 
-        $training = Training::create([
-            ...$validated,
-            'criado_por' => auth()->id(),
-            'escaloes' => $validated['escaloes'] ?? [],
-        ]);
+        $training = app(CreateTrainingAction::class)->execute($validated, auth()->user());
 
-        $escaloes = $validated['escaloes'] ?? [];
-        $escaloesNomes = !empty($escaloes)
-            ? AgeGroup::whereIn('id', $escaloes)->pluck('nome')->implode(', ')
-            : 'Treino';
-
-        $event = Event::create([
-            'titulo' => "Treino - {$escaloesNomes}",
-            'data_inicio' => Carbon::parse($validated['data'])->toDateString(),
-            'hora_inicio' => $validated['hora_inicio'] ?? '09:00',
-            'data_fim' => $validated['data'],
-            'hora_fim' => $validated['hora_fim'] ?? '10:00',
-            'tipo' => 'treino',
-            'descricao' => $validated['descricao_treino'],
-            'local' => $validated['local'],
-            'estado' => 'agendado',
-            'criado_por' => auth()->id(),
-        ]);
-
-        if (!empty($escaloes)) {
-            $event->syncAgeGroups($escaloes);
-        }
-
-        $training->update(['evento_id' => $event->id]);
-
-        if (!empty($escaloes)) {
-            $athletesQuery = User::whereJsonContains('tipo_membro', 'atleta')
-                ->where('estado', 'ativo')
-                ->where(function ($query) use ($escaloes) {
-                    foreach ($escaloes as $escalaoId) {
-                        $query->orWhereJsonContains('escalao', $escalaoId);
-                    }
-                });
-
-            $athletes = $athletesQuery->get();
-
-            foreach ($athletes as $athlete) {
-                $athleteEscaloes = $athlete->escalao;
-                if (!is_array($athleteEscaloes)) {
-                    $athleteEscaloes = $athleteEscaloes ? [$athleteEscaloes] : [];
-                }
-
-                $matchedEscaloes = array_values(array_intersect($escaloes, $athleteEscaloes));
-                $escalaoId = $matchedEscaloes[0] ?? null;
-
-                Presence::create([
-                    'user_id' => $athlete->id,
-                    'data' => $validated['data'],
-                    'treino_id' => $training->id,
-                    'escalao_id' => $escalaoId,
-                    'tipo' => 'treino',
-                    'status' => 'ausente',
-                    'presente' => false,
-                ]);
+        // Dual write temporário para compatibilidade com queries legacy
+        if (config('desportivo.legacy_presences_enabled', true)) {
+            $training->loadMissing('athleteRecords');
+            foreach ($training->athleteRecords as $record) {
+                Presence::updateOrCreate(
+                    [
+                        'treino_id' => $training->id,
+                        'user_id' => $record->user_id,
+                    ],
+                    [
+                        'data' => Carbon::parse($validated['data'])->toDateString(),
+                        'tipo' => 'treino',
+                        'status' => 'ausente',
+                        'presente' => false,
+                        'is_legacy' => false,
+                    ]
+                );
             }
         }
 
@@ -518,6 +494,35 @@ class DesportivoController extends Controller
             'escaloes' => $validated['escaloes'] ?? [],
         ]);
 
+        if ($training->evento_id) {
+            $training->loadMissing('event');
+
+            if ($training->event) {
+                $escaloes = $validated['escaloes'] ?? [];
+                $escaloesNomes = !empty($escaloes)
+                    ? AgeGroup::whereIn('id', $escaloes)->pluck('nome')->implode(', ')
+                    : ucfirst((string) $training->tipo_treino);
+                $date = Carbon::parse($validated['data'])->format('d/m/Y');
+
+                $training->event->update([
+                    'titulo' => "Treino - {$escaloesNomes} ({$date})",
+                    'data_inicio' => Carbon::parse($validated['data'])->toDateString(),
+                    'hora_inicio' => $validated['hora_inicio'] ?? $training->event->hora_inicio,
+                    'data_fim' => Carbon::parse($validated['data'])->toDateString(),
+                    'hora_fim' => $validated['hora_fim'] ?? $training->event->hora_fim,
+                    'local' => $validated['local'] ?? $training->event->local,
+                    'descricao' => $validated['descricao_treino'] ?? $training->event->descricao,
+                ]);
+
+                $training->event->syncAgeGroups($escaloes);
+            }
+        }
+
+        app(PrepareTrainingAthletesAction::class)
+            ->updateForChangedEscaloes($training->fresh(), $validated['escaloes'] ?? []);
+
+        app(SyncTrainingToEventAction::class)->execute($training->fresh('athleteRecords'));
+
         return redirect()->route('desportivo.treinos')
             ->with('success', 'Treino atualizado com sucesso!');
     }
@@ -527,9 +532,21 @@ class DesportivoController extends Controller
      */
     public function duplicateTraining(Training $training): RedirectResponse
     {
-        $newTraining = $training->replicate();
-        $newTraining->data = Carbon::parse($training->data)->addDays(7)->format('Y-m-d');
-        $newTraining->save();
+        $newTrainingDate = Carbon::parse($training->data)->addDays(7)->format('Y-m-d');
+
+        app(CreateTrainingAction::class)->execute([
+            'data' => $newTrainingDate,
+            'hora_inicio' => $training->hora_inicio,
+            'hora_fim' => $training->hora_fim,
+            'local' => $training->local,
+            'epoca_id' => $training->epoca_id,
+            'microciclo_id' => $training->microciclo_id,
+            'tipo_treino' => $training->tipo_treino,
+            'volume_planeado_m' => $training->volume_planeado_m,
+            'descricao_treino' => $training->descricao_treino,
+            'notas_gerais' => $training->notas_gerais,
+            'escaloes' => is_array($training->escaloes) ? $training->escaloes : [],
+        ], auth()->user());
 
         return redirect()->route('desportivo.treinos')
             ->with('success', 'Treino duplicado com sucesso!');
@@ -540,11 +557,17 @@ class DesportivoController extends Controller
      */
     public function deleteTraining(Training $training): RedirectResponse
     {
-        $training->presences()->delete();
-        if ($training->evento_id) {
-            Event::where('id', $training->evento_id)->delete();
-        }
-        $training->delete();
+        DB::transaction(function () use ($training) {
+            if (config('desportivo.legacy_presences_enabled', true)) {
+                $training->presences()->delete();
+            }
+
+            if ($training->evento_id) {
+                Event::where('id', $training->evento_id)->delete();
+            }
+
+            $training->delete();
+        });
 
         return redirect()->route('desportivo.treinos')
             ->with('success', 'Treino eliminado com sucesso!');
@@ -557,26 +580,59 @@ class DesportivoController extends Controller
     {
         $validated = $request->validate([
             'presences' => 'required|array',
-            'presences.*.id' => 'required|uuid|exists:presences,id',
-            'presences.*.status' => 'required|in:presente,ausente,justificado,atestado_medico,outro',
+            'presences.*.id' => 'required|uuid',
+            'presences.*.legacy_presence_id' => 'nullable|uuid',
+            'presences.*.status' => 'required|in:presente,ausente,justificado,atestado_medico,outro,lesionado,limitado,doente',
             'presences.*.distancia_realizada_m' => 'nullable|integer',
             'presences.*.classificacao' => 'nullable|string',
             'presences.*.notas' => 'nullable|string',
         ]);
 
+        $updateAction = app(UpdateTrainingAthleteAction::class);
+
         foreach ($validated['presences'] as $presenceData) {
-            $presence = Presence::find($presenceData['id']);
-            if (!$presence) {
+            $trainingAthlete = TrainingAthlete::find($presenceData['id']);
+
+            // Compatibilidade: caso frontend ainda envie id de presences
+            if (!$trainingAthlete) {
+                $legacyPresence = Presence::find($presenceData['id']);
+                if ($legacyPresence) {
+                    $trainingAthlete = TrainingAthlete::where('treino_id', $legacyPresence->treino_id)
+                        ->where('user_id', $legacyPresence->user_id)
+                        ->first();
+                }
+            }
+
+            if (!$trainingAthlete) {
                 continue;
             }
 
-            $presence->update([
-                'status' => $presenceData['status'],
-                'distancia_realizada_m' => $presenceData['distancia_realizada_m'] ?? null,
-                'classificacao' => $presenceData['classificacao'] ?? null,
-                'notas' => $presenceData['notas'] ?? null,
-                'presente' => $presenceData['status'] === 'presente',
-            ]);
+            $updateAction->execute($trainingAthlete, [
+                'estado' => $presenceData['status'] === 'atestado_medico' ? 'justificado' : $presenceData['status'],
+                'volume_real_m' => $presenceData['distancia_realizada_m'] ?? null,
+                'observacoes_tecnicas' => $presenceData['notas'] ?? null,
+            ], auth()->user());
+
+            // Dual write temporário para tabela legacy
+            if (config('desportivo.legacy_presences_enabled', true)) {
+                $legacyPresenceId = $presenceData['legacy_presence_id'] ?? null;
+                $legacyPresence = $legacyPresenceId
+                    ? Presence::find($legacyPresenceId)
+                    : Presence::where('treino_id', $trainingAthlete->treino_id)
+                        ->where('user_id', $trainingAthlete->user_id)
+                        ->first();
+
+                if ($legacyPresence) {
+                    $legacyPresence->update([
+                        'status' => $presenceData['status'],
+                        'distancia_realizada_m' => $presenceData['distancia_realizada_m'] ?? null,
+                        'classificacao' => $presenceData['classificacao'] ?? null,
+                        'notas' => $presenceData['notas'] ?? null,
+                        'presente' => in_array($presenceData['status'], ['presente', 'limitado'], true),
+                        'is_legacy' => false,
+                    ]);
+                }
+            }
         }
 
         return redirect()->route('desportivo.presencas')
@@ -589,12 +645,18 @@ class DesportivoController extends Controller
     public function markAllPresent(Request $request): RedirectResponse
     {
         $trainingId = $request->input('training_id');
-        
-        Presence::where('treino_id', $trainingId)
-            ->update([
-                'status' => 'presente',
-                'presente' => true,
-            ]);
+
+        $athleteIds = TrainingAthlete::where('treino_id', $trainingId)->pluck('id')->toArray();
+        app(UpdateTrainingAthleteAction::class)->markMultiplePresent($athleteIds, auth()->user());
+
+        if (config('desportivo.legacy_presences_enabled', true)) {
+            Presence::where('treino_id', $trainingId)
+                ->update([
+                    'status' => 'presente',
+                    'presente' => true,
+                    'is_legacy' => false,
+                ]);
+        }
 
         return redirect()->route('desportivo.presencas')
             ->with('success', 'Todos os atletas foram marcados como presentes!');
@@ -606,15 +668,20 @@ class DesportivoController extends Controller
     public function clearAllPresences(Request $request): RedirectResponse
     {
         $trainingId = $request->input('training_id');
-        
-        Presence::where('treino_id', $trainingId)
-            ->update([
-                'status' => 'ausente',
-                'presente' => false,
-                'distancia_realizada_m' => null,
-                'classificacao' => null,
-                'notas' => null,
-            ]);
+
+        app(UpdateTrainingAthleteAction::class)->clearAllPresences($trainingId, auth()->user());
+
+        if (config('desportivo.legacy_presences_enabled', true)) {
+            Presence::where('treino_id', $trainingId)
+                ->update([
+                    'status' => 'ausente',
+                    'presente' => false,
+                    'distancia_realizada_m' => null,
+                    'classificacao' => null,
+                    'notas' => null,
+                    'is_legacy' => false,
+                ]);
+        }
 
         return redirect()->route('desportivo.presencas')
             ->with('success', 'Classificações removidas!');

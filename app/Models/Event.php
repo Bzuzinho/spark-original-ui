@@ -227,4 +227,28 @@ class Event extends Model
             $this->attendances()->whereIn('user_id', $removedUserIds)->delete();
         }
     }
+
+    /**
+     * Evento é considerado treino quando tipo='treino' e existe treino associado.
+     */
+    public function isTreino(): bool
+    {
+        if ($this->tipo !== 'treino') {
+            return false;
+        }
+
+        if ($this->relationLoaded('trainings')) {
+            return $this->trainings->isNotEmpty();
+        }
+
+        return $this->trainings()->exists();
+    }
+
+    /**
+     * Presenças de eventos-treino devem ser geridas no módulo Desportivo.
+     */
+    public function canEditAttendances(): bool
+    {
+        return !$this->isTreino();
+    }
 }

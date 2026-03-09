@@ -17,6 +17,7 @@ use App\Http\Controllers\PatrocinosController;
 use App\Http\Controllers\ComunicacaoController;
 use App\Http\Controllers\CampanhasMarketingController;
 use App\Http\Controllers\ConfiguracoesController;
+use App\Http\Controllers\ConfiguracoesDesportivoController;
 use App\Http\Controllers\EquipasController;
 use App\Http\Controllers\MembrosEquipaController;
 use App\Http\Controllers\SessoesFormacaoController;
@@ -48,7 +49,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('relacoes/{relationship}', [RelacoesMembroController::class, 'destroy'])->name('membros.relacoes.destroy');
     });
     
-    Route::resource('eventos', EventosController::class);
+    Route::resource('eventos', EventosController::class)->except(['create']);
     
     // Event participant management routes
     Route::post('eventos/{event}/participantes', [EventosController::class, 'addParticipant'])->name('eventos.participantes.add');
@@ -83,7 +84,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('presencas/limpar', [DesportivoController::class, 'clearAllPresences'])->name('desportivo.presencas.clear-all');
     });
     
-    Route::resource('financeiro', FinanceiroController::class);
+    Route::resource('financeiro', FinanceiroController::class)->except(['create']);
     Route::post('financeiro/{financeiro}/apagar', [FinanceiroController::class, 'destroy'])->name('financeiro.destroy.post');
     Route::resource('loja', LojaController::class);
     Route::resource('patrocinios', PatrocinosController::class);
@@ -93,6 +94,44 @@ Route::middleware(['auth', 'verified'])->group(function () {
     
     // Settings routes
     Route::get('/configuracoes', [ConfiguracoesController::class, 'index'])->name('configuracoes');
+    Route::get('/configuracoes/desportivo', [ConfiguracoesDesportivoController::class, 'index'])
+        ->name('configuracoes.desportivo.index');
+    Route::post('/configuracoes/desportivo/estados-atleta', [ConfiguracoesDesportivoController::class, 'storeAthleteStatus'])
+        ->name('configuracoes.desportivo.estados-atleta.store');
+    Route::put('/configuracoes/desportivo/estados-atleta/{athleteStatus}', [ConfiguracoesDesportivoController::class, 'updateAthleteStatus'])
+        ->name('configuracoes.desportivo.estados-atleta.update');
+    Route::delete('/configuracoes/desportivo/estados-atleta/{athleteStatus}', [ConfiguracoesDesportivoController::class, 'destroyAthleteStatus'])
+        ->name('configuracoes.desportivo.estados-atleta.destroy');
+    Route::post('/configuracoes/desportivo/tipos-treino', [ConfiguracoesDesportivoController::class, 'storeTrainingType'])
+        ->name('configuracoes.desportivo.tipos-treino.store');
+    Route::put('/configuracoes/desportivo/tipos-treino/{trainingType}', [ConfiguracoesDesportivoController::class, 'updateTrainingType'])
+        ->name('configuracoes.desportivo.tipos-treino.update');
+    Route::delete('/configuracoes/desportivo/tipos-treino/{trainingType}', [ConfiguracoesDesportivoController::class, 'destroyTrainingType'])
+        ->name('configuracoes.desportivo.tipos-treino.destroy');
+    Route::post('/configuracoes/desportivo/zonas-treino', [ConfiguracoesDesportivoController::class, 'storeTrainingZone'])
+        ->name('configuracoes.desportivo.zonas-treino.store');
+    Route::put('/configuracoes/desportivo/zonas-treino/{trainingZone}', [ConfiguracoesDesportivoController::class, 'updateTrainingZone'])
+        ->name('configuracoes.desportivo.zonas-treino.update');
+    Route::delete('/configuracoes/desportivo/zonas-treino/{trainingZone}', [ConfiguracoesDesportivoController::class, 'destroyTrainingZone'])
+        ->name('configuracoes.desportivo.zonas-treino.destroy');
+    Route::post('/configuracoes/desportivo/motivos-ausencia', [ConfiguracoesDesportivoController::class, 'storeAbsenceReason'])
+        ->name('configuracoes.desportivo.motivos-ausencia.store');
+    Route::put('/configuracoes/desportivo/motivos-ausencia/{absenceReason}', [ConfiguracoesDesportivoController::class, 'updateAbsenceReason'])
+        ->name('configuracoes.desportivo.motivos-ausencia.update');
+    Route::delete('/configuracoes/desportivo/motivos-ausencia/{absenceReason}', [ConfiguracoesDesportivoController::class, 'destroyAbsenceReason'])
+        ->name('configuracoes.desportivo.motivos-ausencia.destroy');
+    Route::post('/configuracoes/desportivo/motivos-lesao', [ConfiguracoesDesportivoController::class, 'storeInjuryReason'])
+        ->name('configuracoes.desportivo.motivos-lesao.store');
+    Route::put('/configuracoes/desportivo/motivos-lesao/{injuryReason}', [ConfiguracoesDesportivoController::class, 'updateInjuryReason'])
+        ->name('configuracoes.desportivo.motivos-lesao.update');
+    Route::delete('/configuracoes/desportivo/motivos-lesao/{injuryReason}', [ConfiguracoesDesportivoController::class, 'destroyInjuryReason'])
+        ->name('configuracoes.desportivo.motivos-lesao.destroy');
+    Route::post('/configuracoes/desportivo/tipos-piscina', [ConfiguracoesDesportivoController::class, 'storePoolType'])
+        ->name('configuracoes.desportivo.tipos-piscina.store');
+    Route::put('/configuracoes/desportivo/tipos-piscina/{poolType}', [ConfiguracoesDesportivoController::class, 'updatePoolType'])
+        ->name('configuracoes.desportivo.tipos-piscina.update');
+    Route::delete('/configuracoes/desportivo/tipos-piscina/{poolType}', [ConfiguracoesDesportivoController::class, 'destroyPoolType'])
+        ->name('configuracoes.desportivo.tipos-piscina.destroy');
     
     // Settings CRUD sub-routes
     Route::post('/configuracoes/tipos-utilizador', [ConfiguracoesController::class, 'storeUserType'])->name('configuracoes.tipos-utilizador.store');
@@ -202,6 +241,7 @@ Route::redirect('/communication/{id}', '/comunicacao/{id}', 301);
 Route::redirect('/marketing', '/campanhas-marketing', 301);
 Route::redirect('/marketing/{id}', '/campanhas-marketing/{id}', 301);
 Route::redirect('/settings', '/configuracoes', 301);
+Route::redirect('/settings/desportivo', '/configuracoes/desportivo', 301);
 Route::redirect('/teams', '/equipas', 301);
 Route::redirect('/teams/{id}', '/equipas/{id}', 301);
 Route::redirect('/team-members', '/membros-equipa', 301);

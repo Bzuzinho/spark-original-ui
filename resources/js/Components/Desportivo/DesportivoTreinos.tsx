@@ -5,6 +5,7 @@ import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
 import { Label } from '@/Components/ui/label';
 import { Textarea } from '@/Components/ui/textarea';
+import { Checkbox } from '@/Components/ui/checkbox';
 import { Plus, X } from '@phosphor-icons/react';
 
 interface Training {
@@ -24,14 +25,21 @@ interface Season {
   nome: string;
 }
 
+interface AgeGroup {
+  id: string;
+  nome: string;
+}
+
 interface DesportivoTreinosProps {
   trainings?: { data: Training[] };
   selectedSeason?: Season | null;
+  ageGroups?: AgeGroup[];
 }
 
 export function DesportivoTreinos({
   trainings = { data: [] },
   selectedSeason = null,
+  ageGroups = [],
 }: DesportivoTreinosProps) {
   const [newTrainingOpen, setNewTrainingOpen] = useState(false);
 
@@ -157,36 +165,55 @@ export function DesportivoTreinos({
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="volume_planeado_m">Volume (metros)</Label>
-                  <Input
-                    id="volume_planeado_m"
-                    type="number"
-                    value={trainingForm.data.volume_planeado_m}
-                    onChange={(e) => trainingForm.setData('volume_planeado_m', e.target.value)}
-                    placeholder="Volume em metros"
-                    className="bg-white"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="escaloes">Escalões (IDs separados por vírgula)</Label>
-                  <Input
-                    id="escaloes"
-                    onChange={(e) =>
-                      trainingForm.setData(
-                        'escaloes',
-                        e.target.value
-                          .split(',')
-                          .map((v) => v.trim())
-                          .filter(Boolean)
-                      )
-                    }
-                    placeholder="uuid1, uuid2..."
-                    className="bg-white"
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="volume_planeado_m">Volume (metros)</Label>
+                <Input
+                  id="volume_planeado_m"
+                  type="number"
+                  value={trainingForm.data.volume_planeado_m}
+                  onChange={(e) => trainingForm.setData('volume_planeado_m', e.target.value)}
+                  placeholder="Volume em metros"
+                  className="bg-white"
+                />
               </div>
+
+              {ageGroups.length > 0 && (
+                <div className="space-y-2">
+                  <Label>Escalões</Label>
+                  <div className="border rounded-lg p-3 bg-white space-y-2">
+                    {ageGroups.map((ageGroup) => (
+                      <div key={ageGroup.id} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`escalao-${ageGroup.id}`}
+                          checked={trainingForm.data.escaloes.includes(ageGroup.id)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              trainingForm.setData('escaloes', [
+                                ...trainingForm.data.escaloes,
+                                ageGroup.id,
+                              ]);
+                            } else {
+                              trainingForm.setData(
+                                'escaloes',
+                                trainingForm.data.escaloes.filter((id) => id !== ageGroup.id)
+                              );
+                            }
+                          }}
+                        />
+                        <label
+                          htmlFor={`escalao-${ageGroup.id}`}
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                        >
+                          {ageGroup.nome}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                  {trainingForm.data.escaloes.length === 0 && (
+                    <p className="text-xs text-muted-foreground">Selecione pelo menos um escalão</p>
+                  )}
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label htmlFor="descricao_treino">Descrição do Treino</Label>
@@ -197,12 +224,26 @@ export function DesportivoTreinos({
                   placeholder="Descreva o treino..."
                   rows={3}
                   className="bg-white"
+                  required
                 />
+                {trainingForm.errors.descricao_treino && (
+                  <p className="text-xs text-destructive">{trainingForm.errors.descricao_treino}</p>
+                )}
               </div>
 
-              <Button type="submit" size="sm">
-                Guardar Treino
-              </Button>
+              <div className="flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setNewTrainingOpen(false)}
+                >
+                  Cancelar
+                </Button>
+                <Button type="submit" size="sm" disabled={trainingForm.processing}>
+                  {trainingForm.processing ? 'A guardar...' : 'Guardar Treino'}
+                </Button>
+              </div>
             </form>
           )}
 

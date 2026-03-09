@@ -123,13 +123,6 @@ class FinanceiroController extends Controller
         ]);
     }
 
-    public function create(): Response
-    {
-        return Inertia::render('Financeiro/Create', [
-            'users' => User::where('estado', 'ativo')->get(),
-        ]);
-    }
-
     public function store(StoreInvoiceRequest $request): RedirectResponse|JsonResponse
     {
         $data = $request->validated();

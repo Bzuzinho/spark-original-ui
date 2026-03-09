@@ -18,6 +18,8 @@ class EventAttendance extends Model
         'estado',
         'hora_chegada',
         'observacoes',
+        'synced_from_training',
+        'training_athlete_id',
         'registado_por',
         'registado_em',
         'provas',
@@ -25,6 +27,7 @@ class EventAttendance extends Model
 
     protected $casts = [
         'hora_chegada' => 'datetime',
+        'synced_from_training' => 'boolean',
         'registado_em' => 'datetime',
         'provas' => 'array',
     ];

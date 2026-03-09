@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Event;
 use App\Models\EventAttendance;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -40,6 +41,9 @@ class EventAttendancesController extends Controller
 
         $validated['registado_por'] = $validated['registado_por'] ?? auth()->id();
         $validated['registado_em'] = $validated['registado_em'] ?? now();
+
+        $this->ensureAttendancesEditable($validated['evento_id']);
+
         $attendance = EventAttendance::create($validated);
         
         return response()->json($attendance, 201);
@@ -54,6 +58,7 @@ class EventAttendancesController extends Controller
     public function update(Request $request, string $id): JsonResponse
     {
         $attendance = EventAttendance::findOrFail($id);
+        $this->ensureAttendancesEditable($attendance->evento_id);
         
         $validated = $request->validate([
             'estado' => 'sometimes|in:presente,ausente,justificado,pendente',
@@ -68,7 +73,9 @@ class EventAttendancesController extends Controller
 
     public function destroy(string $id): JsonResponse
     {
-        EventAttendance::findOrFail($id)->delete();
+        $attendance = EventAttendance::findOrFail($id);
+        $this->ensureAttendancesEditable($attendance->evento_id);
+        $attendance->delete();
         return response()->json(['message' => 'Attendance record deleted successfully']);
     }
 
@@ -90,6 +97,8 @@ class EventAttendancesController extends Controller
      */
     public function createEventAttendance(Request $request, string $eventId): JsonResponse
     {
+        $this->ensureAttendancesEditable($eventId);
+
         $validated = $request->validate([
             'user_id' => 'required|uuid|exists:users,id',
             'estado' => 'required|in:presente,ausente,justificado,pendente',
@@ -124,6 +133,8 @@ class EventAttendancesController extends Controller
      */
     public function updateUserProvas(Request $request, string $eventId, string $userId): JsonResponse
     {
+        $this->ensureAttendancesEditable($eventId);
+
         $validated = $request->validate([
             'provas' => 'required|array',
         ]);
@@ -151,10 +162,21 @@ class EventAttendancesController extends Controller
      */
     public function deleteUserAttendance(string $eventId, string $userId): JsonResponse
     {
+        $this->ensureAttendancesEditable($eventId);
+
         EventAttendance::where('evento_id', $eventId)
             ->where('user_id', $userId)
             ->delete();
 
         return response()->json(['message' => 'Attendance record deleted successfully']);
+    }
+
+    private function ensureAttendancesEditable(string $eventId): void
+    {
+        $event = Event::with('trainings')->findOrFail($eventId);
+
+        if (!$event->canEditAttendances()) {
+            abort(403, 'As presencas deste treino sao geridas no modulo Desportivo.');
+        }
     }
 }

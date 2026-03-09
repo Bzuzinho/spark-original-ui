@@ -626,12 +626,22 @@ export default function SettingsIndex({
                         <h1 className="text-2xl font-semibold tracking-tight">Configurações</h1>
                         <p className="text-muted-foreground text-sm mt-1">Gerir definições do sistema</p>
                     </div>
-                    {currentTab === 'clube' && (
-                        <Button onClick={handleSaveClubSettings} disabled={clubForm.processing} size="sm">
-                            <FloppyDisk className="mr-2" size={16} />
-                            Guardar Alterações
+                    <div className="flex items-center gap-2">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => router.visit(route('configuracoes.desportivo.index'))}
+                        >
+                            Configurações Desportivo
                         </Button>
-                    )}
+                        {currentTab === 'clube' && (
+                            <Button onClick={handleSaveClubSettings} disabled={clubForm.processing} size="sm">
+                                <FloppyDisk className="mr-2" size={16} />
+                                Guardar Alterações
+                            </Button>
+                        )}
+                    </div>
                 </div>
             }
         >

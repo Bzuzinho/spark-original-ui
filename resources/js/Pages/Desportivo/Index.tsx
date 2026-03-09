@@ -84,6 +84,11 @@ interface EventResult {
     athlete?: { nome_completo: string };
 }
 
+interface AgeGroup {
+  id: string;
+  nome: string;
+}
+
 interface DesportivoProps {
   tab?: string;
   stats: Stats;
@@ -97,6 +102,7 @@ interface DesportivoProps {
   seasons?: Season[];
   selectedSeason?: Season | null;
   macrocycles?: Macrocycle[];
+  ageGroups?: AgeGroup[];
   trainings?: { data: Training[] };
   trainingOptions?: Array<{ id: string; numero_treino?: string; data: string }>;
   selectedTraining?: Training | null;
@@ -134,6 +140,7 @@ export default function DesportivoIndex({
   seasons = [],
   selectedSeason = null,
   macrocycles = [],
+  ageGroups = [],
   trainings = { data: [] },
   trainingOptions = [],
   selectedTraining = null,
@@ -229,7 +236,7 @@ export default function DesportivoIndex({
           </TabsContent>
 
           <TabsContent value="treinos" className="space-y-3">
-            <DesportivoTreinos trainings={trainings} selectedSeason={selectedSeason} />
+            <DesportivoTreinos trainings={trainings} selectedSeason={selectedSeason} ageGroups={ageGroups} />
           </TabsContent>
 
           <TabsContent value="presencas" className="space-y-3">

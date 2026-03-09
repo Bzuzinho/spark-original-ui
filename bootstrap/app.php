@@ -17,6 +17,8 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withCommands([
         \App\Console\Commands\SetupCommand::class,
         \App\Console\Commands\BackfillFinanceiroIntegracoes::class,
+        \App\Console\Commands\AuditarTrainingSessions::class,
+        \App\Console\Commands\MigrarPresencasLegacy::class,
     ])
     ->withMiddleware(function (Middleware $middleware) {
         // Trust all proxies for Codespaces

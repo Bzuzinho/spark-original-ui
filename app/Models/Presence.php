@@ -20,6 +20,8 @@ class Presence extends Model
         'status',
         'justificacao',
         'presente',
+        'is_legacy',
+        'migrated_to_training_athlete_id',
         'distancia_realizada_m',
         'classificacao',
         'notas',
@@ -28,6 +30,7 @@ class Presence extends Model
     protected $casts = [
         'data' => 'date',
         'presente' => 'boolean',
+        'is_legacy' => 'boolean',
         'distancia_realizada_m' => 'integer',
     ];
 

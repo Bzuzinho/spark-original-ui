@@ -35,14 +35,14 @@ class LojaController extends Controller
         // Calculate stats
         $stats = [
             'total_produtos' => Product::count(),
-            'valor_total_stock' => Product::sum(DB::raw('price * stock')),
+            'valor_total_stock' => Product::sum(DB::raw('preco * stock')),
             'produtos_baixo_stock' => Product::lowStock()->count(),
         ];
 
         // Get unique categories
-        $categorias = Product::whereNotNull('category')
+        $categorias = Product::whereNotNull('categoria')
             ->distinct()
-            ->pluck('category')
+            ->pluck('categoria')
             ->filter()
             ->values();
 
@@ -63,7 +63,7 @@ class LojaController extends Controller
     {
         Product::create($request->validated());
 
-        return redirect()->route('shop.index')
+        return redirect()->route('loja.index')
             ->with('success', 'Produto criado com sucesso!');
     }
 
@@ -85,7 +85,7 @@ class LojaController extends Controller
     {
         $loja->update($request->validated());
 
-        return redirect()->route('shop.index')
+        return redirect()->route('loja.index')
             ->with('success', 'Produto atualizado com sucesso!');
     }
 
@@ -93,7 +93,7 @@ class LojaController extends Controller
     {
         $loja->delete();
 
-        return redirect()->route('shop.index')
+        return redirect()->route('loja.index')
             ->with('success', 'Produto eliminado com sucesso!');
     }
 }
