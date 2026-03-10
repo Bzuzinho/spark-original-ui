@@ -44,6 +44,8 @@ export function DesportivoPresencas({
   statusOptions = ['presente', 'ausente'],
   classificacaoOptions = [],
 }: DesportivoPresencasProps) {
+  const NO_CLASSIFICACAO_VALUE = '__sem_classificacao__';
+
   const presenceForm = useForm({
     presences: presences.map((p) => ({
       id: p.id,
@@ -195,16 +197,18 @@ export function DesportivoPresencas({
                       <div className="space-y-2">
                         <Label htmlFor={`classificacao-${idx}`}>Classificação</Label>
                         <Select
-                          value={p.classificacao}
+                          value={p.classificacao || NO_CLASSIFICACAO_VALUE}
                           onValueChange={(value) =>
-                            updatePresence(idx, { classificacao: value })
+                            updatePresence(idx, {
+                              classificacao: value === NO_CLASSIFICACAO_VALUE ? '' : value,
+                            })
                           }
                         >
                           <SelectTrigger id={`classificacao-${idx}`} className="bg-white">
                             <SelectValue placeholder="Classificação" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="">Sem classificação</SelectItem>
+                            <SelectItem value={NO_CLASSIFICACAO_VALUE}>Sem classificação</SelectItem>
                             {classificacaoOptions.map((c) => (
                               <SelectItem key={c} value={c}>
                                 {c}

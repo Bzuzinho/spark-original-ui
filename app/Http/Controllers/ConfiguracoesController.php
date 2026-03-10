@@ -5,6 +5,12 @@ namespace App\Http\Controllers;
 use App\Models\UserType;
 use App\Models\AgeGroup;
 use App\Models\EventType;
+use App\Models\AthleteStatusConfig;
+use App\Models\TrainingTypeConfig;
+use App\Models\TrainingZoneConfig;
+use App\Models\AbsenceReasonConfig;
+use App\Models\InjuryReasonConfig;
+use App\Models\PoolTypeConfig;
 use App\Models\ClubSetting;
 use App\Models\CostCenter;
 use App\Models\InvoiceType;
@@ -30,6 +36,12 @@ class ConfiguracoesController extends Controller
             'userTypes' => UserType::all(),
             'ageGroups' => AgeGroup::all(),
             'eventTypes' => EventType::all(),
+            'athleteStatuses' => AthleteStatusConfig::query()->ordenado()->get(),
+            'trainingTypes' => TrainingTypeConfig::query()->ordenado()->get(),
+            'trainingZones' => TrainingZoneConfig::query()->ordenado()->get(),
+            'absenceReasons' => AbsenceReasonConfig::query()->ordenado()->get(),
+            'injuryReasons' => InjuryReasonConfig::query()->ordenado()->get(),
+            'poolTypes' => PoolTypeConfig::query()->ordenado()->get(),
             'clubSettings' => ClubSetting::first(),
             'permissions' => UserTypePermission::all(),
             'costCenters' => CostCenter::all(),

@@ -67,6 +67,10 @@ interface Props {
     absenceReasons: AbsenceReasonConfig[];
     injuryReasons: InjuryReasonConfig[];
     poolTypes: PoolTypeConfig[];
+    ageGroups?: Array<{ id: string; nome: string; idade_minima: number; idade_maxima: number; ativo: boolean }>;
+    provaTipos?: Array<{ id: string; nome: string; distancia: number; unidade: string; modalidade: string; ativo: boolean }>;
+    embedded?: boolean;
+    showSummary?: boolean;
 }
 
 interface AthleteStatusFormData {
@@ -174,6 +178,10 @@ export default function ConfiguracoesDesportivoIndex({
     absenceReasons,
     injuryReasons,
     poolTypes,
+    ageGroups = [],
+    provaTipos = [],
+    embedded = false,
+    showSummary = true,
 }: Props) {
     const [editOpen, setEditOpen] = useState(false);
     const [trainingTypeEditOpen, setTrainingTypeEditOpen] = useState(false);
@@ -577,132 +585,34 @@ export default function ConfiguracoesDesportivoIndex({
         });
     };
 
-    return (
-        <AuthenticatedLayout
-            header={
-                <div>
-                    <h1 className="text-lg sm:text-xl font-semibold tracking-tight">Configurações Desportivo</h1>
-                    <p className="text-muted-foreground text-xs mt-0.5">
-                        Catálogos técnicos usados no módulo Desportivo.
-                    </p>
-                </div>
-            }
-        >
-            <Head title="Configurações Desportivo" />
+    const content = (
+        <>
+            <div className={embedded ? 'space-y-4' : 'p-4 sm:p-6 space-y-4'}>
+                {showSummary && (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="text-base">Resumo</CardTitle>
+                        </CardHeader>
+                        <CardContent className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 text-sm">
+                            <SummaryCard label="Tipos Treino" value={trainingTypes.length} />
+                            <SummaryCard label="Zonas" value={trainingZones.length} />
+                            <SummaryCard label="Lesões" value={injuryReasons.length} />
+                            <SummaryCard label="Piscinas" value={poolTypes.length} />
+                            <SummaryCard label="Escalões" value={ageGroups.length} />
+                        </CardContent>
+                    </Card>
+                )}
 
-            <div className="p-4 sm:p-6 space-y-4">
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="text-base">Resumo</CardTitle>
-                    </CardHeader>
-                    <CardContent className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 text-sm">
-                        <SummaryCard label="Estados" value={athleteStatuses.length} />
-                        <SummaryCard label="Tipos Treino" value={trainingTypes.length} />
-                        <SummaryCard label="Zonas" value={trainingZones.length} />
-                        <SummaryCard label="Ausências" value={absenceReasons.length} />
-                        <SummaryCard label="Lesões" value={injuryReasons.length} />
-                        <SummaryCard label="Piscinas" value={poolTypes.length} />
-                    </CardContent>
-                </Card>
-
-                <Tabs defaultValue="statuses" className="space-y-3">
+                <Tabs defaultValue="types" className="space-y-3">
                     <TabsList className="w-full flex flex-wrap h-auto gap-1 justify-start">
-                        <TabsTrigger value="statuses">Estados</TabsTrigger>
                         <TabsTrigger value="types">Tipos de Treino</TabsTrigger>
                         <TabsTrigger value="zones">Zonas</TabsTrigger>
-                        <TabsTrigger value="absence">Motivos Ausência</TabsTrigger>
                         <TabsTrigger value="injury">Motivos Lesão</TabsTrigger>
                         <TabsTrigger value="pool">Tipos Piscina</TabsTrigger>
+                        <TabsTrigger value="age-groups">Escalões</TabsTrigger>
+                        <TabsTrigger value="tests">Provas</TabsTrigger>
                     </TabsList>
 
-                    <TabsContent value="statuses">
-                        <Card>
-                            <CardContent className="pt-4">
-                                <form onSubmit={submitCreate} className="mb-4 grid grid-cols-1 md:grid-cols-4 gap-3">
-                                    <div>
-                                        <Label htmlFor="novo-codigo">Código</Label>
-                                        <Input
-                                            id="novo-codigo"
-                                            value={createForm.data.codigo}
-                                            onChange={(event) => createForm.setData('codigo', event.target.value)}
-                                            placeholder="ex: presente"
-                                            required
-                                        />
-                                    </div>
-                                    <div>
-                                        <Label htmlFor="novo-nome">Nome</Label>
-                                        <Input
-                                            id="novo-nome"
-                                            value={createForm.data.nome}
-                                            onChange={(event) => createForm.setData('nome', event.target.value)}
-                                            placeholder="Nome"
-                                            required
-                                        />
-                                    </div>
-                                    <div>
-                                        <Label htmlFor="novo-cor">Cor</Label>
-                                        <Input
-                                            id="novo-cor"
-                                            value={createForm.data.cor}
-                                            onChange={(event) => createForm.setData('cor', event.target.value)}
-                                            placeholder="#6B7280"
-                                        />
-                                    </div>
-                                    <div className="flex items-end">
-                                        <Button type="submit" disabled={createForm.processing} className="w-full">
-                                            Criar estado
-                                        </Button>
-                                    </div>
-                                </form>
-
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Código</TableHead>
-                                            <TableHead>Nome</TableHead>
-                                            <TableHead>Cor</TableHead>
-                                            <TableHead>Ativo</TableHead>
-                                            <TableHead>Ações</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {athleteStatuses.map((item) => (
-                                            <TableRow key={item.id}>
-                                                <TableCell>{item.codigo}</TableCell>
-                                                <TableCell>{item.nome}</TableCell>
-                                                <TableCell>
-                                                    {item.cor ? (
-                                                        <span className="inline-flex items-center gap-2">
-                                                            <span className="h-3 w-3 rounded-full border" style={{ backgroundColor: item.cor }} />
-                                                            {item.cor}
-                                                        </span>
-                                                    ) : '-'}
-                                                </TableCell>
-                                                <TableCell>
-                                                    <ActiveBadge active={item.ativo} />
-                                                </TableCell>
-                                                <TableCell>
-                                                    <div className="flex gap-2">
-                                                        <Button type="button" variant="outline" size="sm" onClick={() => openEditModal(item)}>
-                                                            Editar
-                                                        </Button>
-                                                        <Button
-                                                            type="button"
-                                                            variant="destructive"
-                                                            size="sm"
-                                                            onClick={() => deleteAthleteStatus(item.id)}
-                                                        >
-                                                            Eliminar
-                                                        </Button>
-                                                    </div>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </CardContent>
-                        </Card>
-                    </TabsContent>
 
                     <TabsContent value="types">
                         <Card>
@@ -885,92 +795,6 @@ export default function ConfiguracoesDesportivoIndex({
                         </Card>
                     </TabsContent>
 
-                    <TabsContent value="absence">
-                        <Card>
-                            <CardContent className="pt-4">
-                                <form onSubmit={submitCreateAbsenceReason} className="mb-4 grid grid-cols-1 md:grid-cols-4 gap-3">
-                                    <div>
-                                        <Label htmlFor="novo-motivo-aus-codigo">Código</Label>
-                                        <Input
-                                            id="novo-motivo-aus-codigo"
-                                            value={createAbsenceReasonForm.data.codigo}
-                                            onChange={(event) => createAbsenceReasonForm.setData('codigo', event.target.value)}
-                                            placeholder="ex: doenca"
-                                            required
-                                        />
-                                    </div>
-                                    <div>
-                                        <Label htmlFor="novo-motivo-aus-nome">Nome</Label>
-                                        <Input
-                                            id="novo-motivo-aus-nome"
-                                            value={createAbsenceReasonForm.data.nome}
-                                            onChange={(event) => createAbsenceReasonForm.setData('nome', event.target.value)}
-                                            placeholder="Nome"
-                                            required
-                                        />
-                                    </div>
-                                    <div className="flex items-end gap-2">
-                                        <input
-                                            id="novo-motivo-aus-just"
-                                            type="checkbox"
-                                            checked={createAbsenceReasonForm.data.requer_justificacao}
-                                            onChange={(event) => createAbsenceReasonForm.setData('requer_justificacao', event.target.checked)}
-                                        />
-                                        <Label htmlFor="novo-motivo-aus-just">Requer justificação</Label>
-                                    </div>
-                                    <div className="flex items-end">
-                                        <Button type="submit" disabled={createAbsenceReasonForm.processing} className="w-full">
-                                            Criar motivo
-                                        </Button>
-                                    </div>
-                                </form>
-
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Código</TableHead>
-                                            <TableHead>Nome</TableHead>
-                                            <TableHead>Requer Justificação</TableHead>
-                                            <TableHead>Ativo</TableHead>
-                                            <TableHead>Ações</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {absenceReasons.map((item) => (
-                                            <TableRow key={item.id}>
-                                                <TableCell>{item.codigo}</TableCell>
-                                                <TableCell>{item.nome}</TableCell>
-                                                <TableCell>{item.requer_justificacao ? 'Sim' : 'Não'}</TableCell>
-                                                <TableCell>
-                                                    <ActiveBadge active={item.ativo} />
-                                                </TableCell>
-                                                <TableCell>
-                                                    <div className="flex gap-2">
-                                                        <Button
-                                                            type="button"
-                                                            variant="outline"
-                                                            size="sm"
-                                                            onClick={() => openAbsenceReasonEditModal(item)}
-                                                        >
-                                                            Editar
-                                                        </Button>
-                                                        <Button
-                                                            type="button"
-                                                            variant="destructive"
-                                                            size="sm"
-                                                            onClick={() => deleteAbsenceReason(item.id)}
-                                                        >
-                                                            Eliminar
-                                                        </Button>
-                                                    </div>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </CardContent>
-                        </Card>
-                    </TabsContent>
 
                     <TabsContent value="injury">
                         <Card>
@@ -1146,6 +970,59 @@ export default function ConfiguracoesDesportivoIndex({
                                                 </TableCell>
                                             </TableRow>
                                         ))}
+                                    </TableBody>
+                                </Table>
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+
+                    <TabsContent value="age-groups">
+                        <Card>
+                            <CardContent className="pt-4">
+                                <div className="text-sm text-muted-foreground mb-4">
+                                    Gerir os escalões etários. Os escalões são configurados no separador Geral da página de Configurações.
+                                </div>
+                                <SimpleTable rows={ageGroups.map((g) => ({ id: g.id, codigo: `${g.idade_minima}-${g.idade_maxima}`, nome: g.nome, ativo: g.ativo, ordem: 0 }))} />
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+
+                    <TabsContent value="tests">
+                        <Card>
+                            <CardContent className="pt-4">
+                                <div className="text-sm text-muted-foreground mb-4">
+                                    Gerir as provas disponíveis. As provas são configuradas no separador Geral da página de Configurações.
+                                </div>
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Nome</TableHead>
+                                            <TableHead>Distância</TableHead>
+                                            <TableHead>Modalidade</TableHead>
+                                            <TableHead>Ativo</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {provaTipos && provaTipos.length > 0 ? (
+                                            provaTipos.map((prova) => (
+                                                <TableRow key={prova.id}>
+                                                    <TableCell>{prova.nome}</TableCell>
+                                                    <TableCell>
+                                                        {prova.distancia} {prova.unidade === 'metros' ? 'm' : 'km'}
+                                                    </TableCell>
+                                                    <TableCell>{prova.modalidade}</TableCell>
+                                                    <TableCell>
+                                                        <ActiveBadge active={prova.ativo} />
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))
+                                        ) : (
+                                            <TableRow>
+                                                <TableCell colSpan={4} className="text-center text-muted-foreground">
+                                                    Nenhuma prova cadastrada
+                                                </TableCell>
+                                            </TableRow>
+                                        )}
                                     </TableBody>
                                 </Table>
                             </CardContent>
@@ -1470,6 +1347,26 @@ export default function ConfiguracoesDesportivoIndex({
                     </form>
                 </DialogContent>
             </Dialog>
+        </>
+    );
+
+    if (embedded) {
+        return content;
+    }
+
+    return (
+        <AuthenticatedLayout
+            header={
+                <div>
+                    <h1 className="text-lg sm:text-xl font-semibold tracking-tight">Configurações Desportivo</h1>
+                    <p className="text-muted-foreground text-xs mt-0.5">
+                        Catálogos técnicos usados no módulo Desportivo.
+                    </p>
+                </div>
+            }
+        >
+            <Head title="Configurações Desportivo" />
+            {content}
         </AuthenticatedLayout>
     );
 }

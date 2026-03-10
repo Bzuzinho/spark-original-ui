@@ -2,14 +2,11 @@ import { useState } from 'react';
 import { Head } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs';
-import { ListChecks, CalendarBlank, PaperPlaneTilt, ClipboardText, ChartBar, Trophy } from '@phosphor-icons/react';
+import { ListChecks, CalendarBlank, ChartBar } from '@phosphor-icons/react';
 import {
   EventosDashboard,
   EventosList,
   EventosCalendar,
-  ConvocatoriasList,
-  PresencasList,
-  EventosResultados,
   EventosRelatorios,
 } from '@/Components/Eventos';
 
@@ -111,7 +108,7 @@ export default function EventosIndex({
 
       <div className="w-full space-y-2 sm:space-y-3">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-3">
-          <TabsList className="grid w-full h-9 grid-cols-7 p-1">
+          <TabsList className="grid w-full h-9 grid-cols-4 p-1">
             <TabsTrigger
               value="dashboard"
               className="flex items-center gap-1.5 px-1 py-1 text-xs"
@@ -132,27 +129,6 @@ export default function EventosIndex({
             >
               <ListChecks size={16} className="flex-shrink-0" />
               <span>Eventos</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="convocatorias"
-              className="flex items-center gap-1.5 px-1 py-1 text-xs"
-            >
-              <PaperPlaneTilt size={16} className="flex-shrink-0" />
-              <span>Convocatórias</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="presencas"
-              className="flex items-center gap-1.5 px-1 py-1 text-xs"
-            >
-              <ClipboardText size={16} className="flex-shrink-0" />
-              <span>Presenças</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="resultados"
-              className="flex items-center gap-1.5 px-1 py-1 text-xs"
-            >
-              <Trophy size={16} className="flex-shrink-0" />
-              <span>Resultados</span>
             </TabsTrigger>
             <TabsTrigger
               value="relatorios"
@@ -181,35 +157,6 @@ export default function EventosIndex({
               users={users}
               costCenters={costCenters}
               eventTypes={eventTypes}
-              ageGroups={ageGroups}
-            />
-          </TabsContent>
-
-          <TabsContent value="convocatorias" className="space-y-3">
-            <ConvocatoriasList
-              events={eventos}
-              convocations={convocations}
-              users={users}
-              ageGroups={ageGroups}
-              costCenters={costCenters}
-            />
-          </TabsContent>
-
-          <TabsContent value="presencas" className="space-y-3">
-            <PresencasList
-              events={eventos}
-              attendances={attendances}
-              users={users}
-              ageGroups={ageGroups}
-              onUpdate={handleAttendancesUpdate}
-            />
-          </TabsContent>
-
-          <TabsContent value="resultados" className="space-y-3">
-            <EventosResultados
-              events={eventos}
-              results={results}
-              users={users}
               ageGroups={ageGroups}
             />
           </TabsContent>

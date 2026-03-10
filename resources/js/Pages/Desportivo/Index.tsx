@@ -6,7 +6,6 @@ import {
   ChartBar,
   CalendarBlank,
   Trophy,
-  ClipboardText,
   ListChecks,
   Article,
 } from '@phosphor-icons/react';
@@ -14,10 +13,10 @@ import {
   DesportivoDashboard,
   DesportivoPlaneamento,
   DesportivoTreinos,
-  DesportivoPresencas,
   DesportivoCompeticoes,
   DesportivoRelatorios,
 } from '@/Components/Desportivo';
+import { ConvocatoriasList, PresencasList, EventosResultados } from '@/Components/Eventos';
 
 interface Stats {
     athletesCount: number;
@@ -130,6 +129,46 @@ interface DesportivoProps {
   };
   statusOptions?: string[];
   classificacaoOptions?: string[];
+  eventos?: Event[];
+  users?: User[];
+  costCenters?: CostCenter[];
+  eventTypes?: EventType[];
+  convocations?: any[];
+  attendances?: any[];
+}
+
+interface Event {
+  id: string;
+  titulo: string;
+  data_inicio: string;
+  data_fim?: string;
+  tipo: string;
+  estado: string;
+  local: string;
+  descricao?: string;
+  criado_por?: string;
+  hora_inicio?: string;
+  escaloes_elegiveis?: string[];
+}
+
+interface User {
+  id: string;
+  nome_completo: string;
+  email: string;
+}
+
+interface CostCenter {
+  id: string;
+  nome: string;
+  codigo?: string;
+  ativo?: boolean;
+}
+
+interface EventType {
+  id: string;
+  nome: string;
+  visibilidade_default?: string;
+  ativo?: boolean;
 }
 
 export default function DesportivoIndex({
@@ -153,8 +192,15 @@ export default function DesportivoIndex({
   financeVsSport,
   statusOptions = ['presente', 'ausente'],
   classificacaoOptions = [],
+  eventos = [],
+  users = [],
+  costCenters = [],
+  eventTypes = [],
+  convocations = [],
+  attendances = [],
 }: DesportivoProps) {
   const [activeTab, setActiveTab] = useState(tab);
+  const [eventAttendances, setEventAttendances] = useState(attendances);
 
   return (
     <AuthenticatedLayout
@@ -174,7 +220,7 @@ export default function DesportivoIndex({
 
       <div className="w-full space-y-2 sm:space-y-3">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-3">
-          <TabsList className="grid w-full h-9 grid-cols-6 p-1">
+          <TabsList className="grid w-full h-9 grid-cols-5 p-1">
             <TabsTrigger
               value="dashboard"
               className="flex items-center gap-1.5 px-1 py-1 text-xs"
@@ -195,13 +241,6 @@ export default function DesportivoIndex({
             >
               <ListChecks size={16} className="flex-shrink-0" />
               <span>Treinos</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="presencas"
-              className="flex items-center gap-1.5 px-1 py-1 text-xs"
-            >
-              <ClipboardText size={16} className="flex-shrink-0" />
-              <span>Presenças</span>
             </TabsTrigger>
             <TabsTrigger
               value="competicoes"
@@ -236,21 +275,59 @@ export default function DesportivoIndex({
           </TabsContent>
 
           <TabsContent value="treinos" className="space-y-3">
-            <DesportivoTreinos trainings={trainings} selectedSeason={selectedSeason} ageGroups={ageGroups} />
-          </TabsContent>
+            <Tabs defaultValue="treinos-lista" className="space-y-3">
+              <TabsList className="grid w-full h-9 grid-cols-2 p-1">
+                <TabsTrigger value="treinos-lista" className="text-xs">Treinos</TabsTrigger>
+                <TabsTrigger value="treinos-presencas" className="text-xs">Presenças</TabsTrigger>
+              </TabsList>
 
-          <TabsContent value="presencas" className="space-y-3">
-            <DesportivoPresencas
-              trainingOptions={trainingOptions}
-              selectedTraining={selectedTraining}
-              presences={presences}
-              statusOptions={statusOptions}
-              classificacaoOptions={classificacaoOptions}
-            />
+              <TabsContent value="treinos-lista" className="space-y-3">
+                <DesportivoTreinos trainings={trainings} selectedSeason={selectedSeason} ageGroups={ageGroups} />
+              </TabsContent>
+
+              <TabsContent value="treinos-presencas" className="space-y-3">
+                <PresencasList
+                  events={eventos}
+                  attendances={eventAttendances}
+                  users={users}
+                  ageGroups={ageGroups}
+                  onUpdate={setEventAttendances}
+                />
+              </TabsContent>
+            </Tabs>
           </TabsContent>
 
           <TabsContent value="competicoes" className="space-y-3">
-            <DesportivoCompeticoes competitions={competitions} results={results} />
+            <Tabs defaultValue="competicoes-lista" className="space-y-3">
+              <TabsList className="grid w-full h-9 grid-cols-3 p-1">
+                <TabsTrigger value="competicoes-lista" className="text-xs">Competições</TabsTrigger>
+                <TabsTrigger value="competicoes-convocatorias" className="text-xs">Convocatórias</TabsTrigger>
+                <TabsTrigger value="competicoes-resultados" className="text-xs">Resultados</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="competicoes-lista" className="space-y-3">
+                <DesportivoCompeticoes competitions={competitions} results={results} />
+              </TabsContent>
+
+              <TabsContent value="competicoes-convocatorias" className="space-y-3">
+                <ConvocatoriasList
+                  events={eventos}
+                  convocations={convocations}
+                  users={users}
+                  ageGroups={ageGroups}
+                  costCenters={costCenters}
+                />
+              </TabsContent>
+
+              <TabsContent value="competicoes-resultados" className="space-y-3">
+                <EventosResultados
+                  events={eventos}
+                  results={results}
+                  users={users}
+                  ageGroups={ageGroups}
+                />
+              </TabsContent>
+            </Tabs>
           </TabsContent>
 
           <TabsContent value="relatorios" className="space-y-3">

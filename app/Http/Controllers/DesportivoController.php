@@ -10,7 +10,11 @@ use App\Models\Training;
 use App\Models\TrainingAthlete;
 use App\Models\Presence;
 use App\Models\Event;
+use App\Models\EventAttendance;
 use App\Models\EventResult;
+use App\Models\EventType;
+use App\Models\ConvocationGroup;
+use App\Models\CostCenter;
 use App\Models\User;
 use App\Services\Desportivo\CreateTrainingAction;
 use App\Services\Desportivo\PrepareTrainingAthletesAction;
@@ -54,7 +58,7 @@ class DesportivoController extends Controller
      */
     public function presencas(): Response
     {
-        return $this->renderSportsPage('presencas');
+        return $this->renderSportsPage('presencas-eventos');
     }
 
     /**
@@ -198,7 +202,11 @@ class DesportivoController extends Controller
             ->take(10)
             ->get();
 
-        $seasons = Season::orderByDesc('data_inicio')->get();
+        $seasons = Season::with(['macrocycles' => function ($query) {
+                $query->orderBy('data_inicio');
+            }])
+            ->orderByDesc('data_inicio')
+            ->get();
         $selectedSeason = request('season_id')
             ? Season::find(request('season_id'))
             : $activeSeason;
@@ -241,6 +249,45 @@ class DesportivoController extends Controller
         $competitions = Event::where('tipo', 'prova')
             ->orderByDesc('data_inicio')
             ->get(['id', 'titulo', 'data_inicio', 'local', 'tipo']);
+
+        $eventos = Event::with(['creator', 'convocations', 'attendances', 'ageGroups'])
+            ->orderBy('data_inicio', 'desc')
+            ->get();
+
+        $eventUsers = User::with(['athleteSportsData:id,user_id,escalao_id'])
+            ->where('estado', 'ativo')
+            ->get([
+                'id',
+                'nome_completo',
+                'perfil',
+                'email',
+                'numero_socio',
+                'estado',
+                'tipo_membro',
+                'escalao',
+            ])
+            ->map(function (User $user) {
+                $userEscaloes = $user->escalao;
+
+                if ((!is_array($userEscaloes) || count($userEscaloes) === 0) && $user->athleteSportsData?->escalao_id) {
+                    $user->escalao = [(string) $user->athleteSportsData->escalao_id];
+                }
+
+                unset($user->athleteSportsData);
+
+                return $user;
+            });
+
+        $costCenters = CostCenter::where('ativo', true)
+            ->orderBy('nome')
+            ->get(['id', 'codigo', 'nome', 'ativo']);
+
+        $eventTypes = EventType::where('ativo', true)
+            ->orderBy('nome')
+            ->get(['id', 'nome', 'visibilidade_default', 'ativo']);
+
+        $convocations = ConvocationGroup::all();
+        $attendances = EventAttendance::with('event', 'user')->get();
 
         $results = EventResult::with(['event', 'athlete'])
             ->orderByDesc('created_at')
@@ -329,6 +376,12 @@ class DesportivoController extends Controller
             'volumeByAthlete' => $volumeByAthlete,
             'reportAttendanceByGroup' => $reportAttendanceByGroup,
             'competitionStats' => $competitionStats,
+            'eventos' => $eventos,
+            'users' => $eventUsers,
+            'costCenters' => $costCenters,
+            'eventTypes' => $eventTypes,
+            'convocations' => $convocations,
+            'attendances' => $attendances,
             'financeVsSport' => [
                 'totalFinancialWeight' => round($sportsFinancialTotal, 2),
                 'totalSportDistanceKm' => round($totalDistanceKm, 2),
@@ -382,6 +435,31 @@ class DesportivoController extends Controller
 
         return redirect()->route('desportivo.planeamento', ['season_id' => $validated['epoca_id']])
             ->with('success', 'Macrociclo criado com sucesso!');
+    }
+
+    public function updateMacrocycle(Request $request, Macrocycle $macrocycle): RedirectResponse
+    {
+        $validated = $request->validate([
+            'nome' => 'required|string|max:255',
+            'tipo' => 'required|string|max:50',
+            'data_inicio' => 'required|date',
+            'data_fim' => 'required|date|after_or_equal:data_inicio',
+            'escalao' => 'nullable|string|max:255',
+        ]);
+
+        $macrocycle->update($validated);
+
+        return redirect()->route('desportivo.planeamento', ['season_id' => $macrocycle->epoca_id])
+            ->with('success', 'Macrociclo atualizado com sucesso!');
+    }
+
+    public function deleteMacrocycle(Macrocycle $macrocycle): RedirectResponse
+    {
+        $seasonId = $macrocycle->epoca_id;
+        $macrocycle->delete();
+
+        return redirect()->route('desportivo.planeamento', ['season_id' => $seasonId])
+            ->with('success', 'Macrociclo eliminado com sucesso!');
     }
 
     /**

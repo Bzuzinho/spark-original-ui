@@ -284,10 +284,16 @@ export function EventosResultados({
     new Set(
       results
         .map((r) => r.age_group_id)
-        .filter((value): value is string => Boolean(value))
+        .filter((value): value is string => Boolean(value && String(value).trim()))
     )
   );
-  const uniqueEpocas = Array.from(new Set(results.map((r) => r.epoca).filter(Boolean)));
+  const uniqueEpocas = Array.from(
+    new Set(
+      results
+        .map((r) => (r.epoca ? String(r.epoca).trim() : ''))
+        .filter((value) => value.length > 0)
+    )
+  );
 
   return (
     <div className="space-y-4">
@@ -317,8 +323,9 @@ export function EventosResultados({
                 <SelectItem value="all">Todos</SelectItem>
                 {events
                   .filter((e) => e.tipo === 'prova' || e.tipo === 'competicao')
+                  .filter((event) => Boolean(event.id && String(event.id).trim()))
                   .map((event) => (
-                    <SelectItem key={event.id} value={event.id}>
+                    <SelectItem key={String(event.id)} value={String(event.id)}>
                       {event.titulo}
                     </SelectItem>
                   ))}
@@ -335,7 +342,7 @@ export function EventosResultados({
               <SelectContent>
                 <SelectItem value="all">Todas</SelectItem>
                 {uniqueProvas.map((prova) => (
-                  <SelectItem key={prova} value={prova}>
+                  <SelectItem key={String(prova)} value={String(prova)}>
                     {prova}
                   </SelectItem>
                 ))}
@@ -352,7 +359,7 @@ export function EventosResultados({
               <SelectContent>
                 <SelectItem value="all">Todos</SelectItem>
                 {uniqueEscaloes.map((escalaoId) => (
-                  <SelectItem key={escalaoId} value={escalaoId}>
+                  <SelectItem key={String(escalaoId)} value={String(escalaoId)}>
                     {getEscalaoLabel(escalaoId)}
                   </SelectItem>
                 ))}
@@ -384,7 +391,7 @@ export function EventosResultados({
               <SelectContent>
                 <SelectItem value="all">Todas</SelectItem>
                 {uniqueEpocas.map((epoca) => (
-                  <SelectItem key={epoca} value={epoca || ''}>
+                  <SelectItem key={epoca} value={epoca}>
                     {epoca}
                   </SelectItem>
                 ))}
@@ -516,8 +523,9 @@ export function EventosResultados({
                   <SelectContent>
                     {events
                       .filter((e) => e.tipo === 'prova' || e.tipo === 'competicao')
+                      .filter((event) => Boolean(event.id && String(event.id).trim()))
                       .map((event) => (
-                        <SelectItem key={event.id} value={event.id}>
+                        <SelectItem key={String(event.id)} value={String(event.id)}>
                           {event.titulo} - {event.data_inicio}
                         </SelectItem>
                       ))}
@@ -540,8 +548,10 @@ export function EventosResultados({
                     <SelectValue placeholder="Selecione o atleta" />
                   </SelectTrigger>
                   <SelectContent>
-                    {users.map((user) => (
-                      <SelectItem key={user.id} value={user.id}>
+                    {users
+                      .filter((user) => Boolean(user.id && String(user.id).trim()))
+                      .map((user) => (
+                      <SelectItem key={String(user.id)} value={String(user.id)}>
                         {user.nome_completo}
                       </SelectItem>
                     ))}
@@ -627,8 +637,9 @@ export function EventosResultados({
                     <SelectItem value="none">Sem escalão</SelectItem>
                     {ageGroups
                       .filter((group) => group.ativo !== false)
+                      .filter((group) => Boolean(group.id && String(group.id).trim()))
                       .map((group) => (
-                        <SelectItem key={group.id} value={group.id}>
+                        <SelectItem key={String(group.id)} value={String(group.id)}>
                           {group.nome}
                         </SelectItem>
                       ))}

@@ -16,6 +16,7 @@ import { Badge } from '@/Components/ui/badge';
 import { Checkbox } from '@/Components/ui/checkbox';
 import { Plus, PencilSimple, Trash, FloppyDisk } from '@phosphor-icons/react';
 import { FileUpload } from '@/Components/FileUpload';
+import ConfiguracoesDesportivoIndex from '@/Pages/Configuracoes/Desportivo/Index';
 import { toast } from 'sonner';
 
 interface AgeGroup {
@@ -47,6 +48,31 @@ interface EventType {
     gera_presencas?: boolean;
     requer_transporte?: boolean;
     ativo: boolean;
+}
+
+interface BaseDesportivoConfig {
+    id: string;
+    codigo: string;
+    nome: string;
+    ativo: boolean;
+    ordem: number;
+}
+
+interface TrainingZoneConfig extends BaseDesportivoConfig {
+    percentagem_min?: number | null;
+    percentagem_max?: number | null;
+}
+
+interface AbsenceReasonConfig extends BaseDesportivoConfig {
+    requer_justificacao: boolean;
+}
+
+interface InjuryReasonConfig extends BaseDesportivoConfig {
+    gravidade: string;
+}
+
+interface PoolTypeConfig extends BaseDesportivoConfig {
+    comprimento_m?: number | null;
 }
 
 interface Permission {
@@ -401,6 +427,12 @@ interface Props {
     userTypes: UserType[];
     ageGroups: AgeGroup[];
     eventTypes: EventType[];
+    athleteStatuses: BaseDesportivoConfig[];
+    trainingTypes: BaseDesportivoConfig[];
+    trainingZones: TrainingZoneConfig[];
+    absenceReasons: AbsenceReasonConfig[];
+    injuryReasons: InjuryReasonConfig[];
+    poolTypes: PoolTypeConfig[];
     permissions: Permission[];
     monthlyFees: MonthlyFee[];
     invoiceTypes: InvoiceType[];
@@ -417,6 +449,12 @@ export default function SettingsIndex({
     userTypes,
     ageGroups,
     eventTypes,
+    athleteStatuses,
+    trainingTypes,
+    trainingZones,
+    absenceReasons,
+    injuryReasons,
+    poolTypes,
     permissions,
     monthlyFees,
     invoiceTypes,
@@ -539,6 +577,12 @@ export default function SettingsIndex({
             'prova-tipo': isEditing
                 ? route('configuracoes.provas.update', editingItem.id)
                 : route('configuracoes.provas.store'),
+            'athlete-status': isEditing
+                ? route('configuracoes.desportivo.estados-atleta.update', editingItem.id)
+                : route('configuracoes.desportivo.estados-atleta.store'),
+            'absence-reason': isEditing
+                ? route('configuracoes.desportivo.motivos-ausencia.update', editingItem.id)
+                : route('configuracoes.desportivo.motivos-ausencia.store'),
         };
 
         const options = {
@@ -574,6 +618,8 @@ export default function SettingsIndex({
             'product': route('configuracoes.artigos.destroy', id),
             'supplier': route('configuracoes.fornecedores.destroy', id),
             'prova-tipo': route('configuracoes.provas.destroy', id),
+            'athlete-status': route('configuracoes.desportivo.estados-atleta.destroy', id),
+            'absence-reason': route('configuracoes.desportivo.motivos-ausencia.destroy', id),
         };
 
         router.delete(routes[type], {
@@ -620,21 +666,14 @@ export default function SettingsIndex({
 
     return (
         <AuthenticatedLayout
+            fullWidth
             header={
                 <div className="flex items-center justify-between">
                     <div>
-                        <h1 className="text-2xl font-semibold tracking-tight">Configurações</h1>
-                        <p className="text-muted-foreground text-sm mt-1">Gerir definições do sistema</p>
+                        <h1 className="text-lg sm:text-xl font-semibold tracking-tight">Configurações</h1>
+                        <p className="text-muted-foreground text-xs mt-0.5">Gerir definições do sistema</p>
                     </div>
                     <div className="flex items-center gap-2">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => router.visit(route('configuracoes.desportivo.index'))}
-                        >
-                            Configurações Desportivo
-                        </Button>
                         {currentTab === 'clube' && (
                             <Button onClick={handleSaveClubSettings} disabled={clubForm.processing} size="sm">
                                 <FloppyDisk className="mr-2" size={16} />
@@ -647,10 +686,10 @@ export default function SettingsIndex({
         >
             <Head title="Configurações" />
 
-            <div className="py-6">
-                <Tabs value={currentTab} onValueChange={setCurrentTab}>
+            <div className="w-full space-y-2 sm:space-y-3">
+                <Tabs value={currentTab} onValueChange={setCurrentTab} className="space-y-3">
                     <div className="w-full overflow-x-auto -mx-2 px-2 sm:mx-0 sm:px-0">
-                        <TabsList className="inline-flex w-auto sm:grid sm:w-full sm:grid-cols-6 h-9 text-sm min-w-full sm:min-w-0">
+                        <TabsList className="inline-flex w-auto sm:grid sm:w-full sm:grid-cols-7 h-9 text-sm min-w-full sm:min-w-0">
                             <TabsTrigger value="geral" className="text-sm whitespace-nowrap px-3 sm:px-2">
                                 Geral
                             </TabsTrigger>
@@ -669,75 +708,25 @@ export default function SettingsIndex({
                             <TabsTrigger value="base-dados" className="text-sm whitespace-nowrap px-3 sm:px-2">
                                 Base de Dados
                             </TabsTrigger>
+                            <TabsTrigger value="desportivo" className="text-sm whitespace-nowrap px-3 sm:px-2">
+                                Desportivo
+                            </TabsTrigger>
                         </TabsList>
                     </div>
 
                     {/* Tab: Geral */}
                     <TabsContent value="geral" className="mt-4 space-y-4">
-                        {/* Age Groups */}
-                        <Card>
-                            <CardHeader className="pb-3">
-                                <CardTitle className="text-lg">Escalões</CardTitle>
-                                <CardDescription className="text-sm">
-                                    Gerir os escalões etários do clube
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="flex justify-end mb-3">
-                                    <Button onClick={() => openAddDialog('age-group')} size="sm">
-                                        <Plus className="mr-2" size={16} />
-                                        Adicionar Escalão
-                                    </Button>
-                                </div>
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Nome</TableHead>
-                                            <TableHead>Idade Mínima</TableHead>
-                                            <TableHead>Idade Máxima</TableHead>
-                                            <TableHead className="text-right">Ações</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {ageGroups.length === 0 ? (
-                                            <TableRow>
-                                                <TableCell colSpan={4} className="text-center text-muted-foreground">
-                                                    Nenhum escalão cadastrado
-                                                </TableCell>
-                                            </TableRow>
-                                        ) : (
-                                            ageGroups.map((group) => (
-                                                <TableRow key={group.id}>
-                                                    <TableCell className="font-medium">{group.nome}</TableCell>
-                                                    <TableCell>{group.idade_minima} anos</TableCell>
-                                                    <TableCell>{group.idade_maxima} anos</TableCell>
-                                                    <TableCell className="text-right">
-                                                        <div className="flex justify-end gap-2">
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                onClick={() => openEditDialog(group, 'age-group')}
-                                                            >
-                                                                <PencilSimple size={16} />
-                                                            </Button>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                onClick={() => handleDelete(group.id, 'age-group')}
-                                                            >
-                                                                <Trash size={16} />
-                                                            </Button>
-                                                        </div>
-                                                    </TableCell>
-                                                </TableRow>
-                                            ))
-                                        )}
-                                    </TableBody>
-                                </Table>
-                            </CardContent>
-                        </Card>
+                        <Tabs defaultValue="geral-tipos-utilizador" className="space-y-4">
+                            <TabsList className="w-full flex flex-wrap h-auto gap-1 justify-start">
+                                <TabsTrigger value="geral-tipos-utilizador">Tipos de Utilizador</TabsTrigger>
+                                <TabsTrigger value="geral-tipos-evento">Tipos de Evento</TabsTrigger>
+                                <TabsTrigger value="geral-permissoes">Permissões</TabsTrigger>
+                                <TabsTrigger value="geral-estados">Estados</TabsTrigger>
+                                <TabsTrigger value="geral-motivos-ausencia">Motivos Ausência</TabsTrigger>
+                            </TabsList>
 
-                        {/* User Types */}
+
+                        <TabsContent value="geral-tipos-utilizador" className="space-y-4">
                         <Card>
                             <CardHeader className="pb-3">
                                 <CardTitle className="text-lg">Tipos de Utilizador</CardTitle>
@@ -797,8 +786,9 @@ export default function SettingsIndex({
                                 </Table>
                             </CardContent>
                         </Card>
+                        </TabsContent>
 
-                        {/* Event Types */}
+                        <TabsContent value="geral-tipos-evento" className="space-y-4">
                         <Card>
                             <CardHeader className="pb-3">
                                 <CardTitle className="text-lg">Tipos de Evento</CardTitle>
@@ -891,8 +881,9 @@ export default function SettingsIndex({
                                 )}
                             </CardContent>
                         </Card>
+                        </TabsContent>
 
-                        {/* Permissions */}
+                        <TabsContent value="geral-permissoes" className="space-y-4">
                         <Card>
                             <CardHeader className="pb-3">
                                 <CardTitle className="text-lg">Permissões por Tipo de Utilizador</CardTitle>
@@ -969,59 +960,67 @@ export default function SettingsIndex({
                                 </Table>
                             </CardContent>
                         </Card>
+                        </TabsContent>
 
-                        {/* Provas */}
+                        <TabsContent value="geral-estados" className="space-y-4">
                         <Card>
                             <CardHeader className="pb-3">
-                                <CardTitle className="text-lg">Provas</CardTitle>
+                                <CardTitle className="text-lg">Estados</CardTitle>
                                 <CardDescription className="text-sm">
-                                    Gerir as provas disponiveis para registo
+                                    Gerir os estados de atletas disponiveis
                                 </CardDescription>
                             </CardHeader>
                             <CardContent>
                                 <div className="flex justify-end mb-3">
-                                    <Button onClick={() => openAddDialog('prova-tipo')} size="sm">
+                                    <Button onClick={() => openAddDialog('athlete-status')} size="sm">
                                         <Plus className="mr-2" size={16} />
-                                        Adicionar Prova
+                                        Adicionar Estado
                                     </Button>
                                 </div>
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
+                                            <TableHead>Codigo</TableHead>
                                             <TableHead>Nome</TableHead>
-                                            <TableHead>Distancia</TableHead>
-                                            <TableHead>Modalidade</TableHead>
+                                            <TableHead>Cor</TableHead>
+                                            <TableHead>Ativo</TableHead>
                                             <TableHead className="text-right">Ações</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {provaTipos.length === 0 ? (
+                                        {athleteStatuses.length === 0 ? (
                                             <TableRow>
-                                                <TableCell colSpan={4} className="text-center text-muted-foreground">
-                                                    Nenhuma prova cadastrada
+                                                <TableCell colSpan={5} className="text-center text-muted-foreground">
+                                                    Nenhum estado cadastrado
                                                 </TableCell>
                                             </TableRow>
                                         ) : (
-                                            provaTipos.map((prova) => (
-                                                <TableRow key={prova.id}>
-                                                    <TableCell className="font-medium">{prova.nome}</TableCell>
+                                            athleteStatuses.map((status) => (
+                                                <TableRow key={status.id}>
+                                                    <TableCell className="font-medium">{status.codigo}</TableCell>
+                                                    <TableCell>{status.nome}</TableCell>
                                                     <TableCell>
-                                                        {prova.distancia} {prova.unidade === 'metros' ? 'm' : 'km'}
+                                                        {status.cor && typeof status.cor === 'string' ? (
+                                                            <span className="inline-flex items-center gap-2">
+                                                                <span className="h-3 w-3 rounded-full border" style={{ backgroundColor: status.cor }} />
+                                                                {status.cor}
+                                                            </span>
+                                                        ) : '-'}
                                                     </TableCell>
-                                                    <TableCell>{prova.modalidade}</TableCell>
+                                                    <TableCell>{status.ativo ? 'Sim' : 'Nao'}</TableCell>
                                                     <TableCell className="text-right">
                                                         <div className="flex justify-end gap-2">
                                                             <Button
                                                                 variant="ghost"
                                                                 size="sm"
-                                                                onClick={() => openEditDialog(prova, 'prova-tipo')}
+                                                                onClick={() => openEditDialog(status, 'athlete-status')}
                                                             >
                                                                 <PencilSimple size={16} />
                                                             </Button>
                                                             <Button
                                                                 variant="ghost"
                                                                 size="sm"
-                                                                onClick={() => handleDelete(prova.id, 'prova-tipo')}
+                                                                onClick={() => handleDelete(status.id, 'athlete-status')}
                                                             >
                                                                 <Trash size={16} />
                                                             </Button>
@@ -1034,6 +1033,74 @@ export default function SettingsIndex({
                                 </Table>
                             </CardContent>
                         </Card>
+                        </TabsContent>
+
+                        <TabsContent value="geral-motivos-ausencia" className="space-y-4">
+                        <Card>
+                            <CardHeader className="pb-3">
+                                <CardTitle className="text-lg">Motivos de Ausência</CardTitle>
+                                <CardDescription className="text-sm">
+                                    Gerir os motivos de ausência disponiveis
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="flex justify-end mb-3">
+                                    <Button onClick={() => openAddDialog('absence-reason')} size="sm">
+                                        <Plus className="mr-2" size={16} />
+                                        Adicionar Motivo
+                                    </Button>
+                                </div>
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Codigo</TableHead>
+                                            <TableHead>Nome</TableHead>
+                                            <TableHead>Requer Justificação</TableHead>
+                                            <TableHead>Ativo</TableHead>
+                                            <TableHead className="text-right">Ações</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {absenceReasons.length === 0 ? (
+                                            <TableRow>
+                                                <TableCell colSpan={5} className="text-center text-muted-foreground">
+                                                    Nenhum motivo cadastrado
+                                                </TableCell>
+                                            </TableRow>
+                                        ) : (
+                                            absenceReasons.map((reason) => (
+                                                <TableRow key={reason.id}>
+                                                    <TableCell className="font-medium">{reason.codigo}</TableCell>
+                                                    <TableCell>{reason.nome}</TableCell>
+                                                    <TableCell>{reason.requer_justificacao ? 'Sim' : 'Nao'}</TableCell>
+                                                    <TableCell>{reason.ativo ? 'Sim' : 'Nao'}</TableCell>
+                                                    <TableCell className="text-right">
+                                                        <div className="flex justify-end gap-2">
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                onClick={() => openEditDialog(reason, 'absence-reason')}
+                                                            >
+                                                                <PencilSimple size={16} />
+                                                            </Button>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                onClick={() => handleDelete(reason.id, 'absence-reason')}
+                                                            >
+                                                                <Trash size={16} />
+                                                            </Button>
+                                                        </div>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </CardContent>
+                        </Card>
+                        </TabsContent>
+                        </Tabs>
                     </TabsContent>
 
                     {/* Tab: Clube */}
@@ -1161,6 +1228,14 @@ export default function SettingsIndex({
 
                     {/* Tab: Financeiro */}
                     <TabsContent value="financeiro" className="mt-4 space-y-4">
+                        <Tabs defaultValue="financeiro-mensalidades" className="space-y-4">
+                            <TabsList className="w-full flex flex-wrap h-auto gap-1 justify-start">
+                                <TabsTrigger value="financeiro-mensalidades">Mensalidades</TabsTrigger>
+                                <TabsTrigger value="financeiro-tipos-fatura">Tipos de Fatura</TabsTrigger>
+                                <TabsTrigger value="financeiro-centros-custos">Centros de Custos</TabsTrigger>
+                            </TabsList>
+
+                        <TabsContent value="financeiro-mensalidades" className="space-y-4">
                         <Card>
                             <CardHeader className="pb-3">
                                 <CardTitle className="text-lg">Mensalidades</CardTitle>
@@ -1225,7 +1300,9 @@ export default function SettingsIndex({
                                 </Table>
                             </CardContent>
                         </Card>
+                        </TabsContent>
 
+                        <TabsContent value="financeiro-tipos-fatura" className="space-y-4">
                         <Card>
                             <CardHeader className="pb-3">
                                 <CardTitle className="text-lg">Tipos de Fatura</CardTitle>
@@ -1287,7 +1364,9 @@ export default function SettingsIndex({
                                 </Table>
                             </CardContent>
                         </Card>
+                        </TabsContent>
 
+                        <TabsContent value="financeiro-centros-custos" className="space-y-4">
                         <Card>
                             <CardHeader className="pb-3">
                                 <CardTitle className="text-lg">Centros de Custos</CardTitle>
@@ -1349,10 +1428,19 @@ export default function SettingsIndex({
                                 </Table>
                             </CardContent>
                         </Card>
+                        </TabsContent>
+                        </Tabs>
                     </TabsContent>
 
                     {/* Tab: Logistica */}
                     <TabsContent value="logistica" className="mt-4 space-y-4">
+                        <Tabs defaultValue="logistica-artigos" className="space-y-4">
+                            <TabsList className="w-full flex flex-wrap h-auto gap-1 justify-start">
+                                <TabsTrigger value="logistica-artigos">Artigos</TabsTrigger>
+                                <TabsTrigger value="logistica-fornecedores">Fornecedores</TabsTrigger>
+                            </TabsList>
+
+                        <TabsContent value="logistica-artigos" className="space-y-4">
                         <Card>
                             <CardHeader className="pb-3">
                                 <CardTitle className="text-lg">Artigos</CardTitle>
@@ -1416,7 +1504,9 @@ export default function SettingsIndex({
                                 </Table>
                             </CardContent>
                         </Card>
+                        </TabsContent>
 
+                        <TabsContent value="logistica-fornecedores" className="space-y-4">
                         <Card>
                             <CardHeader className="pb-3">
                                 <CardTitle className="text-lg">Fornecedores</CardTitle>
@@ -1482,6 +1572,8 @@ export default function SettingsIndex({
                                 </Table>
                             </CardContent>
                         </Card>
+                        </TabsContent>
+                        </Tabs>
                     </TabsContent>
 
                     {/* Tab: Notificações */}
@@ -1597,6 +1689,21 @@ export default function SettingsIndex({
                             </CardContent>
                         </Card>
                     </TabsContent>
+
+                    <TabsContent value="desportivo" className="mt-4 space-y-4">
+                        <ConfiguracoesDesportivoIndex
+                            athleteStatuses={athleteStatuses}
+                            trainingTypes={trainingTypes}
+                            trainingZones={trainingZones}
+                            absenceReasons={absenceReasons}
+                            injuryReasons={injuryReasons}
+                            poolTypes={poolTypes}
+                            ageGroups={ageGroups}
+                            provaTipos={provaTipos}
+                            embedded
+                            showSummary={false}
+                        />
+                    </TabsContent>
                 </Tabs>
             </div>
 
@@ -1616,6 +1723,8 @@ export default function SettingsIndex({
                             {editingItem?.type === 'product' && 'Artigo'}
                             {editingItem?.type === 'supplier' && 'Fornecedor'}
                             {editingItem?.type === 'prova-tipo' && 'Prova'}
+                            {editingItem?.type === 'athlete-status' && 'Estado'}
+                            {editingItem?.type === 'absence-reason' && 'Motivo de Ausência'}
                         </DialogTitle>
                     </DialogHeader>
                     <form onSubmit={handleSubmit}>
@@ -2336,6 +2445,85 @@ export default function SettingsIndex({
                                             onChange={e => setData('modalidade', e.target.value)}
                                             required
                                         />
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <Switch
+                                            id="ativo"
+                                            checked={data.ativo ?? true}
+                                            onCheckedChange={checked => setData('ativo', checked)}
+                                        />
+                                        <Label htmlFor="ativo">Ativo</Label>
+                                    </div>
+                                </>
+                            )}
+
+                            {editingItem?.type === 'athlete-status' && (
+                                <>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="codigo">Código *</Label>
+                                        <Input
+                                            id="codigo"
+                                            value={data.codigo || ''}
+                                            onChange={e => setData('codigo', e.target.value)}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="nome">Nome *</Label>
+                                        <Input
+                                            id="nome"
+                                            value={data.nome || ''}
+                                            onChange={e => setData('nome', e.target.value)}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="cor">Cor</Label>
+                                        <Input
+                                            id="cor"
+                                            type="color"
+                                            value={data.cor || '#6B7280'}
+                                            onChange={e => setData('cor', e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <Switch
+                                            id="ativo"
+                                            checked={data.ativo ?? true}
+                                            onCheckedChange={checked => setData('ativo', checked)}
+                                        />
+                                        <Label htmlFor="ativo">Ativo</Label>
+                                    </div>
+                                </>
+                            )}
+
+                            {editingItem?.type === 'absence-reason' && (
+                                <>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="codigo">Código *</Label>
+                                        <Input
+                                            id="codigo"
+                                            value={data.codigo || ''}
+                                            onChange={e => setData('codigo', e.target.value)}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="nome">Nome *</Label>
+                                        <Input
+                                            id="nome"
+                                            value={data.nome || ''}
+                                            onChange={e => setData('nome', e.target.value)}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <Checkbox
+                                            id="requer_justificacao"
+                                            checked={data.requer_justificacao ?? false}
+                                            onCheckedChange={checked => setData('requer_justificacao', checked)}
+                                        />
+                                        <Label htmlFor="requer_justificacao">Requer Justificação</Label>
                                     </div>
                                     <div className="flex items-center space-x-2">
                                         <Switch
