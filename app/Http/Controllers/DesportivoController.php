@@ -77,7 +77,23 @@ class DesportivoController extends Controller
         return $this->renderSportsPage('relatorios');
     }
 
-    private function renderSportsPage(string $tab): Response
+    /**
+     * Desportivo 2 - Dashboard técnico
+     */
+    public function indexV2(): Response
+    {
+        return $this->renderSportsPage('dashboard', 'Desportivo2/Index');
+    }
+
+    /**
+     * Desportivo 2 - Presenças (modo treino/contexto)
+     */
+    public function presencasV2(): Response
+    {
+        return $this->renderSportsPage('presencas', 'Desportivo2/Index');
+    }
+
+    private function renderSportsPage(string $tab, string $view = 'Desportivo/Index'): Response
     {
         $now = Carbon::now();
         $sevenDaysAgo = $now->copy()->subDays(7);
@@ -304,6 +320,68 @@ class DesportivoController extends Controller
             ->orderByDesc('total_m')
             ->get();
 
+        $attendanceSummaryByUser = DB::table('presences')
+            ->where('data', '>=', $seasonStart)
+            ->select(
+                'user_id',
+                DB::raw('COUNT(*) as total_registos'),
+                DB::raw("COUNT(CASE WHEN status = 'presente' THEN 1 END) as total_presentes"),
+                DB::raw("COUNT(CASE WHEN status = 'ausente' THEN 1 END) as total_ausentes")
+            )
+            ->groupBy('user_id')
+            ->get()
+            ->keyBy('user_id');
+
+        $bestResultsByUser = DB::table('event_results')
+            ->whereNotNull('user_id')
+            ->select(
+                'user_id',
+                DB::raw('MIN(classificacao) as melhor_classificacao'),
+                DB::raw('COUNT(*) as total_resultados')
+            )
+            ->groupBy('user_id')
+            ->get()
+            ->keyBy('user_id');
+
+        $athleteOperationalRows = collect($eventUsers)
+            ->filter(function (User $user) {
+                return $user->estado === 'ativo' && in_array('atleta', $user->tipo_membro ?? [], true);
+            })
+            ->map(function (User $user) use ($attendanceSummaryByUser, $bestResultsByUser) {
+                $attendance = $attendanceSummaryByUser->get($user->id);
+                $results = $bestResultsByUser->get($user->id);
+
+                $totalRegistos = (int) ($attendance->total_registos ?? 0);
+                $presentes = (int) ($attendance->total_presentes ?? 0);
+                $ausentes = (int) ($attendance->total_ausentes ?? 0);
+
+                $assiduidadePercent = $totalRegistos > 0
+                    ? (int) round(($presentes / $totalRegistos) * 100)
+                    : null;
+
+                $disciplinaStatus = 'ok';
+                if ($totalRegistos > 0) {
+                    $ausenciaPercent = ($ausentes / $totalRegistos) * 100;
+                    if ($ausenciaPercent >= 30) {
+                        $disciplinaStatus = 'atencao';
+                    }
+                    if ($ausenciaPercent >= 45) {
+                        $disciplinaStatus = 'critico';
+                    }
+                }
+
+                return [
+                    'user_id' => $user->id,
+                    'assiduidade_percent' => $assiduidadePercent,
+                    'disciplina_status' => $disciplinaStatus,
+                    'pb_label' => ($results && $results->melhor_classificacao)
+                        ? '#' . (int) $results->melhor_classificacao
+                        : null,
+                    'total_resultados' => (int) ($results->total_resultados ?? 0),
+                ];
+            })
+            ->values();
+
         $reportAttendanceByGroup = DB::table('presences')
             ->leftJoin('age_groups', 'presences.escalao_id', '=', 'age_groups.id')
             ->where('presences.data', '>=', $seasonStart)
@@ -336,7 +414,7 @@ class DesportivoController extends Controller
         $totalDistanceKm = $totalDistanceMeters / 1000;
         $costPerKm = $totalDistanceKm > 0 ? $sportsFinancialTotal / $totalDistanceKm : null;
 
-        return Inertia::render('Desportivo/Index', [
+        return Inertia::render($view, [
             'tab' => $tab,
             'stats' => [
                 'athletesCount' => $athletesCount,
@@ -374,6 +452,7 @@ class DesportivoController extends Controller
             'competitions' => $competitions,
             'results' => $results,
             'volumeByAthlete' => $volumeByAthlete,
+            'athleteOperationalRows' => $athleteOperationalRows,
             'reportAttendanceByGroup' => $reportAttendanceByGroup,
             'competitionStats' => $competitionStats,
             'eventos' => $eventos,

@@ -85,6 +85,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('presencas/marcar-presentes', [DesportivoController::class, 'markAllPresent'])->name('desportivo.presencas.mark-all-present');
         Route::post('presencas/limpar', [DesportivoController::class, 'clearAllPresences'])->name('desportivo.presencas.clear-all');
     });
+
+    // Desportivo 2 (novo módulo paralelo, não destrutivo)
+    Route::prefix('desportivo-2')->group(function () {
+        Route::get('/', [DesportivoController::class, 'indexV2'])->name('desportivo2.index');
+        Route::get('presencas', [DesportivoController::class, 'presencasV2'])->name('desportivo2.presencas');
+    });
     
     Route::resource('financeiro', FinanceiroController::class)->except(['create']);
     Route::post('financeiro/{financeiro}/apagar', [FinanceiroController::class, 'destroy'])->name('financeiro.destroy.post');
