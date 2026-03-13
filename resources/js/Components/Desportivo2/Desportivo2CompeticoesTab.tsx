@@ -99,9 +99,9 @@ export function Desportivo2CompeticoesTab({ competitions, results, users }: Prop
         <Button
           size="sm"
           variant="outline"
-          onClick={() => router.get(route('eventos.index'))}
+          onClick={() => router.get(route('desportivo.competicoes'))}
         >
-          Gerir em Eventos →
+          Gerir Competições →
         </Button>
       </div>
 
@@ -161,7 +161,7 @@ export function Desportivo2CompeticoesTab({ competitions, results, users }: Prop
                   size="sm"
                   variant="ghost"
                   className="h-6 px-2 text-[11px] shrink-0 col-span-2"
-                  onClick={() => router.get(route('eventos.show', comp.id))}
+                  onClick={() => router.get(route('desportivo2.index', { tab: 'competicoes', competition_id: comp.id }))}
                 >
                   Ver
                 </Button>

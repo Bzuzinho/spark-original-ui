@@ -50,10 +50,6 @@ import {
 } from '@/components/sports/tabs';
 import { Desportivo2ResultadosTab }  from '@/Components/Desportivo2/Desportivo2ResultadosTab';
 import {
-  macros as mockMacros,
-  seasons as mockSeasons,
-} from '@/data/sportsMock';
-import {
   useAthletes,
   useCompetitionResults,
   useCompetitions,
@@ -70,6 +66,7 @@ import type {
   PresenceRow,
   Season,
   Stats,
+  TeamResult,
   Training,
   User,
 } from '@/types/sports';
@@ -115,6 +112,7 @@ interface DesportivoV2Props {
   presences?: PresenceRow[];
   competitions?: Competition[];
   results?: EventResult[];
+  teamResults?: TeamResult[];
   users?: User[];
   statusOptions?: string[];
   classificacaoOptions?: string[];
@@ -144,9 +142,9 @@ export default function Desportivo2Index({
   stats,
   alerts = [],
   upcomingCompetitions = [],
-  seasons = mockSeasons,
+  seasons = [],
   selectedSeason = null,
-  macrocycles = mockMacros,
+  macrocycles = [],
   ageGroups = [],
   trainings = { data: [] },
   trainingOptions = [],
@@ -154,6 +152,7 @@ export default function Desportivo2Index({
   presences = [],
   competitions = [],
   results = [],
+  teamResults = [],
   users = [],
   statusOptions = ['presente', 'atrasado', 'falta', 'dispensado'],
   volumeByAthlete = [],
@@ -323,6 +322,7 @@ export default function Desportivo2Index({
           <TabsContent value="resultados" className="mt-3">
             <Desportivo2ResultadosTab
               results={resolvedResults}
+              teamResults={teamResults}
             />
           </TabsContent>
 

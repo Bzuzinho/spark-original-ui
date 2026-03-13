@@ -10,8 +10,8 @@
  * Estratégia de dados:
  *   - Se `volumeByAthlete` (fonte: training_athletes) existe, usa-o
  *     para mostrar volume real por atleta.
- *   - Métricas de carga (ACWR, RPE, prontidão) são guardadas localmente em
- *     useKV('sports-v2-performance-metrics') até existir tabela de backend.
+ *   - Métricas de carga (ACWR, RPE, prontidão) são persistidas no backend
+ *     via API KeyValue (useKV('sports-v2-performance-metrics')).
  *   - Estrutura preparada para integração futura com tabela `performance_metrics`.
  */
 
@@ -271,7 +271,7 @@ export function Desportivo2PerformanceTab({ users, volumeByAthlete }: Props) {
               Guardar métrica
             </Button>
             <p className="text-[10px] text-muted-foreground">
-              Guardado localmente (sports-v2-performance-metrics). Preparado para integração futura com tabela de BD.
+              Persistido no backend via API KeyValue (sports-v2-performance-metrics).
             </p>
           </CardContent>
         </Card>

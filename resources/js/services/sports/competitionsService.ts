@@ -1,4 +1,3 @@
-import { competitions } from '@/data/sportsMock';
 import type { Competition } from '@/types/sports';
 import { getSportsResource } from './sportsApiClient';
 
@@ -15,10 +14,10 @@ interface BackendCompetition {
 /**
  * GET /api/desportivo/competitions
  * Retorna competições normalizadas para o tipo de UI.
- * Fallback: usa mock data se API indisponível.
+ * Sem fallback mock em produção.
  */
 export async function getCompetitions(): Promise<Competition[]> {
-  const payload = await getSportsResource<BackendCompetition[]>('/api/desportivo/competitions', competitions);
+  const payload = await getSportsResource<BackendCompetition[]>('/api/desportivo/competitions', []);
 
   if (!Array.isArray(payload)) {
     return [];

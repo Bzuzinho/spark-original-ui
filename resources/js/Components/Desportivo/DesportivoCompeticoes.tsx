@@ -52,8 +52,8 @@ export function DesportivoCompeticoes({
                       {c.data_inicio} | {c.local ?? 'Sem local'}
                     </p>
                   </div>
-                  <Link href={route('eventos.show', c.id)} className="text-sm text-blue-600">
-                    Abrir em Eventos
+                  <Link href={route('desportivo.competicoes', { competition_id: c.id })} className="text-sm text-blue-600">
+                    Abrir em Competições
                   </Link>
                 </div>
               ))
@@ -96,10 +96,10 @@ export function DesportivoCompeticoes({
           </div>
           <div className="mt-4 pt-4 border-t">
             <Link
-              href={route('eventos.index')}
+              href={route('desportivo.competicoes')}
               className="text-sm text-blue-600 hover:underline flex items-center gap-1"
             >
-              Gerir provas e resultados no módulo Eventos
+              Gerir provas e resultados no módulo Competições
               <ArrowSquareOut size={14} weight="bold" />
             </Link>
           </div>

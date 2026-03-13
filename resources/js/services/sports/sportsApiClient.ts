@@ -17,8 +17,8 @@ function parseBooleanEnv(value: string | undefined, defaultValue: boolean): bool
   return defaultValue;
 }
 
-const USE_SPORTS_MOCK = parseBooleanEnv(import.meta.env.VITE_SPORTS_USE_MOCK, true);
-const FALLBACK_ON_ERROR = parseBooleanEnv(import.meta.env.VITE_SPORTS_FALLBACK_ON_ERROR, true);
+const USE_SPORTS_MOCK = parseBooleanEnv(import.meta.env.VITE_SPORTS_USE_MOCK, false);
+const FALLBACK_ON_ERROR = parseBooleanEnv(import.meta.env.VITE_SPORTS_FALLBACK_ON_ERROR, false);
 
 export async function getSportsResource<T>(endpoint: string, fallback: T): Promise<T> {
   if (USE_SPORTS_MOCK) {

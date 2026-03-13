@@ -1,4 +1,3 @@
-import { competitionResults } from '@/data/sportsMock';
 import type { CompetitionResult } from '@/types/sports';
 import { getSportsResource } from './sportsApiClient';
 
@@ -30,6 +29,6 @@ function normalizeCompetitionResult(row: BackendCompetitionResult): CompetitionR
 }
 
 export async function getCompetitionResults(): Promise<CompetitionResult[]> {
-  const payload = await getSportsResource<BackendCompetitionResult[]>('/api/desportivo/competition-results', competitionResults);
+  const payload = await getSportsResource<BackendCompetitionResult[]>('/api/desportivo/competition-results', []);
   return Array.isArray(payload) ? payload.map(normalizeCompetitionResult) : [];
 }

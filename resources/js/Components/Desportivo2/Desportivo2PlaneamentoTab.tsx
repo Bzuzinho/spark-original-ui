@@ -15,6 +15,7 @@ interface Props {
 }
 
 export function Desportivo2PlaneamentoTab({ seasons, macrocycles }: Props) {
+  // Persistencia feita no backend via /api/kv (sem localStorage no browser).
   const [seasonPlans, setSeasonPlans] = useKV<V2SeasonPlan[]>('sports-v2-seasons', []);
   const [microcycles, setMicrocycles] = useKV<V2MicrocyclePlan[]>('sports-v2-microcycles', []);
   const activeSeasonId = seasons.find((s) => s.estado === 'Em curso')?.id ?? seasons[0]?.id ?? '';

@@ -12,7 +12,6 @@ import { Input } from '@/Components/ui/input';
 import { MagnifyingGlass, Medal, Timer } from '@phosphor-icons/react';
 import { CompetitionResultsTable } from '@/components/sports/CompetitionResultsTable';
 import { TeamResultsTable } from '@/components/sports/TeamResultsTable';
-import { teamResults as mockTeamResults } from '@/data/sportsMock';
 import type { EventResult, TeamResult } from './types';
 
 interface Props {
@@ -50,7 +49,7 @@ function medalColor(pos?: number | null): string {
   return 'text-muted-foreground';
 }
 
-export function Desportivo2ResultadosTab({ results, teamResults = mockTeamResults }: Props) {
+export function Desportivo2ResultadosTab({ results, teamResults = [] }: Props) {
   const [search, setSearch] = useState('');
 
   const filtered = results.filter((r) => {

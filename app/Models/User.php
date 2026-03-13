@@ -185,16 +185,19 @@ class User extends Authenticatable
         return $this->hasMany(EventConvocation::class, 'called_up_by');
     }
 
+    // Legacy relation (old events architecture; not used by canonical Sports module).
     public function eventAttendances(): HasMany
     {
         return $this->hasMany(EventAttendance::class, 'user_id');
     }
 
+    // Legacy relation (old events architecture; not used by canonical Sports module).
     public function eventResults(): HasMany
     {
         return $this->hasMany(EventResult::class, 'user_id');
     }
 
+    // Legacy relation (old events architecture; not used by canonical Sports module).
     public function resultProvas(): HasMany
     {
         return $this->hasMany(ResultProva::class, 'user_id');
@@ -210,6 +213,7 @@ class User extends Authenticatable
         return $this->hasMany(TrainingAthlete::class, 'user_id');
     }
 
+    // Legacy relation (old presences architecture; not used by canonical Sports module).
     public function presences(): HasMany
     {
         return $this->hasMany(Presence::class, 'user_id');

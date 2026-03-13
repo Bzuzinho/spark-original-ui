@@ -11,6 +11,7 @@ use App\Models\TrainingAthlete;
 use App\Models\TrainingMetric;
 use App\Models\Competition;
 use App\Models\Result;
+use App\Models\TeamResult;
 use App\Models\Event;
 use App\Models\EventType;
 use App\Models\ConvocationGroup;
@@ -341,6 +342,19 @@ class DesportivoController extends Controller
                     : null,
             ]);
 
+        $teamResults = TeamResult::query()
+            ->orderByDesc('created_at')
+            ->limit(100)
+            ->get(['id', 'competicao_id', 'equipa', 'classificacao', 'pontos', 'observacoes'])
+            ->map(fn ($row) => [
+                'id' => $row->id,
+                'competicao_id' => $row->competicao_id,
+                'equipa' => $row->equipa,
+                'classificacao' => $row->classificacao,
+                'pontos' => $row->pontos,
+                'observacoes' => $row->observacoes,
+            ]);
+
         $seasonStart = $activeSeason?->data_inicio ?? $now->copy()->startOfYear();
 
         $volumeByAthlete = DB::table('training_athletes')
@@ -487,6 +501,7 @@ class DesportivoController extends Controller
             'classificacaoOptions' => ['Excelente', 'Bom', 'Satisfatório', 'Fraco'],
             'competitions' => $competitions,
             'results' => $results,
+            'teamResults' => $teamResults,
             'volumeByAthlete' => $volumeByAthlete,
             'athleteOperationalRows' => $athleteOperationalRows,
             'reportAttendanceByGroup' => $reportAttendanceByGroup,
@@ -628,7 +643,7 @@ class DesportivoController extends Controller
         app(CreateTrainingAction::class)->execute($validated, auth()->user());
 
         return redirect()->route('desportivo.treinos')
-            ->with('success', 'Treino criado com sucesso e evento adicionado ao calendário!');
+            ->with('success', 'Treino criado com sucesso!');
     }
 
     /**
@@ -641,30 +656,6 @@ class DesportivoController extends Controller
         $training->update(collect($validated)->except('escaloes')->all());
 
         $training->ageGroups()->sync($validated['escaloes'] ?? []);
-
-        if ($training->evento_id) {
-            $training->loadMissing('event');
-
-            if ($training->event) {
-                $escaloes = $validated['escaloes'] ?? [];
-                $escaloesNomes = !empty($escaloes)
-                    ? AgeGroup::whereIn('id', $escaloes)->pluck('nome')->implode(', ')
-                    : ucfirst((string) $training->tipo_treino);
-                $date = Carbon::parse($validated['data'])->format('d/m/Y');
-
-                $training->event->update([
-                    'titulo' => "Treino - {$escaloesNomes} ({$date})",
-                    'data_inicio' => Carbon::parse($validated['data'])->toDateString(),
-                    'hora_inicio' => $validated['hora_inicio'] ?? $training->event->hora_inicio,
-                    'data_fim' => Carbon::parse($validated['data'])->toDateString(),
-                    'hora_fim' => $validated['hora_fim'] ?? $training->event->hora_fim,
-                    'local' => $validated['local'] ?? $training->event->local,
-                    'descricao' => $validated['descricao_treino'] ?? $training->event->descricao,
-                ]);
-
-                $training->event->syncAgeGroups($escaloes);
-            }
-        }
 
         app(PrepareTrainingAthletesAction::class)
             ->updateForChangedEscaloes($training->fresh(), $validated['escaloes'] ?? []);
@@ -704,10 +695,6 @@ class DesportivoController extends Controller
     public function deleteTraining(Training $training): RedirectResponse
     {
         DB::transaction(function () use ($training) {
-            if ($training->evento_id) {
-                Event::where('id', $training->evento_id)->delete();
-            }
-
             $training->delete();
         });
 
