@@ -7,7 +7,7 @@ import { Label } from '@/Components/ui/label';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/Components/ui/dialog';
 import { Badge } from '@/Components/ui/badge';
 import { useKV } from '@/hooks/useKV';
-import { SectionTitle } from '@/Components/Desportivo2/components/SectionTitle';
+import { SectionTitle } from '@/components/sports/shared';
 import { SessionCard } from '@/Components/Desportivo2/components/SessionCard';
 import type { AgeGroup, Competition, Training, TrainingTemplate } from './types';
 

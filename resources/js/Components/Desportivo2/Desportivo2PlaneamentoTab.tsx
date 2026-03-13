@@ -6,7 +6,7 @@ import { Label } from '@/Components/ui/label';
 import { useKV } from '@/hooks/useKV';
 import { Badge } from '@/Components/ui/badge';
 import { AnnualCycleCalendar } from '@/Components/Desportivo2/components/AnnualCycleCalendar';
-import { SectionTitle } from '@/Components/Desportivo2/components/SectionTitle';
+import { SectionTitle } from '@/components/sports/shared';
 import type { Macrocycle, Season, V2MicrocyclePlan, V2SeasonPlan } from './types';
 
 interface Props {

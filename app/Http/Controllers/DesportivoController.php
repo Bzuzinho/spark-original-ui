@@ -8,20 +8,23 @@ use App\Models\Season;
 use App\Models\Macrocycle;
 use App\Models\Training;
 use App\Models\TrainingAthlete;
-use App\Models\Presence;
+use App\Models\TrainingMetric;
+use App\Models\Competition;
+use App\Models\Result;
 use App\Models\Event;
-use App\Models\EventAttendance;
-use App\Models\EventResult;
 use App\Models\EventType;
 use App\Models\ConvocationGroup;
 use App\Models\CostCenter;
 use App\Models\User;
+use App\Http\Requests\Sports\StoreTrainingRequest;
+use App\Http\Requests\Sports\UpdateTrainingRequest;
+use App\Http\Requests\Sports\StoreTrainingMetricRequest;
 use App\Services\Desportivo\CreateTrainingAction;
 use App\Services\Desportivo\PrepareTrainingAthletesAction;
-use App\Services\Desportivo\SyncTrainingToEventAction;
 use App\Services\Desportivo\UpdateTrainingAthleteAction;
 use Inertia\Inertia;
 use Inertia\Response;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
@@ -117,27 +120,29 @@ class DesportivoController extends Controller
         $km30Days = Training::where('data', '>=', $thirtyDaysAgo->format('Y-m-d'))
             ->sum('volume_planeado_m') / 1000;
 
-        $upcomingCompetitions = Event::where('tipo', 'prova')
-            ->where('data_inicio', '>=', $now)
-            ->where('data_inicio', '<=', $thirtyDaysAhead)
-            ->withCount('participants')
+        $upcomingCompetitions = Competition::query()
+            ->where('data_inicio', '>=', $now->toDateString())
+            ->where('data_inicio', '<=', $thirtyDaysAhead->toDateString())
+            ->withCount('results')
             ->orderBy('data_inicio')
             ->get()
-            ->map(function ($event) {
+            ->map(function ($competition) {
                 return [
-                    'id' => $event->id,
-                    'nome' => $event->titulo,
-                    'data_inicio' => $event->data_inicio,
-                    'num_atletas_inscritos' => $event->participants_count,
+                    'id' => $competition->id,
+                    'nome' => $competition->nome,
+                    'data_inicio' => $competition->data_inicio,
+                    'num_atletas_inscritos' => $competition->results_count,
                 ];
             });
 
-        $attendanceByGroup = DB::table('presences')
-            ->leftJoin('age_groups', 'presences.escalao_id', '=', 'age_groups.id')
-            ->where('presences.data', '>=', $thirtyDaysAgo->format('Y-m-d'))
+        $attendanceByGroup = DB::table('training_athletes')
+            ->join('trainings', 'training_athletes.treino_id', '=', 'trainings.id')
+            ->join('athlete_sports_data', 'training_athletes.user_id', '=', 'athlete_sports_data.user_id')
+            ->leftJoin('age_groups', 'athlete_sports_data.escalao_id', '=', 'age_groups.id')
+            ->where('trainings.data', '>=', $thirtyDaysAgo->format('Y-m-d'))
             ->select('age_groups.nome',
-                DB::raw("COUNT(CASE WHEN presences.status = 'presente' THEN 1 END) as presentes"),
-                DB::raw("COUNT(CASE WHEN presences.status = 'ausente' THEN 1 END) as ausentes"),
+                DB::raw("COUNT(CASE WHEN training_athletes.estado = 'presente' THEN 1 END) as presentes"),
+                DB::raw("COUNT(CASE WHEN training_athletes.estado = 'ausente' THEN 1 END) as ausentes"),
                 DB::raw('COUNT(*) as total'))
             ->groupBy('age_groups.id', 'age_groups.nome')
             ->get();
@@ -172,10 +177,12 @@ class DesportivoController extends Controller
                 ->where('estado', 'ativo')
                 ->pluck('id');
 
-            $presenceByAthlete = Presence::whereIn('user_id', $activeAthleteIds)
-                ->where('data', '>=', $thirtyDaysAgo->format('Y-m-d'))
-                ->where('status', 'presente')
-                ->select('user_id', DB::raw('COUNT(*) as presentes'))
+            $presenceByAthlete = DB::table('training_athletes')
+                ->join('trainings', 'training_athletes.treino_id', '=', 'trainings.id')
+                ->whereIn('training_athletes.user_id', $activeAthleteIds)
+                ->where('trainings.data', '>=', $thirtyDaysAgo->format('Y-m-d'))
+                ->where('training_athletes.estado', 'presente')
+                ->select('training_athletes.user_id', DB::raw('COUNT(*) as presentes'))
                 ->groupBy('user_id')
                 ->pluck('presentes', 'user_id');
 
@@ -230,13 +237,22 @@ class DesportivoController extends Controller
             ? $selectedSeason->macrocycles()->orderBy('data_inicio')->get()
             : collect();
 
-        $trainings = Training::with('season')
+        $trainings = Training::with(['season', 'ageGroups:id'])
             ->orderByDesc('data')
-            ->paginate(25);
+            ->paginate(25)
+            ->through(function (Training $training) {
+                $training->setAttribute('escaloes', $training->ageGroups->pluck('id')->values()->all());
+
+                return $training;
+            });
 
         $selectedTraining = request('training_id')
-            ? Training::find(request('training_id'))
+            ? Training::with('ageGroups:id')->find(request('training_id'))
             : null;
+
+        if ($selectedTraining) {
+            $selectedTraining->setAttribute('escaloes', $selectedTraining->ageGroups->pluck('id')->values()->all());
+        }
 
         $presences = collect();
         if ($selectedTraining) {
@@ -244,27 +260,30 @@ class DesportivoController extends Controller
                 ->with(['atleta'])
                 ->get()
                 ->map(function (TrainingAthlete $p) use ($selectedTraining) {
-                    $legacyPresence = Presence::where('treino_id', $p->treino_id)
-                        ->where('user_id', $p->user_id)
-                        ->first();
-
                     return [
                         'id' => $p->id,
-                        'legacy_presence_id' => $legacyPresence?->id,
+                        'legacy_presence_id' => null,
                         'user_id' => $p->user_id,
                         'nome_atleta' => $p->atleta?->nome_completo,
                         'data' => Carbon::parse($selectedTraining->data)->toDateString(),
                         'status' => $p->estado,
                         'distancia_realizada_m' => $p->volume_real_m,
-                        'classificacao' => $legacyPresence?->classificacao,
+                        'classificacao' => null,
                         'notas' => $p->observacoes_tecnicas,
                     ];
                 });
         }
 
-        $competitions = Event::where('tipo', 'prova')
+        $competitions = Competition::query()
             ->orderByDesc('data_inicio')
-            ->get(['id', 'titulo', 'data_inicio', 'local', 'tipo']);
+            ->get(['id', 'nome', 'data_inicio', 'local', 'tipo'])
+            ->map(fn ($row) => [
+                'id' => $row->id,
+                'titulo' => $row->nome,
+                'data_inicio' => $row->data_inicio,
+                'local' => $row->local,
+                'tipo' => $row->tipo,
+            ]);
 
         $eventos = Event::with(['creator', 'convocations', 'attendances', 'ageGroups'])
             ->orderBy('data_inicio', 'desc')
@@ -280,14 +299,11 @@ class DesportivoController extends Controller
                 'numero_socio',
                 'estado',
                 'tipo_membro',
-                'escalao',
             ])
             ->map(function (User $user) {
-                $userEscaloes = $user->escalao;
-
-                if ((!is_array($userEscaloes) || count($userEscaloes) === 0) && $user->athleteSportsData?->escalao_id) {
-                    $user->escalao = [(string) $user->athleteSportsData->escalao_id];
-                }
+                $user->escalao = $user->athleteSportsData?->escalao_id
+                    ? [(string) $user->athleteSportsData->escalao_id]
+                    : [];
 
                 unset($user->athleteSportsData);
 
@@ -303,40 +319,57 @@ class DesportivoController extends Controller
             ->get(['id', 'nome', 'visibilidade_default', 'ativo']);
 
         $convocations = ConvocationGroup::all();
-        $attendances = EventAttendance::with('event', 'user')->get();
+        $attendances = collect();
 
-        $results = EventResult::with(['event', 'athlete'])
+        $results = Result::with(['prova.competition', 'athlete'])
             ->orderByDesc('created_at')
             ->limit(100)
-            ->get();
+            ->get()
+            ->map(fn ($result) => [
+                'id' => $result->id,
+                'prova' => trim(($result->prova?->distancia_m ?? 0) . 'm ' . ($result->prova?->estilo ?? '')),
+                'tempo' => $result->tempo_oficial,
+                'classificacao' => $result->posicao,
+                'event' => $result->prova?->competition
+                    ? [
+                        'id' => $result->prova->competition->id,
+                        'titulo' => $result->prova->competition->nome,
+                    ]
+                    : null,
+                'athlete' => $result->athlete
+                    ? ['nome_completo' => $result->athlete->nome_completo]
+                    : null,
+            ]);
 
         $seasonStart = $activeSeason?->data_inicio ?? $now->copy()->startOfYear();
 
-        $volumeByAthlete = DB::table('presences')
-            ->join('users', 'presences.user_id', '=', 'users.id')
-            ->where('presences.data', '>=', $seasonStart)
-            ->select('users.nome_completo', DB::raw('SUM(COALESCE(presences.distancia_realizada_m, 0)) as total_m'))
+        $volumeByAthlete = DB::table('training_athletes')
+            ->join('trainings', 'training_athletes.treino_id', '=', 'trainings.id')
+            ->join('users', 'training_athletes.user_id', '=', 'users.id')
+            ->where('trainings.data', '>=', $seasonStart)
+            ->select('users.nome_completo', DB::raw('SUM(COALESCE(training_athletes.volume_real_m, 0)) as total_m'))
             ->groupBy('users.id', 'users.nome_completo')
             ->orderByDesc('total_m')
             ->get();
 
-        $attendanceSummaryByUser = DB::table('presences')
-            ->where('data', '>=', $seasonStart)
+        $attendanceSummaryByUser = DB::table('training_athletes')
+            ->join('trainings', 'training_athletes.treino_id', '=', 'trainings.id')
+            ->where('trainings.data', '>=', $seasonStart)
             ->select(
-                'user_id',
+                'training_athletes.user_id',
                 DB::raw('COUNT(*) as total_registos'),
-                DB::raw("COUNT(CASE WHEN status = 'presente' THEN 1 END) as total_presentes"),
-                DB::raw("COUNT(CASE WHEN status = 'ausente' THEN 1 END) as total_ausentes")
+                DB::raw("COUNT(CASE WHEN training_athletes.estado = 'presente' THEN 1 END) as total_presentes"),
+                DB::raw("COUNT(CASE WHEN training_athletes.estado = 'ausente' THEN 1 END) as total_ausentes")
             )
-            ->groupBy('user_id')
+            ->groupBy('training_athletes.user_id')
             ->get()
             ->keyBy('user_id');
 
-        $bestResultsByUser = DB::table('event_results')
+        $bestResultsByUser = DB::table('results')
             ->whereNotNull('user_id')
             ->select(
                 'user_id',
-                DB::raw('MIN(classificacao) as melhor_classificacao'),
+                DB::raw('MIN(posicao) as melhor_classificacao'),
                 DB::raw('COUNT(*) as total_resultados')
             )
             ->groupBy('user_id')
@@ -382,20 +415,22 @@ class DesportivoController extends Controller
             })
             ->values();
 
-        $reportAttendanceByGroup = DB::table('presences')
-            ->leftJoin('age_groups', 'presences.escalao_id', '=', 'age_groups.id')
-            ->where('presences.data', '>=', $seasonStart)
+        $reportAttendanceByGroup = DB::table('training_athletes')
+            ->join('trainings', 'training_athletes.treino_id', '=', 'trainings.id')
+            ->join('athlete_sports_data', 'training_athletes.user_id', '=', 'athlete_sports_data.user_id')
+            ->leftJoin('age_groups', 'athlete_sports_data.escalao_id', '=', 'age_groups.id')
+            ->where('trainings.data', '>=', $seasonStart)
             ->select('age_groups.nome',
-                DB::raw("COUNT(CASE WHEN presences.status = 'presente' THEN 1 END) as presentes"),
-                DB::raw("COUNT(CASE WHEN presences.status = 'ausente' THEN 1 END) as ausentes"),
+                DB::raw("COUNT(CASE WHEN training_athletes.estado = 'presente' THEN 1 END) as presentes"),
+                DB::raw("COUNT(CASE WHEN training_athletes.estado = 'ausente' THEN 1 END) as ausentes"),
                 DB::raw('COUNT(*) as total'),
-                DB::raw("ROUND(COUNT(CASE WHEN presences.status = 'presente' THEN 1 END) * 100.0 / NULLIF(COUNT(*),0), 2) as percentagem"))
+                DB::raw("ROUND(COUNT(CASE WHEN training_athletes.estado = 'presente' THEN 1 END) * 100.0 / NULLIF(COUNT(*),0), 2) as percentagem"))
             ->groupBy('age_groups.id', 'age_groups.nome')
             ->get();
 
-        $competitionStats = Event::where('tipo', 'prova')
+        $competitionStats = Competition::query()
             ->where('data_inicio', '>=', $seasonStart)
-            ->withCount('participants')
+            ->withCount('results')
             ->orderByDesc('data_inicio')
             ->get();
 
@@ -407,9 +442,10 @@ class DesportivoController extends Controller
             })
             ->sum(DB::raw('ABS(valor_total)'));
 
-        $totalDistanceMeters = (float) DB::table('presences')
-            ->where('data', '>=', $seasonStart)
-            ->sum(DB::raw('COALESCE(distancia_realizada_m, 0)'));
+        $totalDistanceMeters = (float) DB::table('training_athletes')
+            ->join('trainings', 'training_athletes.treino_id', '=', 'trainings.id')
+            ->where('trainings.data', '>=', $seasonStart)
+            ->sum(DB::raw('COALESCE(training_athletes.volume_real_m, 0)'));
 
         $totalDistanceKm = $totalDistanceMeters / 1000;
         $costPerKm = $totalDistanceKm > 0 ? $sportsFinancialTotal / $totalDistanceKm : null;
@@ -585,43 +621,11 @@ class DesportivoController extends Controller
     /**
      * Store a new Training
      */
-    public function storeTraining(Request $request): RedirectResponse
+    public function storeTraining(StoreTrainingRequest $request): RedirectResponse
     {
-        $validated = $request->validate([
-            'numero_treino' => 'nullable|string',
-            'data' => 'required|date',
-            'hora_inicio' => 'nullable|date_format:H:i',
-            'hora_fim' => 'nullable|date_format:H:i',
-            'local' => 'nullable|string',
-            'epoca_id' => 'nullable|uuid|exists:seasons,id',
-            'escaloes' => 'nullable|array',
-            'tipo_treino' => 'required|string',
-            'volume_planeado_m' => 'nullable|integer',
-            'descricao_treino' => 'required|string',
-            'notas_gerais' => 'nullable|string',
-        ]);
+        $validated = $request->validated();
 
-        $training = app(CreateTrainingAction::class)->execute($validated, auth()->user());
-
-        // Dual write temporário para compatibilidade com queries legacy
-        if (config('desportivo.legacy_presences_enabled', true)) {
-            $training->loadMissing('athleteRecords');
-            foreach ($training->athleteRecords as $record) {
-                Presence::updateOrCreate(
-                    [
-                        'treino_id' => $training->id,
-                        'user_id' => $record->user_id,
-                    ],
-                    [
-                        'data' => Carbon::parse($validated['data'])->toDateString(),
-                        'tipo' => 'treino',
-                        'status' => 'ausente',
-                        'presente' => false,
-                        'is_legacy' => false,
-                    ]
-                );
-            }
-        }
+        app(CreateTrainingAction::class)->execute($validated, auth()->user());
 
         return redirect()->route('desportivo.treinos')
             ->with('success', 'Treino criado com sucesso e evento adicionado ao calendário!');
@@ -630,26 +634,13 @@ class DesportivoController extends Controller
     /**
      * Update Training
      */
-    public function updateTraining(Request $request, Training $training): RedirectResponse
+    public function updateTraining(UpdateTrainingRequest $request, Training $training): RedirectResponse
     {
-        $validated = $request->validate([
-            'numero_treino' => 'nullable|string',
-            'data' => 'required|date',
-            'hora_inicio' => 'nullable|date_format:H:i',
-            'hora_fim' => 'nullable|date_format:H:i',
-            'local' => 'nullable|string',
-            'epoca_id' => 'nullable|uuid|exists:seasons,id',
-            'escaloes' => 'nullable|array',
-            'tipo_treino' => 'required|string',
-            'volume_planeado_m' => 'nullable|integer',
-            'descricao_treino' => 'required|string',
-            'notas_gerais' => 'nullable|string',
-        ]);
+        $validated = $request->validated();
 
-        $training->update([
-            ...$validated,
-            'escaloes' => $validated['escaloes'] ?? [],
-        ]);
+        $training->update(collect($validated)->except('escaloes')->all());
+
+        $training->ageGroups()->sync($validated['escaloes'] ?? []);
 
         if ($training->evento_id) {
             $training->loadMissing('event');
@@ -678,8 +669,6 @@ class DesportivoController extends Controller
         app(PrepareTrainingAthletesAction::class)
             ->updateForChangedEscaloes($training->fresh(), $validated['escaloes'] ?? []);
 
-        app(SyncTrainingToEventAction::class)->execute($training->fresh('athleteRecords'));
-
         return redirect()->route('desportivo.treinos')
             ->with('success', 'Treino atualizado com sucesso!');
     }
@@ -702,7 +691,7 @@ class DesportivoController extends Controller
             'volume_planeado_m' => $training->volume_planeado_m,
             'descricao_treino' => $training->descricao_treino,
             'notas_gerais' => $training->notas_gerais,
-            'escaloes' => is_array($training->escaloes) ? $training->escaloes : [],
+            'escaloes' => $training->ageGroups()->pluck('age_groups.id')->all(),
         ], auth()->user());
 
         return redirect()->route('desportivo.treinos')
@@ -715,10 +704,6 @@ class DesportivoController extends Controller
     public function deleteTraining(Training $training): RedirectResponse
     {
         DB::transaction(function () use ($training) {
-            if (config('desportivo.legacy_presences_enabled', true)) {
-                $training->presences()->delete();
-            }
-
             if ($training->evento_id) {
                 Event::where('id', $training->evento_id)->delete();
             }
@@ -750,16 +735,6 @@ class DesportivoController extends Controller
         foreach ($validated['presences'] as $presenceData) {
             $trainingAthlete = TrainingAthlete::find($presenceData['id']);
 
-            // Compatibilidade: caso frontend ainda envie id de presences
-            if (!$trainingAthlete) {
-                $legacyPresence = Presence::find($presenceData['id']);
-                if ($legacyPresence) {
-                    $trainingAthlete = TrainingAthlete::where('treino_id', $legacyPresence->treino_id)
-                        ->where('user_id', $legacyPresence->user_id)
-                        ->first();
-                }
-            }
-
             if (!$trainingAthlete) {
                 continue;
             }
@@ -769,27 +744,6 @@ class DesportivoController extends Controller
                 'volume_real_m' => $presenceData['distancia_realizada_m'] ?? null,
                 'observacoes_tecnicas' => $presenceData['notas'] ?? null,
             ], auth()->user());
-
-            // Dual write temporário para tabela legacy
-            if (config('desportivo.legacy_presences_enabled', true)) {
-                $legacyPresenceId = $presenceData['legacy_presence_id'] ?? null;
-                $legacyPresence = $legacyPresenceId
-                    ? Presence::find($legacyPresenceId)
-                    : Presence::where('treino_id', $trainingAthlete->treino_id)
-                        ->where('user_id', $trainingAthlete->user_id)
-                        ->first();
-
-                if ($legacyPresence) {
-                    $legacyPresence->update([
-                        'status' => $presenceData['status'],
-                        'distancia_realizada_m' => $presenceData['distancia_realizada_m'] ?? null,
-                        'classificacao' => $presenceData['classificacao'] ?? null,
-                        'notas' => $presenceData['notas'] ?? null,
-                        'presente' => in_array($presenceData['status'], ['presente', 'limitado'], true),
-                        'is_legacy' => false,
-                    ]);
-                }
-            }
         }
 
         return redirect()->route('desportivo.presencas')
@@ -806,15 +760,6 @@ class DesportivoController extends Controller
         $athleteIds = TrainingAthlete::where('treino_id', $trainingId)->pluck('id')->toArray();
         app(UpdateTrainingAthleteAction::class)->markMultiplePresent($athleteIds, auth()->user());
 
-        if (config('desportivo.legacy_presences_enabled', true)) {
-            Presence::where('treino_id', $trainingId)
-                ->update([
-                    'status' => 'presente',
-                    'presente' => true,
-                    'is_legacy' => false,
-                ]);
-        }
-
         return redirect()->route('desportivo.presencas')
             ->with('success', 'Todos os atletas foram marcados como presentes!');
     }
@@ -828,19 +773,140 @@ class DesportivoController extends Controller
 
         app(UpdateTrainingAthleteAction::class)->clearAllPresences($trainingId, auth()->user());
 
-        if (config('desportivo.legacy_presences_enabled', true)) {
-            Presence::where('treino_id', $trainingId)
-                ->update([
-                    'status' => 'ausente',
-                    'presente' => false,
-                    'distancia_realizada_m' => null,
-                    'classificacao' => null,
-                    'notas' => null,
-                    'is_legacy' => false,
-                ]);
-        }
-
         return redirect()->route('desportivo.presencas')
             ->with('success', 'Classificações removidas!');
+    }
+
+    /**
+     * Obter métricas de Cais para um atleta num treino
+     */
+    public function getCaisMetrics(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'treino_id' => 'required|uuid|exists:trainings,id',
+            'user_id' => 'required|uuid|exists:users,id',
+        ]);
+
+        $isAssigned = TrainingAthlete::query()
+            ->where('treino_id', $validated['treino_id'])
+            ->where('user_id', $validated['user_id'])
+            ->exists();
+
+        if (!$isAssigned) {
+            return response()->json([
+                'message' => 'Atleta não elegível para este treino.',
+            ], 422);
+        }
+
+        $rows = TrainingMetric::query()
+            ->where('treino_id', $validated['treino_id'])
+            ->where('user_id', $validated['user_id'])
+            ->orderBy('ordem')
+            ->get()
+            ->map(function (TrainingMetric $row) {
+                return [
+                    'id' => $row->id,
+                    'metrica' => (string) ($row->metrica ?? ''),
+                    'valor' => (string) ($row->valor ?? ''),
+                    'tempo' => (string) ($row->tempo ?? ''),
+                    'observacao' => (string) ($row->observacao ?? ''),
+                ];
+            })
+            ->values();
+
+        return response()->json([
+            'rows' => $rows,
+        ]);
+    }
+
+    /**
+     * Persistir métricas de Cais para um atleta num treino
+     */
+    public function storeCaisMetrics(StoreTrainingMetricRequest $request): JsonResponse
+    {
+        $validated = $request->validated();
+
+        $isAssigned = TrainingAthlete::query()
+            ->where('treino_id', $validated['treino_id'])
+            ->where('user_id', $validated['user_id'])
+            ->exists();
+
+        if (!$isAssigned) {
+            return response()->json([
+                'message' => 'Atleta não elegível para este treino.',
+            ], 422);
+        }
+
+        $normalizedRows = collect($validated['rows'])
+            ->map(function (array $row) {
+                return [
+                    'metrica' => $this->normalizeCaisMetricValue($row['metrica'] ?? null),
+                    'valor' => $this->normalizeCaisMetricValue($row['valor'] ?? null),
+                    'tempo' => $this->normalizeCaisMetricValue($row['tempo'] ?? null),
+                    'observacao' => $this->normalizeCaisMetricValue($row['observacao'] ?? null),
+                ];
+            })
+            ->filter(function (array $row) {
+                return $row['metrica'] !== null
+                    || $row['valor'] !== null
+                    || $row['tempo'] !== null
+                    || $row['observacao'] !== null;
+            })
+            ->values();
+
+        $authId = auth()->id();
+
+        DB::transaction(function () use ($validated, $normalizedRows, $authId) {
+            TrainingMetric::query()
+                ->where('treino_id', $validated['treino_id'])
+                ->where('user_id', $validated['user_id'])
+                ->delete();
+
+            foreach ($normalizedRows as $index => $row) {
+                TrainingMetric::create([
+                    'treino_id' => $validated['treino_id'],
+                    'user_id' => $validated['user_id'],
+                    'ordem' => $index + 1,
+                    'metrica' => $row['metrica'],
+                    'valor' => $row['valor'],
+                    'tempo' => $row['tempo'],
+                    'observacao' => $row['observacao'],
+                    'registado_por' => $authId,
+                    'atualizado_por' => $authId,
+                ]);
+            }
+        });
+
+        $rows = TrainingMetric::query()
+            ->where('treino_id', $validated['treino_id'])
+            ->where('user_id', $validated['user_id'])
+            ->orderBy('ordem')
+            ->get()
+            ->map(function (TrainingMetric $row) {
+                return [
+                    'id' => $row->id,
+                    'metrica' => (string) ($row->metrica ?? ''),
+                    'valor' => (string) ($row->valor ?? ''),
+                    'tempo' => (string) ($row->tempo ?? ''),
+                    'observacao' => (string) ($row->observacao ?? ''),
+                ];
+            })
+            ->values();
+
+        return response()->json([
+            'message' => 'Métricas de Cais guardadas com sucesso.',
+            'rows' => $rows,
+        ]);
+    }
+
+    private function normalizeCaisMetricValue(?string $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $trimmed = trim($value);
+
+        return $trimmed === '' ? null : $trimmed;
     }
 }

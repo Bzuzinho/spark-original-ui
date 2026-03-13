@@ -119,8 +119,13 @@ class CompetitionRegistration extends Model
         return $this->belongsTo(Prova::class, 'prova_id');
     }
 
-    public function atleta(): BelongsTo
+    public function athlete(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function atleta(): BelongsTo
+    {
+        return $this->athlete();
     }
 }

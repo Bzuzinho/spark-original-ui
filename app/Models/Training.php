@@ -49,6 +49,24 @@ class Training extends Model
         return $this->belongsTo(Microcycle::class, 'microciclo_id');
     }
 
+    public function macrocycle(): BelongsTo
+    {
+        if (array_key_exists('macrocycle_id', $this->attributes)) {
+            return $this->belongsTo(Macrocycle::class, 'macrocycle_id');
+        }
+
+        return $this->belongsTo(Macrocycle::class, 'macrociclo_id');
+    }
+
+    public function mesocycle(): BelongsTo
+    {
+        if (array_key_exists('mesocycle_id', $this->attributes)) {
+            return $this->belongsTo(Mesocycle::class, 'mesocycle_id');
+        }
+
+        return $this->belongsTo(Mesocycle::class, 'mesociclo_id');
+    }
+
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'criado_por');
@@ -80,8 +98,19 @@ class Training extends Model
         return $this->hasMany(TrainingAthlete::class, 'treino_id');
     }
 
-    public function presences(): HasMany
+    public function athleteRecordsByTrainingId(): HasMany
     {
-        return $this->hasMany(Presence::class, 'treino_id');
+        return $this->hasMany(TrainingAthlete::class, 'training_id');
+    }
+
+    public function ageGroups(): BelongsToMany
+    {
+        return $this->belongsToMany(AgeGroup::class, 'training_age_group', 'treino_id', 'age_group_id')
+            ->withTimestamps();
+    }
+
+    public function metrics(): HasMany
+    {
+        return $this->hasMany(TrainingMetric::class, 'treino_id');
     }
 }

@@ -90,6 +90,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('desportivo-2')->group(function () {
         Route::get('/', [DesportivoController::class, 'indexV2'])->name('desportivo2.index');
         Route::get('presencas', [DesportivoController::class, 'presencasV2'])->name('desportivo2.presencas');
+        Route::get('cais/metricas', [DesportivoController::class, 'getCaisMetrics'])->name('desportivo2.cais.metrics.index');
+        Route::post('cais/metricas', [DesportivoController::class, 'storeCaisMetrics'])->name('desportivo2.cais.metrics.store');
     });
     
     Route::resource('financeiro', FinanceiroController::class)->except(['create']);

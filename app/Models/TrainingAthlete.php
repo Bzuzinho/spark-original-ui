@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class TrainingAthlete extends Model
 {
@@ -39,9 +40,19 @@ class TrainingAthlete extends Model
         return $this->belongsTo(Training::class, 'treino_id');
     }
 
-    public function atleta(): BelongsTo
+    public function athlete(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function atleta(): BelongsTo
+    {
+        return $this->athlete();
+    }
+
+    public function metrics(): HasMany
+    {
+        return $this->hasMany(TrainingMetric::class, 'training_athlete_id');
     }
 
     public function registeredBy(): BelongsTo

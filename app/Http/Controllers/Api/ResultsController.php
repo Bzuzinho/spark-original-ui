@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\ResultProva;
+use App\Http\Requests\Sports\StoreResultRequest;
+use App\Models\Result;
+use App\Services\Desportivo\Queries\GetAthletePerformanceHistory;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
@@ -11,54 +13,49 @@ class ResultsController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = ResultProva::with(['atleta', 'evento']);
-
-        if ($request->has('atleta_id')) {
-            $query->where('atleta_id', $request->get('atleta_id'));
+        if ($request->filled('user_id')) {
+            $history = app(GetAthletePerformanceHistory::class)($request->string('user_id'));
+            return response()->json($history);
         }
 
-        if ($request->has('evento_id')) {
-            $query->where('evento_id', $request->get('evento_id'));
+        $query = Result::with(['athlete', 'prova.competition']);
+
+        if ($request->filled('prova_id')) {
+            $query->where('prova_id', $request->string('prova_id'));
         }
 
-        $results = $query->orderBy('data', 'desc')->get();
+        if ($request->filled('competition_id')) {
+            $query->whereHas('prova', fn ($provaQuery) => $provaQuery->where('competicao_id', $request->string('competition_id')));
+        }
+
+        $results = $query->orderByDesc('created_at')->get();
         return response()->json($results);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreResultRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'atleta_id' => 'required|uuid|exists:users,id',
-            'evento_id' => 'nullable|uuid|exists:events,id',
-            'evento_nome' => 'nullable|string',
-            'prova' => 'required|string',
-            'local' => 'required|string',
-            'data' => 'required|date',
-            'piscina' => 'nullable|in:piscina_25m,piscina_50m,aguas_abertas',
-            'tempo_final' => 'required|string',
-        ]);
+        $validated = $request->validated();
 
-        $result = ResultProva::create($validated);
+        $result = Result::create($validated);
         return response()->json($result, 201);
     }
 
     public function show(string $id): JsonResponse
     {
-        $result = ResultProva::with(['atleta', 'evento'])->findOrFail($id);
+        $result = Result::with(['athlete', 'prova.competition'])->findOrFail($id);
         return response()->json($result);
     }
 
     public function update(Request $request, string $id): JsonResponse
     {
-        $result = ResultProva::findOrFail($id);
+        $result = Result::findOrFail($id);
         
         $validated = $request->validate([
-            'evento_nome' => 'sometimes|string',
-            'prova' => 'sometimes|string',
-            'local' => 'sometimes|string',
-            'data' => 'sometimes|date',
-            'piscina' => 'sometimes|in:piscina_25m,piscina_50m,aguas_abertas',
-            'tempo_final' => 'sometimes|string',
+            'tempo_oficial' => 'sometimes|numeric|min:0',
+            'posicao' => 'sometimes|nullable|integer|min:1',
+            'pontos_fina' => 'sometimes|nullable|integer|min:0',
+            'desclassificado' => 'sometimes|boolean',
+            'observacoes' => 'sometimes|nullable|string',
         ]);
 
         $result->update($validated);
@@ -67,7 +64,7 @@ class ResultsController extends Controller
 
     public function destroy(string $id): JsonResponse
     {
-        ResultProva::findOrFail($id)->delete();
+        Result::findOrFail($id)->delete();
         return response()->json(['message' => 'Result deleted successfully']);
     }
 }

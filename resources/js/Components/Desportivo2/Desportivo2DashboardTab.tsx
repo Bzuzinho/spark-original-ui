@@ -2,9 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import { Badge } from '@/Components/ui/badge';
 import { Button } from '@/Components/ui/button';
 import { Heartbeat, CalendarBlank, Gauge, UsersThree, WarningCircle, Anchor } from '@phosphor-icons/react';
-import { MetricCard } from '@/Components/Desportivo2/components/MetricCard';
-import { MiniCard } from '@/Components/Desportivo2/components/MiniCard';
-import { SectionTitle } from '@/Components/Desportivo2/components/SectionTitle';
+import { MiniCard, SectionTitle, SmallMetric } from '@/components/sports/shared';
 import type { Competition, Stats, Training, User } from './types';
 
 interface Alert {
@@ -60,10 +58,10 @@ export function Desportivo2DashboardTab({
   return (
     <div className="space-y-3">
       <div className="grid gap-2 grid-cols-2 lg:grid-cols-4">
-        <MetricCard label="Atletas hoje" value={activeAthletesCount || stats.athletesCount} icon={<UsersThree size={18} className="text-blue-600" />} />
-        <MetricCard label="Treinos" value={stats.trainings7Days} hint="janela 7 dias" icon={<CalendarBlank size={18} className="text-emerald-600" />} />
-        <MetricCard label="A decorrer" value={activeNow.length} hint={today} icon={<Heartbeat size={18} className="text-indigo-600" />} />
-        <MetricCard label="Próxima prova" value={nextCompetition ? nextCompetition.nome : 'Sem prova'} hint={nextCompetition?.data_inicio ?? 'sem agenda'} icon={<Gauge size={18} className="text-amber-600" />} />
+        <SmallMetric label="Atletas hoje" value={activeAthletesCount || stats.athletesCount} icon={<UsersThree size={18} className="text-blue-600" />} />
+        <SmallMetric label="Treinos" value={stats.trainings7Days} hint="janela 7 dias" icon={<CalendarBlank size={18} className="text-emerald-600" />} />
+        <SmallMetric label="A decorrer" value={activeNow.length} hint={today} icon={<Heartbeat size={18} className="text-indigo-600" />} />
+        <SmallMetric label="Próxima prova" value={nextCompetition ? nextCompetition.nome : 'Sem prova'} hint={nextCompetition?.data_inicio ?? 'sem agenda'} icon={<Gauge size={18} className="text-amber-600" />} />
       </div>
 
       <div className="grid gap-3 xl:grid-cols-3">

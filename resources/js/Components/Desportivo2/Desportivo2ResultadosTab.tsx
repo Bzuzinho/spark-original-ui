@@ -1,8 +1,8 @@
 /**
  * Desportivo2ResultadosTab
  *
- * Reutiliza dados da tabela `event_results` via prop `results`.
- * Liga-se ao evento original para contexto.
+ * Reutiliza dados canónicos de `results` via prop `results`.
+ * Liga-se à competição através da prova associada.
  */
 
 import { useState } from 'react';
@@ -10,10 +10,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import { Badge } from '@/Components/ui/badge';
 import { Input } from '@/Components/ui/input';
 import { MagnifyingGlass, Medal, Timer } from '@phosphor-icons/react';
-import type { EventResult } from './types';
+import { CompetitionResultsTable } from '@/components/sports/CompetitionResultsTable';
+import { TeamResultsTable } from '@/components/sports/TeamResultsTable';
+import { teamResults as mockTeamResults } from '@/data/sportsMock';
+import type { EventResult, TeamResult } from './types';
 
 interface Props {
   results: EventResult[];
+  teamResults?: TeamResult[];
 }
 
 function formatTime(t: string | null | undefined): string {
@@ -46,7 +50,7 @@ function medalColor(pos?: number | null): string {
   return 'text-muted-foreground';
 }
 
-export function Desportivo2ResultadosTab({ results }: Props) {
+export function Desportivo2ResultadosTab({ results, teamResults = mockTeamResults }: Props) {
   const [search, setSearch] = useState('');
 
   const filtered = results.filter((r) => {
@@ -189,30 +193,23 @@ export function Desportivo2ResultadosTab({ results }: Props) {
               <CardTitle className="text-sm">{eventTitle}</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-1">
-                {eventResults.map((r) => (
-                  <div
-                    key={r.id}
-                    className="flex items-center gap-2 text-xs border-b last:border-0 pb-1 last:pb-0"
-                  >
-                    <span className="flex-1 truncate">{r.athlete?.nome_completo ?? '—'}</span>
-                    <span className="text-muted-foreground shrink-0">{r.prova}</span>
-                    <span className="font-mono shrink-0">{formatTime(r.tempo)}</span>
-                    <span className="text-[10px] text-muted-foreground shrink-0">
-                      Δ {formatDelta((toSeconds(r.tempo) ?? 0) - (bestByProva[r.prova] ?? 0))}
-                    </span>
-                    {r.classificacao != null && (
-                      <Badge variant="outline" className="text-[10px] shrink-0">
-                        #{r.classificacao}
-                      </Badge>
-                    )}
-                  </div>
-                ))}
-              </div>
+              <CompetitionResultsTable eventTitle={eventTitle} results={eventResults} bestByProva={bestByProva} />
             </CardContent>
           </Card>
         );
       })}
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm">Classificação Coletiva</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <TeamResultsTable teamResults={teamResults} />
+          {teamResults.length === 0 && (
+            <p className="text-xs text-muted-foreground">Sem classificação coletiva disponível.</p>
+          )}
+        </CardContent>
+      </Card>
 
       {filtered.length === 0 && (
         <Card>

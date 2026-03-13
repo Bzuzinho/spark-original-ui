@@ -1,0 +1,40 @@
+import { useEffect, useState } from 'react';
+import { getCompetitionResults } from '@/services/sports';
+import type { CompetitionResult } from '@/types/sports';
+
+interface UseCompetitionResultsResult {
+  data: CompetitionResult[];
+  loading: boolean;
+  error: string | null;
+}
+
+export function useCompetitionResults(): UseCompetitionResultsResult {
+  const [data, setData] = useState<CompetitionResult[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    void getCompetitionResults()
+      .then((payload) => {
+        if (!active) return;
+        setData(Array.isArray(payload) ? payload : []);
+        setError(null);
+      })
+      .catch(() => {
+        if (!active) return;
+        setError('Failed to load competition results.');
+      })
+      .finally(() => {
+        if (!active) return;
+        setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  return { data, loading, error };
+}

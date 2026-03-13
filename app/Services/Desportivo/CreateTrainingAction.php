@@ -18,15 +18,14 @@ use Illuminate\Validation\ValidationException;
  * - Criar Event associado (tipo='treino')
  * - Sincronizar escalões ao Event
  * - Pré-criar registos de training_athletes para atletas elegíveis
- * - Pré-criar event_attendances (espelho) automaticamente via Observer
+ * - Manter attendance no domínio de treinos (sem espelho para eventos)
  * 
  * Garante transação DB completa: se qualquer etapa falhar, rollback total
  */
 class CreateTrainingAction
 {
     public function __construct(
-        private PrepareTrainingAthletesAction $prepareAthletesAction,
-        private SyncTrainingToEventAction $syncToEventAction
+        private PrepareTrainingAthletesAction $prepareAthletesAction
     ) {}
 
     /**
@@ -62,9 +61,6 @@ class CreateTrainingAction
 
             // 5. Pré-criar training_athletes for atletas elegíveis
             $this->prepareAthletesAction->execute($training, $data['escaloes'] ?? []);
-
-            // 6. Sincronizar para event_attendances (observer handled, mas forçar explicitamente)
-            $this->syncToEventAction->execute($training);
 
             DB::commit();
 
@@ -131,7 +127,6 @@ class CreateTrainingAction
             'volume_planeado_m' => $data['volume_planeado_m'] ?? null,
             'notas_gerais' => $data['notas_gerais'] ?? null,
             'descricao_treino' => $data['descricao_treino'] ?? null,
-            'escaloes' => $data['escaloes'] ?? null,
             'criado_por' => $criadoPor->id,
         ]);
     }

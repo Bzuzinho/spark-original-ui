@@ -1,5 +1,5 @@
 import { Badge } from '@/Components/ui/badge';
-import { Button } from '@/Components/ui/button';
+import { CompactStatusButton } from '@/components/sports/shared';
 
 type CaisStatus = 'presente' | 'ausente' | 'dispensado';
 
@@ -64,17 +64,16 @@ export function CaisAthleteRow({
           ['A', 'ausente'],
           ['D', 'dispensado'],
         ] as const).map(([label, key]) => (
-          <Button
+          <CompactStatusButton
             key={key}
-            type="button"
-            variant="outline"
-            disabled={disabled}
-            className={`${sizeClass} px-0 ${status === key ? STATUS_STYLE[key] : ''}`}
-            onClick={() => onSetStatus(key)}
+            label={label}
             title={key}
-          >
-            {label}
-          </Button>
+            isActive={status === key}
+            activeClassName={STATUS_STYLE[key]}
+            sizeClassName={sizeClass}
+            disabled={disabled}
+            onClick={() => onSetStatus(key)}
+          />
         ))}
       </div>
     </div>

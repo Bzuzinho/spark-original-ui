@@ -2,6 +2,7 @@
 
 namespace App\Services\Desportivo;
 
+use App\Models\AthleteSportsData;
 use App\Models\Training;
 use App\Models\TrainingAthlete;
 use App\Models\User;
@@ -94,22 +95,18 @@ class PrepareTrainingAthletesAction
      */
     private function getEligibleAthletes(array $escalaoIds): Collection
     {
-        if (empty($escalaoIds)) {
-            // Se não há escalões específicos, retornar todos atletas ativos
-            return User::whereJsonContains('tipo_membro', 'atleta')
-                ->where('estado', 'ativo')
-                ->orderBy('nome_completo')
-                ->get();
+        $query = User::query()
+            ->whereJsonContains('tipo_membro', 'atleta')
+            ->where('estado', 'ativo');
+
+        if (!empty($escalaoIds)) {
+            $query->whereHas('athleteSportsData', function ($sportsDataQuery) use ($escalaoIds) {
+                $sportsDataQuery->whereIn('escalao_id', $escalaoIds);
+            });
         }
 
-        // Buscar atletas por escalão(ões)
-        return User::whereJsonContains('tipo_membro', 'atleta')
-            ->where('estado', 'ativo')
-            ->where(function ($query) use ($escalaoIds) {
-                foreach ($escalaoIds as $escalaoId) {
-                    $query->orWhereJsonContains('escalao', $escalaoId);
-                }
-            })
+        return $query
+            ->with('athleteSportsData:id,user_id,escalao_id')
             ->orderBy('nome_completo')
             ->get();
     }

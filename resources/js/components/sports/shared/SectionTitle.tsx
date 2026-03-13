@@ -1,12 +1,12 @@
 import type { ReactNode } from 'react';
 
-interface Props {
+interface SectionTitleProps {
   title: string;
   subtitle?: string;
   right?: ReactNode;
 }
 
-export function SectionTitle({ title, subtitle, right }: Props) {
+export function SectionTitle({ title, subtitle, right }: SectionTitleProps) {
   return (
     <div className="flex items-start justify-between gap-2 flex-wrap">
       <div>

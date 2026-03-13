@@ -1,8 +1,8 @@
 /**
  * Desportivo2CompeticoesTab
  *
- * Reutiliza dados da tabela `events` (tipo='prova') e `event_attendances`.
- * Liga convocatórias com o fluxo de eventos existente.
+ * Reutiliza dados canónicos de `competitions`.
+ * Calcula métricas a partir dos resultados associados.
  */
 
 import { useState } from 'react';

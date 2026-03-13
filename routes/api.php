@@ -15,6 +15,13 @@ use App\Http\Controllers\Api\ResultsController;
 use App\Http\Controllers\Api\EventAttendancesController;
 use App\Http\Controllers\Api\EventResultsController;
 use App\Http\Controllers\Api\ProvaTiposController;
+use App\Http\Controllers\Api\TrainingController;
+use App\Http\Controllers\Api\TrainingAttendanceController;
+use App\Http\Controllers\Api\AthleteController;
+use App\Http\Controllers\Api\CompetitionController;
+use App\Http\Controllers\Api\CompetitionResultController;
+use App\Http\Controllers\Api\CompetitionRegistrationController;
+use App\Http\Controllers\Api\TeamResultController;
 
 /*
 |--------------------------------------------------------------------------
@@ -49,4 +56,29 @@ Route::middleware(['auth'])->group(function () {
     Route::apiResource('event-types', TiposEventoController::class);
     Route::apiResource('cost-centers', CentrosCustoController::class);
     Route::apiResource('club-settings', ClubSettingController::class);
+
+    // Desportivo Module APIs (Step 5-6)
+    Route::prefix('desportivo')->group(function () {
+        // Athletes
+        Route::apiResource('athletes', AthleteController::class, ['only' => ['index', 'show']]);
+
+        // Trainings
+        Route::apiResource('trainings', TrainingController::class);
+
+        // Training Attendance (Cais)
+        Route::prefix('trainings/{trainingId}/attendance')->group(function () {
+            Route::get('/', [TrainingAttendanceController::class, 'index']);
+            Route::put('{athleteId}', [TrainingAttendanceController::class, 'update']);
+            Route::post('mark-all', [TrainingAttendanceController::class, 'markAllPresent']);
+            Route::post('clear-all', [TrainingAttendanceController::class, 'clearAll']);
+        });
+
+        // Competitions
+        Route::apiResource('competitions', CompetitionController::class);
+
+        // Competition Results
+        Route::apiResource('competition-results', CompetitionResultController::class);
+        Route::apiResource('competition-registrations', CompetitionRegistrationController::class)->only(['index', 'store', 'destroy']);
+        Route::apiResource('team-results', TeamResultController::class)->only(['index', 'store', 'destroy']);
+    });
 });

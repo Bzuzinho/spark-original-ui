@@ -1,14 +1,14 @@
 import type { ReactNode } from 'react';
 import { Card, CardContent } from '@/Components/ui/card';
 
-interface Props {
+interface MiniCardProps {
   title: string;
   subtitle?: string;
   right?: ReactNode;
   children?: ReactNode;
 }
 
-export function MiniCard({ title, subtitle, right, children }: Props) {
+export function MiniCard({ title, subtitle, right, children }: MiniCardProps) {
   return (
     <Card>
       <CardContent className="p-3 space-y-1.5">

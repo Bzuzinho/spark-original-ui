@@ -3,6 +3,11 @@
 Data: 2026-03-11
 Estado: plano operacional pós-refatoração
 
+Atualização: 2026-03-12
+- Concluído: toggle de mock por ambiente (`VITE_SPORTS_USE_MOCK`) no cliente de API.
+- Concluído: fallback controlado por ambiente em erro de API (`VITE_SPORTS_FALLBACK_ON_ERROR`).
+- Concluído: hardening de payloads no container e hooks do Desportivo2 para evitar crash com dados inválidos.
+
 ## Fase 1 - Estabilização (alta prioridade)
 
 1. Validar fluxo Presenças E2E em staging
@@ -34,7 +39,7 @@ Critério de saída:
 
 ## Fase 2 - Integração backend (prioridade média)
 
-4. Implementar endpoint de duplicação semanal/microciclo
+4. Endpoint de duplicação semanal/microciclo (Em desenvolvimento - Standby)
 - Criar rota dedicada para duplicação por bloco
 - Executar em transação
 - Aplicar offset de datas

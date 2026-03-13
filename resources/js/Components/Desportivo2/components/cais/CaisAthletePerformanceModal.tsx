@@ -101,7 +101,7 @@ export function CaisAthletePerformanceModal({
           </div>
 
           <p className="text-[11px] text-muted-foreground">
-            TODO: ligar persistência real das métricas de execução ao backend (treino + atleta + timestamp).
+            Registos guardados por treino e atleta, com fallback local em caso de falha de rede.
           </p>
         </div>
 

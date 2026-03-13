@@ -4,7 +4,6 @@ namespace App\Services\Desportivo;
 
 use App\Models\TrainingAthlete;
 use App\Models\User;
-use App\Services\Desportivo\SyncTrainingToEventAction;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
@@ -15,13 +14,11 @@ use Illuminate\Validation\ValidationException;
  * - Atualizar dados de presença/execução de um atleta específico num treino
  * - Validar dados (RPE, volume, estado)
  * - Registar quem e quando atualizou
- * - Observer irá automaticamente sincronizar para event_attendances
+ * - Operar apenas no domínio canónico de treino
  */
 class UpdateTrainingAthleteAction
 {
-    public function __construct(
-        private SyncTrainingToEventAction $syncAction
-    ) {}
+    public function __construct() {}
 
     /**
      * Atualiza training_athlete
@@ -130,13 +127,6 @@ class UpdateTrainingAthleteAction
             'updated_by' => $atualizadoPor?->id,
         ]);
 
-        // Observer irá sincronizar cada um para event_attendances automaticamente
-        // Nota: bulk update NÃO dispara observers em Eloquent
-        // Solução: disparar sync manualmente ou usar loop individual
-        if ($updated > 0) {
-            $this->triggerSyncForBulkUpdate($trainingAthleteIds);
-        }
-
         return $updated;
     }
 
@@ -165,28 +155,6 @@ class UpdateTrainingAthleteAction
             'updated_by' => $atualizadoPor?->id,
         ]);
 
-        if ($updated > 0) {
-            $trainingAthleteIds = TrainingAthlete::where('treino_id', $treinoId)->pluck('id')->toArray();
-            $this->triggerSyncForBulkUpdate($trainingAthleteIds);
-        }
-
         return $updated;
-    }
-
-    /**
-     * Trigger manual de sincronização após bulk update
-     * (necessário porque observers não disparam em bulk updates)
-     */
-    private function triggerSyncForBulkUpdate(array $trainingAthleteIds): void
-    {
-        $trainingAthletes = TrainingAthlete::with('training')
-            ->whereIn('id', $trainingAthleteIds)
-            ->get();
-
-        foreach ($trainingAthletes as $ta) {
-            if ($ta->training && $ta->training->evento_id) {
-                $this->syncAction->syncSingleAthlete($ta, $ta->training->evento_id);
-            }
-        }
     }
 }

@@ -8,7 +8,7 @@
  *   - Prontidão
  *
  * Estratégia de dados:
- *   - Se `volumeByAthlete` (fonte: presences/training_athletes) existe, usa-o
+ *   - Se `volumeByAthlete` (fonte: training_athletes) existe, usa-o
  *     para mostrar volume real por atleta.
  *   - Métricas de carga (ACWR, RPE, prontidão) são guardadas localmente em
  *     useKV('sports-v2-performance-metrics') até existir tabela de backend.
@@ -137,7 +137,7 @@ export function Desportivo2PerformanceTab({ users, volumeByAthlete }: Props) {
         </Card>
       </div>
 
-      {/* ── Volume por atleta (fonte: presences/training_athletes) ── */}
+      {/* ── Volume por atleta (fonte: training_athletes) ── */}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm flex items-center gap-2">

@@ -8,14 +8,14 @@
  *   - trainings         → tabela `trainings`
  *   - trainingOptions   → tabela `trainings` (subset para selector)
  *   - selectedTraining  → trainer selecionado via ?training_id=
- *   - presences         → tabela `training_athletes` (master) + `presences` (legacy)
+ *   - presences         → tabela `training_athletes`
  *   - seasons           → tabela `seasons`
  *   - macrocycles       → tabela `macrocycles`
  *   - ageGroups         → tabela `age_groups`
- *   - competitions      → tabela `events` (tipo='prova')
- *   - results           → tabela `event_results`
+ *   - competitions      → tabela `competitions`
+ *   - results           → tabela `results` com contexto em `provas`/`competitions`
  *   - users             → tabela `users`
- *   - volumeByAthlete   → query sobre `presences`/`training_athletes`
+ *   - volumeByAthlete   → query sobre `training_athletes`
  *   - stats             → queries agregadas
  *   - alerts            → calculados no controller
  *
@@ -39,14 +39,27 @@ import {
   Waves,
 } from '@phosphor-icons/react';
 
-import { Desportivo2DashboardTab }   from '@/Components/Desportivo2/Desportivo2DashboardTab';
-import { Desportivo2AtletasTab }     from '@/Components/Desportivo2/Desportivo2AtletasTab';
-import { Desportivo2TreinosTab }     from '@/Components/Desportivo2/Desportivo2TreinosTab';
-import { CaisTab }                   from '@/Components/Desportivo2/CaisTab';
-import { Desportivo2PlaneamentoTab } from '@/Components/Desportivo2/Desportivo2PlaneamentoTab';
-import { Desportivo2CompeticoesTab } from '@/Components/Desportivo2/Desportivo2CompeticoesTab';
+import {
+  AthletesTab,
+  CompetitionsTab,
+  DashboardTab,
+  PlanningTab,
+  PoolDeckTab,
+  TrainingsTab,
+  PerformanceTab,
+} from '@/components/sports/tabs';
 import { Desportivo2ResultadosTab }  from '@/Components/Desportivo2/Desportivo2ResultadosTab';
-import { Desportivo2PerformanceTab } from '@/Components/Desportivo2/Desportivo2PerformanceTab';
+import {
+  macros as mockMacros,
+  seasons as mockSeasons,
+} from '@/data/sportsMock';
+import {
+  useAthletes,
+  useCompetitionResults,
+  useCompetitions,
+  usePerformance,
+  useTrainings,
+} from '@/hooks/sports';
 
 import type {
   AgeGroup,
@@ -59,7 +72,7 @@ import type {
   Stats,
   Training,
   User,
-} from '@/Components/Desportivo2/types';
+} from '@/types/sports';
 
 // ─── Tipos da página (mapeados a partir do renderSportsPage do controller) ────
 
@@ -131,9 +144,9 @@ export default function Desportivo2Index({
   stats,
   alerts = [],
   upcomingCompetitions = [],
-  seasons = [],
+  seasons = mockSeasons,
   selectedSeason = null,
-  macrocycles = [],
+  macrocycles = mockMacros,
   ageGroups = [],
   trainings = { data: [] },
   trainingOptions = [],
@@ -146,6 +159,47 @@ export default function Desportivo2Index({
   volumeByAthlete = [],
   athleteOperationalRows = [],
 }: DesportivoV2Props) {
+  const athletesQuery = useAthletes();
+  const trainingsQuery = useTrainings();
+  const competitionsQuery = useCompetitions();
+  const competitionResultsQuery = useCompetitionResults();
+  const performanceQuery = usePerformance();
+
+  const safeUsers = Array.isArray(users) ? users : [];
+  const safeTrainings = Array.isArray(trainings?.data) ? trainings.data : [];
+  const safeCompetitions = Array.isArray(competitions) ? competitions : [];
+  const safeResults = Array.isArray(results) ? results : [];
+  const safeVolumeByAthlete = Array.isArray(volumeByAthlete) ? volumeByAthlete : [];
+
+  const resolvedUsers = safeUsers.length > 0 ? safeUsers : athletesQuery.data;
+  const resolvedTrainings = safeTrainings.length > 0 ? safeTrainings : trainingsQuery.data;
+  const resolvedCompetitions = safeCompetitions.length > 0 ? safeCompetitions : competitionsQuery.data;
+  const resolvedResults = safeResults.length > 0 ? safeResults : competitionResultsQuery.data;
+  const resolvedVolumeByAthlete = safeVolumeByAthlete.length > 0
+    ? safeVolumeByAthlete
+    : performanceQuery.data.performance.map((row) => ({
+        nome_completo: resolvedUsers.find((u) => u.id === row.athlete_id)?.nome_completo ?? row.athlete_id,
+        total_m: row.volume_semanal_m,
+      }));
+
+  const resolvedTrainingOptions = trainingOptions.length > 0
+    ? trainingOptions
+    : resolvedTrainings.map((training) => ({
+      id: training.id,
+      numero_treino: training.numero_treino ?? null,
+      data: training.data,
+    }));
+
+  const loading =
+    (safeUsers.length === 0 && athletesQuery.loading) ||
+    (safeTrainings.length === 0 && trainingsQuery.loading) ||
+    (safeCompetitions.length === 0 && competitionsQuery.loading) ||
+    (safeResults.length === 0 && competitionResultsQuery.loading);
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
   const initialTab = (tab === 'presencas' ? 'cais' : tab) as TabValue;
   const [activeTab, setActiveTab] = useState<TabValue>(initialTab);
 
@@ -209,14 +263,14 @@ export default function Desportivo2Index({
           </TabsList>
 
           <TabsContent value="dashboard" className="mt-3">
-            <Desportivo2DashboardTab
+            <DashboardTab
               stats={stats}
               alerts={alerts}
-              trainings={trainings.data}
+              trainings={resolvedTrainings}
               upcomingCompetitions={upcomingCompetitions}
-              competitions={competitions}
-              users={users}
-              volumeByAthlete={volumeByAthlete}
+              competitions={resolvedCompetitions}
+              users={resolvedUsers}
+              volumeByAthlete={resolvedVolumeByAthlete}
               onOpenCais={(trainingId, modoCais) => {
                 router.get(route('desportivo2.presencas'), { training_id: trainingId, cais: modoCais ? 1 : 0 });
               }}
@@ -224,58 +278,58 @@ export default function Desportivo2Index({
           </TabsContent>
 
           <TabsContent value="atletas" className="mt-3">
-            <Desportivo2AtletasTab
-              users={users}
-              volumeByAthlete={volumeByAthlete}
+            <AthletesTab
+              users={resolvedUsers}
+              volumeByAthlete={resolvedVolumeByAthlete}
               athleteOperationalRows={athleteOperationalRows}
             />
           </TabsContent>
 
           <TabsContent value="treinos" className="mt-3">
-            <Desportivo2TreinosTab
-              trainings={trainings.data}
+            <TrainingsTab
+              trainings={resolvedTrainings}
               ageGroups={ageGroups}
               selectedSeasonId={selectedSeason?.id}
-              competitions={competitions}
+              competitions={resolvedCompetitions}
             />
           </TabsContent>
 
           <TabsContent value="cais" className="mt-3">
-            <CaisTab
-              trainings={trainings.data}
-              trainingOptions={trainingOptions}
+            <PoolDeckTab
+              trainings={resolvedTrainings}
+              trainingOptions={resolvedTrainingOptions}
               selectedTraining={selectedTraining}
               presences={presences}
-              users={users}
+              users={resolvedUsers}
               ageGroups={ageGroups}
             />
           </TabsContent>
 
           <TabsContent value="planeamento" className="mt-3">
-            <Desportivo2PlaneamentoTab
+            <PlanningTab
               seasons={seasons}
               macrocycles={macrocycles}
             />
           </TabsContent>
 
           <TabsContent value="competicoes" className="mt-3">
-            <Desportivo2CompeticoesTab
-              competitions={competitions}
-              results={results}
-              users={users}
+            <CompetitionsTab
+              competitions={resolvedCompetitions}
+              results={resolvedResults}
+              users={resolvedUsers}
             />
           </TabsContent>
 
           <TabsContent value="resultados" className="mt-3">
             <Desportivo2ResultadosTab
-              results={results}
+              results={resolvedResults}
             />
           </TabsContent>
 
           <TabsContent value="performance" className="mt-3">
-            <Desportivo2PerformanceTab
-              users={users}
-              volumeByAthlete={volumeByAthlete}
+            <PerformanceTab
+              users={resolvedUsers}
+              volumeByAthlete={resolvedVolumeByAthlete}
             />
           </TabsContent>
 

@@ -29,6 +29,71 @@ export function CaisAthleteAttendanceList({ training, athletes, presences, quick
   const [selectedAthleteId, setSelectedAthleteId] = useState<string | null>(null);
   const [performanceByAthlete, setPerformanceByAthlete] = useState<Record<string, CaisPerformanceRow[]>>({});
 
+  const getCsrfToken = () => {
+    const token = document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement | null;
+    return token?.content || '';
+  };
+
+  const loadAthletePerformance = async (athleteId: string) => {
+    if (!training) return;
+
+    try {
+      const params = new URLSearchParams({ treino_id: training.id, user_id: athleteId });
+      const response = await fetch(`${route('desportivo2.cais.metrics.index')}?${params.toString()}`, {
+        method: 'GET',
+        headers: {
+          Accept: 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        credentials: 'same-origin',
+      });
+
+      if (!response.ok) {
+        throw new Error('Falha ao carregar métricas de Cais.');
+      }
+
+      const data = await response.json() as { rows?: CaisPerformanceRow[] };
+      const rows = Array.isArray(data.rows) ? data.rows : [];
+      setPerformanceByAthlete((prev) => ({ ...prev, [athleteId]: rows }));
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const saveAthletePerformance = async (athleteId: string, rows: CaisPerformanceRow[]) => {
+    if (!training) return;
+
+    setPerformanceByAthlete((prev) => ({ ...prev, [athleteId]: rows }));
+
+    try {
+      const response = await fetch(route('desportivo2.cais.metrics.store'), {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRF-TOKEN': getCsrfToken(),
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify({
+          treino_id: training.id,
+          user_id: athleteId,
+          rows,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Falha ao guardar métricas de Cais.');
+      }
+
+      const data = await response.json() as { rows?: CaisPerformanceRow[] };
+      const persistedRows = Array.isArray(data.rows) ? data.rows : rows;
+      setPerformanceByAthlete((prev) => ({ ...prev, [athleteId]: persistedRows }));
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
   const summary = useMemo(() => {
     const counters = { presente: 0, ausente: 0, dispensado: 0 };
     athletes.forEach((athlete) => {
@@ -72,7 +137,10 @@ export function CaisAthleteAttendanceList({ training, athletes, presences, quick
                   status={status}
                   compact={quickMode}
                   onSetStatus={(nextStatus) => onUpdatePresence(athlete.id, nextStatus)}
-                  onOpenDetail={() => setSelectedAthleteId(athlete.id)}
+                  onOpenDetail={() => {
+                    setSelectedAthleteId(athlete.id);
+                    void loadAthletePerformance(athlete.id);
+                  }}
                 />
               );
             })}
@@ -88,7 +156,7 @@ export function CaisAthleteAttendanceList({ training, athletes, presences, quick
         onClose={() => setSelectedAthleteId(null)}
         onSave={(rows) => {
           if (!selectedAthleteId) return;
-          setPerformanceByAthlete((prev) => ({ ...prev, [selectedAthleteId]: rows }));
+          void saveAthletePerformance(selectedAthleteId, rows);
         }}
       />
     </Card>

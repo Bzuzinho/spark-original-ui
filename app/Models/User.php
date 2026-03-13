@@ -225,6 +225,11 @@ class User extends Authenticatable
         return $this->hasMany(Result::class, 'user_id');
     }
 
+    public function competitionResults(): HasMany
+    {
+        return $this->hasMany(Result::class, 'user_id');
+    }
+
     public function invoices(): HasMany
     {
         return $this->hasMany(Invoice::class, 'user_id');

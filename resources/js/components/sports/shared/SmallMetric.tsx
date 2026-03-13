@@ -1,14 +1,14 @@
 import type { ReactNode } from 'react';
 import { Card } from '@/Components/ui/card';
 
-interface Props {
+interface SmallMetricProps {
   label: string;
   value: string | number;
   hint?: string;
   icon?: ReactNode;
 }
 
-export function MetricCard({ label, value, hint, icon }: Props) {
+export function SmallMetric({ label, value, hint, icon }: SmallMetricProps) {
   return (
     <Card className="p-3">
       <div className="flex items-center justify-between gap-2">
