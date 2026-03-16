@@ -1,5 +1,5 @@
 /**
- * Desportivo2PerformanceTab
+ * DesportivoPerformanceTab
  *
  * Gestão científica de performance:
  *   - Carga aguda / crónica / ACWR
@@ -54,7 +54,7 @@ function acwrLabel(acwr: number): string {
 
 // ── Componente ───────────────────────────────────────────────────────────────
 
-export function Desportivo2PerformanceTab({ users, volumeByAthlete }: Props) {
+export function DesportivoPerformanceTab({ users, volumeByAthlete }: Props) {
   const [metrics, setMetrics] = useKV<PerformanceMetric[]>('sports-v2-performance-metrics', []);
   const [selectedUserId, setSelectedUserId] = useState(users[0]?.id ?? '');
 

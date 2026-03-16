@@ -2,9 +2,9 @@ import { useMemo, useState } from 'react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/Components/ui/collapsible';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import { Badge } from '@/Components/ui/badge';
-import { CaisAthleteRow } from '@/Components/Desportivo2/components/cais/CaisAthleteRow';
-import { CaisAthletePerformanceModal } from '@/Components/Desportivo2/components/cais/CaisAthletePerformanceModal';
-import type { CaisPerformanceRow, PresenceRow, Training, User } from '@/Components/Desportivo2/types';
+import { CaisAthleteRow } from '@/Components/Desportivo/components/cais/CaisAthleteRow';
+import { CaisAthletePerformanceModal } from '@/Components/Desportivo/components/cais/CaisAthletePerformanceModal';
+import type { CaisPerformanceRow, PresenceRow, Training, User } from '@/Components/Desportivo/types';
 
 type CaisStatus = 'presente' | 'ausente' | 'dispensado';
 
@@ -39,7 +39,7 @@ export function CaisAthleteAttendanceList({ training, athletes, presences, quick
 
     try {
       const params = new URLSearchParams({ treino_id: training.id, user_id: athleteId });
-      const response = await fetch(`${route('desportivo2.cais.metrics.index')}?${params.toString()}`, {
+      const response = await fetch(`${route('desportivo.cais.metrics.index')}?${params.toString()}`, {
         method: 'GET',
         headers: {
           Accept: 'application/json',
@@ -66,7 +66,7 @@ export function CaisAthleteAttendanceList({ training, athletes, presences, quick
     setPerformanceByAthlete((prev) => ({ ...prev, [athleteId]: rows }));
 
     try {
-      const response = await fetch(route('desportivo2.cais.metrics.store'), {
+      const response = await fetch(route('desportivo.cais.metrics.store'), {
         method: 'POST',
         headers: {
           Accept: 'application/json',

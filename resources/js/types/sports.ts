@@ -22,14 +22,28 @@ export interface Athlete extends BasicItem {
 
 export interface Training extends BasicItem {
   numero_treino?: string | null;
-  data: string;
+  data?: string | null;
   hora_inicio?: string | null;
   hora_fim?: string | null;
   local?: string | null;
+  epoca_id?: string | null;
+  microciclo_id?: string | null;
   tipo_treino: string;
   volume_planeado_m?: number | null;
   descricao_treino?: string | null;
+  notas_gerais?: string | null;
   escaloes?: string[] | null;
+  series?: Array<{
+    id: string;
+    ordem?: number | null;
+    descricao_texto?: string | null;
+    distancia_total_m?: number | null;
+    zona_intensidade?: string | null;
+    estilo?: string | null;
+    repeticoes?: number | null;
+    intervalo?: string | null;
+    observacoes?: string | null;
+  }>;
 }
 
 export interface Session extends BasicItem {
@@ -174,6 +188,12 @@ export interface TrainingTemplate {
   volume_planeado_m?: number;
   descricao_treino?: string;
   escaloes?: string[];
+  series_linhas?: Array<{
+    repeticoes: string;
+    exercicio: string;
+    metros: string;
+    zona?: string;
+  }>;
   created_at: string;
 }
 

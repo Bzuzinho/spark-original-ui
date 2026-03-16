@@ -5,7 +5,7 @@ import { Input } from '@/Components/ui/input';
 import { Label } from '@/Components/ui/label';
 import { useKV } from '@/hooks/useKV';
 import { Badge } from '@/Components/ui/badge';
-import { AnnualCycleCalendar } from '@/Components/Desportivo2/components/AnnualCycleCalendar';
+import { AnnualCycleCalendar } from '@/Components/Desportivo/components/AnnualCycleCalendar';
 import { SectionTitle } from '@/components/sports/shared';
 import type { Macrocycle, Season, V2MicrocyclePlan, V2SeasonPlan } from './types';
 
@@ -14,7 +14,7 @@ interface Props {
   macrocycles: Macrocycle[];
 }
 
-export function Desportivo2PlaneamentoTab({ seasons, macrocycles }: Props) {
+export function DesportivoPlaneamentoTab({ seasons, macrocycles }: Props) {
   // Persistencia feita no backend via /api/kv (sem localStorage no browser).
   const [seasonPlans, setSeasonPlans] = useKV<V2SeasonPlan[]>('sports-v2-seasons', []);
   const [microcycles, setMicrocycles] = useKV<V2MicrocyclePlan[]>('sports-v2-microcycles', []);

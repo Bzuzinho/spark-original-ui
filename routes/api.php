@@ -22,6 +22,7 @@ use App\Http\Controllers\Api\CompetitionController;
 use App\Http\Controllers\Api\CompetitionResultController;
 use App\Http\Controllers\Api\CompetitionRegistrationController;
 use App\Http\Controllers\Api\TeamResultController;
+use App\Http\Controllers\Api\PerformanceController;
 
 /*
 |--------------------------------------------------------------------------
@@ -59,6 +60,10 @@ Route::middleware(['auth'])->group(function () {
 
     // Desportivo Module APIs (Step 5-6)
     Route::prefix('desportivo')->group(function () {
+        // Performance (legacy + current endpoint compatibility)
+        Route::get('performance', [PerformanceController::class, 'index']);
+        Route::get('performance-metrics', [PerformanceController::class, 'index']);
+
         // Athletes
         Route::apiResource('athletes', AthleteController::class, ['only' => ['index', 'show']]);
 

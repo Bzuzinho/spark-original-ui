@@ -7,7 +7,7 @@ interface Props {
   users: User[];
 }
 
-export function Desportivo2GruposTab({ ageGroups, users }: Props) {
+export function DesportivoGruposTab({ ageGroups, users }: Props) {
   const activeAthletes = users.filter((user) => {
     const tipo = user.tipo_membro ?? [];
     return user.estado === 'ativo' && tipo.includes('atleta');

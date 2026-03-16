@@ -10,11 +10,11 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
-class Desportivo2PageTest extends TestCase
+class DesportivoPageTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_desportivo2_index_returns_inertia_component_for_authenticated_user(): void
+    public function test_desportivo_index_returns_inertia_component_for_authenticated_user(): void
     {
         $admin = User::factory()->create();
         $inertiaVersion = app(HandleInertiaRequests::class)->version(request());
@@ -23,11 +23,11 @@ class Desportivo2PageTest extends TestCase
             'X-Inertia' => 'true',
             'X-Requested-With' => 'XMLHttpRequest',
             'X-Inertia-Version' => (string) $inertiaVersion,
-        ])->get(route('desportivo2.index'));
+        ])->get(route('desportivo.index'));
 
         $response->assertOk();
         $response->assertHeader('X-Inertia', 'true');
-        $response->assertJsonPath('component', 'Desportivo2/Index');
+        $response->assertJsonPath('component', 'Desportivo/Index');
         $response->assertJsonPath('props.tab', 'dashboard');
         $response->assertJsonStructure([
             'component',
@@ -41,7 +41,7 @@ class Desportivo2PageTest extends TestCase
         ]);
     }
 
-    public function test_desportivo2_presencas_route_sets_presencas_tab_and_selected_training(): void
+    public function test_desportivo_presencas_route_sets_presencas_tab_and_selected_training(): void
     {
         $admin = User::factory()->create();
         $athlete = User::factory()->create([
@@ -80,11 +80,11 @@ class Desportivo2PageTest extends TestCase
             'X-Inertia' => 'true',
             'X-Requested-With' => 'XMLHttpRequest',
             'X-Inertia-Version' => (string) $inertiaVersion,
-        ])->get(route('desportivo2.presencas', ['training_id' => $training->id]));
+        ])->get(route('desportivo.presencas', ['training_id' => $training->id]));
 
         $response->assertOk();
         $response->assertHeader('X-Inertia', 'true');
-        $response->assertJsonPath('component', 'Desportivo2/Index');
+        $response->assertJsonPath('component', 'Desportivo/Index');
         $response->assertJsonPath('props.tab', 'presencas');
         $response->assertJsonPath('props.selectedTraining.id', $training->id);
         $response->assertJsonStructure([

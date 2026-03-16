@@ -1,5 +1,5 @@
 import type { ComponentProps } from 'react';
-import { CaisTab } from '@/Components/Desportivo2/CaisTab';
+import { CaisTab } from '@/Components/Desportivo/CaisTab';
 
 type PoolDeckTabProps = ComponentProps<typeof CaisTab>;
 

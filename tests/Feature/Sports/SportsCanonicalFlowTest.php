@@ -116,7 +116,7 @@ class SportsCanonicalFlowTest extends TestCase
         ]);
 
         $this->actingAs($coach)
-            ->postJson('/desportivo-2/cais/metricas', [
+            ->postJson('/desportivo/cais/metricas', [
                 'treino_id' => $training->id,
                 'user_id' => $athlete->id,
                 'rows' => [

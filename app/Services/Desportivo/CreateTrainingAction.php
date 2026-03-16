@@ -2,10 +2,13 @@
 
 namespace App\Services\Desportivo;
 
+use App\Models\TrainingSeries;
 use App\Models\Training;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -46,12 +49,15 @@ class CreateTrainingAction
             $training = $this->createTraining($data, $criadoPor);
 
             // 2. Sincronizar escalões ao Training
-            if (!empty($data['escaloes'])) {
+            if (Schema::hasTable('training_age_group') && !empty($data['escaloes'])) {
                 $training->ageGroups()->sync($data['escaloes']);
             }
 
             // 3. Pré-criar training_athletes para atletas elegíveis
             $this->prepareAthletesAction->execute($training, $data['escaloes'] ?? []);
+
+            // 4. Persistir tabela de séries (quando enviada)
+            $this->createSeriesRows($training, $data['series_linhas'] ?? []);
 
             DB::commit();
 
@@ -60,7 +66,9 @@ class CreateTrainingAction
                 'created_by' => $criadoPor->id,
             ]);
 
-            return $training->fresh(['athleteRecords', 'ageGroups']);
+            return Schema::hasTable('training_age_group')
+                ? $training->fresh(['athleteRecords', 'ageGroups'])
+                : $training->fresh(['athleteRecords']);
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -81,16 +89,21 @@ class CreateTrainingAction
     private function validate(array $data): void
     {
         $rules = [
-            'data' => 'required|date',
+            'data' => 'nullable|date',
             'hora_inicio' => 'nullable|date_format:H:i',
             'hora_fim' => 'nullable|date_format:H:i|after:hora_inicio',
             'local' => 'nullable|string|max:255',
             'epoca_id' => 'nullable|uuid|exists:seasons,id',
             'microciclo_id' => 'nullable|uuid|exists:microcycles,id',
-            'tipo_treino' => 'required|string|max:30',
+            'tipo_treino' => 'required|string|max:100',
             'volume_planeado_m' => 'nullable|integer|min:0',
             'escaloes' => 'nullable|array',
             'escaloes.*' => 'uuid|exists:age_groups,id',
+            'series_linhas' => 'nullable|array',
+            'series_linhas.*.repeticoes' => 'nullable|integer|min:0',
+            'series_linhas.*.exercicio' => 'nullable|string|max:255',
+            'series_linhas.*.metros' => 'nullable|integer|min:0',
+            'series_linhas.*.zona' => 'nullable|string|max:30',
         ];
 
         $validator = validator($data, $rules);
@@ -105,9 +118,12 @@ class CreateTrainingAction
      */
     private function createTraining(array $data, User $criadoPor): Training
     {
+        $trainingDate = !empty($data['data']) ? $data['data'] : null;
+        $numberBaseDate = $trainingDate ?? Carbon::today()->toDateString();
+
         return Training::create([
-            'numero_treino' => $this->generateNumeroTreino($data['data']),
-            'data' => $data['data'],
+            'numero_treino' => $data['numero_treino'] ?? $this->generateNumeroTreino($numberBaseDate),
+            'data' => $trainingDate,
             'hora_inicio' => $data['hora_inicio'] ?? null,
             'hora_fim' => $data['hora_fim'] ?? null,
             'local' => $data['local'] ?? null,
@@ -119,6 +135,36 @@ class CreateTrainingAction
             'descricao_treino' => $data['descricao_treino'] ?? null,
             'criado_por' => $criadoPor->id,
         ]);
+    }
+
+    /**
+     * Persistir linhas da tabela de séries enviadas no formulário.
+     */
+    private function createSeriesRows(Training $training, array $seriesRows): void
+    {
+        if (empty($seriesRows)) {
+            return;
+        }
+
+        foreach ($seriesRows as $index => $row) {
+            $repeticoes = (int) ($row['repeticoes'] ?? 0);
+            $metros = (int) ($row['metros'] ?? 0);
+            $exercicio = trim((string) ($row['exercicio'] ?? ''));
+            $zona = trim((string) ($row['zona'] ?? ''));
+
+            if ($repeticoes <= 0 && $metros <= 0 && $exercicio === '' && $zona === '') {
+                continue;
+            }
+
+            TrainingSeries::create([
+                'treino_id' => $training->id,
+                'ordem' => $index + 1,
+                'descricao_texto' => $exercicio !== '' ? $exercicio : null,
+                'repeticoes' => $repeticoes > 0 ? $repeticoes : null,
+                'distancia_total_m' => $repeticoes > 0 && $metros > 0 ? ($repeticoes * $metros) : null,
+                'zona_intensidade' => $zona !== '' ? $zona : null,
+            ]);
+        }
     }
 
     /**

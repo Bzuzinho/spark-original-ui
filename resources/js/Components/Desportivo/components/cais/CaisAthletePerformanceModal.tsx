@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/Components/ui/dialog';
 import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
-import type { CaisPerformanceRow, Training, User } from '@/Components/Desportivo2/types';
+import type { CaisPerformanceRow, Training, User } from '@/Components/Desportivo/types';
 
 interface Props {
   open: boolean;

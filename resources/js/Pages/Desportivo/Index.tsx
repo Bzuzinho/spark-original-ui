@@ -1,175 +1,141 @@
+/**
+ * Pages/Desportivo/Index.tsx
+ *
+ * Página principal do módulo "Desportivo".
+ *
+ * Fontes de dados (reutilizadas do backend existente):
+ *   - trainings         → tabela `trainings`
+ *   - trainingOptions   → tabela `trainings` (subset para selector)
+ *   - selectedTraining  → trainer selecionado via ?training_id=
+ *   - presences         → tabela `training_athletes`
+ *   - seasons           → tabela `seasons`
+ *   - macrocycles       → tabela `macrocycles`
+ *   - ageGroups         → tabela `age_groups`
+ *   - competitions      → tabela `competitions`
+ *   - results           → tabela `results` com contexto em `provas`/`competitions`
+ *   - users             → tabela `users`
+ *   - volumeByAthlete   → query sobre `training_athletes`
+ *   - stats             → queries agregadas
+ *   - alerts            → calculados no controller
+ *
+ * Tabs:
+ *   dashboard | grupos | treinos | presencas | planeamento | competicoes | resultados | performance
+ */
+
 import { useState } from 'react';
-import { Head } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs';
 import {
   ChartBar,
+  UsersThree,
   CalendarBlank,
+  CheckSquare,
+  MapTrifold,
   Trophy,
-  ListChecks,
-  Article,
+  Medal,
+  Lightning,
 } from '@phosphor-icons/react';
+
 import {
-  DesportivoDashboard,
-  DesportivoPlaneamento,
-  DesportivoTreinos,
-  DesportivoCompeticoes,
-  DesportivoRelatorios,
-} from '@/Components/Desportivo';
-import { ConvocatoriasList, PresencasList, EventosResultados } from '@/Components/Eventos';
+  AthletesTab,
+  CompetitionsTab,
+  DashboardTab,
+  PlanningTab,
+  PoolDeckTab,
+  TrainingsTab,
+  PerformanceTab,
+} from '@/components/sports/tabs';
+import { DesportivoResultadosTab }  from '@/Components/Desportivo/DesportivoResultadosTab';
+import {
+  useAthletes,
+  useCompetitionResults,
+  useCompetitions,
+  usePerformance,
+  useTrainings,
+} from '@/hooks/sports';
 
-interface Stats {
-    athletesCount: number;
-    trainings7Days: number;
-    trainings30Days: number;
-    km7Days: number;
-    km30Days: number;
+import type {
+  AgeGroup,
+  AthleteOperationalRow,
+  Competition,
+  EventResult,
+  Macrocycle,
+  PresenceRow,
+  Season,
+  Stats,
+  TeamResult,
+  Training,
+  User,
+} from '@/types/sports';
+
+// ─── Tipos da página (mapeados a partir do renderSportsPage do controller) ────
+
+interface TrainingOption {
+  id: string;
+  numero_treino?: string | null;
+  data: string;
 }
 
-interface BasicItem {
-    id: string;
+interface Alert {
+  title: string;
+  message: string;
+  type: string;
 }
 
-interface Season extends BasicItem {
-    nome: string;
-    ano_temporada: string;
-    estado: string;
-    tipo: string;
-    data_inicio: string;
-    data_fim: string;
-}
-
-interface Macrocycle extends BasicItem {
-    nome: string;
-    tipo: string;
-    data_inicio: string;
-    data_fim: string;
-    escalao?: string | null;
-}
-
-interface Training extends BasicItem {
-    numero_treino?: string | null;
-    data: string;
-    hora_inicio?: string | null;
-    hora_fim?: string | null;
-    local?: string | null;
-    tipo_treino: string;
-    volume_planeado_m?: number | null;
-    descricao_treino?: string | null;
-}
-
-interface PresenceRow extends BasicItem {
-    user_id: string;
-    nome_atleta: string;
-    status: string;
-    classificacao?: string | null;
-    distancia_realizada_m?: number | null;
-    notas?: string | null;
-}
-
-interface Competition extends BasicItem {
-    titulo: string;
-    data_inicio: string;
-    local?: string;
-    tipo: string;
-}
-
-interface EventResult {
-    id: string;
-    prova: string;
-    tempo?: string | null;
-    classificacao?: number | null;
-    event?: { id: string; titulo: string };
-    athlete?: { nome_completo: string };
-}
-
-interface AgeGroup {
+interface UpcomingCompetition {
   id: string;
   nome: string;
+  data_inicio: string;
+  num_atletas_inscritos: number;
+}
+
+interface VolumeRow {
+  nome_completo: string;
+  total_m: number;
 }
 
 interface DesportivoProps {
   tab?: string;
   stats: Stats;
-  alerts?: Array<{ title: string; message: string; type: string }>;
-  upcomingCompetitions?: Array<{
-    id: string;
-    nome: string;
-    data_inicio: string;
-    num_atletas_inscritos: number;
-  }>;
+  alerts?: Alert[];
+  upcomingCompetitions?: UpcomingCompetition[];
   seasons?: Season[];
   selectedSeason?: Season | null;
   macrocycles?: Macrocycle[];
   ageGroups?: AgeGroup[];
+  trainingTypeOptions?: Array<{ id: string; nome: string }>;
+  trainingZoneOptions?: Array<{ id: string; codigo: string; nome: string }>;
   trainings?: { data: Training[] };
-  trainingOptions?: Array<{ id: string; numero_treino?: string; data: string }>;
+  trainingOptions?: TrainingOption[];
   selectedTraining?: Training | null;
   presences?: PresenceRow[];
   competitions?: Competition[];
   results?: EventResult[];
-  volumeByAthlete?: Array<{ nome_completo: string; total_m: number }>;
-  reportAttendanceByGroup?: Array<{
-    nome: string;
-    percentagem: number;
-    presentes: number;
-    ausentes: number;
-    total: number;
-  }>;
-  competitionStats?: Array<{
-    id: string;
-    titulo: string;
-    data_inicio: string;
-    participants_count: number;
-  }>;
-  financeVsSport?: {
-    totalFinancialWeight: number;
-    totalSportDistanceKm: number;
-    costPerKm: number | null;
-  };
+  teamResults?: TeamResult[];
+  users?: User[];
   statusOptions?: string[];
   classificacaoOptions?: string[];
-  eventos?: Event[];
-  users?: User[];
-  costCenters?: CostCenter[];
-  eventTypes?: EventType[];
-  convocations?: any[];
-  attendances?: any[];
+  volumeByAthlete?: VolumeRow[];
+  athleteOperationalRows?: AthleteOperationalRow[];
 }
 
-interface Event {
-  id: string;
-  titulo: string;
-  data_inicio: string;
-  data_fim?: string;
-  tipo: string;
-  estado: string;
-  local: string;
-  descricao?: string;
-  criado_por?: string;
-  hora_inicio?: string;
-  escaloes_elegiveis?: string[];
-}
+// ─── Tabs disponíveis ──────────────────────────────────────────────────────────
 
-interface User {
-  id: string;
-  nome_completo: string;
-  email: string;
-}
+const TABS = [
+  { value: 'dashboard',    label: 'Dashboard',    Icon: ChartBar },
+  { value: 'atletas',      label: 'Atletas',      Icon: UsersThree },
+  { value: 'treinos',      label: 'Treinos',      Icon: CalendarBlank },
+  { value: 'planeamento',  label: 'Planeamento',  Icon: MapTrifold },
+  { value: 'cais',         label: 'Cais',         Icon: CheckSquare },
+  { value: 'competicoes',  label: 'Competições',  Icon: Trophy },
+  { value: 'resultados',   label: 'Resultados',   Icon: Medal },
+  { value: 'performance',  label: 'Performance',  Icon: Lightning },
+] as const;
 
-interface CostCenter {
-  id: string;
-  nome: string;
-  codigo?: string;
-  ativo?: boolean;
-}
+type TabValue = typeof TABS[number]['value'];
 
-interface EventType {
-  id: string;
-  nome: string;
-  visibilidade_default?: string;
-  ativo?: boolean;
-}
+// ─── Componente ───────────────────────────────────────────────────────────────
 
 export default function DesportivoIndex({
   tab = 'dashboard',
@@ -180,164 +146,189 @@ export default function DesportivoIndex({
   selectedSeason = null,
   macrocycles = [],
   ageGroups = [],
+  trainingTypeOptions = [],
+  trainingZoneOptions = [],
   trainings = { data: [] },
   trainingOptions = [],
   selectedTraining = null,
   presences = [],
   competitions = [],
   results = [],
-  volumeByAthlete = [],
-  reportAttendanceByGroup = [],
-  competitionStats = [],
-  financeVsSport,
-  statusOptions = ['presente', 'ausente'],
-  classificacaoOptions = [],
-  eventos = [],
+  teamResults = [],
   users = [],
-  costCenters = [],
-  eventTypes = [],
-  convocations = [],
-  attendances = [],
+  statusOptions = ['presente', 'atrasado', 'falta', 'dispensado'],
+  volumeByAthlete = [],
+  athleteOperationalRows = [],
 }: DesportivoProps) {
-  const [activeTab, setActiveTab] = useState(tab);
-  const [eventAttendances, setEventAttendances] = useState(attendances);
+  const athletesQuery = useAthletes();
+  const trainingsQuery = useTrainings();
+  const competitionsQuery = useCompetitions();
+  const competitionResultsQuery = useCompetitionResults();
+  const performanceQuery = usePerformance();
+
+  const safeUsers = Array.isArray(users) ? users : [];
+  const safeTrainings = Array.isArray(trainings?.data) ? trainings.data : [];
+  const safeCompetitions = Array.isArray(competitions) ? competitions : [];
+  const safeResults = Array.isArray(results) ? results : [];
+  const safeVolumeByAthlete = Array.isArray(volumeByAthlete) ? volumeByAthlete : [];
+
+  const resolvedUsers = safeUsers.length > 0 ? safeUsers : athletesQuery.data;
+  const resolvedTrainings = safeTrainings.length > 0 ? safeTrainings : trainingsQuery.data;
+  const resolvedCompetitions = safeCompetitions.length > 0 ? safeCompetitions : competitionsQuery.data;
+  const resolvedResults = safeResults.length > 0 ? safeResults : competitionResultsQuery.data;
+  const resolvedVolumeByAthlete = safeVolumeByAthlete.length > 0
+    ? safeVolumeByAthlete
+    : performanceQuery.data.performance.map((row) => ({
+        nome_completo: resolvedUsers.find((u) => u.id === row.athlete_id)?.nome_completo ?? row.athlete_id,
+        total_m: row.volume_semanal_m,
+      }));
+
+  const resolvedTrainingOptions = trainingOptions.length > 0
+    ? trainingOptions
+    : resolvedTrainings.map((training) => ({
+      id: training.id,
+      numero_treino: training.numero_treino ?? null,
+      data: training.data,
+    }));
+
+  const resolvedTrainingTypeOptions = trainingTypeOptions.length > 0
+    ? trainingTypeOptions
+    : Array.from(new Set(resolvedTrainings.map((training) => training.tipo_treino).filter(Boolean))).map((nome, idx) => ({
+        id: `fallback-type-${idx}`,
+        nome,
+      }));
+
+  const loading =
+    (safeUsers.length === 0 && athletesQuery.loading) ||
+    (safeTrainings.length === 0 && trainingsQuery.loading) ||
+    (safeCompetitions.length === 0 && competitionsQuery.loading) ||
+    (safeResults.length === 0 && competitionResultsQuery.loading);
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  const initialTab = (tab === 'presencas' ? 'cais' : tab) as TabValue;
+  const [activeTab, setActiveTab] = useState<TabValue>(initialTab);
+
+  const handleTabChange = (value: string) => {
+    const t = value as TabValue;
+    setActiveTab(t);
+
+    // Sincronizar URL para que o refresh mantenha a tab correta
+    if (t === 'cais') {
+      router.get(route('desportivo.presencas'), {}, { preserveState: true, replace: true });
+    } else if (t !== activeTab) {
+      router.get(route('desportivo.index'), {}, { preserveState: true, replace: true });
+    }
+  };
 
   return (
     <AuthenticatedLayout
       fullWidth
       header={
         <div>
-          <h1 className="text-lg sm:text-xl font-semibold tracking-tight">
-            Gestão Desportiva
-          </h1>
+          <h1 className="text-lg sm:text-xl font-semibold tracking-tight">Desportivo</h1>
           <p className="text-muted-foreground text-xs mt-0.5">
-            Planeamento de época, treinos, presenças, competições e relatórios
+            Sistema técnico de gestão desportiva: treinos, cais, competições e performance
           </p>
         </div>
       }
     >
-      <Head title="Gestão Desportiva" />
+      <Head title="Desportivo" />
 
-      <div className="w-full space-y-2 sm:space-y-3">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-3">
-          <TabsList className="grid w-full h-9 grid-cols-5 p-1">
-            <TabsTrigger
-              value="dashboard"
-              className="flex items-center gap-1.5 px-1 py-1 text-xs"
-            >
-              <ChartBar size={16} className="flex-shrink-0" />
-              <span>Dashboard</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="planeamento"
-              className="flex items-center gap-1.5 px-1 py-1 text-xs"
-            >
-              <CalendarBlank size={16} className="flex-shrink-0" />
-              <span>Planeamento</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="treinos"
-              className="flex items-center gap-1.5 px-1 py-1 text-xs"
-            >
-              <ListChecks size={16} className="flex-shrink-0" />
-              <span>Treinos</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="competicoes"
-              className="flex items-center gap-1.5 px-1 py-1 text-xs"
-            >
-              <Trophy size={16} className="flex-shrink-0" />
-              <span>Competições</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="relatorios"
-              className="flex items-center gap-1.5 px-1 py-1 text-xs"
-            >
-              <Article size={16} className="flex-shrink-0" />
-              <span>Relatórios</span>
-            </TabsTrigger>
+      <div className="space-y-2 sm:space-y-3">
+
+        {/* ── Tabs ───────────────────────────────────────────────────── */}
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+
+          <TabsList className="grid w-full grid-cols-4 sm:grid-cols-8 h-auto mb-3">
+            {TABS.map(({ value, label, Icon }) => (
+              <TabsTrigger
+                key={value}
+                value={value}
+                className="flex items-center gap-1.5 py-1.5 text-xs"
+              >
+                <Icon size={12} />
+                <span>{label}</span>
+              </TabsTrigger>
+            ))}
           </TabsList>
 
-          <TabsContent value="dashboard" className="space-y-3">
-            <DesportivoDashboard
+          <TabsContent value="dashboard" className="mt-0">
+            <DashboardTab
               stats={stats}
               alerts={alerts}
+              trainings={resolvedTrainings}
               upcomingCompetitions={upcomingCompetitions}
+              competitions={resolvedCompetitions}
+              users={resolvedUsers}
+              volumeByAthlete={resolvedVolumeByAthlete}
+              onOpenCais={(trainingId, modoCais) => {
+                router.get(route('desportivo.presencas'), { training_id: trainingId, cais: modoCais ? 1 : 0 });
+              }}
             />
           </TabsContent>
 
-          <TabsContent value="planeamento" className="space-y-3">
-            <DesportivoPlaneamento
+          <TabsContent value="atletas" className="mt-0">
+            <AthletesTab
+              users={resolvedUsers}
+              volumeByAthlete={resolvedVolumeByAthlete}
+              athleteOperationalRows={athleteOperationalRows}
+            />
+          </TabsContent>
+
+          <TabsContent value="treinos" className="mt-0">
+            <TrainingsTab
+              trainings={resolvedTrainings}
+              ageGroups={ageGroups}
+              trainingTypeOptions={resolvedTrainingTypeOptions}
+              trainingZoneOptions={trainingZoneOptions}
+              selectedSeasonId={selectedSeason?.id}
+              competitions={resolvedCompetitions}
+            />
+          </TabsContent>
+
+          <TabsContent value="cais" className="mt-0">
+            <PoolDeckTab
+              trainings={resolvedTrainings}
+              trainingOptions={resolvedTrainingOptions}
+              selectedTraining={selectedTraining}
+              presences={presences}
+              users={resolvedUsers}
+              ageGroups={ageGroups}
+            />
+          </TabsContent>
+
+          <TabsContent value="planeamento" className="mt-0">
+            <PlanningTab
               seasons={seasons}
-              selectedSeason={selectedSeason}
               macrocycles={macrocycles}
             />
           </TabsContent>
 
-          <TabsContent value="treinos" className="space-y-3">
-            <Tabs defaultValue="treinos-lista" className="space-y-3">
-              <TabsList className="grid w-full h-9 grid-cols-2 p-1">
-                <TabsTrigger value="treinos-lista" className="text-xs">Treinos</TabsTrigger>
-                <TabsTrigger value="treinos-presencas" className="text-xs">Presenças</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="treinos-lista" className="space-y-3">
-                <DesportivoTreinos trainings={trainings} selectedSeason={selectedSeason} ageGroups={ageGroups} />
-              </TabsContent>
-
-              <TabsContent value="treinos-presencas" className="space-y-3">
-                <PresencasList
-                  events={eventos}
-                  attendances={eventAttendances}
-                  users={users}
-                  ageGroups={ageGroups}
-                  onUpdate={setEventAttendances}
-                />
-              </TabsContent>
-            </Tabs>
-          </TabsContent>
-
-          <TabsContent value="competicoes" className="space-y-3">
-            <Tabs defaultValue="competicoes-lista" className="space-y-3">
-              <TabsList className="grid w-full h-9 grid-cols-3 p-1">
-                <TabsTrigger value="competicoes-lista" className="text-xs">Competições</TabsTrigger>
-                <TabsTrigger value="competicoes-convocatorias" className="text-xs">Convocatórias</TabsTrigger>
-                <TabsTrigger value="competicoes-resultados" className="text-xs">Resultados</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="competicoes-lista" className="space-y-3">
-                <DesportivoCompeticoes competitions={competitions} results={results} />
-              </TabsContent>
-
-              <TabsContent value="competicoes-convocatorias" className="space-y-3">
-                <ConvocatoriasList
-                  events={eventos}
-                  convocations={convocations}
-                  users={users}
-                  ageGroups={ageGroups}
-                  costCenters={costCenters}
-                />
-              </TabsContent>
-
-              <TabsContent value="competicoes-resultados" className="space-y-3">
-                <EventosResultados
-                  events={eventos}
-                  results={results}
-                  users={users}
-                  ageGroups={ageGroups}
-                />
-              </TabsContent>
-            </Tabs>
-          </TabsContent>
-
-          <TabsContent value="relatorios" className="space-y-3">
-            <DesportivoRelatorios
-              financeVsSport={financeVsSport}
-              volumeByAthlete={volumeByAthlete}
-              reportAttendanceByGroup={reportAttendanceByGroup}
-              competitionStats={competitionStats}
+          <TabsContent value="competicoes" className="mt-0">
+            <CompetitionsTab
+              competitions={resolvedCompetitions}
+              results={resolvedResults}
+              users={resolvedUsers}
             />
           </TabsContent>
+
+          <TabsContent value="resultados" className="mt-0">
+            <DesportivoResultadosTab
+              results={resolvedResults}
+              teamResults={teamResults}
+            />
+          </TabsContent>
+
+          <TabsContent value="performance" className="mt-0">
+            <PerformanceTab
+              users={resolvedUsers}
+              volumeByAthlete={resolvedVolumeByAthlete}
+            />
+          </TabsContent>
+
         </Tabs>
       </div>
     </AuthenticatedLayout>

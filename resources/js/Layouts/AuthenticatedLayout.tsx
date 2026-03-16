@@ -41,7 +41,6 @@ const mainMenuItems = [
     { id: 'dashboard', label: 'Início', icon: House, route: '/dashboard' },
     { id: 'membros', label: 'Membros', icon: Users, route: '/membros' },
     { id: 'desportivo', label: 'Desportivo', icon: Trophy, route: '/desportivo' },
-    { id: 'desportivo-2', label: 'Desportivo 2', icon: Trophy, route: '/desportivo-2' },
     { id: 'eventos', label: 'Eventos', icon: CalendarBlank, route: '/eventos' },
     { id: 'financeiro', label: 'Financeiro', icon: CurrencyCircleDollar, route: '/financeiro' },
     { id: 'inventario', label: 'Inventário', icon: ShoppingCart, route: '/loja' },

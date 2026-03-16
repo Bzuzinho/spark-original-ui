@@ -1,5 +1,5 @@
 /**
- * Desportivo2CompeticoesTab
+ * DesportivoCompeticoesTab
  *
  * Reutiliza dados canónicos de `competitions`.
  * Calcula métricas a partir dos resultados associados.
@@ -26,7 +26,7 @@ const TIPO_BADGE: Record<string, string> = {
   reuniao: 'bg-slate-100 text-slate-600 border-slate-200',
 };
 
-export function Desportivo2CompeticoesTab({ competitions, results, users }: Props) {
+export function DesportivoCompeticoesTab({ competitions, results, users }: Props) {
   const [search, setSearch] = useState('');
   const [view, setView] = useState<'list' | 'calendar'>('list');
 
@@ -161,7 +161,7 @@ export function Desportivo2CompeticoesTab({ competitions, results, users }: Prop
                   size="sm"
                   variant="ghost"
                   className="h-6 px-2 text-[11px] shrink-0 col-span-2"
-                  onClick={() => router.get(route('desportivo2.index', { tab: 'competicoes', competition_id: comp.id }))}
+                  onClick={() => router.get(route('desportivo.index', { tab: 'competicoes', competition_id: comp.id }))}
                 >
                   Ver
                 </Button>

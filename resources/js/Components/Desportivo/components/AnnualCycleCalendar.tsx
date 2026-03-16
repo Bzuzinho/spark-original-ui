@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
-import type { Macrocycle } from '@/Components/Desportivo2/types';
+import type { Macrocycle } from '@/Components/Desportivo/types';
 
 interface Props {
   macrocycles: Macrocycle[];

@@ -1,8 +1,8 @@
 import type { ComponentProps } from 'react';
-import { Desportivo2PlaneamentoTab } from '@/Components/Desportivo2/Desportivo2PlaneamentoTab';
+import { DesportivoPlaneamentoTab } from '@/Components/Desportivo/DesportivoPlaneamentoTab';
 
-type PlanningTabProps = ComponentProps<typeof Desportivo2PlaneamentoTab>;
+type PlanningTabProps = ComponentProps<typeof DesportivoPlaneamentoTab>;
 
 export function PlanningTab(props: PlanningTabProps) {
-  return <Desportivo2PlaneamentoTab {...props} />;
+  return <DesportivoPlaneamentoTab {...props} />;
 }

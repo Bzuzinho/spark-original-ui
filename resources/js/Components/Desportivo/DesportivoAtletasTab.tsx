@@ -25,7 +25,7 @@ function getDisciplinaLabel(status: string | undefined): string {
   return 'OK';
 }
 
-export function Desportivo2AtletasTab({ users, volumeByAthlete, athleteOperationalRows }: Props) {
+export function DesportivoAtletasTab({ users, volumeByAthlete, athleteOperationalRows }: Props) {
   const activeAthletes = (users ?? []).filter((user) => {
     const tipo = user.tipo_membro ?? [];
     return user.estado === 'ativo' && tipo.includes('atleta');
@@ -36,7 +36,7 @@ export function Desportivo2AtletasTab({ users, volumeByAthlete, athleteOperation
   return (
     <div className="space-y-2">
       <p className="text-xs text-muted-foreground">
-        Consulta operacional de atletas. Criação de atleta mantém-se fora do Desportivo 2.
+        Consulta operacional de atletas. Criação de atleta mantém-se fora do Desportivo.
       </p>
       <div className="grid gap-2 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
         {activeAthletes.map((athlete) => {

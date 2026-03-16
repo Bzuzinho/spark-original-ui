@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import { Badge } from '@/Components/ui/badge';
-import type { Training } from '@/Components/Desportivo2/types';
+import type { Training } from '@/Components/Desportivo/types';
 
 interface TrainingWithEscaloes extends Training {
   escaloes?: string[] | null;

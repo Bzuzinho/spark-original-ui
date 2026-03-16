@@ -1,6 +1,10 @@
-export { DesportivoDashboard } from './DesportivoDashboard';
-export { DesportivoPlaneamento } from './DesportivoPlaneamento';
-export { DesportivoTreinos } from './DesportivoTreinos';
-export { DesportivoPresencas } from './DesportivoPresencas';
-export { DesportivoCompeticoes } from './DesportivoCompeticoes';
-export { DesportivoRelatorios } from './DesportivoRelatorios';
+export { DesportivoDashboardTab }   from './DesportivoDashboardTab';
+export { DesportivoGruposTab }      from './DesportivoGruposTab';
+export { DesportivoAtletasTab }     from './DesportivoAtletasTab';
+export { CaisTab }                   from './CaisTab';
+export { DesportivoTreinosTab }     from './DesportivoTreinosTab';
+export { DesportivoPresencasTab }   from './DesportivoPresencasTab';
+export { DesportivoPlaneamentoTab } from './DesportivoPlaneamentoTab';
+export { DesportivoCompeticoesTab } from './DesportivoCompeticoesTab';
+export { DesportivoResultadosTab }  from './DesportivoResultadosTab';
+export { DesportivoPerformanceTab } from './DesportivoPerformanceTab';

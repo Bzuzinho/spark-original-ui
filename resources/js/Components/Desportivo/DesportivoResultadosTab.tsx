@@ -1,5 +1,5 @@
 /**
- * Desportivo2ResultadosTab
+ * DesportivoResultadosTab
  *
  * Reutiliza dados canónicos de `results` via prop `results`.
  * Liga-se à competição através da prova associada.
@@ -49,7 +49,7 @@ function medalColor(pos?: number | null): string {
   return 'text-muted-foreground';
 }
 
-export function Desportivo2ResultadosTab({ results, teamResults = [] }: Props) {
+export function DesportivoResultadosTab({ results, teamResults = [] }: Props) {
   const [search, setSearch] = useState('');
 
   const filtered = results.filter((r) => {

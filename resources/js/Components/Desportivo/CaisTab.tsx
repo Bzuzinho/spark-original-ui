@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
 import { router } from '@inertiajs/react';
-import { CaisTrainingSelector } from '@/Components/Desportivo2/components/cais/CaisTrainingSelector';
-import { CaisTrainingSummary } from '@/Components/Desportivo2/components/cais/CaisTrainingSummary';
-import { CaisAthleteAttendanceList } from '@/Components/Desportivo2/components/cais/CaisAthleteAttendanceList';
+import { CaisTrainingSelector } from '@/Components/Desportivo/components/cais/CaisTrainingSelector';
+import { CaisTrainingSummary } from '@/Components/Desportivo/components/cais/CaisTrainingSummary';
+import { CaisAthleteAttendanceList } from '@/Components/Desportivo/components/cais/CaisAthleteAttendanceList';
 import type { AgeGroup, PresenceRow, Training, User } from './types';
 
 interface TrainingOption {
@@ -70,7 +70,7 @@ export function CaisTab({
 
   const switchTraining = (id: string) => {
     setSelectedTrainingId(id);
-    router.get(route('desportivo2.presencas'), { training_id: id, cais: quickMode ? 1 : 0 }, { preserveState: false });
+    router.get(route('desportivo.presencas'), { training_id: id, cais: quickMode ? 1 : 0 }, { preserveState: false });
   };
 
   const updatePresence = (userId: string, status: CaisStatus) => {

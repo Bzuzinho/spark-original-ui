@@ -16,6 +16,8 @@ use App\Models\Event;
 use App\Models\EventType;
 use App\Models\ConvocationGroup;
 use App\Models\CostCenter;
+use App\Models\TrainingTypeConfig;
+use App\Models\TrainingZoneConfig;
 use App\Models\User;
 use App\Http\Requests\Sports\StoreTrainingRequest;
 use App\Http\Requests\Sports\UpdateTrainingRequest;
@@ -30,6 +32,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class DesportivoController extends Controller
 {
@@ -62,7 +65,7 @@ class DesportivoController extends Controller
      */
     public function presencas(): Response
     {
-        return $this->renderSportsPage('presencas-eventos');
+        return $this->renderSportsPage('presencas');
     }
 
     /**
@@ -79,22 +82,6 @@ class DesportivoController extends Controller
     public function relatorios(): Response
     {
         return $this->renderSportsPage('relatorios');
-    }
-
-    /**
-     * Desportivo 2 - Dashboard técnico
-     */
-    public function indexV2(): Response
-    {
-        return $this->renderSportsPage('dashboard', 'Desportivo2/Index');
-    }
-
-    /**
-     * Desportivo 2 - Presenças (modo treino/contexto)
-     */
-    public function presencasV2(): Response
-    {
-        return $this->renderSportsPage('presencas', 'Desportivo2/Index');
     }
 
     private function renderSportsPage(string $tab, string $view = 'Desportivo/Index'): Response
@@ -238,21 +225,44 @@ class DesportivoController extends Controller
             ? $selectedSeason->macrocycles()->orderBy('data_inicio')->get()
             : collect();
 
-        $trainings = Training::with(['season', 'ageGroups:id'])
+        $hasTrainingAgeGroupPivot = Schema::hasTable('training_age_group');
+
+        $trainingQuery = Training::query()->with(['season', 'series']);
+
+        if ($hasTrainingAgeGroupPivot) {
+            $trainingQuery->with('ageGroups:id');
+        }
+
+        $trainings = $trainingQuery
             ->orderByDesc('data')
             ->paginate(25)
-            ->through(function (Training $training) {
-                $training->setAttribute('escaloes', $training->ageGroups->pluck('id')->values()->all());
+            ->through(function (Training $training) use ($hasTrainingAgeGroupPivot) {
+                $escaloes = $hasTrainingAgeGroupPivot
+                    ? $training->ageGroups->pluck('id')->values()->all()
+                    : (array) ($training->escaloes ?? []);
+
+                $training->setAttribute('escaloes', $escaloes);
 
                 return $training;
             });
 
-        $selectedTraining = request('training_id')
-            ? Training::with('ageGroups:id')->find(request('training_id'))
-            : null;
+        $selectedTraining = null;
+        if (request('training_id')) {
+            $selectedTrainingQuery = Training::query()->with('series');
+
+            if ($hasTrainingAgeGroupPivot) {
+                $selectedTrainingQuery->with('ageGroups:id');
+            }
+
+            $selectedTraining = $selectedTrainingQuery->find(request('training_id'));
+        }
 
         if ($selectedTraining) {
-            $selectedTraining->setAttribute('escaloes', $selectedTraining->ageGroups->pluck('id')->values()->all());
+            $selectedEscaloes = $hasTrainingAgeGroupPivot
+                ? $selectedTraining->ageGroups->pluck('id')->values()->all()
+                : (array) ($selectedTraining->escaloes ?? []);
+
+            $selectedTraining->setAttribute('escaloes', $selectedEscaloes);
         }
 
         $presences = collect();
@@ -485,6 +495,27 @@ class DesportivoController extends Controller
             'tiposEpoca' => ['Principal', 'Secundária', 'Época de Verão', 'Preparação', 'Pré-Época'],
             'estadosEpoca' => ['Planeada', 'Em curso', 'Concluída', 'Arquivada'],
             'tiposMacrociclo' => ['Preparação geral', 'Preparação específica', 'Competição', 'Taper', 'Transição'],
+            'trainingTypeOptions' => TrainingTypeConfig::query()
+                ->where('ativo', true)
+                ->orderBy('ordem')
+                ->orderBy('nome')
+                ->get(['id', 'nome'])
+                ->map(fn ($item) => [
+                    'id' => $item->id,
+                    'nome' => $item->nome,
+                ])
+                ->values(),
+            'trainingZoneOptions' => TrainingZoneConfig::query()
+                ->where('ativo', true)
+                ->orderBy('ordem')
+                ->orderBy('nome')
+                ->get(['id', 'codigo', 'nome'])
+                ->map(fn ($item) => [
+                    'id' => $item->id,
+                    'codigo' => $item->codigo,
+                    'nome' => $item->nome,
+                ])
+                ->values(),
             'trainings' => $trainings,
             'trainingOptions' => Training::where('data', '>=', $thirtyDaysAgo->format('Y-m-d'))
                 ->orderByDesc('data')
@@ -655,7 +686,9 @@ class DesportivoController extends Controller
 
         $training->update(collect($validated)->except('escaloes')->all());
 
-        $training->ageGroups()->sync($validated['escaloes'] ?? []);
+        if (Schema::hasTable('training_age_group')) {
+            $training->ageGroups()->sync($validated['escaloes'] ?? []);
+        }
 
         app(PrepareTrainingAthletesAction::class)
             ->updateForChangedEscaloes($training->fresh(), $validated['escaloes'] ?? []);
@@ -682,7 +715,9 @@ class DesportivoController extends Controller
             'volume_planeado_m' => $training->volume_planeado_m,
             'descricao_treino' => $training->descricao_treino,
             'notas_gerais' => $training->notas_gerais,
-            'escaloes' => $training->ageGroups()->pluck('age_groups.id')->all(),
+            'escaloes' => Schema::hasTable('training_age_group')
+                ? $training->ageGroups()->pluck('age_groups.id')->all()
+                : (array) ($training->escaloes ?? []),
         ], auth()->user());
 
         return redirect()->route('desportivo.treinos')

@@ -1,8 +1,8 @@
 import type { ComponentProps } from 'react';
-import { Desportivo2TreinosTab } from '@/Components/Desportivo2/Desportivo2TreinosTab';
+import { DesportivoTreinosTab } from '@/Components/Desportivo/DesportivoTreinosTab';
 
-type TrainingsTabProps = ComponentProps<typeof Desportivo2TreinosTab>;
+type TrainingsTabProps = ComponentProps<typeof DesportivoTreinosTab>;
 
 export function TrainingsTab(props: TrainingsTabProps) {
-  return <Desportivo2TreinosTab {...props} />;
+  return <DesportivoTreinosTab {...props} />;
 }

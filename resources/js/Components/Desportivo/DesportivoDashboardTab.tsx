@@ -29,7 +29,7 @@ interface Props {
   onOpenCais: (trainingId: string, modoCais: boolean) => void;
 }
 
-export function Desportivo2DashboardTab({
+export function DesportivoDashboardTab({
   stats,
   alerts,
   trainings,
