@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 
 class Training extends Model
 {
@@ -20,6 +22,7 @@ class Training extends Model
         'hora_fim',
         'local',
         'epoca_id',
+        'macrocycle_id',
         'microciclo_id',
         'grupo_escalao_id',
         'escaloes',
@@ -107,6 +110,32 @@ class Training extends Model
     {
         return $this->belongsToMany(AgeGroup::class, 'training_age_group', 'treino_id', 'age_group_id')
             ->withTimestamps();
+    }
+
+    /**
+     * Sync age groups while supporting legacy pivot schemas where `id` is required.
+     */
+    public function syncAgeGroupsWithPivot(array $ageGroupIds): void
+    {
+        if (!Schema::hasTable('training_age_group')) {
+            return;
+        }
+
+        $normalizedIds = collect($ageGroupIds)
+            ->filter(fn ($id) => !empty($id))
+            ->unique()
+            ->values();
+
+        if (Schema::hasColumn('training_age_group', 'id')) {
+            $syncPayload = $normalizedIds
+                ->mapWithKeys(fn ($id) => [$id => ['id' => (string) Str::uuid()]])
+                ->all();
+
+            $this->ageGroups()->sync($syncPayload);
+            return;
+        }
+
+        $this->ageGroups()->sync($normalizedIds->all());
     }
 
     public function metrics(): HasMany

@@ -22,7 +22,7 @@
  *   dashboard | grupos | treinos | presencas | planeamento | competicoes | resultados | performance
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Head, router } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs';
@@ -95,6 +95,13 @@ interface VolumeRow {
   total_m: number;
 }
 
+interface MicrocycleOption {
+  id: string;
+  nome: string;
+  mesociclo_id?: string;
+  macrocycle_id?: string;
+}
+
 interface DesportivoProps {
   tab?: string;
   stats: Stats;
@@ -103,6 +110,7 @@ interface DesportivoProps {
   seasons?: Season[];
   selectedSeason?: Season | null;
   macrocycles?: Macrocycle[];
+  microcycles?: MicrocycleOption[];
   ageGroups?: AgeGroup[];
   trainingTypeOptions?: Array<{ id: string; nome: string }>;
   trainingZoneOptions?: Array<{ id: string; codigo: string; nome: string }>;
@@ -145,6 +153,7 @@ export default function DesportivoIndex({
   seasons = [],
   selectedSeason = null,
   macrocycles = [],
+  microcycles = [],
   ageGroups = [],
   trainingTypeOptions = [],
   trainingZoneOptions = [],
@@ -188,7 +197,7 @@ export default function DesportivoIndex({
     : resolvedTrainings.map((training) => ({
       id: training.id,
       numero_treino: training.numero_treino ?? null,
-      data: training.data,
+      data: training.data ?? '',
     }));
 
   const resolvedTrainingTypeOptions = trainingTypeOptions.length > 0
@@ -197,6 +206,15 @@ export default function DesportivoIndex({
         id: `fallback-type-${idx}`,
         nome,
       }));
+
+  const initialTab = (tab === 'presencas' ? 'cais' : tab) as TabValue;
+  const [activeTab, setActiveTab] = useState<TabValue>(initialTab);
+  const [isNavigatingToCais, setIsNavigatingToCais] = useState(false);
+
+  useEffect(() => {
+    setActiveTab(initialTab);
+    setIsNavigatingToCais(false);
+  }, [initialTab]);
 
   const loading =
     (safeUsers.length === 0 && athletesQuery.loading) ||
@@ -208,17 +226,20 @@ export default function DesportivoIndex({
     return <div>Loading...</div>;
   }
 
-  const initialTab = (tab === 'presencas' ? 'cais' : tab) as TabValue;
-  const [activeTab, setActiveTab] = useState<TabValue>(initialTab);
-
   const handleTabChange = (value: string) => {
     const t = value as TabValue;
-    setActiveTab(t);
 
     // Sincronizar URL para que o refresh mantenha a tab correta
     if (t === 'cais') {
-      router.get(route('desportivo.presencas'), {}, { preserveState: true, replace: true });
-    } else if (t !== activeTab) {
+      setIsNavigatingToCais(true);
+      router.get(route('desportivo.cais'));
+      return;
+    }
+
+    setIsNavigatingToCais(false);
+    setActiveTab(t);
+
+    if (t !== activeTab) {
       router.get(route('desportivo.index'), {}, { preserveState: true, replace: true });
     }
   };
@@ -238,7 +259,10 @@ export default function DesportivoIndex({
       <Head title="Desportivo" />
 
       <div className="space-y-2 sm:space-y-3">
-
+        {isNavigatingToCais ? (
+          <div className="min-h-[240px] rounded-lg border border-dashed border-border bg-background" />
+        ) : (
+          <>
         {/* ── Tabs ───────────────────────────────────────────────────── */}
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
 
@@ -265,7 +289,7 @@ export default function DesportivoIndex({
               users={resolvedUsers}
               volumeByAthlete={resolvedVolumeByAthlete}
               onOpenCais={(trainingId, modoCais) => {
-                router.get(route('desportivo.presencas'), { training_id: trainingId, cais: modoCais ? 1 : 0 });
+                router.get(route('desportivo.cais'), { training_id: trainingId, cais: modoCais ? 1 : 0 });
               }}
             />
           </TabsContent>
@@ -282,10 +306,12 @@ export default function DesportivoIndex({
             <TrainingsTab
               trainings={resolvedTrainings}
               ageGroups={ageGroups}
+              users={resolvedUsers}
               trainingTypeOptions={resolvedTrainingTypeOptions}
               trainingZoneOptions={trainingZoneOptions}
               selectedSeasonId={selectedSeason?.id}
-              competitions={resolvedCompetitions}
+              macrocycles={macrocycles}
+              microcycles={microcycles}
             />
           </TabsContent>
 
@@ -294,7 +320,6 @@ export default function DesportivoIndex({
               trainings={resolvedTrainings}
               trainingOptions={resolvedTrainingOptions}
               selectedTraining={selectedTraining}
-              presences={presences}
               users={resolvedUsers}
               ageGroups={ageGroups}
             />
@@ -330,6 +355,8 @@ export default function DesportivoIndex({
           </TabsContent>
 
         </Tabs>
+          </>
+        )}
       </div>
     </AuthenticatedLayout>
   );

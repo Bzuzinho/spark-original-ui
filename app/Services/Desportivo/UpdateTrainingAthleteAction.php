@@ -47,7 +47,7 @@ class UpdateTrainingAthleteAction
             // Auto-inferir 'presente' com base no estado
             if ($data['estado'] === 'presente' || $data['estado'] === 'limitado') {
                 $updateData['presente'] = true;
-            } elseif (in_array($data['estado'], ['ausente', 'justificado', 'lesionado', 'doente'])) {
+            } elseif (in_array($data['estado'], ['ausente', 'justificado', 'lesionado', 'doente', 'dispensado'])) {
                 $updateData['presente'] = false;
             }
         }
@@ -92,7 +92,7 @@ class UpdateTrainingAthleteAction
     {
         $rules = [
             'presente' => 'nullable|boolean',
-            'estado' => 'nullable|string|max:30|in:presente,ausente,justificado,lesionado,limitado,doente',
+            'estado' => 'nullable|string|max:30|in:presente,ausente,justificado,lesionado,limitado,doente,dispensado',
             'volume_real_m' => 'nullable|integer|min:0|max:50000',
             'rpe' => 'nullable|integer|min:1|max:10',
             'observacoes_tecnicas' => 'nullable|string|max:5000',

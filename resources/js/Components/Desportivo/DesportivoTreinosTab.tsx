@@ -8,8 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Badge } from '@/Components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select';
 import { SectionTitle } from '@/components/sports/shared';
-import { SessionCard } from '@/Components/Desportivo/components/SessionCard';
-import type { AgeGroup, Competition, Training } from './types';
+import type { AgeGroup, Training, User } from './types';
 
 interface SeriesRow {
   id: string;
@@ -36,19 +35,26 @@ function formatZoneDescription(name: string): string {
 interface Props {
   trainings: Training[];
   ageGroups: AgeGroup[];
+  users: User[];
   trainingTypeOptions: Array<{ id: string; nome: string }>;
   trainingZoneOptions: Array<{ id: string; codigo: string; nome: string }>;
   selectedSeasonId?: string;
-  competitions: Competition[];
+  macrocycles: Array<{ id: string; nome: string }>;
+  microcycles: Array<{ id: string; nome: string; macrocycle_id?: string }>;
 }
 
-export function DesportivoTreinosTab({ trainings, ageGroups, trainingTypeOptions, trainingZoneOptions, selectedSeasonId, competitions }: Props) {
+export function DesportivoTreinosTab({ trainings, ageGroups, users, trainingTypeOptions, trainingZoneOptions, selectedSeasonId, macrocycles, microcycles }: Props) {
   const [createOpen, setCreateOpen] = useState(false);
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [editScheduleOpen, setEditScheduleOpen] = useState(false);
+  const [attendanceOpen, setAttendanceOpen] = useState(false);
   const [selectedTraining, setSelectedTraining] = useState<Training | null>(null);
-  const [schedulingTraining, setSchedulingTraining] = useState<Training | null>(null);
   const [editingTrainingId, setEditingTrainingId] = useState<string | null>(null);
+  const [editingScheduledTraining, setEditingScheduledTraining] = useState<Training | null>(null);
+  const [attendanceTraining, setAttendanceTraining] = useState<Training | null>(null);
+  const [attendanceRows, setAttendanceRows] = useState<Array<{ id: string; user_id: string; nome_atleta: string; estado: string }>>([]);
+  const [newAttendanceUserId, setNewAttendanceUserId] = useState('');
   const [seriesRows, setSeriesRows] = useState<SeriesRow[]>([createSeriesRow(trainingZoneOptions[0]?.codigo ?? '')]);
 
   const form = useForm({
@@ -66,27 +72,44 @@ export function DesportivoTreinosTab({ trainings, ageGroups, trainingTypeOptions
   });
 
   const scheduleForm = useForm({
+    training_id: '',
     data: new Date().toISOString().slice(0, 10),
     hora_inicio: '18:00',
     hora_fim: '19:30',
     local: '',
+    escaloes: [] as string[],
+    epoca_id: selectedSeasonId ?? '',
+    macrocycle_id: '',
+    microciclo_id: '',
   });
 
-  const todayIso = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const editScheduleForm = useForm({
+    numero_treino: '',
+    data: '',
+    hora_inicio: '',
+    hora_fim: '',
+    local: '',
+    escaloes: [] as string[],
+    epoca_id: selectedSeasonId ?? '',
+    macrocycle_id: '',
+    microciclo_id: '',
+    tipo_treino: '',
+    descricao_treino: '',
+    volume_planeado_m: '',
+  });
 
   const nextTrainingNumber = useMemo(() => {
-    const datePrefix = `T-${todayIso}-`;
+    const currentMax = trainings.reduce((maxValue, training) => {
+      const match = (training.numero_treino ?? '').match(/^#(\d+)$/);
+      if (!match) {
+        return maxValue;
+      }
 
-    const existingCounters = trainings
-      .map((training) => training.numero_treino ?? '')
-      .filter((numero) => numero.startsWith(datePrefix))
-      .map((numero) => Number(numero.slice(datePrefix.length)))
-      .filter((value) => Number.isFinite(value));
+      return Math.max(maxValue, Number(match[1]));
+    }, 0);
 
-    const nextCounter = existingCounters.length > 0 ? Math.max(...existingCounters) + 1 : 1;
-
-    return `${datePrefix}${String(nextCounter).padStart(3, '0')}`;
-  }, [trainings, todayIso]);
+    return `#${String(currentMax + 1).padStart(4, '0')}`;
+  }, [trainings]);
 
   const computedVolume = useMemo(() => {
     return seriesRows.reduce((total, row) => {
@@ -112,30 +135,137 @@ export function DesportivoTreinosTab({ trainings, ageGroups, trainingTypeOptions
     return trainings.filter((training) => !!training.data);
   }, [trainings]);
 
-  const weeklyAgenda = useMemo(() => {
+  const schedulingTraining = useMemo(() => {
+    return libraryTrainings.find((training) => training.id === scheduleForm.data.training_id) ?? null;
+  }, [libraryTrainings, scheduleForm.data.training_id]);
+
+  const filteredMicrocycles = useMemo(() => {
+    if (!scheduleForm.data.macrocycle_id) {
+      return microcycles;
+    }
+
+    return microcycles.filter((microcycle) => microcycle.macrocycle_id === scheduleForm.data.macrocycle_id);
+  }, [microcycles, scheduleForm.data.macrocycle_id]);
+
+  const filteredEditMicrocycles = useMemo(() => {
+    if (!editScheduleForm.data.macrocycle_id) {
+      return microcycles;
+    }
+
+    return microcycles.filter((microcycle) => microcycle.macrocycle_id === editScheduleForm.data.macrocycle_id);
+  }, [microcycles, editScheduleForm.data.macrocycle_id]);
+
+  const availableAttendanceUsers = useMemo(() => {
+    const selectedIds = new Set(attendanceRows.map((row) => row.user_id));
+
+    return users
+      .filter((user) => !selectedIds.has(user.id))
+      .filter((user) => !Array.isArray(user.tipo_membro) || user.tipo_membro.length === 0 || user.tipo_membro.includes('atleta'))
+      .sort((a, b) => a.nome_completo.localeCompare(b.nome_completo));
+  }, [attendanceRows, users]);
+
+  const formatCreationDateTime = (value?: string | null) => {
+    if (!value) {
+      return 'Sem data de criação';
+    }
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return 'Sem data de criação';
+    }
+
+    return date.toLocaleString('pt-PT', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  const formatScheduleDate = (value?: string | null) => {
+    if (!value) {
+      return 'Sem data';
+    }
+
+    return value.slice(0, 10);
+  };
+
+  const normalizeDateInputValue = (value?: string | null) => {
+    if (!value) {
+      return '';
+    }
+
+    return value.slice(0, 10);
+  };
+
+  const formatTimeRange = (start?: string | null, end?: string | null) => {
+    if (!start) {
+      return '--:--';
+    }
+
+    return end ? `${start} – ${end}` : start;
+  };
+
+  const resolveEscaloes = (escalaoIds?: string[] | null) => {
+    return (escalaoIds ?? [])
+      .map((id) => ageGroups.find((group) => group.id === id)?.nome ?? id)
+      .join(', ');
+  };
+
+  const isScheduledTraining = (training?: Training | null) => !!training?.data;
+
+  useEffect(() => {
+    if (selectedSeasonId && !scheduleForm.data.epoca_id) {
+      scheduleForm.setData('epoca_id', selectedSeasonId);
+    }
+  }, [selectedSeasonId, scheduleForm]);
+
+  useEffect(() => {
+    if (!scheduleForm.data.macrocycle_id) {
+      return;
+    }
+
+    const isSelectedMicrocycleCompatible = filteredMicrocycles.some((item) => item.id === scheduleForm.data.microciclo_id);
+    if (!isSelectedMicrocycleCompatible) {
+      scheduleForm.setData('microciclo_id', '');
+    }
+  }, [filteredMicrocycles, scheduleForm.data.macrocycle_id, scheduleForm.data.microciclo_id, scheduleForm]);
+
+  useEffect(() => {
+    if (!editScheduleForm.data.macrocycle_id) {
+      return;
+    }
+
+    const isSelectedMicrocycleCompatible = filteredEditMicrocycles.some((item) => item.id === editScheduleForm.data.microciclo_id);
+    if (!isSelectedMicrocycleCompatible) {
+      editScheduleForm.setData('microciclo_id', '');
+    }
+  }, [filteredEditMicrocycles, editScheduleForm.data.macrocycle_id, editScheduleForm.data.microciclo_id, editScheduleForm]);
+
+  useEffect(() => {
+    if (!attendanceOpen || !attendanceTraining) {
+      return;
+    }
+
+    const updatedTraining = trainings.find((item) => item.id === attendanceTraining.id);
+    if (!updatedTraining) {
+      return;
+    }
+
+    setAttendanceTraining(updatedTraining);
+    setAttendanceRows((updatedTraining.presencas_grupo ?? []).map((row) => ({
+      id: row.id,
+      user_id: row.user_id,
+      nome_atleta: row.nome_atleta,
+      estado: row.estado,
+    })));
+  }, [attendanceOpen, attendanceTraining, trainings]);
+
+  const scheduledList = useMemo(() => {
     return [...scheduledTrainings]
-      .sort((a, b) => `${a.data ?? ''} ${a.hora_inicio ?? ''}`.localeCompare(`${b.data ?? ''} ${b.hora_inicio ?? ''}`))
-      .slice(0, 14);
+      .sort((a, b) => `${a.data ?? ''} ${a.hora_inicio ?? ''}`.localeCompare(`${b.data ?? ''} ${b.hora_inicio ?? ''}`));
   }, [scheduledTrainings]);
-
-  const compactWeek = useMemo(() => {
-    return weeklyAgenda.reduce<Record<string, Training[]>>((acc, t) => {
-      const day = t.data;
-      if (!acc[day]) acc[day] = [];
-      acc[day].push(t);
-      return acc;
-    }, {});
-  }, [weeklyAgenda]);
-
-  const competitionsByDay = useMemo(() => {
-    return (competitions ?? []).reduce<Record<string, Competition[]>>((acc, c) => {
-      const day = (c.data_inicio || '').slice(0, 10);
-      if (!day) return acc;
-      if (!acc[day]) acc[day] = [];
-      acc[day].push(c);
-      return acc;
-    }, {});
-  }, [competitions]);
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -180,7 +310,7 @@ export function DesportivoTreinosTab({ trainings, ageGroups, trainingTypeOptions
 
   const openEdit = (training: Training) => {
     form.setData('numero_treino', training.numero_treino ?? '');
-    form.setData('data', training.data ?? '');
+    form.setData('data', normalizeDateInputValue(training.data));
     form.setData('hora_inicio', training.hora_inicio ?? '');
     form.setData('hora_fim', training.hora_fim ?? '');
     form.setData('local', training.local ?? '');
@@ -195,50 +325,40 @@ export function DesportivoTreinosTab({ trainings, ageGroups, trainingTypeOptions
     setCreateOpen(true);
   };
 
-  const duplicateMany = (ids: string[]) => {
-    ids.forEach((id) => {
-      router.post(route('desportivo.treino.duplicate', id), {}, { preserveScroll: true, preserveState: true });
-    });
-  };
-
-  const openSchedule = (training: Training) => {
-    setSchedulingTraining(training);
-    scheduleForm.setData('data', new Date().toISOString().slice(0, 10));
-    scheduleForm.setData('hora_inicio', training.hora_inicio ?? '18:00');
-    scheduleForm.setData('hora_fim', training.hora_fim ?? '19:30');
-    scheduleForm.setData('local', training.local ?? '');
-    setScheduleOpen(true);
-  };
-
   const submitSchedule = (event: FormEvent) => {
     event.preventDefault();
 
-    if (!schedulingTraining) {
+    if (!scheduleForm.data.training_id) {
       return;
     }
 
     const payload = {
-      numero_treino: schedulingTraining.numero_treino ?? nextTrainingNumber,
       data: scheduleForm.data.data,
       hora_inicio: scheduleForm.data.hora_inicio,
       hora_fim: scheduleForm.data.hora_fim,
       local: scheduleForm.data.local,
-      epoca_id: schedulingTraining.epoca_id ?? selectedSeasonId ?? '',
-      microciclo_id: schedulingTraining.microciclo_id ?? '',
-      tipo_treino: schedulingTraining.tipo_treino,
-      volume_planeado_m: schedulingTraining.volume_planeado_m ?? computedVolume,
-      descricao_treino: schedulingTraining.descricao_treino ?? '',
-      notas_gerais: schedulingTraining.notas_gerais ?? '',
-      escaloes: schedulingTraining.escaloes ?? [],
+      escaloes: scheduleForm.data.escaloes,
+      epoca_id: scheduleForm.data.epoca_id || selectedSeasonId || null,
+      macrocycle_id: scheduleForm.data.macrocycle_id || null,
+      microciclo_id: scheduleForm.data.microciclo_id || null,
     };
 
     scheduleForm.transform(() => payload);
 
-    scheduleForm.put(route('desportivo.treino.update', schedulingTraining.id), {
+    scheduleForm.post(route('desportivo.treino.schedule', scheduleForm.data.training_id), {
       onSuccess: () => {
         setScheduleOpen(false);
-        setSchedulingTraining(null);
         scheduleForm.transform((data) => data);
+        scheduleForm.reset();
+        scheduleForm.setData('data', new Date().toISOString().slice(0, 10));
+        scheduleForm.setData('hora_inicio', '18:00');
+        scheduleForm.setData('hora_fim', '19:30');
+        scheduleForm.setData('local', '');
+        scheduleForm.setData('training_id', '');
+        scheduleForm.setData('escaloes', []);
+        scheduleForm.setData('epoca_id', selectedSeasonId ?? '');
+        scheduleForm.setData('macrocycle_id', '');
+        scheduleForm.setData('microciclo_id', '');
       },
     });
   };
@@ -246,6 +366,110 @@ export function DesportivoTreinosTab({ trainings, ageGroups, trainingTypeOptions
   const openDetails = (training: Training) => {
     setSelectedTraining(training);
     setDetailsOpen(true);
+  };
+
+  const openAttendance = (training: Training) => {
+    setAttendanceTraining(training);
+    setAttendanceRows((training.presencas_grupo ?? []).map((row) => ({
+      id: row.id,
+      user_id: row.user_id,
+      nome_atleta: row.nome_atleta,
+      estado: row.estado,
+    })));
+    setNewAttendanceUserId('');
+    setAttendanceOpen(true);
+  };
+
+  const updateAttendanceRow = (rowId: string, estado: string) => {
+    setAttendanceRows((currentRows) => currentRows.map((row) => (row.id === rowId ? { ...row, estado } : row)));
+  };
+
+  const saveAttendanceChanges = () => {
+    if (!attendanceTraining) {
+      return;
+    }
+
+    router.put(route('desportivo.treino.presencas.update', attendanceTraining.id), {
+      presencas: attendanceRows.map((row) => ({ id: row.id, estado: row.estado })),
+    }, {
+      preserveScroll: true,
+      preserveState: true,
+      onSuccess: () => {
+        router.reload({
+          only: ['trainings'],
+        });
+      },
+    });
+  };
+
+  const addAthleteToAttendance = () => {
+    if (!attendanceTraining || !newAttendanceUserId) {
+      return;
+    }
+
+    router.post(route('desportivo.treino.atleta.add', attendanceTraining.id), {
+      user_id: newAttendanceUserId,
+    }, {
+      preserveScroll: true,
+      preserveState: true,
+      onSuccess: () => {
+        setNewAttendanceUserId('');
+        router.reload({
+          only: ['trainings'],
+        });
+      },
+    });
+  };
+
+  const removeAthleteFromAttendance = (userId: string) => {
+    if (!attendanceTraining) {
+      return;
+    }
+
+    router.delete(route('desportivo.treino.atleta.remove', [attendanceTraining.id, userId]), {
+      preserveScroll: true,
+      preserveState: true,
+      onSuccess: () => {
+        router.reload({
+          only: ['trainings'],
+        });
+      },
+    });
+  };
+
+  const openEditSchedule = (training: Training) => {
+    setEditingScheduledTraining(training);
+    editScheduleForm.setData('numero_treino', training.numero_treino ?? '');
+    editScheduleForm.setData('data', normalizeDateInputValue(training.data));
+    editScheduleForm.setData('hora_inicio', training.hora_inicio ?? '');
+    editScheduleForm.setData('hora_fim', training.hora_fim ?? '');
+    editScheduleForm.setData('local', training.local ?? '');
+    editScheduleForm.setData('escaloes', training.escaloes ?? []);
+    editScheduleForm.setData('epoca_id', training.epoca_id ?? selectedSeasonId ?? '');
+    editScheduleForm.setData('macrocycle_id', training.macrocycle_id ?? '');
+    editScheduleForm.setData('microciclo_id', training.microciclo_id ?? '');
+    editScheduleForm.setData('tipo_treino', training.tipo_treino ?? '');
+    editScheduleForm.setData('descricao_treino', training.descricao_treino ?? '');
+    editScheduleForm.setData('volume_planeado_m', String(training.volume_planeado_m ?? 0));
+    setEditScheduleOpen(true);
+  };
+
+  const submitEditSchedule = (event: FormEvent) => {
+    event.preventDefault();
+    if (!editingScheduledTraining) return;
+
+    editScheduleForm.put(route('desportivo.treino.update', editingScheduledTraining.id), {
+      onSuccess: () => {
+        setEditScheduleOpen(false);
+        setEditingScheduledTraining(null);
+        editScheduleForm.reset();
+      },
+    });
+  };
+
+  const deleteScheduled = (training: Training) => {
+    if (!confirm(`Tem a certeza que quer apagar o agendamento "${training.numero_treino || 'Treino'}"?`)) return;
+    router.delete(route('desportivo.treino.delete', training.id), { preserveScroll: true });
   };
 
   const selectedEscaloes = useMemo(() => {
@@ -266,118 +490,90 @@ export function DesportivoTreinosTab({ trainings, ageGroups, trainingTypeOptions
         subtitle="Biblioteca, agendamento, duplicação inteligente e calendário compacto"
       />
 
-      <div className="grid gap-3 xl:grid-cols-2">
+      <div className="grid gap-3 lg:grid-cols-2">
         <Card>
           <CardHeader className="pb-2 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="text-sm">Biblioteca de treinos</CardTitle>
-            <Button size="sm" className="w-full sm:w-auto" onClick={() => { setEditingTrainingId(null); setCreateOpen(true); }}>
+            <Button size="sm" className="w-full sm:w-auto" onClick={() => {
+              setEditingTrainingId(null);
+              form.reset();
+              form.setData('tipo_treino', trainingTypeOptions[0]?.nome ?? '');
+              form.setData('epoca_id', selectedSeasonId ?? '');
+              setSeriesRows([createSeriesRow(trainingZoneOptions[0]?.codigo ?? '')]);
+              setCreateOpen(true);
+            }}>
               Criar treino
             </Button>
           </CardHeader>
           <CardContent className="space-y-2">
             {libraryTrainings.length === 0 && <p className="text-xs text-muted-foreground">Sem treinos em biblioteca.</p>}
-            {libraryTrainings.map((training) => (
-              <SessionCard
-                key={training.id}
-                title={`${training.numero_treino || 'Treino'} · ${training.tipo_treino}`}
-                subtitle={training.descricao_treino || 'Treino guardado sem agendamento'}
-                onOpen={() => openDetails(training)}
-                onEdit={() => openEdit(training)}
-                onDelete={() => router.delete(route('desportivo.treino.delete', training.id), { preserveScroll: true })}
-              />
-            ))}
-          </CardContent>
-        </Card>
+            {libraryTrainings.map((training) => {
+              const escalaoLabel = resolveEscaloes(training.escaloes);
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Agendar treinos</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {libraryTrainings.length === 0 && (
-              <p className="text-xs text-muted-foreground">Sem treinos da biblioteca por agendar.</p>
-            )}
-            {libraryTrainings.slice(0, 8).map((training) => (
-              <div key={training.id} className="border rounded-md p-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div className="min-w-0">
-                  <p className="text-xs font-medium break-words">{training.numero_treino || 'Treino'} · {training.tipo_treino}</p>
-                  <p className="text-[11px] text-muted-foreground break-words">{training.descricao_treino || 'Sem descrição'}</p>
+              return (
+                <div key={training.id} className="border rounded-md p-2 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-semibold break-words">{training.numero_treino || 'Treino'} · {training.tipo_treino}</p>
+                    {escalaoLabel ? (
+                      <p className="text-[11px] text-muted-foreground break-words">{escalaoLabel}</p>
+                    ) : (
+                      <p className="text-[11px] text-muted-foreground break-words">Sem escalão definido</p>
+                    )}
+                    <p className="text-[11px] text-muted-foreground break-words">Criado em {formatCreationDateTime(training.created_at)}</p>
+                  </div>
+                  <div className="flex flex-wrap gap-1 sm:shrink-0">
+                    <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => openDetails(training)}>Abrir</Button>
+                    <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => openEdit(training)}>Editar</Button>
+                    <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => router.delete(route('desportivo.treino.delete', training.id), { preserveScroll: true })}>Apagar</Button>
+                  </div>
                 </div>
-                <Button size="sm" className="w-full sm:w-auto" onClick={() => openSchedule(training)}>
-                  Agendar
-                </Button>
-              </div>
-            ))}
-            <p className="text-[11px] text-muted-foreground">Contexto de ciclo ativo: {selectedSeasonId || 'Sem época ativa selecionada'}</p>
+              );
+            })}
           </CardContent>
         </Card>
-      </div>
-
-      <div className="grid gap-3 xl:grid-cols-2">
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Duplicação inteligente</CardTitle>
+          <CardHeader className="pb-2 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <CardTitle className="text-sm">Calendário de agendamentos</CardTitle>
+            <Button size="sm" className="w-full sm:w-auto" onClick={() => {
+              scheduleForm.reset();
+              scheduleForm.setData('data', new Date().toISOString().slice(0, 10));
+              scheduleForm.setData('hora_inicio', '18:00');
+              scheduleForm.setData('hora_fim', '19:30');
+              scheduleForm.setData('epoca_id', selectedSeasonId ?? '');
+              setScheduleOpen(true);
+            }}>
+              Agendar treino
+            </Button>
           </CardHeader>
           <CardContent className="space-y-2">
-            <div className="flex gap-2 flex-wrap">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => weeklyAgenda[0] && router.post(route('desportivo.treino.duplicate', weeklyAgenda[0].id), {})}
-                disabled={weeklyAgenda.length === 0}
-              >
-                Duplicar treino
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => duplicateMany(weeklyAgenda.slice(0, 7).map((t) => t.id))}
-                disabled={weeklyAgenda.length === 0}
-              >
-                Duplicar semana
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => duplicateMany(weeklyAgenda.slice(0, 14).map((t) => t.id))}
-                disabled={weeklyAgenda.length === 0}
-              >
-                Duplicar microciclo
-              </Button>
-            </div>
-            <p className="text-[11px] text-muted-foreground">
-              TODO: quando existir endpoint específico, substituir duplicação em lote por operação transacional por semana/microciclo.
-            </p>
-            <p className="text-xs text-muted-foreground">Modelos de treino desativados temporariamente.</p>
-          </CardContent>
-        </Card>
+            {scheduledList.length === 0 && <p className="text-xs text-muted-foreground">Sem agendamentos.</p>}
+            {scheduledList.map((training) => {
+              const dataFormatada = formatScheduleDate(training.data);
+              const horaFormatada = formatTimeRange(training.hora_inicio, training.hora_fim);
+              const escalaoNomes = resolveEscaloes(training.escaloes);
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Calendário de agendamentos (semanal)</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {Object.keys(compactWeek).length === 0 && <p className="text-xs text-muted-foreground">Sem agendamentos.</p>}
-            {Object.entries(compactWeek).map(([day, dayTrainings]) => (
-              <div key={day} className="border rounded-md p-2 space-y-1">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-semibold">{day}</p>
-                  <Badge variant="secondary" className="text-[10px]">{dayTrainings.length} treinos</Badge>
-                </div>
-                <div className="space-y-1">
-                  {dayTrainings.map((t) => (
-                    <div key={t.id} className="text-[11px] text-muted-foreground">
-                      {t.hora_inicio || '--:--'} · {t.tipo_treino} {t.local ? `· ${t.local}` : ''}
+              return (
+                <div key={training.id} className="border rounded-md p-2 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <Badge variant="outline" className="text-[10px] font-normal shrink-0">{dataFormatada}</Badge>
+                      <span className="text-[10px] text-muted-foreground shrink-0">{horaFormatada}</span>
                     </div>
-                  ))}
-                  {(competitionsByDay[day] ?? []).map((c) => (
-                    <div key={c.id} className="text-[11px] text-amber-700">
-                      Prova: {c.titulo}{c.local ? ` · ${c.local}` : ''}
+                    <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-1">
+                      <p className="text-xs font-semibold break-words">{training.numero_treino || 'Treino'}</p>
+                      <span className="text-[11px] text-muted-foreground break-words">{training.tipo_treino}</span>
+                      <span className="text-[11px] text-muted-foreground break-words">{escalaoNomes || 'Sem escalão definido'}</span>
                     </div>
-                  ))}
+                  </div>
+                  <div className="flex flex-wrap gap-1 sm:shrink-0">
+                    <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => openAttendance(training)}>Presenças</Button>
+                    <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => openDetails(training)}>Ver</Button>
+                    <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => openEditSchedule(training)}>Editar</Button>
+                    <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => deleteScheduled(training)}>Apagar</Button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </CardContent>
         </Card>
       </div>
@@ -457,7 +653,8 @@ export function DesportivoTreinosTab({ trainings, ageGroups, trainingTypeOptions
                   Adicionar linha
                 </Button>
               </div>
-              <div className="border rounded-md p-2 space-y-2">
+              <div className="border rounded-md p-2 overflow-x-auto">
+                <div className="min-w-[720px] space-y-2">
                   <div className="grid grid-cols-[92px_minmax(0,1fr)_92px_120px_110px_88px] gap-2 px-1 text-[11px] font-medium text-muted-foreground">
                     <div>Repetições</div>
                     <div>Exercício</div>
@@ -546,6 +743,7 @@ export function DesportivoTreinosTab({ trainings, ageGroups, trainingTypeOptions
                       </div>
                     );
                   })}
+                </div>
               </div>
             </div>
             <DialogFooter>
@@ -561,13 +759,45 @@ export function DesportivoTreinosTab({ trainings, ageGroups, trainingTypeOptions
           <DialogHeader>
             <DialogTitle>Agendar treino</DialogTitle>
             <DialogDescription>
-              Defina data, horas e local para agendar o treino selecionado.
+              Escolha o treino da biblioteca e defina data, horas, escalões e ciclo.
             </DialogDescription>
           </DialogHeader>
 
           <form onSubmit={submitSchedule} className="space-y-3">
             <div className="space-y-1.5">
-              <Label>Nº treino</Label>
+              <Label htmlFor="schedule-training">Treino da biblioteca</Label>
+              <Select
+                value={scheduleForm.data.training_id || '__none__'}
+                onValueChange={(value) => {
+                  const selectedId = value === '__none__' ? '' : value;
+                  const selectedItem = libraryTrainings.find((item) => item.id === selectedId);
+
+                  scheduleForm.setData('training_id', selectedId);
+                  scheduleForm.setData('hora_inicio', selectedItem?.hora_inicio ?? '18:00');
+                  scheduleForm.setData('hora_fim', selectedItem?.hora_fim ?? '19:30');
+                  scheduleForm.setData('local', selectedItem?.local ?? '');
+                  scheduleForm.setData('escaloes', selectedItem?.escaloes ?? []);
+                  scheduleForm.setData('epoca_id', selectedSeasonId ?? selectedItem?.epoca_id ?? '');
+                  scheduleForm.setData('macrocycle_id', selectedItem?.macrocycle_id ?? '');
+                  scheduleForm.setData('microciclo_id', selectedItem?.microciclo_id ?? '');
+                }}
+              >
+                <SelectTrigger id="schedule-training">
+                  <SelectValue placeholder="Selecionar treino" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">Selecionar treino</SelectItem>
+                  {libraryTrainings.map((training) => (
+                    <SelectItem key={training.id} value={training.id}>
+                      {training.numero_treino || 'Treino'} · {training.tipo_treino}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Nº treino selecionado</Label>
               <Input value={schedulingTraining?.numero_treino ?? '-'} readOnly />
             </div>
 
@@ -612,15 +842,301 @@ export function DesportivoTreinosTab({ trainings, ageGroups, trainingTypeOptions
               </div>
             </div>
 
+            <div className="space-y-2">
+              <Label>Escalões do treino agendado</Label>
+              <div className="flex gap-1 flex-wrap">
+                {ageGroups.map((group) => {
+                  const selected = scheduleForm.data.escaloes.includes(group.id);
+
+                  return (
+                    <Button
+                      key={group.id}
+                      type="button"
+                      size="sm"
+                      variant={selected ? 'default' : 'outline'}
+                      onClick={() => {
+                        if (selected) {
+                          scheduleForm.setData('escaloes', scheduleForm.data.escaloes.filter((id) => id !== group.id));
+                        } else {
+                          scheduleForm.setData('escaloes', [...scheduleForm.data.escaloes, group.id]);
+                        }
+                      }}
+                    >
+                      {group.nome}
+                    </Button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="schedule-macro">Macrociclo (opcional)</Label>
+                <Select
+                  value={scheduleForm.data.macrocycle_id || '__none__'}
+                  onValueChange={(value) => {
+                    const macrocycleId = value === '__none__' ? '' : value;
+                    scheduleForm.setData('macrocycle_id', macrocycleId);
+
+                    if (!macrocycleId) {
+                      scheduleForm.setData('microciclo_id', '');
+                    }
+                  }}
+                >
+                  <SelectTrigger id="schedule-macro">
+                    <SelectValue placeholder="Sem macrociclo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">Sem macrociclo</SelectItem>
+                    {macrocycles.map((macrocycle) => (
+                      <SelectItem key={macrocycle.id} value={macrocycle.id}>
+                        {macrocycle.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="schedule-micro">Microciclo (opcional)</Label>
+                <Select
+                  value={scheduleForm.data.microciclo_id || '__none__'}
+                  onValueChange={(value) => scheduleForm.setData('microciclo_id', value === '__none__' ? '' : value)}
+                >
+                  <SelectTrigger id="schedule-micro">
+                    <SelectValue placeholder="Sem microciclo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">Sem microciclo</SelectItem>
+                    {filteredMicrocycles.map((microcycle) => (
+                      <SelectItem key={microcycle.id} value={microcycle.id}>
+                        {microcycle.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setScheduleOpen(false)}>
                 Cancelar
               </Button>
-              <Button type="submit" disabled={scheduleForm.processing}>
+              <Button type="submit" disabled={scheduleForm.processing || !scheduleForm.data.training_id || scheduleForm.data.escaloes.length === 0}>
                 Guardar agendamento
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={editScheduleOpen} onOpenChange={setEditScheduleOpen}>
+        <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Editar agendamento</DialogTitle>
+            <DialogDescription>
+              Altere a data, horário, local, escalões e ciclos do agendamento. O grupo de presenças será atualizado automaticamente.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={submitEditSchedule} className="space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-sched-data">Data</Label>
+                <Input
+                  id="edit-sched-data"
+                  type="date"
+                  value={editScheduleForm.data.data}
+                  onChange={(e) => editScheduleForm.setData('data', e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-sched-local">Local</Label>
+                <Input
+                  id="edit-sched-local"
+                  value={editScheduleForm.data.local}
+                  onChange={(e) => editScheduleForm.setData('local', e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-sched-start">Hora início</Label>
+                <Input
+                  id="edit-sched-start"
+                  type="time"
+                  value={editScheduleForm.data.hora_inicio}
+                  onChange={(e) => editScheduleForm.setData('hora_inicio', e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-sched-end">Hora fim</Label>
+                <Input
+                  id="edit-sched-end"
+                  type="time"
+                  value={editScheduleForm.data.hora_fim}
+                  onChange={(e) => editScheduleForm.setData('hora_fim', e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Escalões</Label>
+              <div className="flex gap-1 flex-wrap">
+                {ageGroups.map((group) => {
+                  const selected = editScheduleForm.data.escaloes.includes(group.id);
+                  return (
+                    <Button
+                      key={group.id}
+                      type="button"
+                      size="sm"
+                      variant={selected ? 'default' : 'outline'}
+                      onClick={() => {
+                        if (selected) {
+                          editScheduleForm.setData('escaloes', editScheduleForm.data.escaloes.filter((id) => id !== group.id));
+                        } else {
+                          editScheduleForm.setData('escaloes', [...editScheduleForm.data.escaloes, group.id]);
+                        }
+                      }}
+                    >
+                      {group.nome}
+                    </Button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-sched-macro">Macrociclo (opcional)</Label>
+                <Select
+                  value={editScheduleForm.data.macrocycle_id || '__none__'}
+                  onValueChange={(value) => {
+                    editScheduleForm.setData('macrocycle_id', value === '__none__' ? '' : value);
+                    if (value === '__none__') {
+                      editScheduleForm.setData('microciclo_id', '');
+                    }
+                  }}
+                >
+                  <SelectTrigger id="edit-sched-macro">
+                    <SelectValue placeholder="Sem macrociclo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">Sem macrociclo</SelectItem>
+                    {macrocycles.map((macrocycle) => (
+                      <SelectItem key={macrocycle.id} value={macrocycle.id}>
+                        {macrocycle.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-sched-micro">Microciclo (opcional)</Label>
+                <Select
+                  value={editScheduleForm.data.microciclo_id || '__none__'}
+                  onValueChange={(value) => editScheduleForm.setData('microciclo_id', value === '__none__' ? '' : value)}
+                >
+                  <SelectTrigger id="edit-sched-micro">
+                    <SelectValue placeholder="Sem microciclo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">Sem microciclo</SelectItem>
+                    {filteredEditMicrocycles.map((microcycle) => (
+                      <SelectItem key={microcycle.id} value={microcycle.id}>
+                        {microcycle.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setEditScheduleOpen(false)}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={editScheduleForm.processing || editScheduleForm.data.escaloes.length === 0}>
+                Guardar alterações
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={attendanceOpen} onOpenChange={setAttendanceOpen}>
+        <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Presenças do treino</DialogTitle>
+            <DialogDescription>
+              Gerir o grupo de presenças do treino agendado: estados, adicionar atletas e remover atletas.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="rounded-md border p-3 space-y-1">
+              <p className="text-sm font-medium">{attendanceTraining?.numero_treino || 'Treino'} · {attendanceTraining?.tipo_treino || '-'}</p>
+              <p className="text-xs text-muted-foreground">{formatScheduleDate(attendanceTraining?.data)} · {formatTimeRange(attendanceTraining?.hora_inicio, attendanceTraining?.hora_fim)}</p>
+              <p className="text-xs text-muted-foreground">{resolveEscaloes(attendanceTraining?.escaloes) || 'Sem escalão definido'}</p>
+            </div>
+
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+              <div className="space-y-1.5 flex-1">
+                <Label htmlFor="attendance-user">Adicionar atleta</Label>
+                <Select value={newAttendanceUserId || '__none__'} onValueChange={(value) => setNewAttendanceUserId(value === '__none__' ? '' : value)}>
+                  <SelectTrigger id="attendance-user">
+                    <SelectValue placeholder="Selecionar atleta" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">Selecionar atleta</SelectItem>
+                    {availableAttendanceUsers.map((user) => (
+                      <SelectItem key={user.id} value={user.id}>{user.nome_completo}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button type="button" onClick={addAthleteToAttendance} disabled={!newAttendanceUserId}>
+                Adicionar atleta
+              </Button>
+            </div>
+
+            <div className="space-y-2">
+              {attendanceRows.length === 0 && <p className="text-xs text-muted-foreground">Sem atletas no grupo de presenças.</p>}
+              {attendanceRows.map((row) => (
+                <div key={row.user_id} className="border rounded-md p-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium break-words">{row.nome_atleta}</p>
+                  </div>
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <Select value={row.estado} onValueChange={(value) => updateAttendanceRow(row.id, value)}>
+                      <SelectTrigger className="w-full sm:w-[160px]">
+                        <SelectValue placeholder="Estado" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="presente">Presente</SelectItem>
+                        <SelectItem value="ausente">Ausente</SelectItem>
+                        <SelectItem value="dispensado">Dispensado</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button type="button" variant="ghost" className="text-xs" onClick={() => removeAthleteFromAttendance(row.user_id)}>
+                      Remover
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setAttendanceOpen(false)}>
+              Fechar
+            </Button>
+            <Button type="button" onClick={saveAttendanceChanges} disabled={!attendanceTraining || attendanceRows.length === 0}>
+              Guardar presenças
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -629,7 +1145,9 @@ export function DesportivoTreinosTab({ trainings, ageGroups, trainingTypeOptions
           <DialogHeader>
             <DialogTitle>Detalhe do treino</DialogTitle>
             <DialogDescription>
-              Visualização dos dados principais e séries do treino selecionado.
+              {isScheduledTraining(selectedTraining)
+                ? 'Treino agendado: dados de sessão, presença e conteúdo técnico.'
+                : 'Treino de biblioteca: template técnico ainda sem agendamento.'}
             </DialogDescription>
           </DialogHeader>
 
@@ -641,12 +1159,20 @@ export function DesportivoTreinosTab({ trainings, ageGroups, trainingTypeOptions
                   <p className="text-sm font-medium">{selectedTraining.numero_treino || '-'}</p>
                 </div>
                 <div className="border rounded-md p-3">
+                  <p className="text-[11px] text-muted-foreground">Registo</p>
+                  <p className="text-sm font-medium">{isScheduledTraining(selectedTraining) ? 'Agendado' : 'Biblioteca'}</p>
+                </div>
+                <div className="border rounded-md p-3">
                   <p className="text-[11px] text-muted-foreground">Tipo de treino</p>
                   <p className="text-sm font-medium">{selectedTraining.tipo_treino || '-'}</p>
                 </div>
                 <div className="border rounded-md p-3">
                   <p className="text-[11px] text-muted-foreground">Volume total (m)</p>
                   <p className="text-sm font-medium">{selectedTraining.volume_planeado_m ?? 0} m</p>
+                </div>
+                <div className="border rounded-md p-3">
+                  <p className="text-[11px] text-muted-foreground">Criado em</p>
+                  <p className="text-sm font-medium">{formatCreationDateTime(selectedTraining.created_at)}</p>
                 </div>
                 <div className="border rounded-md p-3">
                   <p className="text-[11px] text-muted-foreground">Escalão atribuído</p>
@@ -659,6 +1185,18 @@ export function DesportivoTreinosTab({ trainings, ageGroups, trainingTypeOptions
                       <p className="text-sm">-</p>
                     )}
                   </div>
+                </div>
+                <div className="border rounded-md p-3">
+                  <p className="text-[11px] text-muted-foreground">Data agendamento</p>
+                  <p className="text-sm font-medium">{selectedTraining.data || '-'}</p>
+                </div>
+                <div className="border rounded-md p-3">
+                  <p className="text-[11px] text-muted-foreground">Hora agendamento</p>
+                  <p className="text-sm font-medium">{formatTimeRange(selectedTraining.hora_inicio, selectedTraining.hora_fim)}</p>
+                </div>
+                <div className="border rounded-md p-3">
+                  <p className="text-[11px] text-muted-foreground">Local agendamento</p>
+                  <p className="text-sm font-medium">{selectedTraining.local || '-'}</p>
                 </div>
               </div>
 

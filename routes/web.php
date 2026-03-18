@@ -63,6 +63,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('planeamento', [DesportivoController::class, 'planeamento'])->name('desportivo.planeamento');
         Route::get('treinos', [DesportivoController::class, 'treinos'])->name('desportivo.treinos');
         Route::get('presencas', [DesportivoController::class, 'presencas'])->name('desportivo.presencas');
+        Route::get('cais', [DesportivoController::class, 'cais'])->name('desportivo.cais');
         Route::get('competicoes', [DesportivoController::class, 'competicoes'])->name('desportivo.competicoes');
         Route::get('relatorios', [DesportivoController::class, 'relatorios'])->name('desportivo.relatorios');
         
@@ -76,11 +77,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
         
         // Training operations
         Route::post('treinos', [DesportivoController::class, 'storeTraining'])->name('desportivo.treino.store');
+        Route::post('treinos/{training}/agendar', [DesportivoController::class, 'scheduleTraining'])->name('desportivo.treino.schedule');
         Route::put('treinos/{training}', [DesportivoController::class, 'updateTraining'])->name('desportivo.treino.update');
         Route::post('treinos/{training}/duplicar', [DesportivoController::class, 'duplicateTraining'])->name('desportivo.treino.duplicate');
         Route::delete('treinos/{training}', [DesportivoController::class, 'deleteTraining'])->name('desportivo.treino.delete');
         
         // Presence operations
+            Route::put('treinos/{training}/presencas', [DesportivoController::class, 'updateTrainingPresencas'])->name('desportivo.treino.presencas.update');
+            Route::post('treinos/{training}/atletas', [DesportivoController::class, 'addAthleteToTraining'])->name('desportivo.treino.atleta.add');
+            Route::delete('treinos/{training}/atletas/{user}', [DesportivoController::class, 'removeAthleteFromTraining'])->name('desportivo.treino.atleta.remove');
+
+            // Presence operations
         Route::put('presencas', [DesportivoController::class, 'updatePresencas'])->name('desportivo.presencas.update');
         Route::post('presencas/marcar-presentes', [DesportivoController::class, 'markAllPresent'])->name('desportivo.presencas.mark-all-present');
         Route::post('presencas/limpar', [DesportivoController::class, 'clearAllPresences'])->name('desportivo.presencas.clear-all');

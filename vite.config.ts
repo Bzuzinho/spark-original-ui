@@ -5,6 +5,23 @@ import react from '@vitejs/plugin-react';
 const codespaceName = process.env.CODESPACE_NAME;
 const forwardingDomain = process.env.GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN;
 const isCodespaces = Boolean(codespaceName && forwardingDomain);
+const appUrl = process.env.APP_URL;
+
+let appOriginFromEnv: string | null = null;
+let githubDevViteHost: string | null = null;
+
+if (appUrl) {
+    try {
+        const parsedAppUrl = new URL(appUrl);
+        appOriginFromEnv = parsedAppUrl.origin;
+
+        // Support forwarded app.github.dev URLs even when Codespaces env vars are not present.
+        githubDevViteHost = parsedAppUrl.hostname.replace(/-8000(?=\.)/, '-5173');
+    } catch {
+        appOriginFromEnv = null;
+        githubDevViteHost = null;
+    }
+}
 
 const appOrigins = isCodespaces
     ? [
@@ -14,12 +31,22 @@ const appOrigins = isCodespaces
       ]
     : ['http://localhost:8000', 'http://127.0.0.1:8000'];
 
+if (appOriginFromEnv && !appOrigins.includes(appOriginFromEnv)) {
+    appOrigins.push(appOriginFromEnv);
+}
+
 const hmrConfig = isCodespaces
     ? {
           protocol: 'wss' as const,
           host: `${codespaceName}-5173.${forwardingDomain}`,
           clientPort: 443,
       }
+    : githubDevViteHost
+      ? {
+            protocol: 'wss' as const,
+            host: githubDevViteHost,
+            clientPort: 443,
+        }
     : undefined;
 
 export default defineConfig({

@@ -1,4 +1,4 @@
-import { ReactNode, useState, PropsWithChildren } from 'react';
+import { ReactNode, useEffect, useState, PropsWithChildren } from 'react';
 import { router, usePage } from '@inertiajs/react';
 import {
     Users,
@@ -57,10 +57,28 @@ export default function AuthenticatedLayout({
     header,
     children,
     fullWidth = false,
-}: PropsWithChildren<{ header?: ReactNode; fullWidth?: boolean }>) {
+    collapseSidebarDesktop = false,
+    showSidebarPopupButton = false,
+    hideMobileHeader = false,
+}: PropsWithChildren<{
+    header?: ReactNode;
+    fullWidth?: boolean;
+    collapseSidebarDesktop?: boolean;
+    showSidebarPopupButton?: boolean;
+    hideMobileHeader?: boolean;
+}>) {
     const { auth, clubSettings } = usePage<PageProps>().props;
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const currentRoute = route().current();
+
+    useEffect(() => {
+        const handleOpenSidebar = () => setMobileMenuOpen(true);
+        window.addEventListener('spark:open-sidebar', handleOpenSidebar);
+
+        return () => {
+            window.removeEventListener('spark:open-sidebar', handleOpenSidebar);
+        };
+    }, []);
 
     const getUserInitials = () => {
         if (!auth.user) return 'U';
@@ -90,7 +108,8 @@ export default function AuthenticatedLayout({
             {/* Sidebar */}
             <aside className={cn(
                 "fixed inset-y-0 left-0 z-50 w-64 bg-sidebar border-r border-sidebar-border",
-                "transform transition-transform duration-200 ease-in-out lg:translate-x-0 lg:static",
+                "transform transition-transform duration-200 ease-in-out",
+                !collapseSidebarDesktop && "lg:translate-x-0 lg:static",
                 mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
             )}>
                 <div className="h-full flex flex-col">
@@ -113,7 +132,7 @@ export default function AuthenticatedLayout({
                             <Button
                                 variant="ghost"
                                 size="icon"
-                                className="lg:hidden"
+                                className={cn(!collapseSidebarDesktop && "lg:hidden")}
                                 onClick={() => setMobileMenuOpen(false)}
                             >
                                 <X />
@@ -205,25 +224,42 @@ export default function AuthenticatedLayout({
             {/* Mobile overlay */}
             {mobileMenuOpen && (
                 <div
-                    className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+                    className={cn(
+                        "fixed inset-0 bg-black/50 z-40",
+                        !collapseSidebarDesktop && "lg:hidden"
+                    )}
                     onClick={() => setMobileMenuOpen(false)}
                 />
+            )}
+
+            {collapseSidebarDesktop && showSidebarPopupButton && !mobileMenuOpen && (
+                <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="fixed top-3 left-3 z-30 hidden lg:inline-flex"
+                    onClick={() => setMobileMenuOpen(true)}
+                >
+                    <List />
+                </Button>
             )}
 
             {/* Main Content Area */}
             <div className="flex-1 flex flex-col min-w-0">
                 {/* Mobile Header */}
-                <header className="bg-card border-b lg:hidden">
-                    <div className="p-4">
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setMobileMenuOpen(true)}
-                        >
-                            <List />
-                        </Button>
-                    </div>
-                </header>
+                {!hideMobileHeader && (
+                    <header className="bg-card border-b lg:hidden">
+                        <div className="p-4">
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => setMobileMenuOpen(true)}
+                            >
+                                <List />
+                            </Button>
+                        </div>
+                    </header>
+                )}
 
                 {/* Page Header (if provided) - SEM border-b */}
                 {header && (

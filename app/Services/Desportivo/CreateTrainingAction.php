@@ -50,7 +50,7 @@ class CreateTrainingAction
 
             // 2. Sincronizar escalões ao Training
             if (Schema::hasTable('training_age_group') && !empty($data['escaloes'])) {
-                $training->ageGroups()->sync($data['escaloes']);
+                $training->syncAgeGroupsWithPivot($data['escaloes']);
             }
 
             // 3. Pré-criar training_athletes para atletas elegíveis
@@ -94,6 +94,7 @@ class CreateTrainingAction
             'hora_fim' => 'nullable|date_format:H:i|after:hora_inicio',
             'local' => 'nullable|string|max:255',
             'epoca_id' => 'nullable|uuid|exists:seasons,id',
+            'macrocycle_id' => 'nullable|uuid|exists:macrocycles,id',
             'microciclo_id' => 'nullable|uuid|exists:microcycles,id',
             'tipo_treino' => 'required|string|max:100',
             'volume_planeado_m' => 'nullable|integer|min:0',
@@ -119,10 +120,9 @@ class CreateTrainingAction
     private function createTraining(array $data, User $criadoPor): Training
     {
         $trainingDate = !empty($data['data']) ? $data['data'] : null;
-        $numberBaseDate = $trainingDate ?? Carbon::today()->toDateString();
 
-        return Training::create([
-            'numero_treino' => $data['numero_treino'] ?? $this->generateNumeroTreino($numberBaseDate),
+        $payload = [
+            'numero_treino' => $data['numero_treino'] ?? $this->generateNumeroTreino(),
             'data' => $trainingDate,
             'hora_inicio' => $data['hora_inicio'] ?? null,
             'hora_fim' => $data['hora_fim'] ?? null,
@@ -134,7 +134,13 @@ class CreateTrainingAction
             'notas_gerais' => $data['notas_gerais'] ?? null,
             'descricao_treino' => $data['descricao_treino'] ?? null,
             'criado_por' => $criadoPor->id,
-        ]);
+        ];
+
+        if (Schema::hasColumn('trainings', 'macrocycle_id')) {
+            $payload['macrocycle_id'] = $data['macrocycle_id'] ?? null;
+        }
+
+        return Training::create($payload);
     }
 
     /**
@@ -170,12 +176,13 @@ class CreateTrainingAction
     /**
      * Gera número de treino (ex: T-2026-03-09-001)
      */
-    private function generateNumeroTreino(string $data): string
+    private function generateNumeroTreino(): string
     {
-        $date = \Carbon\Carbon::parse($data);
-        $countOnDate = Training::whereDate('data', $date)->count();
-        
-        return sprintf('T-%s-%03d', $date->format('Y-m-d'), $countOnDate + 1);
+        $max = Training::where('numero_treino', 'LIKE', '#%')
+            ->selectRaw("MAX(CAST(SUBSTRING(numero_treino FROM 2) AS INTEGER)) as max_num")
+            ->value('max_num');
+
+        return sprintf('#%04d', ((int) ($max ?? 0)) + 1);
     }
 
 }

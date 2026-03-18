@@ -6,6 +6,7 @@ use App\Models\AgeGroup;
 use App\Models\AthleteStatusConfig;
 use App\Models\Season;
 use App\Models\Macrocycle;
+use App\Models\Microcycle;
 use App\Models\Training;
 use App\Models\TrainingAthlete;
 use App\Models\TrainingMetric;
@@ -14,12 +15,14 @@ use App\Models\Result;
 use App\Models\TeamResult;
 use App\Models\Event;
 use App\Models\EventType;
+use App\Models\EventAttendance;
 use App\Models\ConvocationGroup;
 use App\Models\CostCenter;
 use App\Models\TrainingTypeConfig;
 use App\Models\TrainingZoneConfig;
 use App\Models\User;
 use App\Http\Requests\Sports\StoreTrainingRequest;
+use App\Http\Requests\Sports\ScheduleTrainingRequest;
 use App\Http\Requests\Sports\UpdateTrainingRequest;
 use App\Http\Requests\Sports\StoreTrainingMetricRequest;
 use App\Services\Desportivo\CreateTrainingAction;
@@ -66,6 +69,14 @@ class DesportivoController extends Controller
     public function presencas(): Response
     {
         return $this->renderSportsPage('presencas');
+    }
+
+    /**
+     * Cais - Vista independente para operação rápida de presenças
+     */
+    public function cais(): Response
+    {
+        return $this->renderSportsPage('cais', 'Desportivo/Cais');
     }
 
     /**
@@ -225,9 +236,27 @@ class DesportivoController extends Controller
             ? $selectedSeason->macrocycles()->orderBy('data_inicio')->get()
             : collect();
 
+        $macrocycleIds = $macrocycles->pluck('id')->values();
+
+        $microcycles = $macrocycleIds->isEmpty()
+            ? collect()
+            : Microcycle::query()
+                ->select('microcycles.id', 'microcycles.semana', 'microcycles.mesociclo_id', 'mesocycles.macrociclo_id')
+                ->join('mesocycles', 'mesocycles.id', '=', 'microcycles.mesociclo_id')
+                ->whereIn('mesocycles.macrociclo_id', $macrocycleIds)
+                ->orderBy('microcycles.semana')
+                ->get()
+                ->map(fn (Microcycle $microcycle) => [
+                    'id' => $microcycle->id,
+                    'nome' => $microcycle->semana,
+                    'mesociclo_id' => $microcycle->mesociclo_id,
+                    'macrocycle_id' => $microcycle->macrociclo_id,
+                ])
+                ->values();
+
         $hasTrainingAgeGroupPivot = Schema::hasTable('training_age_group');
 
-        $trainingQuery = Training::query()->with(['season', 'series']);
+        $trainingQuery = Training::query()->with(['season', 'series', 'athleteRecords.atleta']);
 
         if ($hasTrainingAgeGroupPivot) {
             $trainingQuery->with('ageGroups:id');
@@ -242,6 +271,18 @@ class DesportivoController extends Controller
                     : (array) ($training->escaloes ?? []);
 
                 $training->setAttribute('escaloes', $escaloes);
+
+                // Expose presence group for scheduled trainings
+                if ($training->data !== null) {
+                    $training->setAttribute('presencas_grupo', $training->athleteRecords->map(fn (TrainingAthlete $p) => [
+                        'id'           => $p->id,
+                        'user_id'      => $p->user_id,
+                        'nome_atleta'  => $p->atleta?->nome_completo ?? 'Desconhecido',
+                        'estado'       => $p->estado ?? 'ausente',
+                    ])->sortBy('nome_atleta')->values()->all());
+                } else {
+                    $training->setAttribute('presencas_grupo', []);
+                }
 
                 return $training;
             });
@@ -491,6 +532,7 @@ class DesportivoController extends Controller
             'seasons' => $seasons,
             'selectedSeason' => $selectedSeason,
             'macrocycles' => $macrocycles,
+            'microcycles' => $microcycles,
             'ageGroups' => AgeGroup::all(),
             'tiposEpoca' => ['Principal', 'Secundária', 'Época de Verão', 'Preparação', 'Pré-Época'],
             'estadosEpoca' => ['Planeada', 'Em curso', 'Concluída', 'Arquivada'],
@@ -678,6 +720,62 @@ class DesportivoController extends Controller
     }
 
     /**
+     * Schedule a training from library template into a dated session.
+     */
+    public function scheduleTraining(ScheduleTrainingRequest $request, Training $training): RedirectResponse
+    {
+        if (!empty($training->data)) {
+            return redirect()->route('desportivo.treinos')
+                ->with('error', 'Apenas treinos da biblioteca podem ser agendados.');
+        }
+
+        $validated = $request->validated();
+
+        $payload = [
+            'numero_treino' => $training->numero_treino,
+            'data' => $validated['data'],
+            'hora_inicio' => $validated['hora_inicio'],
+            'hora_fim' => $validated['hora_fim'] ?? null,
+            'local' => $validated['local'] ?? $training->local,
+            'epoca_id' => $validated['epoca_id'] ?? $training->epoca_id,
+            'microciclo_id' => $validated['microciclo_id'] ?? $training->microciclo_id,
+            'tipo_treino' => $training->tipo_treino,
+            'volume_planeado_m' => $training->volume_planeado_m,
+            'descricao_treino' => $training->descricao_treino,
+            'notas_gerais' => $training->notas_gerais,
+            'escaloes' => $validated['escaloes'],
+            'series_linhas' => $this->mapSeriesRowsFromTemplate($training),
+        ];
+
+        if (Schema::hasColumn('trainings', 'macrocycle_id')) {
+            $payload['macrocycle_id'] = $validated['macrocycle_id'] ?? null;
+        }
+
+        $scheduledTraining = app(CreateTrainingAction::class)->execute($payload, auth()->user());
+
+        $event = Event::create([
+            'titulo' => sprintf('Treino %s', $scheduledTraining->numero_treino ?? ''),
+            'descricao' => $scheduledTraining->descricao_treino ?: 'Treino agendado via módulo Desportivo',
+            'data_inicio' => $scheduledTraining->data,
+            'hora_inicio' => $scheduledTraining->hora_inicio,
+            'data_fim' => $scheduledTraining->data,
+            'hora_fim' => $scheduledTraining->hora_fim,
+            'local' => $scheduledTraining->local,
+            'tipo' => 'treino',
+            'visibilidade' => 'restrito',
+            'estado' => 'agendado',
+            'criado_por' => auth()->id(),
+        ]);
+
+        $event->syncAgeGroups($validated['escaloes']);
+
+        $scheduledTraining->update(['evento_id' => $event->id]);
+
+        return redirect()->route('desportivo.treinos')
+            ->with('success', 'Treino agendado com sucesso!');
+    }
+
+    /**
      * Update Training
      */
     public function updateTraining(UpdateTrainingRequest $request, Training $training): RedirectResponse
@@ -687,11 +785,29 @@ class DesportivoController extends Controller
         $training->update(collect($validated)->except('escaloes')->all());
 
         if (Schema::hasTable('training_age_group')) {
-            $training->ageGroups()->sync($validated['escaloes'] ?? []);
+            $training->syncAgeGroupsWithPivot($validated['escaloes'] ?? []);
         }
 
         app(PrepareTrainingAthletesAction::class)
             ->updateForChangedEscaloes($training->fresh(), $validated['escaloes'] ?? []);
+
+        // Sync the linked Event if one exists
+        if ($training->evento_id) {
+            $event = Event::find($training->evento_id);
+            if ($event) {
+                $event->update([
+                    'titulo'      => sprintf('Treino %s', $validated['numero_treino'] ?? $training->numero_treino ?? ''),
+                    'data_inicio' => $validated['data'] ?? $event->data_inicio,
+                    'data_fim'    => $validated['data'] ?? $event->data_fim,
+                    'hora_inicio' => $validated['hora_inicio'] ?? $event->hora_inicio,
+                    'hora_fim'    => $validated['hora_fim'] ?? $event->hora_fim,
+                    'local'       => $validated['local'] ?? $event->local,
+                ]);
+                if (!empty($validated['escaloes'])) {
+                    $event->syncAgeGroups($validated['escaloes']);
+                }
+            }
+        }
 
         return redirect()->route('desportivo.treinos')
             ->with('success', 'Treino atualizado com sucesso!');
@@ -730,11 +846,135 @@ class DesportivoController extends Controller
     public function deleteTraining(Training $training): RedirectResponse
     {
         DB::transaction(function () use ($training) {
+            $linkedEventId = $training->evento_id;
             $training->delete();
+            if ($linkedEventId) {
+                Event::where('id', $linkedEventId)->delete();
+            }
         });
 
         return redirect()->route('desportivo.treinos')
             ->with('success', 'Treino eliminado com sucesso!');
+    }
+
+    /**
+     * Update presence statuses for a specific training (inline, redirects to treinos).
+     */
+    public function updateTrainingPresencas(Request $request, Training $training): RedirectResponse
+    {
+        $validated = $request->validate([
+            'presencas'          => 'required|array',
+            'presencas.*.id'     => 'required|uuid',
+            'presencas.*.estado' => 'required|in:presente,ausente,dispensado',
+        ]);
+
+        $updateAction = app(UpdateTrainingAthleteAction::class);
+
+        foreach ($validated['presencas'] as $row) {
+            $pa = TrainingAthlete::find($row['id']);
+            if ($pa && $pa->treino_id === $training->id) {
+                $updateAction->execute($pa, ['estado' => $row['estado']], auth()->user());
+
+                if ($training->evento_id) {
+                    EventAttendance::where('evento_id', $training->evento_id)
+                        ->where('user_id', $pa->user_id)
+                        ->update(['estado' => $row['estado']]);
+                }
+            }
+        }
+
+        return redirect()->route('desportivo.treinos')
+            ->with('success', 'Presenças atualizadas!');
+    }
+
+    /**
+     * Add an athlete to a training's presence group.
+     */
+    public function addAthleteToTraining(Request $request, Training $training): RedirectResponse
+    {
+        $validated = $request->validate([
+            'user_id' => 'required|uuid|exists:users,id',
+        ]);
+
+        $exists = TrainingAthlete::where('treino_id', $training->id)
+            ->where('user_id', $validated['user_id'])
+            ->exists();
+
+        if (!$exists) {
+            $trainingAthlete = TrainingAthlete::create([
+                'treino_id'      => $training->id,
+                'user_id'        => $validated['user_id'],
+                'presente'       => false,
+                'estado'         => 'ausente',
+                'registado_por'  => auth()->id(),
+                'registado_em'   => now(),
+            ]);
+
+            if ($training->evento_id) {
+                EventAttendance::firstOrCreate(
+                    [
+                        'evento_id' => $training->evento_id,
+                        'user_id' => $validated['user_id'],
+                    ],
+                    [
+                        'estado' => 'ausente',
+                        'synced_from_training' => true,
+                        'training_athlete_id' => $trainingAthlete->id,
+                        'registado_por' => auth()->id(),
+                        'registado_em' => now(),
+                    ]
+                );
+            }
+        }
+
+        return redirect()->route('desportivo.treinos')
+            ->with('success', 'Atleta adicionado ao grupo de presenças!');
+    }
+
+    /**
+     * Remove an athlete from a training's presence group.
+     */
+    public function removeAthleteFromTraining(Training $training, User $user): RedirectResponse
+    {
+        TrainingAthlete::where('treino_id', $training->id)
+            ->where('user_id', $user->id)
+            ->delete();
+
+        if ($training->evento_id) {
+            EventAttendance::where('evento_id', $training->evento_id)
+                ->where('user_id', $user->id)
+                ->delete();
+        }
+
+        return redirect()->route('desportivo.treinos')
+            ->with('success', 'Atleta removido do grupo de presenças!');
+    }
+
+    private function mapSeriesRowsFromTemplate(Training $training): array
+    {
+        return $training->series
+            ->map(function ($seriesRow) {
+                $distance = (int) ($seriesRow->distancia_total_m ?? 0);
+                $repeticoes = (int) ($seriesRow->repeticoes ?? 0);
+
+                $metros = 0;
+                if ($distance > 0) {
+                    if ($repeticoes > 0 && $distance % $repeticoes === 0) {
+                        $metros = (int) ($distance / $repeticoes);
+                    } else {
+                        $metros = $distance;
+                    }
+                }
+
+                return [
+                    'repeticoes' => $repeticoes,
+                    'exercicio' => (string) ($seriesRow->descricao_texto ?? ''),
+                    'metros' => $metros,
+                    'zona' => (string) ($seriesRow->zona_intensidade ?? ''),
+                ];
+            })
+            ->values()
+            ->all();
     }
 
     /**
@@ -746,7 +986,7 @@ class DesportivoController extends Controller
             'presences' => 'required|array',
             'presences.*.id' => 'required|uuid',
             'presences.*.legacy_presence_id' => 'nullable|uuid',
-            'presences.*.status' => 'required|in:presente,ausente,justificado,atestado_medico,outro,lesionado,limitado,doente',
+            'presences.*.status' => 'required|in:presente,ausente,justificado,atestado_medico,outro,lesionado,limitado,doente,dispensado',
             'presences.*.distancia_realizada_m' => 'nullable|integer',
             'presences.*.classificacao' => 'nullable|string',
             'presences.*.notas' => 'nullable|string',
@@ -768,7 +1008,7 @@ class DesportivoController extends Controller
             ], auth()->user());
         }
 
-        return redirect()->route('desportivo.presencas')
+        return redirect()->back()
             ->with('success', 'Presenças atualizadas com sucesso!');
     }
 
@@ -782,7 +1022,7 @@ class DesportivoController extends Controller
         $athleteIds = TrainingAthlete::where('treino_id', $trainingId)->pluck('id')->toArray();
         app(UpdateTrainingAthleteAction::class)->markMultiplePresent($athleteIds, auth()->user());
 
-        return redirect()->route('desportivo.presencas')
+        return redirect()->back()
             ->with('success', 'Todos os atletas foram marcados como presentes!');
     }
 
@@ -795,7 +1035,7 @@ class DesportivoController extends Controller
 
         app(UpdateTrainingAthleteAction::class)->clearAllPresences($trainingId, auth()->user());
 
-        return redirect()->route('desportivo.presencas')
+        return redirect()->back()
             ->with('success', 'Classificações removidas!');
     }
 

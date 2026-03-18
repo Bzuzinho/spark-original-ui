@@ -21,6 +21,7 @@ class UpdateTrainingRequest extends FormRequest
             'hora_fim' => ['nullable', 'date_format:H:i', 'after:hora_inicio'],
             'local' => ['nullable', 'string', 'max:255'],
             'epoca_id' => ['nullable', 'uuid', 'exists:seasons,id'],
+            'macrocycle_id' => ['nullable', 'uuid', 'exists:macrocycles,id'],
             'microciclo_id' => ['nullable', 'uuid', 'exists:microcycles,id'],
             'tipo_treino' => [
                 'required',

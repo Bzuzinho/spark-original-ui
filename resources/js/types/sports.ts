@@ -26,13 +26,21 @@ export interface Training extends BasicItem {
   hora_inicio?: string | null;
   hora_fim?: string | null;
   local?: string | null;
+  created_at?: string | null;
   epoca_id?: string | null;
+  macrocycle_id?: string | null;
   microciclo_id?: string | null;
   tipo_treino: string;
   volume_planeado_m?: number | null;
   descricao_treino?: string | null;
   notas_gerais?: string | null;
   escaloes?: string[] | null;
+  presencas_grupo?: Array<{
+    id: string;
+    user_id: string;
+    nome_atleta: string;
+    estado: string;
+  }>;
   series?: Array<{
     id: string;
     ordem?: number | null;
