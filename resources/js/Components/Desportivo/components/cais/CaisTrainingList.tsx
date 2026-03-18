@@ -170,7 +170,7 @@ export function CaisTrainingList({
 
         <div className="mt-1 flex items-center gap-1.5">
           <p className="text-[10px] font-semibold text-foreground">Hoje</p>
-          <div className="h-px flex-1 bg-border" />
+          <div className="h-[2px] flex-1 bg-border" />
         </div>
 
         <div className="space-y-1 max-h-96 overflow-y-auto">
@@ -211,8 +211,8 @@ export function CaisTrainingList({
             <p className="text-[10px] text-muted-foreground py-0.5">Sem treinos agendados para hoje</p>
           )}
 
-          <div className="pt-0.5">
-            <div className="h-px w-full bg-border" />
+          <div className="pt-1.5 pb-2">
+            <div className="h-[2px] w-full bg-border" />
           </div>
 
           {futureTrainings.length > 0 && (

@@ -148,7 +148,11 @@ export default function EventosIndex({
           </TabsContent>
 
           <TabsContent value="calendario" className="space-y-3">
-            <EventosCalendar events={eventos} />
+            <EventosCalendar
+              events={eventos}
+              ageGroups={ageGroups}
+              isActive={activeTab === 'calendario'}
+            />
           </TabsContent>
 
           <TabsContent value="eventos" className="space-y-3">

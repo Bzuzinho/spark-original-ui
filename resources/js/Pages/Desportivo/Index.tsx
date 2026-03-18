@@ -288,9 +288,6 @@ export default function DesportivoIndex({
               competitions={resolvedCompetitions}
               users={resolvedUsers}
               volumeByAthlete={resolvedVolumeByAthlete}
-              onOpenCais={(trainingId, modoCais) => {
-                router.get(route('desportivo.cais'), { training_id: trainingId, cais: modoCais ? 1 : 0 });
-              }}
             />
           </TabsContent>
 

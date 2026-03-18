@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Card } from '@/Components/ui/card';
 import { Badge } from '@/Components/ui/badge';
 import { Button } from '@/Components/ui/button';
@@ -35,14 +35,33 @@ interface Event {
   escaloes_elegiveis?: string[];
 }
 
-interface EventosCalendarProps {
-  events: Event[];
+interface AgeGroup {
+  id: string;
+  nome: string;
 }
 
-export function EventosCalendar({ events = [] }: EventosCalendarProps) {
+interface EventosCalendarProps {
+  events: Event[];
+  ageGroups?: AgeGroup[];
+  isActive?: boolean;
+}
+
+export function EventosCalendar({ events = [], ageGroups = [], isActive = true }: EventosCalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [typeFilter, setTypeFilter] = useState('todos');
-  const [selectedDay, setSelectedDay] = useState<Date | null>(null);
+  const [selectedDay, setSelectedDay] = useState<Date | null>(new Date());
+
+  useEffect(() => {
+    if (isActive) {
+      const today = new Date();
+      setCurrentDate(today);
+      setSelectedDay(today);
+    }
+  }, [isActive]);
+
+  const ageGroupLabelById = useMemo(() => {
+    return new Map(ageGroups.map((group) => [group.id, group.nome]));
+  }, [ageGroups]);
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
@@ -190,7 +209,7 @@ export function EventosCalendar({ events = [] }: EventosCalendarProps) {
                 <button
                   key={day.toISOString()}
                   onClick={() => setSelectedDay(day)}
-                  className={`min-h-[72px] rounded-lg border p-1.5 text-left transition ${
+                  className={`min-h-[88px] rounded-lg border p-1.5 text-left transition ${
                     !isCurrentMonth ? 'bg-muted/40 text-muted-foreground' : 'bg-background'
                   } ${isToday ? 'border-primary' : 'border-border'} ${
                     isSelected ? 'ring-1 ring-primary' : 'hover:bg-muted/40'
@@ -198,18 +217,18 @@ export function EventosCalendar({ events = [] }: EventosCalendarProps) {
                 >
                   <div className="mb-1 text-xs font-medium">{format(day, 'd')}</div>
                   <div className="space-y-1">
-                    {dayItems.slice(0, 1).map((event) => (
+                    {dayItems.slice(0, 2).map((event) => (
                       <div
                         key={event.id}
-                        className={`rounded px-1.5 py-1 text-[10px] font-medium truncate ${getEventTypeClass(event.tipo)}`}
+                        className={`rounded px-1.5 py-1 text-[10px] font-medium leading-tight whitespace-normal break-words ${getEventTypeClass(event.tipo)}`}
                         title={event.titulo}
                       >
                         {event.titulo}
                       </div>
                     ))}
-                    {dayItems.length > 1 && (
+                    {dayItems.length > 2 && (
                       <div className="px-1 text-[10px] text-muted-foreground">
-                        +{dayItems.length - 1} mais
+                        +{dayItems.length - 2} mais
                       </div>
                     )}
                   </div>
@@ -248,6 +267,16 @@ export function EventosCalendar({ events = [] }: EventosCalendarProps) {
                         <div className="flex items-center gap-1 text-xs text-muted-foreground">
                           <MapPin size={12} />
                           <span className="truncate">{event.local}</span>
+                        </div>
+                      )}
+
+                      {event.tipo === 'treino' && Array.isArray(event.escaloes_elegiveis) && event.escaloes_elegiveis.length > 0 && (
+                        <div className="flex flex-wrap gap-1 pt-0.5">
+                          {event.escaloes_elegiveis.map((escalao) => (
+                            <Badge key={escalao} variant="outline" className="text-[10px]">
+                              {ageGroupLabelById.get(escalao) ?? escalao}
+                            </Badge>
+                          ))}
                         </div>
                       )}
                     </div>
