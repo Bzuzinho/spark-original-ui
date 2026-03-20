@@ -100,6 +100,20 @@ interface MicrocycleOption {
   nome: string;
   mesociclo_id?: string;
   macrocycle_id?: string;
+  epoca_id?: string;
+}
+
+interface MacrocycleOption {
+  id: string;
+  nome: string;
+  epoca_id?: string;
+}
+
+interface MesocycleOption {
+  id: string;
+  nome: string;
+  macrociclo_id?: string;
+  epoca_id?: string;
 }
 
 interface DesportivoProps {
@@ -110,8 +124,11 @@ interface DesportivoProps {
   seasons?: Season[];
   selectedSeason?: Season | null;
   macrocycles?: Macrocycle[];
+  macrocycleOptions?: MacrocycleOption[];
   mesocycles?: MesocyclePlan[];
+  mesocycleOptions?: MesocycleOption[];
   microcycles?: MicrocycleOption[];
+  microcycleOptions?: MicrocycleOption[];
   ageGroups?: AgeGroup[];
   trainingTypeOptions?: Array<{ id: string; nome: string }>;
   trainingZoneOptions?: Array<{ id: string; codigo: string; nome: string }>;
@@ -159,8 +176,11 @@ export default function DesportivoIndex({
   seasons = [],
   selectedSeason = null,
   macrocycles = [],
+  macrocycleOptions = [],
   mesocycles = [],
+  mesocycleOptions = [],
   microcycles = [],
+  microcycleOptions = [],
   ageGroups = [],
   trainingTypeOptions = [],
   trainingZoneOptions = [],
@@ -317,13 +337,15 @@ export default function DesportivoIndex({
           <TabsContent value="treinos" className="mt-0">
             <TrainingsTab
               trainings={resolvedTrainings}
+              seasons={seasons}
               ageGroups={ageGroups}
               users={resolvedUsers}
               trainingTypeOptions={resolvedTrainingTypeOptions}
               trainingZoneOptions={trainingZoneOptions}
               selectedSeasonId={selectedSeason?.id}
-              macrocycles={macrocycles}
-              microcycles={microcycles}
+              macrocycles={macrocycleOptions.length > 0 ? macrocycleOptions : macrocycles}
+              mesocycles={mesocycleOptions.length > 0 ? mesocycleOptions : mesocycles}
+              microcycles={microcycleOptions.length > 0 ? microcycleOptions : microcycles}
             />
           </TabsContent>
 

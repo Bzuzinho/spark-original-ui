@@ -239,6 +239,16 @@ class DesportivoController extends Controller
             ? $selectedSeason->macrocycles()->orderBy('data_inicio')->get()
             : collect();
 
+        $macrocycleOptions = Macrocycle::query()
+            ->orderBy('data_inicio')
+            ->get(['id', 'epoca_id', 'nome'])
+            ->map(fn (Macrocycle $macrocycle) => [
+                'id' => $macrocycle->id,
+                'epoca_id' => $macrocycle->epoca_id,
+                'nome' => $macrocycle->nome,
+            ])
+            ->values();
+
         $hasMesocycleObjectiveColumns = Schema::hasColumn('mesocycles', 'objetivo_principal')
             && Schema::hasColumn('mesocycles', 'objetivo_secundario');
 
@@ -265,6 +275,19 @@ class DesportivoController extends Controller
                 ])
                 ->values();
 
+        $mesocycleOptions = Mesocycle::query()
+            ->select('mesocycles.id', 'mesocycles.macrociclo_id', 'mesocycles.nome', 'macrocycles.epoca_id')
+            ->join('macrocycles', 'macrocycles.id', '=', 'mesocycles.macrociclo_id')
+            ->orderBy('mesocycles.data_inicio')
+            ->get()
+            ->map(fn (Mesocycle $mesocycle) => [
+                'id' => $mesocycle->id,
+                'macrociclo_id' => $mesocycle->macrociclo_id,
+                'nome' => $mesocycle->nome,
+                'epoca_id' => $mesocycle->epoca_id,
+            ])
+            ->values();
+
         $macrocycleIds = $macrocycles->pluck('id')->values();
 
         $microcycles = $macrocycleIds->isEmpty()
@@ -282,6 +305,21 @@ class DesportivoController extends Controller
                     'macrocycle_id' => $microcycle->macrociclo_id,
                 ])
                 ->values();
+
+        $microcycleOptions = Microcycle::query()
+            ->select('microcycles.id', 'microcycles.semana', 'microcycles.mesociclo_id', 'mesocycles.macrociclo_id', 'macrocycles.epoca_id')
+            ->join('mesocycles', 'mesocycles.id', '=', 'microcycles.mesociclo_id')
+            ->join('macrocycles', 'macrocycles.id', '=', 'mesocycles.macrociclo_id')
+            ->orderBy('microcycles.semana')
+            ->get()
+            ->map(fn (Microcycle $microcycle) => [
+                'id' => $microcycle->id,
+                'nome' => $microcycle->semana,
+                'mesociclo_id' => $microcycle->mesociclo_id,
+                'macrocycle_id' => $microcycle->macrociclo_id,
+                'epoca_id' => $microcycle->epoca_id,
+            ])
+            ->values();
 
         $hasTrainingAgeGroupPivot = Schema::hasTable('training_age_group');
 
@@ -628,8 +666,11 @@ class DesportivoController extends Controller
             'seasons' => $seasons,
             'selectedSeason' => $selectedSeason,
             'macrocycles' => $macrocycles,
+            'macrocycleOptions' => $macrocycleOptions,
             'mesocycles' => $mesocycles,
+            'mesocycleOptions' => $mesocycleOptions,
             'microcycles' => $microcycles,
+            'microcycleOptions' => $microcycleOptions,
             'ageGroups' => AgeGroup::all(),
             'tiposEpoca' => ['Principal', 'Secundária', 'Época de Verão', 'Preparação', 'Pré-Época'],
             'estadosEpoca' => ['Planeada', 'Em curso', 'Concluída', 'Arquivada'],

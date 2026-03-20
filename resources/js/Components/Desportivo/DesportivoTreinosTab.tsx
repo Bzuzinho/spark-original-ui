@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Badge } from '@/Components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select';
 import { SectionTitle } from '@/components/sports/shared';
-import type { AgeGroup, Training, User } from './types';
+import type { AgeGroup, Season, Training, User } from './types';
 
 interface SeriesRow {
   id: string;
@@ -34,16 +34,18 @@ function formatZoneDescription(name: string): string {
 
 interface Props {
   trainings: Training[];
+  seasons: Season[];
   ageGroups: AgeGroup[];
   users: User[];
   trainingTypeOptions: Array<{ id: string; nome: string }>;
   trainingZoneOptions: Array<{ id: string; codigo: string; nome: string }>;
   selectedSeasonId?: string;
-  macrocycles: Array<{ id: string; nome: string }>;
-  microcycles: Array<{ id: string; nome: string; macrocycle_id?: string }>;
+  macrocycles: Array<{ id: string; nome: string; epoca_id?: string }>;
+  mesocycles: Array<{ id: string; nome: string; macrociclo_id?: string; epoca_id?: string }>;
+  microcycles: Array<{ id: string; nome: string; macrocycle_id?: string; epoca_id?: string; mesociclo_id?: string }>;
 }
 
-export function DesportivoTreinosTab({ trainings, ageGroups, users, trainingTypeOptions, trainingZoneOptions, selectedSeasonId, macrocycles, microcycles }: Props) {
+export function DesportivoTreinosTab({ trainings, seasons, ageGroups, users, trainingTypeOptions, trainingZoneOptions, selectedSeasonId, macrocycles, mesocycles, microcycles }: Props) {
   const [createOpen, setCreateOpen] = useState(false);
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -80,6 +82,7 @@ export function DesportivoTreinosTab({ trainings, ageGroups, users, trainingType
     escaloes: [] as string[],
     epoca_id: selectedSeasonId ?? '',
     macrocycle_id: '',
+    mesociclo_id: '',
     microciclo_id: '',
   });
 
@@ -92,6 +95,7 @@ export function DesportivoTreinosTab({ trainings, ageGroups, users, trainingType
     escaloes: [] as string[],
     epoca_id: selectedSeasonId ?? '',
     macrocycle_id: '',
+    mesociclo_id: '',
     microciclo_id: '',
     tipo_treino: '',
     descricao_treino: '',
@@ -139,21 +143,89 @@ export function DesportivoTreinosTab({ trainings, ageGroups, users, trainingType
     return libraryTrainings.find((training) => training.id === scheduleForm.data.training_id) ?? null;
   }, [libraryTrainings, scheduleForm.data.training_id]);
 
-  const filteredMicrocycles = useMemo(() => {
-    if (!scheduleForm.data.macrocycle_id) {
-      return microcycles;
+  const filteredMacrocycles = useMemo(() => {
+    if (!scheduleForm.data.epoca_id) {
+      return macrocycles;
     }
 
-    return microcycles.filter((microcycle) => microcycle.macrocycle_id === scheduleForm.data.macrocycle_id);
-  }, [microcycles, scheduleForm.data.macrocycle_id]);
+    return macrocycles.filter((macrocycle) => !macrocycle.epoca_id || macrocycle.epoca_id === scheduleForm.data.epoca_id);
+  }, [macrocycles, scheduleForm.data.epoca_id]);
+
+  const filteredEditMacrocycles = useMemo(() => {
+    if (!editScheduleForm.data.epoca_id) {
+      return macrocycles;
+    }
+
+    return macrocycles.filter((macrocycle) => !macrocycle.epoca_id || macrocycle.epoca_id === editScheduleForm.data.epoca_id);
+  }, [macrocycles, editScheduleForm.data.epoca_id]);
+
+  const filteredMicrocycles = useMemo(() => {
+    const seasonScoped = scheduleForm.data.epoca_id
+      ? microcycles.filter((microcycle) => !microcycle.epoca_id || microcycle.epoca_id === scheduleForm.data.epoca_id)
+      : microcycles;
+
+    if (!scheduleForm.data.macrocycle_id) {
+      return seasonScoped;
+    }
+
+    return seasonScoped.filter((microcycle) => microcycle.macrocycle_id === scheduleForm.data.macrocycle_id);
+  }, [microcycles, scheduleForm.data.epoca_id, scheduleForm.data.macrocycle_id]);
+
+  const filteredMesocycles = useMemo(() => {
+    const seasonScoped = scheduleForm.data.epoca_id
+      ? mesocycles.filter((mesocycle) => !mesocycle.epoca_id || mesocycle.epoca_id === scheduleForm.data.epoca_id)
+      : mesocycles;
+
+    if (!scheduleForm.data.macrocycle_id) {
+      return seasonScoped;
+    }
+
+    return seasonScoped.filter((mesocycle) => mesocycle.macrociclo_id === scheduleForm.data.macrocycle_id);
+  }, [mesocycles, scheduleForm.data.epoca_id, scheduleForm.data.macrocycle_id]);
 
   const filteredEditMicrocycles = useMemo(() => {
+    const seasonScoped = editScheduleForm.data.epoca_id
+      ? microcycles.filter((microcycle) => !microcycle.epoca_id || microcycle.epoca_id === editScheduleForm.data.epoca_id)
+      : microcycles;
+
     if (!editScheduleForm.data.macrocycle_id) {
-      return microcycles;
+      return seasonScoped;
     }
 
-    return microcycles.filter((microcycle) => microcycle.macrocycle_id === editScheduleForm.data.macrocycle_id);
-  }, [microcycles, editScheduleForm.data.macrocycle_id]);
+    return seasonScoped.filter((microcycle) => microcycle.macrocycle_id === editScheduleForm.data.macrocycle_id);
+  }, [microcycles, editScheduleForm.data.epoca_id, editScheduleForm.data.macrocycle_id]);
+
+  const filteredEditMesocycles = useMemo(() => {
+    const seasonScoped = editScheduleForm.data.epoca_id
+      ? mesocycles.filter((mesocycle) => !mesocycle.epoca_id || mesocycle.epoca_id === editScheduleForm.data.epoca_id)
+      : mesocycles;
+
+    if (!editScheduleForm.data.macrocycle_id) {
+      return seasonScoped;
+    }
+
+    return seasonScoped.filter((mesocycle) => mesocycle.macrociclo_id === editScheduleForm.data.macrocycle_id);
+  }, [mesocycles, editScheduleForm.data.epoca_id, editScheduleForm.data.macrocycle_id]);
+
+  const microcycleByMesocycle = useMemo(() => {
+    const map = new Map<string, string>();
+    microcycles.forEach((microcycle) => {
+      if (!microcycle.mesociclo_id) return;
+      if (!map.has(microcycle.mesociclo_id)) {
+        map.set(microcycle.mesociclo_id, microcycle.id);
+      }
+    });
+    return map;
+  }, [microcycles]);
+
+  const mesocycleByMicrocycle = useMemo(() => {
+    const map = new Map<string, string>();
+    microcycles.forEach((microcycle) => {
+      if (!microcycle.mesociclo_id) return;
+      map.set(microcycle.id, microcycle.mesociclo_id);
+    });
+    return map;
+  }, [microcycles]);
 
   const availableAttendanceUsers = useMemo(() => {
     const selectedIds = new Set(attendanceRows.map((row) => row.user_id));
@@ -226,22 +298,70 @@ export function DesportivoTreinosTab({ trainings, ageGroups, users, trainingType
       return;
     }
 
-    const isSelectedMicrocycleCompatible = filteredMicrocycles.some((item) => item.id === scheduleForm.data.microciclo_id);
-    if (!isSelectedMicrocycleCompatible) {
+    if (!scheduleForm.data.mesociclo_id) {
+      return;
+    }
+
+    const isSelectedMesocycleCompatible = filteredMesocycles.some((item) => item.id === scheduleForm.data.mesociclo_id);
+    if (!isSelectedMesocycleCompatible) {
+      scheduleForm.setData('mesociclo_id', '');
+      scheduleForm.setData('microciclo_id', '');
+      return;
+    }
+
+    const derivedMicrocycleId = microcycleByMesocycle.get(scheduleForm.data.mesociclo_id) ?? '';
+    if (scheduleForm.data.microciclo_id !== derivedMicrocycleId) {
+      scheduleForm.setData('microciclo_id', derivedMicrocycleId);
+    }
+  }, [filteredMesocycles, scheduleForm.data.macrocycle_id, scheduleForm.data.mesociclo_id, scheduleForm.data.microciclo_id, microcycleByMesocycle]);
+
+  useEffect(() => {
+    if (!scheduleForm.data.macrocycle_id) {
+      return;
+    }
+
+    const compatibleMacro = filteredMacrocycles.some((item) => item.id === scheduleForm.data.macrocycle_id);
+    if (!compatibleMacro) {
+      scheduleForm.setData('macrocycle_id', '');
+      scheduleForm.setData('mesociclo_id', '');
       scheduleForm.setData('microciclo_id', '');
     }
-  }, [filteredMicrocycles, scheduleForm.data.macrocycle_id, scheduleForm.data.microciclo_id, scheduleForm]);
+  }, [filteredMacrocycles, scheduleForm.data.macrocycle_id]);
 
   useEffect(() => {
     if (!editScheduleForm.data.macrocycle_id) {
       return;
     }
 
-    const isSelectedMicrocycleCompatible = filteredEditMicrocycles.some((item) => item.id === editScheduleForm.data.microciclo_id);
-    if (!isSelectedMicrocycleCompatible) {
+    if (!editScheduleForm.data.mesociclo_id) {
+      return;
+    }
+
+    const isSelectedMesocycleCompatible = filteredEditMesocycles.some((item) => item.id === editScheduleForm.data.mesociclo_id);
+    if (!isSelectedMesocycleCompatible) {
+      editScheduleForm.setData('mesociclo_id', '');
+      editScheduleForm.setData('microciclo_id', '');
+      return;
+    }
+
+    const derivedMicrocycleId = microcycleByMesocycle.get(editScheduleForm.data.mesociclo_id) ?? '';
+    if (editScheduleForm.data.microciclo_id !== derivedMicrocycleId) {
+      editScheduleForm.setData('microciclo_id', derivedMicrocycleId);
+    }
+  }, [filteredEditMesocycles, editScheduleForm.data.macrocycle_id, editScheduleForm.data.mesociclo_id, editScheduleForm.data.microciclo_id, microcycleByMesocycle]);
+
+  useEffect(() => {
+    if (!editScheduleForm.data.macrocycle_id) {
+      return;
+    }
+
+    const compatibleMacro = filteredEditMacrocycles.some((item) => item.id === editScheduleForm.data.macrocycle_id);
+    if (!compatibleMacro) {
+      editScheduleForm.setData('macrocycle_id', '');
+      editScheduleForm.setData('mesociclo_id', '');
       editScheduleForm.setData('microciclo_id', '');
     }
-  }, [filteredEditMicrocycles, editScheduleForm.data.macrocycle_id, editScheduleForm.data.microciclo_id, editScheduleForm]);
+  }, [filteredEditMacrocycles, editScheduleForm.data.macrocycle_id]);
 
   useEffect(() => {
     if (!attendanceOpen || !attendanceTraining) {
@@ -358,6 +478,7 @@ export function DesportivoTreinosTab({ trainings, ageGroups, users, trainingType
         scheduleForm.setData('escaloes', []);
         scheduleForm.setData('epoca_id', selectedSeasonId ?? '');
         scheduleForm.setData('macrocycle_id', '');
+        scheduleForm.setData('mesociclo_id', '');
         scheduleForm.setData('microciclo_id', '');
       },
     });
@@ -447,6 +568,7 @@ export function DesportivoTreinosTab({ trainings, ageGroups, users, trainingType
     editScheduleForm.setData('escaloes', training.escaloes ?? []);
     editScheduleForm.setData('epoca_id', training.epoca_id ?? selectedSeasonId ?? '');
     editScheduleForm.setData('macrocycle_id', training.macrocycle_id ?? '');
+    editScheduleForm.setData('mesociclo_id', training.microciclo_id ? (mesocycleByMicrocycle.get(training.microciclo_id) ?? '') : '');
     editScheduleForm.setData('microciclo_id', training.microciclo_id ?? '');
     editScheduleForm.setData('tipo_treino', training.tipo_treino ?? '');
     editScheduleForm.setData('descricao_treino', training.descricao_treino ?? '');
@@ -778,8 +900,13 @@ export function DesportivoTreinosTab({ trainings, ageGroups, users, trainingType
                   scheduleForm.setData('local', selectedItem?.local ?? '');
                   scheduleForm.setData('escaloes', selectedItem?.escaloes ?? []);
                   scheduleForm.setData('epoca_id', selectedSeasonId ?? selectedItem?.epoca_id ?? '');
-                  scheduleForm.setData('macrocycle_id', selectedItem?.macrocycle_id ?? '');
-                  scheduleForm.setData('microciclo_id', selectedItem?.microciclo_id ?? '');
+                  const selectedMacrocycleId = selectedItem?.macrocycle_id ?? '';
+                  const selectedMicrocycleId = selectedItem?.microciclo_id ?? '';
+                  const selectedMesocycleId = selectedMicrocycleId ? (mesocycleByMicrocycle.get(selectedMicrocycleId) ?? '') : '';
+
+                  scheduleForm.setData('macrocycle_id', selectedMacrocycleId);
+                  scheduleForm.setData('mesociclo_id', selectedMesocycleId);
+                  scheduleForm.setData('microciclo_id', selectedMicrocycleId);
                 }}
               >
                 <SelectTrigger id="schedule-training">
@@ -870,6 +997,32 @@ export function DesportivoTreinosTab({ trainings, ageGroups, users, trainingType
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label htmlFor="schedule-season">Época</Label>
+                <Select
+                  value={scheduleForm.data.epoca_id || '__none__'}
+                  onValueChange={(value) => {
+                    const seasonId = value === '__none__' ? '' : value;
+                    scheduleForm.setData('epoca_id', seasonId);
+                    scheduleForm.setData('macrocycle_id', '');
+                    scheduleForm.setData('mesociclo_id', '');
+                    scheduleForm.setData('microciclo_id', '');
+                  }}
+                >
+                  <SelectTrigger id="schedule-season">
+                    <SelectValue placeholder="Selecionar época" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">Sem época</SelectItem>
+                    {seasons.map((season) => (
+                      <SelectItem key={season.id} value={season.id}>
+                        {season.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div className="space-y-1.5">
                 <Label htmlFor="schedule-macro">Macrociclo (opcional)</Label>
                 <Select
@@ -879,6 +1032,7 @@ export function DesportivoTreinosTab({ trainings, ageGroups, users, trainingType
                     scheduleForm.setData('macrocycle_id', macrocycleId);
 
                     if (!macrocycleId) {
+                      scheduleForm.setData('mesociclo_id', '');
                       scheduleForm.setData('microciclo_id', '');
                     }
                   }}
@@ -888,7 +1042,7 @@ export function DesportivoTreinosTab({ trainings, ageGroups, users, trainingType
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none__">Sem macrociclo</SelectItem>
-                    {macrocycles.map((macrocycle) => (
+                    {filteredMacrocycles.map((macrocycle) => (
                       <SelectItem key={macrocycle.id} value={macrocycle.id}>
                         {macrocycle.nome}
                       </SelectItem>
@@ -898,19 +1052,23 @@ export function DesportivoTreinosTab({ trainings, ageGroups, users, trainingType
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="schedule-micro">Microciclo (opcional)</Label>
+                <Label htmlFor="schedule-meso">Mesociclo (opcional)</Label>
                 <Select
-                  value={scheduleForm.data.microciclo_id || '__none__'}
-                  onValueChange={(value) => scheduleForm.setData('microciclo_id', value === '__none__' ? '' : value)}
+                  value={scheduleForm.data.mesociclo_id || '__none__'}
+                  onValueChange={(value) => {
+                    const mesocicloId = value === '__none__' ? '' : value;
+                    scheduleForm.setData('mesociclo_id', mesocicloId);
+                    scheduleForm.setData('microciclo_id', mesocicloId ? (microcycleByMesocycle.get(mesocicloId) ?? '') : '');
+                  }}
                 >
-                  <SelectTrigger id="schedule-micro">
-                    <SelectValue placeholder="Sem microciclo" />
+                  <SelectTrigger id="schedule-meso">
+                    <SelectValue placeholder="Sem mesociclo" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="__none__">Sem microciclo</SelectItem>
-                    {filteredMicrocycles.map((microcycle) => (
-                      <SelectItem key={microcycle.id} value={microcycle.id}>
-                        {microcycle.nome}
+                    <SelectItem value="__none__">Sem mesociclo</SelectItem>
+                    {filteredMesocycles.map((mesocycle) => (
+                      <SelectItem key={mesocycle.id} value={mesocycle.id}>
+                        {mesocycle.nome}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -1008,13 +1166,41 @@ export function DesportivoTreinosTab({ trainings, ageGroups, users, trainingType
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label htmlFor="edit-sched-season">Época</Label>
+                <Select
+                  value={editScheduleForm.data.epoca_id || '__none__'}
+                  onValueChange={(value) => {
+                    const seasonId = value === '__none__' ? '' : value;
+                    editScheduleForm.setData('epoca_id', seasonId);
+                    editScheduleForm.setData('macrocycle_id', '');
+                    editScheduleForm.setData('mesociclo_id', '');
+                    editScheduleForm.setData('microciclo_id', '');
+                  }}
+                >
+                  <SelectTrigger id="edit-sched-season">
+                    <SelectValue placeholder="Selecionar época" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">Sem época</SelectItem>
+                    {seasons.map((season) => (
+                      <SelectItem key={season.id} value={season.id}>
+                        {season.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div className="space-y-1.5">
                 <Label htmlFor="edit-sched-macro">Macrociclo (opcional)</Label>
                 <Select
                   value={editScheduleForm.data.macrocycle_id || '__none__'}
                   onValueChange={(value) => {
-                    editScheduleForm.setData('macrocycle_id', value === '__none__' ? '' : value);
-                    if (value === '__none__') {
+                    const macrocycleId = value === '__none__' ? '' : value;
+                    editScheduleForm.setData('macrocycle_id', macrocycleId);
+                    if (!macrocycleId) {
+                      editScheduleForm.setData('mesociclo_id', '');
                       editScheduleForm.setData('microciclo_id', '');
                     }
                   }}
@@ -1024,7 +1210,7 @@ export function DesportivoTreinosTab({ trainings, ageGroups, users, trainingType
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none__">Sem macrociclo</SelectItem>
-                    {macrocycles.map((macrocycle) => (
+                    {filteredEditMacrocycles.map((macrocycle) => (
                       <SelectItem key={macrocycle.id} value={macrocycle.id}>
                         {macrocycle.nome}
                       </SelectItem>
@@ -1034,19 +1220,23 @@ export function DesportivoTreinosTab({ trainings, ageGroups, users, trainingType
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="edit-sched-micro">Microciclo (opcional)</Label>
+                <Label htmlFor="edit-sched-meso">Mesociclo (opcional)</Label>
                 <Select
-                  value={editScheduleForm.data.microciclo_id || '__none__'}
-                  onValueChange={(value) => editScheduleForm.setData('microciclo_id', value === '__none__' ? '' : value)}
+                  value={editScheduleForm.data.mesociclo_id || '__none__'}
+                  onValueChange={(value) => {
+                    const mesocicloId = value === '__none__' ? '' : value;
+                    editScheduleForm.setData('mesociclo_id', mesocicloId);
+                    editScheduleForm.setData('microciclo_id', mesocicloId ? (microcycleByMesocycle.get(mesocicloId) ?? '') : '');
+                  }}
                 >
-                  <SelectTrigger id="edit-sched-micro">
-                    <SelectValue placeholder="Sem microciclo" />
+                  <SelectTrigger id="edit-sched-meso">
+                    <SelectValue placeholder="Sem mesociclo" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="__none__">Sem microciclo</SelectItem>
-                    {filteredEditMicrocycles.map((microcycle) => (
-                      <SelectItem key={microcycle.id} value={microcycle.id}>
-                        {microcycle.nome}
+                    <SelectItem value="__none__">Sem mesociclo</SelectItem>
+                    {filteredEditMesocycles.map((mesocycle) => (
+                      <SelectItem key={mesocycle.id} value={mesocycle.id}>
+                        {mesocycle.nome}
                       </SelectItem>
                     ))}
                   </SelectContent>
