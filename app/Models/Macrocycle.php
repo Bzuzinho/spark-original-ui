@@ -18,6 +18,8 @@ class Macrocycle extends Model
         'tipo',
         'data_inicio',
         'data_fim',
+        'objetivo_principal',
+        'objetivo_secundario',
         'escalao',
     ];
 

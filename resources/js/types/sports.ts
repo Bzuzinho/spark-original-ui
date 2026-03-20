@@ -88,7 +88,18 @@ export interface Macro extends BasicItem {
   tipo: string;
   data_inicio: string;
   data_fim: string;
+  objetivo_principal?: string | null;
+  objetivo_secundario?: string | null;
   escalao?: string | null;
+}
+
+export interface Mesocycle extends BasicItem {
+  macrociclo_id: string;
+  nome: string;
+  data_inicio: string;
+  data_fim: string;
+  objetivo_principal?: string | null;
+  objetivo_secundario?: string | null;
 }
 
 export interface Micro extends BasicItem {
@@ -154,6 +165,7 @@ export interface TrainingSession extends Session {}
 export interface TrainingAttendance extends Attendance {}
 export interface Macrocycle extends Macro {}
 export interface Microcycle extends Micro {}
+export type MesocyclePlan = Mesocycle;
 
 export interface AgeGroup {
   id: string;

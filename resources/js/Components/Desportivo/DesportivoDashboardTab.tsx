@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import { Badge } from '@/Components/ui/badge';
 import { Heartbeat, CalendarBlank, Gauge, UsersThree, WarningCircle, TrendUp } from '@phosphor-icons/react';
 import { SectionTitle, SmallMetric } from '@/components/sports/shared';
-import type { Competition, Stats, Training, User } from './types';
+import type { AgeGroup, Competition, Event, Stats, Training, User } from './types';
 
 interface Alert {
   title: string;
@@ -23,6 +23,8 @@ interface Props {
   trainings: Training[];
   upcomingCompetitions: UpcomingCompetition[];
   competitions: Competition[];
+  eventos?: Event[];
+  ageGroups?: AgeGroup[];
   users: User[];
   volumeByAthlete: Array<{ nome_completo: string; total_m: number }>;
 }
@@ -33,18 +35,58 @@ export function DesportivoDashboardTab({
   trainings,
   upcomingCompetitions,
   competitions,
+  eventos = [],
+  ageGroups = [],
   users,
   volumeByAthlete,
 }: Props) {
   const today = new Date().toISOString().slice(0, 10);
-  const nowTime = new Date().toTimeString().slice(0, 5);
-  const todayTrainings = (trainings ?? []).filter((t) => t.data === today);
-  const activeNow = todayTrainings.filter((t) => {
-    const start = t.hora_inicio ?? '00:00';
-    const end = t.hora_fim ?? '23:59';
-    return start <= nowTime && nowTime <= end;
-  });
-  const nextCompetition = upcomingCompetitions[0] ?? null;
+  const todayTrainings = (trainings ?? []).filter((t) => (t.data ?? '').slice(0, 10) === today);
+  const todayEvents = (eventos ?? []).filter((e) => (e.data_inicio ?? '').slice(0, 10) === today);
+  const onGoingTodayCount = todayTrainings.length + todayEvents.length;
+
+  const nextProvaEvent = (eventos ?? [])
+    .filter((event) => (event.tipo ?? '').toLowerCase() === 'prova')
+    .filter((event) => (event.data_inicio ?? '').slice(0, 10) >= today)
+    .sort((a, b) => (a.data_inicio ?? '').localeCompare(b.data_inicio ?? ''))[0] ?? null;
+
+  const ageGroupMap = new Map((ageGroups ?? []).map((group) => [group.id, group.nome] as const));
+
+  const resolveEscalao = (competition: Competition): string => {
+    const linkedEvent = (eventos ?? []).find((event) =>
+      event.id === ((competition as Competition & { evento_id?: string }).evento_id ?? competition.id)
+      || (
+        (event.titulo ?? '').trim().toLowerCase() === (competition.titulo ?? '').trim().toLowerCase()
+        && (event.data_inicio ?? '').slice(0, 10) === (competition.data_inicio ?? '').slice(0, 10)
+      )
+    );
+
+    if (!linkedEvent) return 'Sem escalão';
+
+    const relationAgeGroups = ((linkedEvent as Event & { age_groups?: Array<{ id: string; nome: string }> }).age_groups ?? [])
+      .map((group) => group.nome)
+      .filter(Boolean);
+    if (relationAgeGroups.length > 0) return relationAgeGroups.join(', ');
+
+    const eligibleIds = (linkedEvent.escaloes_elegiveis ?? []).map((id) => String(id));
+    const namesFromIds = eligibleIds.map((id) => ageGroupMap.get(id)).filter(Boolean) as string[];
+    if (namesFromIds.length > 0) return namesFromIds.join(', ');
+
+    return 'Sem escalão';
+  };
+
+  const upcomingCompetitionItems = (competitions ?? [])
+    .filter((competition) => (competition.data_inicio ?? '').slice(0, 10) >= today)
+    .sort((a, b) => (a.data_inicio ?? '').localeCompare(b.data_inicio ?? ''))
+    .slice(0, 4)
+    .map((competition) => ({
+      id: competition.id,
+      nome: competition.titulo,
+      data_inicio: (competition.data_inicio ?? '').slice(0, 10),
+      escalao: resolveEscalao(competition),
+    }));
+  const upcomingWindowCount = upcomingCompetitions.length;
+
   const topAthletes = volumeByAthlete.slice(0, 5);
 
   const activeAthletesCount = (users ?? []).filter((u) => {
@@ -60,8 +102,8 @@ export function DesportivoDashboardTab({
       <div className="grid gap-2 grid-cols-2 lg:grid-cols-4">
         <SmallMetric label="Atletas ativos" value={activeAthletesCount || stats.athletesCount} icon={<UsersThree size={18} className="text-blue-600" />} />
         <SmallMetric label="Treinos (7 dias)" value={stats.trainings7Days} hint="janela atual" icon={<CalendarBlank size={18} className="text-emerald-600" />} />
-        <SmallMetric label="A decorrer" value={activeNow.length} hint={today} icon={<Heartbeat size={18} className="text-indigo-600" />} />
-        <SmallMetric label="Próxima prova" value={nextCompetition ? nextCompetition.nome : 'Sem prova'} hint={nextCompetition?.data_inicio ?? 'sem agenda'} icon={<Gauge size={18} className="text-amber-600" />} />
+        <SmallMetric label="A decorrer" value={onGoingTodayCount} hint={`${todayTrainings.length} treinos · ${todayEvents.length} eventos`} icon={<Heartbeat size={18} className="text-indigo-600" />} />
+        <SmallMetric label="Próxima prova" value={nextProvaEvent ? nextProvaEvent.titulo : 'Sem prova'} hint={(nextProvaEvent?.data_inicio ?? '').slice(0, 10) || 'sem agenda'} icon={<Gauge size={18} className="text-amber-600" />} />
       </div>
 
       {/* ── Alertas + Competições + Carga ────────────────────────────── */}
@@ -89,19 +131,19 @@ export function DesportivoDashboardTab({
         {/* Próximas competições */}
         <Card>
           <CardHeader className="pb-2">
-            <SectionTitle title="Próximas competições" subtitle={`${competitions.length} total registadas`} />
+            <SectionTitle title="Próximas competições" subtitle={`${upcomingCompetitionItems.length || upcomingWindowCount} na agenda`} />
           </CardHeader>
           <CardContent className="space-y-2">
-            {upcomingCompetitions.length === 0 && (
+            {upcomingCompetitionItems.length === 0 && (
               <p className="text-xs text-muted-foreground">Sem competições na próxima janela.</p>
             )}
-            {upcomingCompetitions.slice(0, 4).map((competition) => (
+            {upcomingCompetitionItems.map((competition) => (
               <div key={competition.id} className="flex items-center justify-between border rounded-md p-2">
                 <div>
                   <p className="text-xs font-medium">{competition.nome}</p>
                   <p className="text-[11px] text-muted-foreground">{competition.data_inicio}</p>
                 </div>
-                <Badge variant="outline" className="text-[10px]">{competition.num_atletas_inscritos} atletas</Badge>
+                <Badge variant="outline" className="text-[10px]">{competition.escalao}</Badge>
               </div>
             ))}
           </CardContent>

@@ -74,6 +74,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('macrociclos', [DesportivoController::class, 'storeMacrocycle'])->name('desportivo.macrociclo.store');
         Route::put('macrociclos/{macrocycle}', [DesportivoController::class, 'updateMacrocycle'])->name('desportivo.macrociclo.update');
         Route::delete('macrociclos/{macrocycle}', [DesportivoController::class, 'deleteMacrocycle'])->name('desportivo.macrociclo.delete');
+        Route::post('mesociclos', [DesportivoController::class, 'storeMesocycle'])->name('desportivo.mesociclo.store');
+        Route::put('mesociclos/{mesocycle}', [DesportivoController::class, 'updateMesocycle'])->name('desportivo.mesociclo.update');
+        Route::delete('mesociclos/{mesocycle}', [DesportivoController::class, 'deleteMesocycle'])->name('desportivo.mesociclo.delete');
         
         // Training operations
         Route::post('treinos', [DesportivoController::class, 'storeTraining'])->name('desportivo.treino.store');

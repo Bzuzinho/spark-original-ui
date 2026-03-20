@@ -18,6 +18,8 @@ class Mesocycle extends Model
         'foco',
         'data_inicio',
         'data_fim',
+        'objetivo_principal',
+        'objetivo_secundario',
     ];
 
     protected $casts = [

@@ -6,6 +6,7 @@ use App\Models\AgeGroup;
 use App\Models\AthleteStatusConfig;
 use App\Models\Season;
 use App\Models\Macrocycle;
+use App\Models\Mesocycle;
 use App\Models\Microcycle;
 use App\Models\Training;
 use App\Models\TrainingAthlete;
@@ -237,6 +238,32 @@ class DesportivoController extends Controller
         $macrocycles = $selectedSeason
             ? $selectedSeason->macrocycles()->orderBy('data_inicio')->get()
             : collect();
+
+        $hasMesocycleObjectiveColumns = Schema::hasColumn('mesocycles', 'objetivo_principal')
+            && Schema::hasColumn('mesocycles', 'objetivo_secundario');
+
+        $mesocycleColumns = ['id', 'macrociclo_id', 'nome', 'foco', 'data_inicio', 'data_fim'];
+        if ($hasMesocycleObjectiveColumns) {
+            $mesocycleColumns[] = 'objetivo_principal';
+            $mesocycleColumns[] = 'objetivo_secundario';
+        }
+
+        $mesocycles = $macrocycles->isEmpty()
+            ? collect()
+            : Mesocycle::query()
+                ->whereIn('macrociclo_id', $macrocycles->pluck('id')->values())
+                ->orderBy('data_inicio')
+                ->get($mesocycleColumns)
+                ->map(fn (Mesocycle $mesocycle) => [
+                    'id' => $mesocycle->id,
+                    'macrociclo_id' => $mesocycle->macrociclo_id,
+                    'nome' => $mesocycle->nome,
+                    'data_inicio' => optional($mesocycle->data_inicio)->toDateString(),
+                    'data_fim' => optional($mesocycle->data_fim)->toDateString(),
+                    'objetivo_principal' => ($hasMesocycleObjectiveColumns ? $mesocycle->objetivo_principal : null) ?: $mesocycle->foco,
+                    'objetivo_secundario' => $hasMesocycleObjectiveColumns ? $mesocycle->objetivo_secundario : null,
+                ])
+                ->values();
 
         $macrocycleIds = $macrocycles->pluck('id')->values();
 
@@ -601,6 +628,7 @@ class DesportivoController extends Controller
             'seasons' => $seasons,
             'selectedSeason' => $selectedSeason,
             'macrocycles' => $macrocycles,
+            'mesocycles' => $mesocycles,
             'microcycles' => $microcycles,
             'ageGroups' => AgeGroup::all(),
             'tiposEpoca' => ['Principal', 'Secundária', 'Época de Verão', 'Preparação', 'Pré-Época'],
@@ -696,14 +724,28 @@ class DesportivoController extends Controller
 
     public function storeMacrocycle(Request $request): RedirectResponse
     {
+        $hasMacroObjectiveColumns = Schema::hasColumn('macrocycles', 'objetivo_principal')
+            && Schema::hasColumn('macrocycles', 'objetivo_secundario');
+
         $validated = $request->validate([
             'epoca_id' => 'required|uuid|exists:seasons,id',
             'nome' => 'required|string|max:255',
-            'tipo' => 'required|string|max:50',
+            'tipo' => 'nullable|string|max:50',
             'data_inicio' => 'required|date',
             'data_fim' => 'required|date|after_or_equal:data_inicio',
+            'objetivo_principal' => 'required|string|max:255',
+            'objetivo_secundario' => 'nullable|string|max:255',
             'escalao' => 'nullable|string|max:255',
         ]);
+
+        if (empty($validated['tipo'])) {
+            $validated['tipo'] = 'Preparação geral';
+        }
+
+        if (!$hasMacroObjectiveColumns) {
+            $validated['tipo'] = $validated['objetivo_principal'];
+            unset($validated['objetivo_principal'], $validated['objetivo_secundario']);
+        }
 
         Macrocycle::create($validated);
 
@@ -713,13 +755,27 @@ class DesportivoController extends Controller
 
     public function updateMacrocycle(Request $request, Macrocycle $macrocycle): RedirectResponse
     {
+        $hasMacroObjectiveColumns = Schema::hasColumn('macrocycles', 'objetivo_principal')
+            && Schema::hasColumn('macrocycles', 'objetivo_secundario');
+
         $validated = $request->validate([
             'nome' => 'required|string|max:255',
-            'tipo' => 'required|string|max:50',
+            'tipo' => 'nullable|string|max:50',
             'data_inicio' => 'required|date',
             'data_fim' => 'required|date|after_or_equal:data_inicio',
+            'objetivo_principal' => 'required|string|max:255',
+            'objetivo_secundario' => 'nullable|string|max:255',
             'escalao' => 'nullable|string|max:255',
         ]);
+
+        if (empty($validated['tipo'])) {
+            $validated['tipo'] = $macrocycle->tipo ?: 'Preparação geral';
+        }
+
+        if (!$hasMacroObjectiveColumns) {
+            $validated['tipo'] = $validated['objetivo_principal'];
+            unset($validated['objetivo_principal'], $validated['objetivo_secundario']);
+        }
 
         $macrocycle->update($validated);
 
@@ -734,6 +790,86 @@ class DesportivoController extends Controller
 
         return redirect()->route('desportivo.planeamento', ['season_id' => $seasonId])
             ->with('success', 'Macrociclo eliminado com sucesso!');
+    }
+
+    public function storeMesocycle(Request $request): RedirectResponse
+    {
+        $hasMesocycleObjectiveColumns = Schema::hasColumn('mesocycles', 'objetivo_principal')
+            && Schema::hasColumn('mesocycles', 'objetivo_secundario');
+
+        $validated = $request->validate([
+            'epoca_id' => 'required|uuid|exists:seasons,id',
+            'macrociclo_id' => 'required|uuid|exists:macrocycles,id',
+            'nome' => 'required|string|max:255',
+            'data_inicio' => 'required|date',
+            'data_fim' => 'required|date|after_or_equal:data_inicio',
+            'objetivo_principal' => 'required|string|max:255',
+            'objetivo_secundario' => 'nullable|string|max:255',
+        ]);
+
+        $payload = [
+            'macrociclo_id' => $validated['macrociclo_id'],
+            'nome' => $validated['nome'],
+            'foco' => $validated['objetivo_principal'],
+            'data_inicio' => $validated['data_inicio'],
+            'data_fim' => $validated['data_fim'],
+        ];
+
+        if ($hasMesocycleObjectiveColumns) {
+            $payload['objetivo_principal'] = $validated['objetivo_principal'];
+            $payload['objetivo_secundario'] = $validated['objetivo_secundario'] ?? null;
+        }
+
+        Mesocycle::create($payload);
+
+        return redirect()->route('desportivo.planeamento', ['season_id' => $validated['epoca_id']])
+            ->with('success', 'Mesociclo criado com sucesso!');
+    }
+
+    public function updateMesocycle(Request $request, Mesocycle $mesocycle): RedirectResponse
+    {
+        $hasMesocycleObjectiveColumns = Schema::hasColumn('mesocycles', 'objetivo_principal')
+            && Schema::hasColumn('mesocycles', 'objetivo_secundario');
+
+        $validated = $request->validate([
+            'epoca_id' => 'required|uuid|exists:seasons,id',
+            'macrociclo_id' => 'required|uuid|exists:macrocycles,id',
+            'nome' => 'required|string|max:255',
+            'data_inicio' => 'required|date',
+            'data_fim' => 'required|date|after_or_equal:data_inicio',
+            'objetivo_principal' => 'required|string|max:255',
+            'objetivo_secundario' => 'nullable|string|max:255',
+        ]);
+
+        $payload = [
+            'macrociclo_id' => $validated['macrociclo_id'],
+            'nome' => $validated['nome'],
+            'foco' => $validated['objetivo_principal'],
+            'data_inicio' => $validated['data_inicio'],
+            'data_fim' => $validated['data_fim'],
+        ];
+
+        if ($hasMesocycleObjectiveColumns) {
+            $payload['objetivo_principal'] = $validated['objetivo_principal'];
+            $payload['objetivo_secundario'] = $validated['objetivo_secundario'] ?? null;
+        }
+
+        $mesocycle->update($payload);
+
+        return redirect()->route('desportivo.planeamento', ['season_id' => $validated['epoca_id']])
+            ->with('success', 'Mesociclo atualizado com sucesso!');
+    }
+
+    public function deleteMesocycle(Request $request, Mesocycle $mesocycle): RedirectResponse
+    {
+        $validated = $request->validate([
+            'epoca_id' => 'required|uuid|exists:seasons,id',
+        ]);
+
+        $mesocycle->delete();
+
+        return redirect()->route('desportivo.planeamento', ['season_id' => $validated['epoca_id']])
+            ->with('success', 'Mesociclo eliminado com sucesso!');
     }
 
     /**

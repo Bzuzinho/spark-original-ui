@@ -60,6 +60,7 @@ import type {
   Event,
   EventResult,
   Macrocycle,
+  MesocyclePlan,
   PresenceRow,
   Season,
   Stats,
@@ -109,6 +110,7 @@ interface DesportivoProps {
   seasons?: Season[];
   selectedSeason?: Season | null;
   macrocycles?: Macrocycle[];
+  mesocycles?: MesocyclePlan[];
   microcycles?: MicrocycleOption[];
   ageGroups?: AgeGroup[];
   trainingTypeOptions?: Array<{ id: string; nome: string }>;
@@ -157,6 +159,7 @@ export default function DesportivoIndex({
   seasons = [],
   selectedSeason = null,
   macrocycles = [],
+  mesocycles = [],
   microcycles = [],
   ageGroups = [],
   trainingTypeOptions = [],
@@ -296,6 +299,8 @@ export default function DesportivoIndex({
               trainings={resolvedTrainings}
               upcomingCompetitions={upcomingCompetitions}
               competitions={resolvedCompetitions}
+              eventos={eventos}
+              ageGroups={ageGroups}
               users={resolvedUsers}
               volumeByAthlete={resolvedVolumeByAthlete}
             />
@@ -336,6 +341,8 @@ export default function DesportivoIndex({
             <PlanningTab
               seasons={seasons}
               macrocycles={macrocycles}
+              mesocycles={mesocycles}
+              selectedSeasonId={selectedSeason?.id ?? null}
             />
           </TabsContent>
 
