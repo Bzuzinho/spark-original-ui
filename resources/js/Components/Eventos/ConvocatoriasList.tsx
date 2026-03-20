@@ -73,6 +73,7 @@ interface Convocation {
 }
 
 interface ConvocationGroup {
+  id?: string;
   evento_id: string;
   evento_titulo: string;
   evento_data: string;
@@ -110,6 +111,7 @@ export function ConvocatoriasList({
 }: ConvocationProps) {
   // ✅ Carregar TUDO de convocationGroups - é a fonte única de verdade
   const [kvConvocationGroups, setKvConvocationGroups] = useKV<any[]>('club-convocatorias-grupo', []);
+  const [kvConvocationAthletes, setKvConvocationAthletes] = useKV<any[]>('club-convocatorias-atleta', []);
   
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -162,6 +164,7 @@ export function ConvocatoriasList({
         const kvGroup = kvConvocationGroups.find((g: any) => g.evento_id === event.id);
         
         return {
+          id: kvGroup?.id || event.id,
           evento_id: event.id,
           evento_titulo: event.titulo,
           evento_data: event.data_inicio,
@@ -213,9 +216,13 @@ export function ConvocatoriasList({
     try {
       // Eliminar do KV store
       const eventId = deletingGroup.evento_id;
+      const groupId = deletingGroup.id;
       
       // Remove from convocations grupo
       await setKvConvocationGroups(current => (current || []).filter(g => g.evento_id !== eventId));
+      if (groupId) {
+        await setKvConvocationAthletes(current => (current || []).filter(a => a.convocatoria_grupo_id !== groupId));
+      }
 
       toast.success('Convocatória eliminada com sucesso!');
       setIsDeleteDialogOpen(false);
@@ -245,21 +252,13 @@ export function ConvocatoriasList({
         console.warn('Could not fetch provas data:', err);
       }
 
-      // Fetch attendance data with provas for each athlete
-      let attendanceMap: Map<string, string[]> = new Map();
-      try {
-          const response = await axios.get(`/api/eventos/${group.evento_id}/attendances`);
-        const attendances = response.data || [];
-        
-        // Map athlete IDs to their provas (event races)
-        attendances.forEach((attendance: any) => {
-          if (attendance.user_id && attendance.provas) {
-            attendanceMap.set(attendance.user_id, attendance.provas);
-          }
-        });
-      } catch (err) {
-        console.warn('Could not fetch attendance provas data:', err);
-        // Continue without provas data
+      const athleteProvasMap = new Map<string, string[]>();
+      if (group.id) {
+        (kvConvocationAthletes || [])
+          .filter((item: any) => item.convocatoria_grupo_id === group.id)
+          .forEach((item: any) => {
+            athleteProvasMap.set(item.atleta_id, Array.isArray(item.provas) ? item.provas : []);
+          });
       }
 
       // Criar HTML para PDF
@@ -334,7 +333,7 @@ export function ConvocatoriasList({
             ${group.convocations
               .map(
                 (conv, index) => {
-                  const provaIds = attendanceMap.get(conv.user_id) || [];
+                  const provaIds = athleteProvasMap.get(conv.user_id) || [];
                   // Map prova IDs to their names
                   const provaNames = provaIds
                     .map(id => provaMap.get(id) || id)

@@ -3,7 +3,7 @@
 namespace App\Http\Requests\Sports;
 
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\RequiredIf;
 
 class StoreResultRequest extends FormRequest
 {
@@ -36,12 +36,13 @@ class StoreResultRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'prova_id' => ['required', 'uuid', 'exists:provas,id'],
+            'prova_id' => ['nullable', 'uuid', 'exists:provas,id'],
+            'prova_tipo_id' => ['nullable', 'uuid', 'exists:prova_tipos,id', new RequiredIf(!$this->filled('prova_id'))],
+            'competition_id' => ['nullable', 'uuid', 'exists:competitions,id'],
             'user_id' => [
                 'required',
                 'uuid',
                 'exists:users,id',
-                Rule::unique('results', 'user_id')->where(fn ($query) => $query->where('prova_id', $this->input('prova_id'))),
             ],
             'tempo_oficial' => ['required', 'numeric', 'min:0'],
             'posicao' => ['nullable', 'integer', 'min:1'],

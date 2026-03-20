@@ -27,8 +27,12 @@ class GetCompetitionListSummary
                     ->selectRaw('COUNT(*)'),
                 'total_inscritos'
             )
-            ->orderByDesc('data_inicio')
-            ->limit($limit);
+            ->orderByDesc('data_inicio');
+
+        // Aplicar limite apenas se positivo
+        if ($limit > 0) {
+            $query->limit($limit);
+        }
 
         $this->legacySportsGuard->assertNoForbiddenTablesInSql($query->toSql(), self::class);
 

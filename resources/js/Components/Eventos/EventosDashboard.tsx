@@ -112,7 +112,7 @@ export function EventosDashboard({
       bgColor: 'bg-orange-50',
     },
     {
-      title: 'Em Curso',
+      title: 'A decorrer',
       value: stats.eventosEmCurso,
       icon: TrendUp,
       color: 'text-emerald-600',

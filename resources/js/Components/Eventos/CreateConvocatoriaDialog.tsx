@@ -81,6 +81,7 @@ interface CreateConvocatoriaDialogProps {
   events: EventItem[];
   users: UserItem[];
   ageGroups?: AgeGroup[];
+  costCenters?: Array<{ id: string; nome: string }>;
   onCreated: (newConvocations: Convocation[]) => void;
 }
 
@@ -98,6 +99,7 @@ export function CreateConvocatoriaDialog({
   events,
   users,
   ageGroups: providedAgeGroups = [],
+  costCenters: _costCenters = [],
   onCreated,
 }: CreateConvocatoriaDialogProps) {
   const [step, setStep] = useState(1);
@@ -111,9 +113,6 @@ export function CreateConvocatoriaDialog({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiProvas, setApiProvas] = useState<Prova[]>([]);
 
-  const [kvUsers] = useKV<UserItem[]>('club-users', []);
-  const [provas] = useKV<Prova[]>('settings-provas', []);
-  const [kvAgeGroups] = useKV<AgeGroup[]>('settings-age-groups', []);
   const [convocatoriaGroups, setConvocatoriaGroups] = useKV<any[]>('club-convocatorias-grupo', []);
   const [convocatoriaAthletes, setConvocatoriaAthletes] = useKV<any[]>('club-convocatorias-atleta', []);
 
@@ -130,16 +129,16 @@ export function CreateConvocatoriaDialog({
   };
 
   const provaOptions = useMemo(() => {
-    const source = apiProvas.length > 0 ? apiProvas : provas || [];
+    const source = apiProvas || [];
 
     return source
       .filter((prova) => Boolean(prova?.id))
       .map((prova) => ({ id: prova.id, name: normalizeProvaLabel(prova) }));
-  }, [apiProvas, provas]);
+  }, [apiProvas]);
 
   const ageGroupSource = useMemo(() => {
-    return (providedAgeGroups && providedAgeGroups.length > 0 ? providedAgeGroups : kvAgeGroups) || [];
-  }, [providedAgeGroups, kvAgeGroups]);
+    return providedAgeGroups || [];
+  }, [providedAgeGroups]);
 
   const eventOptions = useMemo(() => {
     return (events || [])
@@ -148,12 +147,8 @@ export function CreateConvocatoriaDialog({
   }, [events]);
 
   const userSource = useMemo(() => {
-    if (users && users.length > 0) {
-      return users;
-    }
-
-    return kvUsers || [];
-  }, [users, kvUsers]);
+    return users || [];
+  }, [users]);
 
   const athleteOptions = useMemo(() => {
     return userSource.filter((user) => {

@@ -12,10 +12,10 @@ import {
   ChartBar
 } from '@phosphor-icons/react';
 import type { 
-  User, 
   DadosDesportivos, 
   Treino,
-  Competicao
+  Competicao,
+  TreinoAtleta
 } from '@/lib/types';
 
 interface EscalaoMetrics {
@@ -26,12 +26,11 @@ interface EscalaoMetrics {
 }
 
 export function DashboardTab() {
-  // Disabled: club-users & settings-age-groups return 500
   const [dadosDesportivos] = useKV<DadosDesportivos[]>('dados-desportivos', []);
   const [treinos] = useKV<Treino[]>('treinos', []);
+  const [treinosAtleta] = useKV<TreinoAtleta[]>('treino-atletas', []);
   const [competicoes] = useKV<Competicao[]>('competicoes', []);
-  // Disabled: settings-age-groups returns 500
-  const [escaloes] = useState<Array<{ id: string; name: string }>>([]);
+  const [escaloes] = useKV<Array<{ id: string; name: string }>>('settings-age-groups', []);
 
   const [stats, setStats] = useState({
     atletasAtivos: 0,
@@ -45,6 +44,13 @@ export function DashboardTab() {
 
   useEffect(() => {
     const calcularStats = () => {
+      const parseTreinoDate = (rawDate: string) => {
+        const hasTime = rawDate.includes('T') || /\d{2}:\d{2}/.test(rawDate);
+        const parsed = hasTime ? new Date(rawDate) : new Date(`${rawDate}T00:00:00`);
+        parsed.setHours(0, 0, 0, 0);
+        return parsed;
+      };
+
       const now = new Date();
       now.setHours(23, 59, 59, 999);
       const umaSemanaAtras = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -71,29 +77,16 @@ export function DashboardTab() {
 
       const treinosArray = treinos || [];
       const treinosValidos = treinosArray.filter(t => t.data);
-      console.log('=== DASHBOARD DESPORTIVO DEBUG ===');
-      console.log('Total de treinos na base de dados:', treinosArray.length);
-      console.log('Treinos válidos (com data):', treinosValidos.length);
-      
-      if (treinosArray.length > 0) {
-        console.log('Exemplo de treino completo:', JSON.stringify(treinosArray[0], null, 2));
-        console.log('Campos do treino:', Object.keys(treinosArray[0]));
-      }
-      
+
       const treinos7Dias = treinosValidos.filter(t => {
-        const dataTreino = new Date(t.data);
-        dataTreino.setHours(0, 0, 0, 0);
+        const dataTreino = parseTreinoDate(t.data);
         return dataTreino >= umaSemanaAtras && dataTreino <= now;
       }).length;
 
       const treinos30Dias = treinosValidos.filter(t => {
-        const dataTreino = new Date(t.data);
-        dataTreino.setHours(0, 0, 0, 0);
+        const dataTreino = parseTreinoDate(t.data);
         return dataTreino >= umMesAtras && dataTreino <= now;
       }).length;
-
-      console.log('Treinos últimos 7 dias:', treinos7Dias);
-      console.log('Treinos últimos 30 dias:', treinos30Dias);
 
       setStats({
         atletasAtivos,
@@ -106,73 +99,43 @@ export function DashboardTab() {
       const metricsMap = new Map<string, { semana: number; mes: number }>();
       const escaloesArray = escaloes || [];
 
-      console.log('Escalões configurados:', escaloesArray.length);
-      if (escaloesArray.length > 0) {
-        console.log('Exemplo de escalão:', JSON.stringify(escaloesArray[0], null, 2));
-      }
-
-      escaloesArray.forEach(escalao => {
-        metricsMap.set(escalao.id, { semana: 0, mes: 0 });
+      // Treino IDs que têm pelo menos um atleta presente
+      const treinosComPresencas = new Set<string>();
+      (treinosAtleta || []).forEach(presenca => {
+        if (!presenca.treino_id) return;
+        const estaPresente = presenca.estado === 'presente' || presenca.presente === true;
+        if (estaPresente) {
+          treinosComPresencas.add(presenca.treino_id);
+        }
       });
-
-      let treinosProcessados = 0;
-      let treinosSemEscaloes = 0;
-      let treinosSemMetros = 0;
 
       treinosValidos.forEach(treino => {
         if (!treino.data) return;
-        
-        const dataTreino = new Date(treino.data);
-        dataTreino.setHours(0, 0, 0, 0);
+
+        const dataTreino = parseTreinoDate(treino.data);
         const metros = Number(treino.volume_planeado_m) || 0;
-
         const escaloesDoTreino = treino.escaloes || [];
-        
-        console.log(`Treino ${treino.numero_treino || treino.id}:`, {
-          data: treino.data,
-          escaloes: escaloesDoTreino,
-          metros: metros,
-          dentroSemana: dataTreino >= umaSemanaAtras && dataTreino <= now,
-          dentroMes: dataTreino >= umMesAtras && dataTreino <= now
-        });
-        
-        if (escaloesDoTreino.length === 0) {
-          treinosSemEscaloes++;
-          console.log(`  ⚠ Treino sem escalões`);
-          return;
-        }
 
-        if (metros === 0) {
-          treinosSemMetros++;
-          console.log(`  ⚠ Treino sem metros`);
-          return;
-        }
-
-        treinosProcessados++;
+        if (escaloesDoTreino.length === 0) return;
+        if (metros === 0) return;
+        if (!treinosComPresencas.has(treino.id)) return;
 
         escaloesDoTreino.forEach(escalaoId => {
           if (!escalaoId) return;
-          
+
           const current = metricsMap.get(escalaoId) || { semana: 0, mes: 0 };
 
           if (dataTreino >= umaSemanaAtras && dataTreino <= now) {
             current.semana += metros;
-            console.log(`  ✓ Adicionados ${metros}m ao escalão ${escalaoId} (semana)`);
           }
 
           if (dataTreino >= umMesAtras && dataTreino <= now) {
             current.mes += metros;
-            console.log(`  ✓ Adicionados ${metros}m ao escalão ${escalaoId} (mês)`);
           }
 
           metricsMap.set(escalaoId, current);
         });
       });
-
-      console.log('Treinos processados com sucesso:', treinosProcessados);
-      console.log('Treinos sem escalões:', treinosSemEscaloes);
-      console.log('Treinos sem metros:', treinosSemMetros);
-      console.log('Mapa de métricas:', Array.from(metricsMap.entries()));
 
       const metricsArray: EscalaoMetrics[] = Array.from(metricsMap.entries())
         .map(([escalaoId, metrics]) => {
@@ -187,15 +150,11 @@ export function DashboardTab() {
         .filter(m => m.metrosSemana > 0 || m.metrosMes > 0)
         .sort((a, b) => b.metrosMes - a.metrosMes);
 
-      console.log('Métricas finais calculadas:', metricsArray.length, 'escalões com dados');
-      console.log('Métricas detalhadas:', JSON.stringify(metricsArray, null, 2));
-      console.log('=== FIM DEBUG ===');
-
       setEscaloesMetrics(metricsArray);
     };
 
     calcularStats();
-  }, [treinos, dadosDesportivos, competicoes, escaloes]);
+  }, [treinos, treinosAtleta, dadosDesportivos, competicoes, escaloes]);
 
   const alertasAtivos = stats.atestadosACaducar > 0;
 

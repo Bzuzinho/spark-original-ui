@@ -432,7 +432,7 @@ export function EventosList({
       case 'agendado':
         return 'Agendado';
       case 'em_curso':
-        return 'Em Curso';
+        return 'A decorrer';
       case 'concluido':
         return 'Concluído';
       case 'cancelado':
@@ -909,7 +909,7 @@ export function EventosList({
                       <SelectContent>
                         <SelectItem value="rascunho">Rascunho</SelectItem>
                         <SelectItem value="agendado">Agendado</SelectItem>
-                        <SelectItem value="em_curso">Em Curso</SelectItem>
+                        <SelectItem value="em_curso">A decorrer</SelectItem>
                         <SelectItem value="concluido">Concluído</SelectItem>
                         <SelectItem value="cancelado">Cancelado</SelectItem>
                       </SelectContent>
@@ -1056,7 +1056,7 @@ export function EventosList({
               <SelectContent>
                 <SelectItem value="todos">Todos os Estados</SelectItem>
                 <SelectItem value="agendado">Agendado</SelectItem>
-                <SelectItem value="em_curso">Em Curso</SelectItem>
+                <SelectItem value="em_curso">A decorrer</SelectItem>
                 <SelectItem value="concluido">Concluído</SelectItem>
                 <SelectItem value="cancelado">Cancelado</SelectItem>
               </SelectContent>

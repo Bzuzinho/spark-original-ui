@@ -19,7 +19,7 @@
  *   - alerts            → calculados no controller
  *
  * Tabs:
- *   dashboard | grupos | treinos | presencas | planeamento | competicoes | resultados | performance
+ *   dashboard | grupos | treinos | presencas | planeamento | competicoes | performance
  */
 
 import { useEffect, useState } from 'react';
@@ -33,7 +33,6 @@ import {
   CheckSquare,
   MapTrifold,
   Trophy,
-  Medal,
   Lightning,
 } from '@phosphor-icons/react';
 
@@ -46,7 +45,6 @@ import {
   TrainingsTab,
   PerformanceTab,
 } from '@/components/sports/tabs';
-import { DesportivoResultadosTab }  from '@/Components/Desportivo/DesportivoResultadosTab';
 import {
   useAthletes,
   useCompetitionResults,
@@ -59,6 +57,7 @@ import type {
   AgeGroup,
   AthleteOperationalRow,
   Competition,
+  Event,
   EventResult,
   Macrocycle,
   PresenceRow,
@@ -122,6 +121,12 @@ interface DesportivoProps {
   results?: EventResult[];
   teamResults?: TeamResult[];
   users?: User[];
+  eventos?: Event[];
+  costCenters?: Array<{ id: string; nome: string; codigo?: string; ativo?: boolean }>;
+  eventTypes?: Array<{ id: string; nome: string; visibilidade_default?: string; ativo?: boolean }>;
+  convocations?: any[];
+  convocationGroups?: any[];
+  provaTipos?: Array<{ id: string; nome: string }>;
   statusOptions?: string[];
   classificacaoOptions?: string[];
   volumeByAthlete?: VolumeRow[];
@@ -137,7 +142,6 @@ const TABS = [
   { value: 'planeamento',  label: 'Planeamento',  Icon: MapTrifold },
   { value: 'cais',         label: 'Cais',         Icon: CheckSquare },
   { value: 'competicoes',  label: 'Competições',  Icon: Trophy },
-  { value: 'resultados',   label: 'Resultados',   Icon: Medal },
   { value: 'performance',  label: 'Performance',  Icon: Lightning },
 ] as const;
 
@@ -165,6 +169,12 @@ export default function DesportivoIndex({
   results = [],
   teamResults = [],
   users = [],
+  eventos = [],
+  costCenters = [],
+  eventTypes = [],
+  convocations = [],
+  convocationGroups = [],
+  provaTipos = [],
   statusOptions = ['presente', 'atrasado', 'falta', 'dispensado'],
   volumeByAthlete = [],
   athleteOperationalRows = [],
@@ -207,7 +217,7 @@ export default function DesportivoIndex({
         nome,
       }));
 
-  const initialTab = (tab === 'presencas' ? 'cais' : tab) as TabValue;
+  const initialTab = (tab === 'presencas' ? 'cais' : tab === 'resultados' ? 'competicoes' : tab) as TabValue;
   const [activeTab, setActiveTab] = useState<TabValue>(initialTab);
   const [isNavigatingToCais, setIsNavigatingToCais] = useState(false);
 
@@ -266,7 +276,7 @@ export default function DesportivoIndex({
         {/* ── Tabs ───────────────────────────────────────────────────── */}
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
 
-          <TabsList className="grid w-full grid-cols-4 sm:grid-cols-8 h-auto mb-3">
+          <TabsList className="grid w-full grid-cols-4 sm:grid-cols-7 h-auto mb-3">
             {TABS.map(({ value, label, Icon }) => (
               <TabsTrigger
                 key={value}
@@ -333,14 +343,15 @@ export default function DesportivoIndex({
             <CompetitionsTab
               competitions={resolvedCompetitions}
               results={resolvedResults}
-              users={resolvedUsers}
-            />
-          </TabsContent>
-
-          <TabsContent value="resultados" className="mt-0">
-            <DesportivoResultadosTab
-              results={resolvedResults}
               teamResults={teamResults}
+              users={resolvedUsers}
+              eventos={eventos}
+              ageGroups={ageGroups}
+              costCenters={costCenters}
+              eventTypes={eventTypes}
+              convocations={convocations}
+              convocationGroups={convocationGroups}
+              provaTipos={provaTipos}
             />
           </TabsContent>
 

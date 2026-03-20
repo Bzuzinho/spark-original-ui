@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
 class Event extends Model
 {
@@ -140,6 +141,40 @@ class Event extends Model
     public function convocationMovements(): HasMany
     {
         return $this->hasMany(ConvocationMovement::class, 'evento_id');
+    }
+
+    public function getEstadoAttribute(?string $value): string
+    {
+        return $this->resolveDisplayEstado($value);
+    }
+
+    public function resolveDisplayEstado(?string $estado = null, ?Carbon $referenceDate = null): string
+    {
+        $currentEstado = $estado ?? $this->getRawOriginal('estado') ?? 'rascunho';
+
+        if (in_array($currentEstado, ['rascunho', 'cancelado'], true)) {
+            return $currentEstado;
+        }
+
+        if (!$this->data_inicio instanceof Carbon) {
+            return $currentEstado;
+        }
+
+        $reference = ($referenceDate ?? now())->copy()->startOfDay();
+        $startDate = $this->data_inicio->copy()->startOfDay();
+        $endDate = ($this->data_fim instanceof Carbon ? $this->data_fim : $this->data_inicio)
+            ->copy()
+            ->endOfDay();
+
+        if ($reference->lt($startDate)) {
+            return 'agendado';
+        }
+
+        if ($reference->gt($endDate)) {
+            return 'concluido';
+        }
+
+        return 'em_curso';
     }
 
     // ===== ACCESSORS/MUTATORS =====

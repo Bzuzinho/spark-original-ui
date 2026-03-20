@@ -17,13 +17,16 @@ class CompetitionController extends Controller
      */
     public function index(): JsonResponse
     {
-        $competitions = app(GetCompetitionListSummary::class)(50)
+        // Carrega TODAS as competições (sem limite de 50)
+        $competitions = app(GetCompetitionListSummary::class)(-1) // -1 ou PHP_INT_MAX para remover limite
             ->map(fn($comp) => [
                 'id' => $comp->id,
+                'titulo' => $comp->nome,
                 'nome' => $comp->nome,
                 'data_inicio' => $comp->data_inicio,
                 'data_fim' => $comp->data_fim,
                 'local' => $comp->local,
+                'tipo' => $comp->tipo,
                 'tipo_prova' => $comp->tipo,
                 'total_provas' => (int) ($comp->total_provas ?? 0),
                 'total_resultados' => (int) ($comp->total_resultados ?? 0),

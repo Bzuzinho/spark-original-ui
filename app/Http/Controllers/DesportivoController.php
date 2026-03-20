@@ -11,12 +11,14 @@ use App\Models\Training;
 use App\Models\TrainingAthlete;
 use App\Models\TrainingMetric;
 use App\Models\Competition;
+use App\Models\ProvaTipo;
 use App\Models\Result;
 use App\Models\TeamResult;
 use App\Models\Event;
 use App\Models\EventType;
 use App\Models\EventAttendance;
 use App\Models\ConvocationGroup;
+use App\Models\ConvocationAthlete;
 use App\Models\CostCenter;
 use App\Models\TrainingTypeConfig;
 use App\Models\TrainingZoneConfig;
@@ -326,16 +328,42 @@ class DesportivoController extends Controller
                 });
         }
 
-        $competitions = Competition::query()
+        // Competições persistidas
+        $persistedCompetitions = Competition::query()
             ->orderByDesc('data_inicio')
-            ->get(['id', 'nome', 'data_inicio', 'local', 'tipo'])
+            ->get(['id', 'nome', 'data_inicio', 'local', 'tipo', 'evento_id'])
             ->map(fn ($row) => [
                 'id' => $row->id,
                 'titulo' => $row->nome,
                 'data_inicio' => $row->data_inicio,
                 'local' => $row->local,
                 'tipo' => $row->tipo,
+                'evento_id' => $row->evento_id,
             ]);
+
+        $linkedEventIds = $persistedCompetitions
+            ->pluck('evento_id')
+            ->filter()
+            ->values();
+
+        // Fallback: eventos de prova ainda não sincronizados para competitions
+        $orphanEventCompetitions = Event::query()
+            ->where('tipo', 'prova')
+            ->when($linkedEventIds->isNotEmpty(), fn ($q) => $q->whereNotIn('id', $linkedEventIds))
+            ->get(['id', 'titulo', 'data_inicio', 'local', 'tipo'])
+            ->map(fn ($event) => [
+                'id' => $event->id,
+                'titulo' => $event->titulo,
+                'data_inicio' => $event->data_inicio,
+                'local' => $event->local,
+                'tipo' => $event->tipo,
+                'evento_id' => $event->id,
+            ]);
+
+        $competitions = $persistedCompetitions
+            ->concat($orphanEventCompetitions)
+            ->sortByDesc(fn ($item) => (string) ($item['data_inicio'] ?? ''))
+            ->values();
 
         $eventos = Event::with(['creator', 'convocations', 'attendances', 'ageGroups'])
             ->orderBy('data_inicio', 'desc')
@@ -371,6 +399,43 @@ class DesportivoController extends Controller
             ->get(['id', 'nome', 'visibilidade_default', 'ativo']);
 
         $convocations = ConvocationGroup::all();
+        $convocationGroups = ConvocationGroup::with([
+                'evento:id,titulo,data_inicio,tipo',
+                'convocationAthletes.atleta:id,nome_completo',
+            ])
+            ->orderByDesc('data_criacao')
+            ->get()
+            ->map(function (ConvocationGroup $group) {
+                return [
+                    'id' => $group->id,
+                    'evento_id' => $group->evento_id,
+                    'evento_titulo' => $group->evento?->titulo,
+                    'evento_data' => $group->evento?->data_inicio,
+                    'atletas_ids' => $group->atletas_ids ?? [],
+                    'hora_encontro' => $group->hora_encontro,
+                    'local_encontro' => $group->local_encontro,
+                    'observacoes' => $group->observacoes,
+                    'athletes' => $group->convocationAthletes->map(function (ConvocationAthlete $athlete) {
+                        return [
+                            'atleta_id' => $athlete->atleta_id,
+                            'atleta_nome' => $athlete->atleta?->nome_completo,
+                            'provas' => $athlete->provas ?? [],
+                            'estafetas' => $athlete->estafetas,
+                            'presente' => $athlete->presente,
+                            'confirmado' => $athlete->confirmado,
+                        ];
+                    })->values(),
+                ];
+            })
+            ->values();
+        $provaTipos = ProvaTipo::query()
+            ->orderBy('nome')
+            ->get(['id', 'nome'])
+            ->map(fn ($provaTipo) => [
+                'id' => $provaTipo->id,
+                'nome' => $provaTipo->nome,
+            ])
+            ->values();
         $attendances = collect();
 
         $results = Result::with(['prova.competition', 'athlete'])
@@ -412,7 +477,11 @@ class DesportivoController extends Controller
             ->join('trainings', 'training_athletes.treino_id', '=', 'trainings.id')
             ->join('users', 'training_athletes.user_id', '=', 'users.id')
             ->where('trainings.data', '>=', $seasonStart)
-            ->select('users.nome_completo', DB::raw('SUM(COALESCE(training_athletes.volume_real_m, 0)) as total_m'))
+            ->where(function ($q) {
+                $q->where('training_athletes.estado', 'presente')
+                  ->orWhere('training_athletes.presente', true);
+            })
+            ->select('users.nome_completo', DB::raw('SUM(COALESCE(trainings.volume_planeado_m, 0)) as total_m'))
             ->groupBy('users.id', 'users.nome_completo')
             ->orderByDesc('total_m')
             ->get();
@@ -584,6 +653,8 @@ class DesportivoController extends Controller
             'costCenters' => $costCenters,
             'eventTypes' => $eventTypes,
             'convocations' => $convocations,
+            'convocationGroups' => $convocationGroups,
+            'provaTipos' => $provaTipos,
             'attendances' => $attendances,
             'financeVsSport' => [
                 'totalFinancialWeight' => round($sportsFinancialTotal, 2),

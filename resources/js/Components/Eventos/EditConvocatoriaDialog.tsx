@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { usePage } from '@inertiajs/react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/Components/ui/dialog';
 import { Button } from '@/Components/ui/button';
 import { Card } from '@/Components/ui/card';
@@ -57,8 +56,6 @@ export function EditConvocatoriaDialog({
   users = [],
   costCenters = [],
 }: EditConvocatoriaDialogProps) {
-  const { auth } = usePage<any>().props;
-
   const [step, setStep] = useState(1);
   const [selectedAthletes, setSelectedAthletes] = useState<string[]>([]);
   const [initialAthletes, setInitialAthletes] = useState<string[]>([]);
@@ -69,9 +66,9 @@ export function EditConvocatoriaDialog({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiProvas, setApiProvas] = useState<Prova[]>([]);
   const [athleteProvas, setAthleteProvas] = useState<Record<string, string[]>>({});
-  const [initialAthleteProvas, setInitialAthleteProvas] = useState<Record<string, string[]>>({});
 
   const [convocationGroups, setConvocationGroups] = useKV<any[]>('club-convocatorias-grupo', []);
+  const [convocationAthletes, setConvocationAthletes] = useKV<any[]>('club-convocatorias-atleta', []);
 
   const normalizeProvaLabel = (prova: Prova): string => {
     if (prova.name && prova.name.trim() !== '') {
@@ -127,29 +124,12 @@ export function EditConvocatoriaDialog({
         setSelectedAthletes(athleteIds);
         setInitialAthletes(athleteIds);
 
-        // Carregar provas atuais de cada atleta da API
-        const loadAthleteProvas = async () => {
-          try {
-            const response = await axios.get(`/api/eventos/${group.evento_id}/attendances`);
-            const attendances = response.data || [];
-            
-            const provMap: Record<string, string[]> = {};
-            attendances.forEach((att: any) => {
-              if (att.user_id && att.provas) {
-                provMap[att.user_id] = att.provas;
-              }
-            });
-            
-            setAthleteProvas(provMap);
-            setInitialAthleteProvas(provMap);
-          } catch (error) {
-            console.warn('Não foi possível carregar as provas dos atletas:', error);
-            setAthleteProvas({});
-            setInitialAthleteProvas({});
-          }
-        };
-
-        loadAthleteProvas();
+        const groupAthletes = (convocationAthletes || []).filter((item: any) => item.convocatoria_grupo_id === groupData.id);
+        const provMap: Record<string, string[]> = {};
+        groupAthletes.forEach((item: any) => {
+          provMap[item.atleta_id] = Array.isArray(item.provas) ? item.provas : [];
+        });
+        setAthleteProvas(provMap);
       } else {
         // Fallback: usar convocations do group se KV store ainda não tem dados
         const athleteIds = group.convocations?.map((c: any) => c.user_id) || [];
@@ -160,35 +140,21 @@ export function EditConvocatoriaDialog({
         setObservacoes('');
         setCentroCustoId('none');
 
-        // Ainda assim tenta carregar as provas de cada atleta
-        const loadAthleteProvas = async () => {
-          try {
-            const response = await axios.get(`/api/eventos/${group.evento_id}/attendances`);
-            const attendances = response.data || [];
-            
-            const provMap: Record<string, string[]> = {};
-            attendances.forEach((att: any) => {
-              if (att.user_id && att.provas) {
-                provMap[att.user_id] = att.provas;
-              }
-            });
-            
-            setAthleteProvas(provMap);
-            setInitialAthleteProvas(provMap);
-          } catch (error) {
-            console.warn('Não foi possível carregar as provas dos atletas:', error);
-            setAthleteProvas({});
-            setInitialAthleteProvas({});
-          }
-        };
-
-        loadAthleteProvas();
+        const provMap: Record<string, string[]> = {};
+        (convocationAthletes || [])
+          .filter((item: any) => athleteIds.includes(item.atleta_id))
+          .forEach((item: any) => {
+            if (!provMap[item.atleta_id]) {
+              provMap[item.atleta_id] = Array.isArray(item.provas) ? item.provas : [];
+            }
+          });
+        setAthleteProvas(provMap);
       }
       
       // Reset step quando abre
       setStep(1);
     }
-  }, [group, open, convocationGroups]);
+  }, [group, open, convocationGroups, convocationAthletes]);
 
   const handleSave = async () => {
     if (!group) return;
@@ -216,47 +182,20 @@ export function EditConvocatoriaDialog({
 
       setConvocationGroups(updatedGroups);
 
-      // Se houve mudanças nos atletas, apagar e recriar registos de presença
-      if (removedAthletes.length > 0 || addedAthletes.length > 0) {
-        try {
-          // Apagar registos de presença dos atletas removidos
-          if (removedAthletes.length > 0) {
-            await Promise.all(
-              removedAthletes.map(athleteId =>
-                axios.delete(`/api/eventos/${group.evento_id}/attendances/user/${athleteId}`).catch(() => null)
-              )
-            );
-          }
+      const groupId = (convocationGroups.find((g: any) => g.evento_id === group.evento_id)?.id) || null;
 
-          // Criar registos de presença para os atletas adicionados
-          if (addedAthletes.length > 0) {
-            await Promise.all(
-              addedAthletes.map(athleteId =>
-                axios.post(`/api/eventos/${group.evento_id}/attendances`, {
-                  user_id: athleteId,
-                  estado: 'pendente',
-                  data_presenca: new Date(group.evento_data).toISOString().split('T')[0],
-                  provas: athleteProvas[athleteId] || [],
-                }).catch(() => null)
-              )
-            );
-          }
-        } catch (error) {
-          console.error('Erro ao sincronizar presencas:', error);
-        }
-      }
-
-      // Atualizar as provas de todos os atletas selecionados
-      try {
-        await Promise.all(
-          selectedAthletes.map(athleteId =>
-            axios.patch(`/api/eventos/${group.evento_id}/attendances/user/${athleteId}`, {
-              provas: athleteProvas[athleteId] || [],
-            }).catch(() => null)
-          )
-        );
-      } catch (error) {
-        console.error('Erro ao atualizar provas:', error);
+      if (groupId) {
+        const preserved = (convocationAthletes || []).filter((item: any) => item.convocatoria_grupo_id !== groupId);
+        const updated = selectedAthletes.map((athleteId) => ({
+          id: typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+            ? crypto.randomUUID()
+            : `tmp-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+          convocatoria_grupo_id: groupId,
+          atleta_id: athleteId,
+          provas: athleteProvas[athleteId] || [],
+          created_at: new Date().toISOString(),
+        }));
+        setConvocationAthletes([...preserved, ...updated]);
       }
 
       toast.success('Convocatória atualizada com sucesso!');
@@ -532,7 +471,7 @@ export function EditConvocatoriaDialog({
                   )}
                   {removedCount > 0 && (
                     <div className="text-orange-700">
-                      ⚠ {removedCount} atleta(s) será(ão) removido(s) (registos de presença serão apagados)
+                      ⚠ {removedCount} atleta(s) será(ão) removido(s)
                     </div>
                   )}
                   {addedCount === 0 && removedCount === 0 && (

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Competition;
 use App\Models\Event;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -82,6 +83,7 @@ class EventsController extends Controller
         $validated['estado'] = $validated['estado'] ?? 'rascunho';
 
         $event = Event::create($validated);
+        $this->syncCompetitionFromEvent($event);
         
         return response()->json($event, 201);
     }
@@ -135,6 +137,8 @@ class EventsController extends Controller
         ]);
 
         $event->update($validated);
+        $event->refresh();
+        $this->syncCompetitionFromEvent($event);
         
         return response()->json($event);
     }
@@ -145,8 +149,28 @@ class EventsController extends Controller
     public function destroy(string $id): JsonResponse
     {
         $event = Event::findOrFail($id);
+        Competition::where('evento_id', $event->id)->delete();
         $event->delete();
         
         return response()->json(['message' => 'Event deleted successfully']);
+    }
+
+    private function syncCompetitionFromEvent(Event $event): void
+    {
+        if ($event->tipo !== 'prova') {
+            Competition::where('evento_id', $event->id)->delete();
+            return;
+        }
+
+        Competition::updateOrCreate(
+            ['evento_id' => $event->id],
+            [
+                'nome' => $event->titulo,
+                'local' => $event->local ?: 'N/A',
+                'data_inicio' => $event->data_inicio,
+                'data_fim' => $event->data_fim,
+                'tipo' => 'prova',
+            ]
+        );
     }
 }

@@ -258,7 +258,7 @@ export function EventosRelatorios({
                   <span className="font-medium">{relatorioGeral.eventosAgendados}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Em Curso:</span>
+                  <span>A decorrer:</span>
                   <span className="font-medium">{relatorioGeral.eventosEmCurso}</span>
                 </div>
                 <div className="flex justify-between">
@@ -435,7 +435,7 @@ export function EventosRelatorios({
                               : 'outline'
                           }
                         >
-                          {evento.estado}
+                          {evento.estado === 'em_curso' ? 'A decorrer' : evento.estado}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-center">{evento.convocatorias}</TableCell>

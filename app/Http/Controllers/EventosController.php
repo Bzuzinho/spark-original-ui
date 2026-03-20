@@ -26,20 +26,24 @@ class EventosController extends Controller
 {
     public function index(): Response
     {
-        // Get stats
         $now = Carbon::now();
         $startOfMonth = $now->copy()->startOfMonth();
         $endOfMonth = $now->copy()->endOfMonth();
-        
+
+        $eventos = Event::with(['creator', 'convocations', 'attendances', 'ageGroups'])
+            ->orderBy('data_inicio', 'desc')
+            ->get();
+
+        $eventosAtivos = $eventos->filter(fn (Event $event) => $event->estado !== 'cancelado');
+
         $stats = [
-            'totalEvents' => Event::count(),
-            'upcomingEvents' => Event::where('data_inicio', '>=', $now)
-                ->where('estado', '!=', 'cancelado')
-                ->count(),
+            'totalEvents' => $eventos->count(),
+            'upcomingEvents' => $eventosAtivos->filter(fn (Event $event) => $event->estado === 'agendado')->count(),
             'monthParticipants' => EventConvocation::whereBetween('created_at', [$startOfMonth, $endOfMonth])
                 ->count(),
-            'completedEvents' => Event::where('estado', 'concluido')
-                ->whereYear('data_inicio', $now->year)
+            'completedEvents' => $eventos
+                ->filter(fn (Event $event) => $event->data_inicio?->year === $now->year)
+                ->filter(fn (Event $event) => $event->estado === 'concluido')
                 ->count(),
             'activeConvocatorias' => EventConvocation::whereHas('event', function($query) use ($now) {
                 $query->where('data_inicio', '>=', $now);
@@ -51,9 +55,7 @@ class EventosController extends Controller
             ->get(['id', 'nome', 'idade_minima', 'idade_maxima', 'ativo']);
 
         return Inertia::render('Eventos/Index', [
-            'eventos' => Event::with(['creator', 'convocations', 'attendances', 'ageGroups']) // ✅ Carregar ageGroups
-                ->orderBy('data_inicio', 'desc')
-                ->get(),
+            'eventos' => $eventos,
             'stats' => $stats,
             'users' => User::with(['athleteSportsData:id,user_id,escalao_id'])
                 ->where('estado', 'ativo')
@@ -396,15 +398,16 @@ class EventosController extends Controller
         $now = Carbon::now();
         $startOfMonth = $now->copy()->startOfMonth();
         $endOfMonth = $now->copy()->endOfMonth();
+        $eventos = Event::query()->get();
+        $eventosAtivos = $eventos->filter(fn (Event $event) => $event->estado !== 'cancelado');
         
         return response()->json([
-            'upcomingEvents' => Event::where('data_inicio', '>=', $now)
-                ->where('estado', '!=', 'cancelado')
-                ->count(),
+            'upcomingEvents' => $eventosAtivos->filter(fn (Event $event) => $event->estado === 'agendado')->count(),
             'monthParticipants' => EventConvocation::whereBetween('created_at', [$startOfMonth, $endOfMonth])
                 ->count(),
-            'completedEvents' => Event::where('estado', 'concluido')
-                ->whereYear('data_inicio', $now->year)
+            'completedEvents' => $eventos
+                ->filter(fn (Event $event) => $event->data_inicio?->year === $now->year)
+                ->filter(fn (Event $event) => $event->estado === 'concluido')
                 ->count(),
         ]);
     }
