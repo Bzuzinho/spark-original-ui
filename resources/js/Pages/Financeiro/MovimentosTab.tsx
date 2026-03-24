@@ -277,6 +277,12 @@ export function MovimentosTab({
       });
   }, [movimentos, estadoFilter, classificacaoFilter]);
 
+  const sortedMovimentos = useMemo(() => {
+    return [...filteredMovimentos].sort(
+      (a, b) => new Date(b.data_emissao).getTime() - new Date(a.data_emissao).getTime()
+    );
+  }, [filteredMovimentos]);
+
   const handleAbrirDialogoRecibo = (movimentoId?: string, reciboAtual?: string | null, metodoAtual?: string | null) => {
     if (movimentoId) {
       setSelectedMovimentoId(movimentoId);
@@ -1181,39 +1187,125 @@ export function MovimentosTab({
       </div>
 
       <Card className="w-full">
-        <div className="w-full overflow-x-auto">
-        <Table className="w-full min-w-[1180px]">
+        <div className="space-y-3 p-3 md:hidden">
+          {sortedMovimentos.length === 0 ? (
+            <div className="py-8 text-center text-sm text-muted-foreground">Nenhum movimento encontrado</div>
+          ) : (
+            sortedMovimentos.map((movimento) => {
+              const movimentoValor = toNumber(movimento.valor_total);
+              const isSelected = selectedMovimentos.has(movimento.id);
+
+              return (
+                <Card key={movimento.id} className="p-3">
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-semibold">{getNomeDisplay(movimento)}</div>
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {getClassificacaoBadge(movimento.classificacao)}
+                          <Badge variant="outline">{movimento.tipo}</Badge>
+                          {getEstadoBadge(movimento.estado_pagamento)}
+                        </div>
+                      </div>
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={() => handleToggleMovimentoSelection(movimento.id)}
+                        aria-label="Selecionar movimento"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                      <span className="text-muted-foreground">Emissao</span>
+                      <span className="text-right">{format(new Date(movimento.data_emissao), 'dd/MM/yyyy')}</span>
+                      <span className="text-muted-foreground">Vencimento</span>
+                      <span className="text-right">{format(new Date(movimento.data_vencimento), 'dd/MM/yyyy')}</span>
+                      <span className="text-muted-foreground">Centro Custo</span>
+                      <span className="truncate text-right">{getCentroCustoName(movimento.centro_custo_id || undefined)}</span>
+                      <span className="text-muted-foreground">Valor</span>
+                      <span className={`text-right font-semibold ${movimentoValor < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                        €{movimentoValor.toFixed(2)}
+                      </span>
+                    </div>
+
+                    <div className="text-xs text-muted-foreground">
+                      <span className="font-medium">Faturas:</span> {getFaturasAssociadas(movimento.id) || '-'}
+                    </div>
+
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      <Button size="sm" variant="ghost" onClick={() => handleEditarMovimento(movimento.id)}>
+                        <PencilSimple size={16} className="mr-1" />
+                        Editar
+                      </Button>
+                      {(movimento.estado_pagamento === 'pendente' || movimento.estado_pagamento === 'vencido') && (
+                        <Button size="sm" variant="outline" onClick={() => handleAbrirDialogoRecibo(movimento.id)}>
+                          <Check size={16} className="mr-1" />
+                          Liquidar
+                        </Button>
+                      )}
+                      {movimento.estado_pagamento === 'pago' && !movimento.numero_recibo && (
+                        <Button size="sm" variant="outline" onClick={() => handleAbrirDialogoRecibo(movimento.id)}>
+                          <Check size={16} className="mr-1" />
+                          Recibo
+                        </Button>
+                      )}
+                      {movimento.estado_pagamento === 'pago' && movimento.numero_recibo && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() =>
+                            handleAbrirDialogoRecibo(
+                              movimento.id,
+                              movimento.numero_recibo,
+                              movimento.metodo_pagamento
+                            )
+                          }
+                        >
+                          Editar Recibo
+                        </Button>
+                      )}
+                      <Button size="sm" variant="ghost" onClick={() => handleDeleteSingleMovimento(movimento.id)}>
+                        <Trash size={16} className="mr-1" />
+                        Apagar
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              );
+            })
+          )}
+        </div>
+
+        <div className="hidden w-full md:block">
+        <Table className="w-full table-fixed">
           <TableHeader>
             <TableRow>
-              <TableHead className="w-12 min-w-12">
+              <TableHead className="w-10">
                 <Checkbox
                   checked={selectedMovimentos.size === filteredMovimentos.length && filteredMovimentos.length > 0}
                   onCheckedChange={handleToggleAllMovimentos}
                 />
               </TableHead>
-              <TableHead className="min-w-[210px]">Nome</TableHead>
-              <TableHead className="min-w-[120px] whitespace-nowrap">Classificacao</TableHead>
-              <TableHead className="min-w-[110px]">Tipo</TableHead>
-              <TableHead className="min-w-[120px] whitespace-nowrap">Data Emissao</TableHead>
-              <TableHead className="min-w-[120px]">Vencimento</TableHead>
-              <TableHead className="min-w-[110px]">Valor</TableHead>
-              <TableHead className="min-w-[110px]">Estado</TableHead>
-              <TableHead className="min-w-[140px] whitespace-nowrap">Centro Custo</TableHead>
-              <TableHead className="min-w-[220px] whitespace-nowrap">Faturas Associadas</TableHead>
-              <TableHead className="text-right min-w-[250px]">Acoes</TableHead>
+              <TableHead className="w-[15%]">Nome</TableHead>
+              <TableHead className="w-[10%]">Classificacao</TableHead>
+              <TableHead className="w-[8%]">Tipo</TableHead>
+              <TableHead className="w-[9%]">Data Emissao</TableHead>
+              <TableHead className="w-[9%]">Vencimento</TableHead>
+              <TableHead className="w-[9%]">Valor</TableHead>
+              <TableHead className="w-[9%]">Estado</TableHead>
+              <TableHead className="w-[11%]">Centro Custo</TableHead>
+              <TableHead className="w-[13%]">Faturas Associadas</TableHead>
+              <TableHead className="w-[17%] text-right">Acoes</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredMovimentos.length === 0 ? (
+            {sortedMovimentos.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={11} className="text-center text-muted-foreground py-8">
                   Nenhum movimento encontrado
                 </TableCell>
               </TableRow>
             ) : (
-              filteredMovimentos
-                .sort((a, b) => new Date(b.data_emissao).getTime() - new Date(a.data_emissao).getTime())
-                .map((movimento) => {
+              sortedMovimentos.map((movimento) => {
                   const movimentoValor = toNumber(movimento.valor_total);
                   return (
                     <TableRow key={movimento.id}>
@@ -1223,25 +1315,25 @@ export function MovimentosTab({
                         onCheckedChange={() => handleToggleMovimentoSelection(movimento.id)}
                       />
                     </TableCell>
-                    <TableCell className="font-medium whitespace-nowrap">{getNomeDisplay(movimento)}</TableCell>
+                    <TableCell className="font-medium break-words">{getNomeDisplay(movimento)}</TableCell>
                     <TableCell>{getClassificacaoBadge(movimento.classificacao)}</TableCell>
                     <TableCell>
-                      <Badge variant="outline" className="whitespace-nowrap">{movimento.tipo}</Badge>
+                      <Badge variant="outline" className="max-w-full break-words text-center leading-tight">{movimento.tipo}</Badge>
                     </TableCell>
-                    <TableCell className="whitespace-nowrap">{format(new Date(movimento.data_emissao), 'dd/MM/yyyy')}</TableCell>
-                    <TableCell className="whitespace-nowrap">{format(new Date(movimento.data_vencimento), 'dd/MM/yyyy')}</TableCell>
-                    <TableCell className="font-semibold whitespace-nowrap">
+                    <TableCell>{format(new Date(movimento.data_emissao), 'dd/MM/yyyy')}</TableCell>
+                    <TableCell>{format(new Date(movimento.data_vencimento), 'dd/MM/yyyy')}</TableCell>
+                    <TableCell className="font-semibold">
                       <span className={movimentoValor < 0 ? 'text-red-600' : 'text-green-600'}>
                         €{movimentoValor.toFixed(2)}
                       </span>
                     </TableCell>
                     <TableCell>{getEstadoBadge(movimento.estado_pagamento)}</TableCell>
-                    <TableCell className="text-sm whitespace-nowrap">{getCentroCustoName(movimento.centro_custo_id || undefined)}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground max-w-xs truncate">
+                    <TableCell className="text-sm break-words">{getCentroCustoName(movimento.centro_custo_id || undefined)}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground break-words leading-snug">
                       {getFaturasAssociadas(movimento.id) || '-'}
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2">
+                      <div className="flex flex-wrap items-center justify-end gap-2">
                         <Button size="sm" variant="ghost" onClick={() => handleEditarMovimento(movimento.id)} title="Editar movimento">
                           <PencilSimple size={16} />
                         </Button>
@@ -1258,8 +1350,8 @@ export function MovimentosTab({
                           </Button>
                         )}
                         {movimento.estado_pagamento === 'pago' && movimento.numero_recibo && (
-                          <div className="flex items-center gap-2">
-                            <div className="text-xs text-muted-foreground">Recibo: {movimento.numero_recibo}</div>
+                          <div className="flex flex-wrap items-center justify-end gap-2">
+                            <div className="text-xs text-muted-foreground break-all">Recibo: {movimento.numero_recibo}</div>
                             <Button
                               size="sm"
                               variant="outline"

@@ -288,11 +288,11 @@ export default function MembrosEdit({
 
                         {/* Tabs */}
                         <Tabs defaultValue="pessoal" className="w-full">
-                            <TabsList>
-                                <TabsTrigger value="pessoal">Dados Pessoais</TabsTrigger>
-                                <TabsTrigger value="financeiro">Financeiro</TabsTrigger>
-                                {isAtleta && <TabsTrigger value="desportivo">Desportivo</TabsTrigger>}
-                                <TabsTrigger value="configuracao">Configuração</TabsTrigger>
+                            <TabsList className={`grid w-full h-auto gap-1 p-1 ${isAtleta ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-2 sm:grid-cols-3'}`}>
+                                <TabsTrigger value="pessoal" className="text-xs px-2 py-1.5 whitespace-normal leading-tight text-center min-h-8">Dados Pessoais</TabsTrigger>
+                                <TabsTrigger value="financeiro" className="text-xs px-2 py-1.5 whitespace-normal leading-tight text-center min-h-8">Financeiro</TabsTrigger>
+                                {isAtleta && <TabsTrigger value="desportivo" className="text-xs px-2 py-1.5 whitespace-normal leading-tight text-center min-h-8">Desportivo</TabsTrigger>}
+                                <TabsTrigger value="configuracao" className="text-xs px-2 py-1.5 whitespace-normal leading-tight text-center min-h-8">Configuração</TabsTrigger>
                             </TabsList>
 
                             {/* TAB: Dados Pessoais */}

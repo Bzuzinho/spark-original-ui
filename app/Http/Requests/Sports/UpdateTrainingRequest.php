@@ -22,6 +22,7 @@ class UpdateTrainingRequest extends FormRequest
             'local' => ['nullable', 'string', 'max:255'],
             'epoca_id' => ['nullable', 'uuid', 'exists:seasons,id'],
             'macrocycle_id' => ['nullable', 'uuid', 'exists:macrocycles,id'],
+            'mesociclo_id' => ['nullable', 'uuid', 'exists:mesocycles,id'],
             'microciclo_id' => ['nullable', 'uuid', 'exists:microcycles,id'],
             'tipo_treino' => [
                 'required',

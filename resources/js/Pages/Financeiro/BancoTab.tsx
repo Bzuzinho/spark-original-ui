@@ -941,9 +941,9 @@ export function BancoTab({
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div className="flex gap-2 items-center">
+        <div className="flex w-full gap-2 items-center md:w-auto">
           <Select value={conciliadoFilter} onValueChange={setConciliadoFilter}>
-            <SelectTrigger className="w-[200px]">
+            <SelectTrigger className="w-full md:w-[200px]">
               <SelectValue placeholder="Estado" />
             </SelectTrigger>
             <SelectContent>
@@ -954,10 +954,10 @@ export function BancoTab({
           </Select>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex w-full flex-col gap-2 sm:flex-row md:w-auto">
           <Dialog open={dialogImportOpen} onOpenChange={setDialogImportOpen}>
             <DialogTrigger asChild>
-              <Button variant="outline" onClick={resetImportData}>
+              <Button variant="outline" onClick={resetImportData} className="w-full sm:w-auto">
                 <FileArrowUp className="mr-2" />
                 Importar Extrato XLS
               </Button>
@@ -1080,7 +1080,7 @@ export function BancoTab({
 
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button onClick={resetForm}>
+              <Button onClick={resetForm} className="w-full sm:w-auto">
                 <Plus className="mr-2" />
                 Adicionar Movimento
               </Button>
@@ -1228,7 +1228,95 @@ export function BancoTab({
       </div>
 
       <Card className="overflow-hidden">
-        <div className="max-h-[400px] overflow-auto">
+        <div className="space-y-3 p-3 md:hidden">
+          {extratosTabela.length === 0 ? (
+            <div className="py-8 text-center text-sm text-muted-foreground">Nenhum movimento encontrado</div>
+          ) : (
+            extratosTabela.map((extrato) => (
+              <Card key={extrato.id} className="p-3">
+                <div className="space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold">
+                        {format(new Date(extrato.data_movimento), 'dd/MM/yyyy')}
+                      </div>
+                      <div className="mt-1 break-words text-xs text-muted-foreground">{extrato.descricao}</div>
+                    </div>
+                    <Badge className={`shrink-0 text-[10px] ${extrato.conciliado ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'}`}>
+                      {extrato.conciliado ? 'Conciliado' : 'Pendente'}
+                    </Badge>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                    <span className="text-muted-foreground">Valor</span>
+                    <span className={`text-right font-semibold ${toNumber(extrato.valor) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {toNumber(extrato.valor) >= 0 ? '+' : ''}€{toNumber(extrato.valor).toFixed(2)}
+                    </span>
+                    <span className="text-muted-foreground">Saldo</span>
+                    <span className="text-right">€{toNumber(extrato.saldo_calculado).toFixed(2)}</span>
+                    <span className="text-muted-foreground">Centro Custo</span>
+                    <span className="text-right break-words">{getCentroCustoName(extrato.centro_custo_id)}</span>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => openEditDialog(extrato)}
+                      className="h-8 px-2"
+                    >
+                      <PencilSimple size={14} className="mr-1" />
+                      Editar
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleDeleteExtrato(extrato)}
+                      className="h-8 px-2 text-destructive hover:text-destructive"
+                    >
+                      <Trash size={14} className="mr-1" />
+                      Apagar
+                    </Button>
+                    {extrato.conciliado ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleDesconciliar(extrato)}
+                        className="h-8 px-2"
+                      >
+                        <X size={12} className="mr-1" />
+                        Desconciliar
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setSelectedExtrato(extrato);
+                          setConciliacaoItens([]);
+                          setCatalogData({
+                            tipo: extrato.valor >= 0 ? 'receita' : 'despesa',
+                            centro_custo_id: extrato.centro_custo_id || '',
+                            fatura_id: '',
+                            user_id: '',
+                            movimento_id: '',
+                          });
+                          setDialogCatalogOpen(true);
+                        }}
+                        className="h-8 px-2"
+                      >
+                        <ArrowsLeftRight size={12} className="mr-1" />
+                        Catalogar
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </Card>
+            ))
+          )}
+        </div>
+
+        <div className="hidden max-h-[400px] overflow-auto md:block">
             <table className="w-full caption-bottom text-sm">
               <TableHeader>
                 <TableRow>

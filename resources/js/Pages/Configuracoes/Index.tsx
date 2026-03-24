@@ -696,6 +696,9 @@ export default function SettingsIndex({
                             <TabsTrigger value="clube" className="text-sm whitespace-nowrap px-3 sm:px-2">
                                 Clube
                             </TabsTrigger>
+                            <TabsTrigger value="desportivo" className="text-sm whitespace-nowrap px-3 sm:px-2">
+                                Desportivo
+                            </TabsTrigger>
                             <TabsTrigger value="financeiro" className="text-sm whitespace-nowrap px-3 sm:px-2">
                                 Financeiro
                             </TabsTrigger>
@@ -707,9 +710,6 @@ export default function SettingsIndex({
                             </TabsTrigger>
                             <TabsTrigger value="base-dados" className="text-sm whitespace-nowrap px-3 sm:px-2">
                                 Base de Dados
-                            </TabsTrigger>
-                            <TabsTrigger value="desportivo" className="text-sm whitespace-nowrap px-3 sm:px-2">
-                                Desportivo
                             </TabsTrigger>
                         </TabsList>
                     </div>

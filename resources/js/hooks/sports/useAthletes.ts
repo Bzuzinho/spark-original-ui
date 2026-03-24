@@ -8,12 +8,17 @@ interface UseAthletesResult {
   error: string | null;
 }
 
-export function useAthletes(): UseAthletesResult {
+export function useAthletes(enabled = true): UseAthletesResult {
   const [data, setData] = useState<Athlete[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!enabled) {
+      setLoading(false);
+      return;
+    }
+
     let active = true;
 
     void getAthletes()
@@ -34,7 +39,7 @@ export function useAthletes(): UseAthletesResult {
     return () => {
       active = false;
     };
-  }, []);
+  }, [enabled]);
 
   return { data, loading, error };
 }

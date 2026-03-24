@@ -242,8 +242,8 @@ export function FinancialTab({
         </Card>
       </div>
 
-      {/* Configurações */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-1">
+      {/* Configurações e Ajustes */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-1">
         <Card className="p-2">
           <h3 className="text-xs font-semibold mb-1.5">Mensalidade</h3>
           <div className="space-y-1">
@@ -305,10 +305,7 @@ export function FinancialTab({
             )}
           </div>
         </Card>
-      </div>
 
-      {/* Ajustes Manuais */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-1">
         <Card className="p-2">
           <h3 className="text-xs font-semibold mb-1.5">Conta Corrente Base</h3>
           <Input

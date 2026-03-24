@@ -158,6 +158,8 @@ export function ResultadosCompeticoesForm({
     return provas;
   }, [provas]);
 
+  const provaTipoIds = useMemo(() => new Set(provas.map((item) => item.id)), [provas]);
+
   const provaTipoMap = useMemo(() => {
     const map = new Map<string, string>();
     provaTipos.forEach((item) => {
@@ -438,9 +440,14 @@ export function ResultadosCompeticoesForm({
 
     setSaving(true);
     try {
+      const selectedProvaId = formData.prova_id;
+      const createPayloadProvaFields = provaTipoIds.has(selectedProvaId)
+        ? { prova_tipo_id: selectedProvaId }
+        : { prova_id: selectedProvaId };
+
       const payload = {
         competition_id: formData.competition_id,
-        prova_tipo_id: formData.prova_id,
+        ...createPayloadProvaFields,
         user_id: formData.user_id,
         tempo_oficial: Number(formData.tempo_oficial),
         posicao: formData.posicao ? Number(formData.posicao) : null,
@@ -498,7 +505,13 @@ export function ResultadosCompeticoesForm({
 
       setDialogOpen(false);
     } catch (error: any) {
-      const message = error?.response?.data?.message || 'Erro ao guardar resultado';
+      const validationErrors = error?.response?.data?.errors;
+      const firstValidationMessage = validationErrors && typeof validationErrors === 'object'
+        ? Object.values(validationErrors).flat().find(Boolean)
+        : null;
+      const message = (typeof firstValidationMessage === 'string' && firstValidationMessage)
+        || error?.response?.data?.message
+        || 'Erro ao guardar resultado';
       toast.error(message);
     } finally {
       setSaving(false);
@@ -518,115 +531,201 @@ export function ResultadosCompeticoesForm({
 
       {selectedCompetitionId && (
         <>
-          <div className="border rounded-lg overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-xs">Atleta</TableHead>
-                  <TableHead className="text-xs">Prova</TableHead>
-                  <TableHead className="text-xs">Estado</TableHead>
-                  <TableHead className="text-xs">Tempo</TableHead>
-                  <TableHead className="text-xs text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {resultsLoading && (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center text-xs text-muted-foreground py-6">
-                      A carregar resultados...
-                    </TableCell>
-                  </TableRow>
-                )}
+          <div className="border rounded-lg overflow-hidden">
+            <div className="sm:hidden p-2 space-y-2">
+              {resultsLoading && (
+                <p className="text-center text-xs text-muted-foreground py-4">A carregar resultados...</p>
+              )}
 
-                {!resultsLoading && expectedRows.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center text-xs text-muted-foreground py-6">
-                      Sem linhas de convocatória para esta competição.
-                    </TableCell>
-                  </TableRow>
-                )}
+              {!resultsLoading && expectedRows.length === 0 && (
+                <p className="text-center text-xs text-muted-foreground py-4">Sem linhas de convocatória para esta competição.</p>
+              )}
 
-                {!resultsLoading && expectedRows.map((row) => {
-                  const hasResult = Boolean(row.result?.id);
-                  return (
-                    <TableRow key={row.key}>
-                      <TableCell className="text-xs font-medium">{row.athleteName}</TableCell>
-                      <TableCell className="text-xs">{row.provaLabel}</TableCell>
-                      <TableCell className="text-xs">
+              {!resultsLoading && expectedRows.map((row) => {
+                const hasResult = Boolean(row.result?.id);
+                return (
+                  <div key={row.key} className="rounded-md border bg-white p-2 space-y-2">
+                    <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-xs">
+                      <span className="text-muted-foreground">Atleta</span>
+                      <span className="text-right font-medium break-words">{row.athleteName}</span>
+                      <span className="text-muted-foreground">Prova</span>
+                      <span className="text-right break-words">{row.provaLabel}</span>
+                      <span className="text-muted-foreground">Estado</span>
+                      <span className="text-right">
                         {hasResult ? (
                           <Badge variant="secondary" className="text-[10px]">Preenchido</Badge>
                         ) : (
                           <Badge variant="outline" className="text-[10px]">Não preenchido</Badge>
                         )}
-                      </TableCell>
-                      <TableCell className="text-xs font-mono">
-                        {row.result?.tempo_oficial || '—'}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button size="sm" variant={hasResult ? 'outline' : 'default'} className="h-7 text-xs" onClick={() => openRowDialog(row)}>
-                            {hasResult ? 'Editar' : 'Preencher'}
-                          </Button>
-                          {row.result?.id && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-7 px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
-                              onClick={() => deleteResult(row.result!.id)}
-                            >
-                              <Trash2 size={12} />
-                            </Button>
-                          )}
-                        </div>
+                      </span>
+                      <span className="text-muted-foreground">Tempo</span>
+                      <span className="text-right font-mono">{row.result?.tempo_oficial || '—'}</span>
+                    </div>
+
+                    <div className="flex justify-end gap-1">
+                      <Button size="sm" variant={hasResult ? 'outline' : 'default'} className="h-7 text-xs" onClick={() => openRowDialog(row)}>
+                        {hasResult ? 'Editar' : 'Preencher'}
+                      </Button>
+                      {row.result?.id && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                          onClick={() => deleteResult(row.result!.id)}
+                        >
+                          <Trash2 size={12} />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="hidden sm:block overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs">Atleta</TableHead>
+                    <TableHead className="text-xs">Prova</TableHead>
+                    <TableHead className="text-xs">Estado</TableHead>
+                    <TableHead className="text-xs">Tempo</TableHead>
+                    <TableHead className="text-xs text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {resultsLoading && (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center text-xs text-muted-foreground py-6">
+                        A carregar resultados...
                       </TableCell>
                     </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+                  )}
+
+                  {!resultsLoading && expectedRows.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center text-xs text-muted-foreground py-6">
+                        Sem linhas de convocatória para esta competição.
+                      </TableCell>
+                    </TableRow>
+                  )}
+
+                  {!resultsLoading && expectedRows.map((row) => {
+                    const hasResult = Boolean(row.result?.id);
+                    return (
+                      <TableRow key={row.key}>
+                        <TableCell className="text-xs font-medium">{row.athleteName}</TableCell>
+                        <TableCell className="text-xs">{row.provaLabel}</TableCell>
+                        <TableCell className="text-xs">
+                          {hasResult ? (
+                            <Badge variant="secondary" className="text-[10px]">Preenchido</Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-[10px]">Não preenchido</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-xs font-mono">
+                          {row.result?.tempo_oficial || '—'}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-1">
+                            <Button size="sm" variant={hasResult ? 'outline' : 'default'} className="h-7 text-xs" onClick={() => openRowDialog(row)}>
+                              {hasResult ? 'Editar' : 'Preencher'}
+                            </Button>
+                            {row.result?.id && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                onClick={() => deleteResult(row.result!.id)}
+                              >
+                                <Trash2 size={12} />
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
           </div>
 
           {extraResults.length > 0 && (
             <div className="space-y-2">
               <p className="text-xs font-medium text-muted-foreground">Resultados fora da convocatória</p>
-              <div className="border rounded-lg overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="text-xs">Atleta</TableHead>
-                      <TableHead className="text-xs">Prova</TableHead>
-                      <TableHead className="text-xs">Tempo</TableHead>
-                      <TableHead className="text-xs">Posição</TableHead>
-                      <TableHead className="text-xs text-right">Ações</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {extraResults.map((result) => (
-                      <TableRow key={result.id}>
-                        <TableCell className="text-xs">{result.athlete_name}</TableCell>
-                        <TableCell className="text-xs">{result.distance_label}</TableCell>
-                        <TableCell className="text-xs font-mono">{result.tempo_oficial || '—'}</TableCell>
-                        <TableCell className="text-xs">{result.posicao || '—'}</TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-1">
-                            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => openEditExisting(result)}>
-                              <Pencil size={12} className="mr-1" />
-                              Editar
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-7 px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
-                              onClick={() => deleteResult(result.id)}
-                            >
-                              <Trash2 size={12} />
-                            </Button>
-                          </div>
-                        </TableCell>
+              <div className="border rounded-lg overflow-hidden">
+                <div className="sm:hidden p-2 space-y-2">
+                  {extraResults.map((result) => (
+                    <div key={result.id} className="rounded-md border bg-white p-2 space-y-2">
+                      <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-xs">
+                        <span className="text-muted-foreground">Atleta</span>
+                        <span className="text-right break-words">{result.athlete_name}</span>
+                        <span className="text-muted-foreground">Prova</span>
+                        <span className="text-right break-words">{result.distance_label}</span>
+                        <span className="text-muted-foreground">Tempo</span>
+                        <span className="text-right font-mono">{result.tempo_oficial || '—'}</span>
+                        <span className="text-muted-foreground">Posição</span>
+                        <span className="text-right">{result.posicao || '—'}</span>
+                      </div>
+
+                      <div className="flex justify-end gap-1">
+                        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => openEditExisting(result)}>
+                          <Pencil size={12} className="mr-1" />
+                          Editar
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                          onClick={() => deleteResult(result.id)}
+                        >
+                          <Trash2 size={12} />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="hidden sm:block overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="text-xs">Atleta</TableHead>
+                        <TableHead className="text-xs">Prova</TableHead>
+                        <TableHead className="text-xs">Tempo</TableHead>
+                        <TableHead className="text-xs">Posição</TableHead>
+                        <TableHead className="text-xs text-right">Ações</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {extraResults.map((result) => (
+                        <TableRow key={result.id}>
+                          <TableCell className="text-xs">{result.athlete_name}</TableCell>
+                          <TableCell className="text-xs">{result.distance_label}</TableCell>
+                          <TableCell className="text-xs font-mono">{result.tempo_oficial || '—'}</TableCell>
+                          <TableCell className="text-xs">{result.posicao || '—'}</TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-1">
+                              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => openEditExisting(result)}>
+                                <Pencil size={12} className="mr-1" />
+                                Editar
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                onClick={() => deleteResult(result.id)}
+                              >
+                                <Trash2 size={12} />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               </div>
             </div>
           )}

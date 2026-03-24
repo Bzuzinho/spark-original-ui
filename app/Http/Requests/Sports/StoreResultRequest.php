@@ -36,12 +36,14 @@ class StoreResultRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'prova_id' => ['nullable', 'uuid', 'exists:provas,id'],
-            'prova_tipo_id' => ['nullable', 'uuid', 'exists:prova_tipos,id', new RequiredIf(!$this->filled('prova_id'))],
-            'competition_id' => ['nullable', 'uuid', 'exists:competitions,id'],
+            // Accept legacy identifiers as well (mixed environments may not use UUID everywhere yet).
+            'prova_id' => ['nullable', 'string', 'exists:provas,id'],
+            'prova_tipo_id' => ['nullable', 'string', 'exists:prova_tipos,id', new RequiredIf(!$this->filled('prova_id'))],
+            // Can arrive as competitions.id or events.id (legacy fallback list in UI).
+            'competition_id' => ['nullable', 'string'],
             'user_id' => [
                 'required',
-                'uuid',
+                'string',
                 'exists:users,id',
             ],
             'tempo_oficial' => ['required', 'numeric', 'min:0'],

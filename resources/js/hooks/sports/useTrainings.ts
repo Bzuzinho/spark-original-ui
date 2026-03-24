@@ -8,12 +8,17 @@ interface UseTrainingsResult {
   error: string | null;
 }
 
-export function useTrainings(): UseTrainingsResult {
+export function useTrainings(enabled = true): UseTrainingsResult {
   const [data, setData] = useState<Training[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!enabled) {
+      setLoading(false);
+      return;
+    }
+
     let active = true;
 
     void getTrainings()
@@ -34,7 +39,7 @@ export function useTrainings(): UseTrainingsResult {
     return () => {
       active = false;
     };
-  }, []);
+  }, [enabled]);
 
   return { data, loading, error };
 }

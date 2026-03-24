@@ -150,27 +150,25 @@ export default function Show({ member, allUsers, userTypes, ageGroups, faturas, 
 
             <Card className="p-2 sm:p-3 bg-white border-0">
                 <Tabs defaultValue="dashboard" className="space-y-2">
-                    <div className="w-full overflow-x-auto -mx-2 px-2 sm:mx-0 sm:px-0 pb-1">
-                        <TabsList className="inline-flex w-auto min-w-full sm:min-w-0 h-9 sm:h-8">
-                            <TabsTrigger value="dashboard" className="whitespace-nowrap text-xs px-3 sm:px-2 py-1">
+                    <TabsList className={`grid w-full h-auto gap-1 p-1 ${showSportsTab ? 'grid-cols-2 sm:grid-cols-5' : 'grid-cols-2 sm:grid-cols-4'}`}>
+                            <TabsTrigger value="dashboard" className="text-xs px-2 py-1.5 whitespace-normal leading-tight text-center min-h-8">
                                 Dashboard
                             </TabsTrigger>
-                            <TabsTrigger value="personal" className="whitespace-nowrap text-xs px-3 sm:px-2 py-1">
+                            <TabsTrigger value="personal" className="text-xs px-2 py-1.5 whitespace-normal leading-tight text-center min-h-8">
                                 Pessoal
                             </TabsTrigger>
-                            <TabsTrigger value="financial" className="whitespace-nowrap text-xs px-3 sm:px-2 py-1">
+                            <TabsTrigger value="financial" className="text-xs px-2 py-1.5 whitespace-normal leading-tight text-center min-h-8">
                                 Financeiro
                             </TabsTrigger>
                             {showSportsTab && (
-                                <TabsTrigger value="sports" className="whitespace-nowrap text-xs px-3 sm:px-2 py-1">
+                                <TabsTrigger value="sports" className="text-xs px-2 py-1.5 whitespace-normal leading-tight text-center min-h-8">
                                     Desportivo
                                 </TabsTrigger>
                             )}
-                            <TabsTrigger value="configuration" className="whitespace-nowrap text-xs px-3 sm:px-2 py-1">
+                            <TabsTrigger value="configuration" className="text-xs px-2 py-1.5 whitespace-normal leading-tight text-center min-h-8">
                                 Configuração
                             </TabsTrigger>
                         </TabsList>
-                    </div>
 
                     <TabsContent value="dashboard" className="space-y-2 mt-2 bg-white p-0 rounded-lg">
                         <DashboardTab user={user as any} faturas={faturas} />

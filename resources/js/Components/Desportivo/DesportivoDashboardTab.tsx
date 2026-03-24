@@ -183,8 +183,8 @@ export function DesportivoDashboardTab({
           </CardHeader>
           <CardContent>
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
-              {topAthletes.map((row) => (
-                <div key={row.nome_completo} className="border rounded-md p-2 flex items-center justify-between gap-2">
+              {topAthletes.map((row, index) => (
+                <div key={`${row.nome_completo}-${row.total_m}-${index}`} className="border rounded-md p-2 flex items-center justify-between gap-2">
                   <p className="text-xs font-medium truncate">{row.nome_completo}</p>
                   <Badge variant="secondary" className="text-[10px] shrink-0">{(row.total_m / 1000).toFixed(1)} km</Badge>
                 </div>

@@ -7,8 +7,9 @@ import { Label } from '@/Components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/Components/ui/dialog';
 import { Badge } from '@/Components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select';
+import { TrainingsOverlayCalendar } from '@/Components/Desportivo/components/TrainingsOverlayCalendar';
 import { SectionTitle } from '@/components/sports/shared';
-import type { AgeGroup, Season, Training, User } from './types';
+import type { AgeGroup, Macrocycle, MesocyclePlan, Season, Training, User } from './types';
 
 interface SeriesRow {
   id: string;
@@ -32,6 +33,20 @@ function formatZoneDescription(name: string): string {
   return name.replace(/^Zona\s*\d+\s*-\s*/i, '').trim();
 }
 
+function normalizeDateOnly(value?: string | null): string | null {
+  if (!value) return null;
+  return value.slice(0, 10);
+}
+
+function isDateWithinRange(target?: string | null, start?: string | null, end?: string | null): boolean {
+  const targetDate = normalizeDateOnly(target);
+  const startDate = normalizeDateOnly(start);
+  const endDate = normalizeDateOnly(end);
+
+  if (!targetDate || !startDate || !endDate) return false;
+  return targetDate >= startDate && targetDate <= endDate;
+}
+
 interface Props {
   trainings: Training[];
   seasons: Season[];
@@ -40,12 +55,31 @@ interface Props {
   trainingTypeOptions: Array<{ id: string; nome: string }>;
   trainingZoneOptions: Array<{ id: string; codigo: string; nome: string }>;
   selectedSeasonId?: string;
-  macrocycles: Array<{ id: string; nome: string; epoca_id?: string }>;
-  mesocycles: Array<{ id: string; nome: string; macrociclo_id?: string; epoca_id?: string }>;
+  macrocycles: Array<{ id: string; nome: string; epoca_id?: string; data_inicio?: string; data_fim?: string }>;
+  mesocycles: Array<{ id: string; nome: string; macrociclo_id?: string; epoca_id?: string; data_inicio?: string; data_fim?: string }>;
   microcycles: Array<{ id: string; nome: string; macrocycle_id?: string; epoca_id?: string; mesociclo_id?: string }>;
+  planningSeason?: Season | null;
+  planningMacrocycles?: Macrocycle[];
+  planningMesocycles?: MesocyclePlan[];
+  calendarTrainings?: Array<{ id: string; numero_treino?: string | null; data: string; hora_inicio?: string | null; hora_fim?: string | null; macrocycle_id?: string | null; mesociclo_id?: string | null; microciclo_id?: string | null }>;
 }
 
-export function DesportivoTreinosTab({ trainings, seasons, ageGroups, users, trainingTypeOptions, trainingZoneOptions, selectedSeasonId, macrocycles, mesocycles, microcycles }: Props) {
+export function DesportivoTreinosTab({
+  trainings,
+  seasons,
+  ageGroups,
+  users,
+  trainingTypeOptions,
+  trainingZoneOptions,
+  selectedSeasonId,
+  macrocycles,
+  mesocycles,
+  microcycles,
+  planningSeason = null,
+  planningMacrocycles = [],
+  planningMesocycles = [],
+  calendarTrainings = [],
+}: Props) {
   const [createOpen, setCreateOpen] = useState(false);
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -144,20 +178,40 @@ export function DesportivoTreinosTab({ trainings, seasons, ageGroups, users, tra
   }, [libraryTrainings, scheduleForm.data.training_id]);
 
   const filteredMacrocycles = useMemo(() => {
-    if (!scheduleForm.data.epoca_id) {
-      return macrocycles;
+    const selectedDate = normalizeDateOnly(scheduleForm.data.data);
+
+    if (!selectedDate) {
+      return [];
     }
 
-    return macrocycles.filter((macrocycle) => !macrocycle.epoca_id || macrocycle.epoca_id === scheduleForm.data.epoca_id);
-  }, [macrocycles, scheduleForm.data.epoca_id]);
+    if (!scheduleForm.data.epoca_id) {
+      return macrocycles.filter((macrocycle) => isDateWithinRange(selectedDate, macrocycle.data_inicio, macrocycle.data_fim));
+    }
+
+    return macrocycles.filter((macrocycle) => {
+      const inSeason = !macrocycle.epoca_id || macrocycle.epoca_id === scheduleForm.data.epoca_id;
+      const inDateRange = isDateWithinRange(selectedDate, macrocycle.data_inicio, macrocycle.data_fim);
+      return inSeason && inDateRange;
+    });
+  }, [macrocycles, scheduleForm.data.epoca_id, scheduleForm.data.data]);
 
   const filteredEditMacrocycles = useMemo(() => {
-    if (!editScheduleForm.data.epoca_id) {
-      return macrocycles;
+    const selectedDate = normalizeDateOnly(editScheduleForm.data.data);
+
+    if (!selectedDate) {
+      return [];
     }
 
-    return macrocycles.filter((macrocycle) => !macrocycle.epoca_id || macrocycle.epoca_id === editScheduleForm.data.epoca_id);
-  }, [macrocycles, editScheduleForm.data.epoca_id]);
+    if (!editScheduleForm.data.epoca_id) {
+      return macrocycles.filter((macrocycle) => isDateWithinRange(selectedDate, macrocycle.data_inicio, macrocycle.data_fim));
+    }
+
+    return macrocycles.filter((macrocycle) => {
+      const inSeason = !macrocycle.epoca_id || macrocycle.epoca_id === editScheduleForm.data.epoca_id;
+      const inDateRange = isDateWithinRange(selectedDate, macrocycle.data_inicio, macrocycle.data_fim);
+      return inSeason && inDateRange;
+    });
+  }, [macrocycles, editScheduleForm.data.epoca_id, editScheduleForm.data.data]);
 
   const filteredMicrocycles = useMemo(() => {
     const seasonScoped = scheduleForm.data.epoca_id
@@ -172,16 +226,24 @@ export function DesportivoTreinosTab({ trainings, seasons, ageGroups, users, tra
   }, [microcycles, scheduleForm.data.epoca_id, scheduleForm.data.macrocycle_id]);
 
   const filteredMesocycles = useMemo(() => {
+    const selectedDate = normalizeDateOnly(scheduleForm.data.data);
+
+    if (!selectedDate) {
+      return [];
+    }
+
     const seasonScoped = scheduleForm.data.epoca_id
       ? mesocycles.filter((mesocycle) => !mesocycle.epoca_id || mesocycle.epoca_id === scheduleForm.data.epoca_id)
       : mesocycles;
 
+    const dateScoped = seasonScoped.filter((mesocycle) => isDateWithinRange(selectedDate, mesocycle.data_inicio, mesocycle.data_fim));
+
     if (!scheduleForm.data.macrocycle_id) {
-      return seasonScoped;
+      return dateScoped;
     }
 
-    return seasonScoped.filter((mesocycle) => mesocycle.macrociclo_id === scheduleForm.data.macrocycle_id);
-  }, [mesocycles, scheduleForm.data.epoca_id, scheduleForm.data.macrocycle_id]);
+    return dateScoped.filter((mesocycle) => mesocycle.macrociclo_id === scheduleForm.data.macrocycle_id);
+  }, [mesocycles, scheduleForm.data.epoca_id, scheduleForm.data.macrocycle_id, scheduleForm.data.data]);
 
   const filteredEditMicrocycles = useMemo(() => {
     const seasonScoped = editScheduleForm.data.epoca_id
@@ -196,16 +258,24 @@ export function DesportivoTreinosTab({ trainings, seasons, ageGroups, users, tra
   }, [microcycles, editScheduleForm.data.epoca_id, editScheduleForm.data.macrocycle_id]);
 
   const filteredEditMesocycles = useMemo(() => {
+    const selectedDate = normalizeDateOnly(editScheduleForm.data.data);
+
+    if (!selectedDate) {
+      return [];
+    }
+
     const seasonScoped = editScheduleForm.data.epoca_id
       ? mesocycles.filter((mesocycle) => !mesocycle.epoca_id || mesocycle.epoca_id === editScheduleForm.data.epoca_id)
       : mesocycles;
 
+    const dateScoped = seasonScoped.filter((mesocycle) => isDateWithinRange(selectedDate, mesocycle.data_inicio, mesocycle.data_fim));
+
     if (!editScheduleForm.data.macrocycle_id) {
-      return seasonScoped;
+      return dateScoped;
     }
 
-    return seasonScoped.filter((mesocycle) => mesocycle.macrociclo_id === editScheduleForm.data.macrocycle_id);
-  }, [mesocycles, editScheduleForm.data.epoca_id, editScheduleForm.data.macrocycle_id]);
+    return dateScoped.filter((mesocycle) => mesocycle.macrociclo_id === editScheduleForm.data.macrocycle_id);
+  }, [mesocycles, editScheduleForm.data.epoca_id, editScheduleForm.data.macrocycle_id, editScheduleForm.data.data]);
 
   const microcycleByMesocycle = useMemo(() => {
     const map = new Map<string, string>();
@@ -271,12 +341,23 @@ export function DesportivoTreinosTab({ trainings, seasons, ageGroups, users, tra
     return value.slice(0, 10);
   };
 
+  const normalizeTimeInputValue = (value?: string | null) => {
+    if (!value) {
+      return '';
+    }
+
+    return value.slice(0, 5);
+  };
+
   const formatTimeRange = (start?: string | null, end?: string | null) => {
-    if (!start) {
+    const normalizedStart = normalizeTimeInputValue(start);
+    const normalizedEnd = normalizeTimeInputValue(end);
+
+    if (!normalizedStart) {
       return '--:--';
     }
 
-    return end ? `${start} – ${end}` : start;
+    return normalizedEnd ? `${normalizedStart} – ${normalizedEnd}` : normalizedStart;
   };
 
   const resolveEscaloes = (escalaoIds?: string[] | null) => {
@@ -387,6 +468,38 @@ export function DesportivoTreinosTab({ trainings, seasons, ageGroups, users, tra
       .sort((a, b) => `${a.data ?? ''} ${a.hora_inicio ?? ''}`.localeCompare(`${b.data ?? ''} ${b.hora_inicio ?? ''}`));
   }, [scheduledTrainings]);
 
+  const currentSeason = useMemo(() => {
+    if (planningSeason) {
+      return planningSeason;
+    }
+
+    if (selectedSeasonId) {
+      const byId = seasons.find((season) => season.id === selectedSeasonId);
+      if (byId) return byId;
+    }
+
+    const activeSeason = seasons.find((season) => season.estado === 'Em curso');
+    return activeSeason ?? seasons[0] ?? null;
+  }, [planningSeason, selectedSeasonId, seasons]);
+
+  const currentSeasonMacrocycles = useMemo(() => {
+    if (!currentSeason) return planningMacrocycles;
+    return planningMacrocycles.filter((macro) => !macro.epoca_id || macro.epoca_id === currentSeason.id);
+  }, [planningMacrocycles, currentSeason]);
+
+  const currentSeasonMesocycles = useMemo(() => {
+    const allowedMacroIds = new Set(currentSeasonMacrocycles.map((macro) => macro.id));
+    return planningMesocycles.filter((meso) => allowedMacroIds.has(meso.macrociclo_id));
+  }, [planningMesocycles, currentSeasonMacrocycles]);
+
+  // Auto-selecionar época atual nos formulários de agendamento
+  useEffect(() => {
+    if (currentSeason?.id) {
+      scheduleForm.setData('epoca_id', currentSeason.id);
+      editScheduleForm.setData('epoca_id', currentSeason.id);
+    }
+  }, [currentSeason?.id]);
+
   const submit = (event: FormEvent) => {
     event.preventDefault();
 
@@ -454,12 +567,13 @@ export function DesportivoTreinosTab({ trainings, seasons, ageGroups, users, tra
 
     const payload = {
       data: scheduleForm.data.data,
-      hora_inicio: scheduleForm.data.hora_inicio,
-      hora_fim: scheduleForm.data.hora_fim,
+      hora_inicio: normalizeTimeInputValue(scheduleForm.data.hora_inicio),
+      hora_fim: normalizeTimeInputValue(scheduleForm.data.hora_fim),
       local: scheduleForm.data.local,
       escaloes: scheduleForm.data.escaloes,
       epoca_id: scheduleForm.data.epoca_id || selectedSeasonId || null,
       macrocycle_id: scheduleForm.data.macrocycle_id || null,
+      mesociclo_id: scheduleForm.data.mesociclo_id || null,
       microciclo_id: scheduleForm.data.microciclo_id || null,
     };
 
@@ -480,6 +594,11 @@ export function DesportivoTreinosTab({ trainings, seasons, ageGroups, users, tra
         scheduleForm.setData('macrocycle_id', '');
         scheduleForm.setData('mesociclo_id', '');
         scheduleForm.setData('microciclo_id', '');
+        // Recarregar página para sincronizar dados do servidor
+        router.reload();
+      },
+      onError: (errors) => {
+        console.error('Erro ao agendar treino:', errors);
       },
     });
   };
@@ -562,13 +681,15 @@ export function DesportivoTreinosTab({ trainings, seasons, ageGroups, users, tra
     setEditingScheduledTraining(training);
     editScheduleForm.setData('numero_treino', training.numero_treino ?? '');
     editScheduleForm.setData('data', normalizeDateInputValue(training.data));
-    editScheduleForm.setData('hora_inicio', training.hora_inicio ?? '');
-    editScheduleForm.setData('hora_fim', training.hora_fim ?? '');
+    editScheduleForm.setData('hora_inicio', normalizeTimeInputValue(training.hora_inicio));
+    editScheduleForm.setData('hora_fim', normalizeTimeInputValue(training.hora_fim));
     editScheduleForm.setData('local', training.local ?? '');
     editScheduleForm.setData('escaloes', training.escaloes ?? []);
     editScheduleForm.setData('epoca_id', training.epoca_id ?? selectedSeasonId ?? '');
     editScheduleForm.setData('macrocycle_id', training.macrocycle_id ?? '');
-    editScheduleForm.setData('mesociclo_id', training.microciclo_id ? (mesocycleByMicrocycle.get(training.microciclo_id) ?? '') : '');
+    editScheduleForm.setData('mesociclo_id', training.microciclo_id
+      ? (mesocycleByMicrocycle.get(training.microciclo_id) ?? '')
+      : (training.mesociclo_id ?? ''));
     editScheduleForm.setData('microciclo_id', training.microciclo_id ?? '');
     editScheduleForm.setData('tipo_treino', training.tipo_treino ?? '');
     editScheduleForm.setData('descricao_treino', training.descricao_treino ?? '');
@@ -580,11 +701,35 @@ export function DesportivoTreinosTab({ trainings, seasons, ageGroups, users, tra
     event.preventDefault();
     if (!editingScheduledTraining) return;
 
+    const payload = {
+      numero_treino: editScheduleForm.data.numero_treino,
+      data: editScheduleForm.data.data,
+      hora_inicio: normalizeTimeInputValue(editScheduleForm.data.hora_inicio),
+      hora_fim: normalizeTimeInputValue(editScheduleForm.data.hora_fim),
+      local: editScheduleForm.data.local,
+      escaloes: editScheduleForm.data.escaloes,
+      epoca_id: editScheduleForm.data.epoca_id || null,
+      macrocycle_id: editScheduleForm.data.macrocycle_id || null,
+      mesociclo_id: editScheduleForm.data.mesociclo_id || null,
+      microciclo_id: editScheduleForm.data.microciclo_id || null,
+      tipo_treino: editScheduleForm.data.tipo_treino,
+      descricao_treino: editScheduleForm.data.descricao_treino,
+      volume_planeado_m: editScheduleForm.data.volume_planeado_m,
+    };
+
+    editScheduleForm.transform(() => payload);
+
     editScheduleForm.put(route('desportivo.treino.update', editingScheduledTraining.id), {
       onSuccess: () => {
         setEditScheduleOpen(false);
         setEditingScheduledTraining(null);
+        editScheduleForm.transform((data) => data);
         editScheduleForm.reset();
+        // Recarregar página para sincronizar dados do servidor
+        router.reload();
+      },
+      onError: (errors) => {
+        console.error('Erro ao atualizar agendamento:', errors);
       },
     });
   };
@@ -614,9 +759,9 @@ export function DesportivoTreinosTab({ trainings, seasons, ageGroups, users, tra
 
       <div className="grid gap-3 lg:grid-cols-2">
         <Card>
-          <CardHeader className="pb-2 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <CardHeader className="pb-1.5 flex flex-col items-start gap-1.5 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="text-sm">Biblioteca de treinos</CardTitle>
-            <Button size="sm" className="w-full sm:w-auto" onClick={() => {
+            <Button size="sm" className="h-8 w-full sm:w-auto" onClick={() => {
               setEditingTrainingId(null);
               form.reset();
               form.setData('tipo_treino', trainingTypeOptions[0]?.nome ?? '');
@@ -627,36 +772,38 @@ export function DesportivoTreinosTab({ trainings, seasons, ageGroups, users, tra
               Criar treino
             </Button>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="pt-2">
             {libraryTrainings.length === 0 && <p className="text-xs text-muted-foreground">Sem treinos em biblioteca.</p>}
-            {libraryTrainings.map((training) => {
-              const escalaoLabel = resolveEscaloes(training.escaloes);
+            <div className={`${libraryTrainings.length > 5 ? 'max-h-[320px] overflow-y-auto pr-1' : ''} space-y-1.5`}>
+              {libraryTrainings.map((training) => {
+                const escalaoLabel = resolveEscaloes(training.escaloes);
 
-              return (
-                <div key={training.id} className="border rounded-md p-2 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-semibold break-words">{training.numero_treino || 'Treino'} · {training.tipo_treino}</p>
-                    {escalaoLabel ? (
-                      <p className="text-[11px] text-muted-foreground break-words">{escalaoLabel}</p>
-                    ) : (
-                      <p className="text-[11px] text-muted-foreground break-words">Sem escalão definido</p>
-                    )}
-                    <p className="text-[11px] text-muted-foreground break-words">Criado em {formatCreationDateTime(training.created_at)}</p>
+                return (
+                  <div key={training.id} className="border rounded-md p-1.5 flex flex-col gap-1.5 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-semibold break-words">{training.numero_treino || 'Treino'} · {training.tipo_treino}</p>
+                      {escalaoLabel ? (
+                        <p className="text-[11px] leading-tight text-muted-foreground break-words">{escalaoLabel}</p>
+                      ) : (
+                        <p className="text-[11px] leading-tight text-muted-foreground break-words">Sem escalão definido</p>
+                      )}
+                      <p className="text-[11px] leading-tight text-muted-foreground break-words">Criado em {formatCreationDateTime(training.created_at)}</p>
+                    </div>
+                    <div className="flex flex-wrap gap-1 sm:shrink-0">
+                      <Button size="sm" variant="outline" className="h-7 px-2 text-[11px]" onClick={() => openDetails(training)}>Abrir</Button>
+                      <Button size="sm" variant="outline" className="h-7 px-2 text-[11px]" onClick={() => openEdit(training)}>Editar</Button>
+                      <Button size="sm" variant="ghost" className="h-7 px-2 text-[11px]" onClick={() => router.delete(route('desportivo.treino.delete', training.id), { preserveScroll: true })}>Apagar</Button>
+                    </div>
                   </div>
-                  <div className="flex flex-wrap gap-1 sm:shrink-0">
-                    <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => openDetails(training)}>Abrir</Button>
-                    <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => openEdit(training)}>Editar</Button>
-                    <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => router.delete(route('desportivo.treino.delete', training.id), { preserveScroll: true })}>Apagar</Button>
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="pb-2 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <CardHeader className="pb-1.5 flex flex-col items-start gap-1.5 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="text-sm">Calendário de agendamentos</CardTitle>
-            <Button size="sm" className="w-full sm:w-auto" onClick={() => {
+            <Button size="sm" className="h-8 w-full sm:w-auto" onClick={() => {
               scheduleForm.reset();
               scheduleForm.setData('data', new Date().toISOString().slice(0, 10));
               scheduleForm.setData('hora_inicio', '18:00');
@@ -667,38 +814,47 @@ export function DesportivoTreinosTab({ trainings, seasons, ageGroups, users, tra
               Agendar treino
             </Button>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="pt-2">
             {scheduledList.length === 0 && <p className="text-xs text-muted-foreground">Sem agendamentos.</p>}
-            {scheduledList.map((training) => {
-              const dataFormatada = formatScheduleDate(training.data);
-              const horaFormatada = formatTimeRange(training.hora_inicio, training.hora_fim);
-              const escalaoNomes = resolveEscaloes(training.escaloes);
+            <div className={`${scheduledList.length > 5 ? 'max-h-[320px] overflow-y-auto pr-1' : ''} space-y-1.5`}>
+              {scheduledList.map((training) => {
+                const dataFormatada = formatScheduleDate(training.data);
+                const horaFormatada = formatTimeRange(training.hora_inicio, training.hora_fim);
+                const escalaoNomes = resolveEscaloes(training.escaloes);
 
-              return (
-                <div key={training.id} className="border rounded-md p-2 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <Badge variant="outline" className="text-[10px] font-normal shrink-0">{dataFormatada}</Badge>
-                      <span className="text-[10px] text-muted-foreground shrink-0">{horaFormatada}</span>
+                return (
+                  <div key={training.id} className="border rounded-md p-1.5 flex flex-col gap-1.5 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <Badge variant="outline" className="text-[10px] font-normal shrink-0">{dataFormatada}</Badge>
+                        <span className="text-[10px] text-muted-foreground shrink-0">{horaFormatada}</span>
+                      </div>
+                      <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-1">
+                        <p className="text-xs font-semibold break-words">{training.numero_treino || 'Treino'}</p>
+                        <span className="text-[11px] leading-tight text-muted-foreground break-words">{training.tipo_treino}</span>
+                        <span className="text-[11px] leading-tight text-muted-foreground break-words">{escalaoNomes || 'Sem escalão definido'}</span>
+                      </div>
                     </div>
-                    <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-1">
-                      <p className="text-xs font-semibold break-words">{training.numero_treino || 'Treino'}</p>
-                      <span className="text-[11px] text-muted-foreground break-words">{training.tipo_treino}</span>
-                      <span className="text-[11px] text-muted-foreground break-words">{escalaoNomes || 'Sem escalão definido'}</span>
+                    <div className="flex flex-wrap gap-1 sm:shrink-0">
+                      <Button size="sm" variant="outline" className="h-7 px-2 text-[11px]" onClick={() => openAttendance(training)}>Presenças</Button>
+                      <Button size="sm" variant="outline" className="h-7 px-2 text-[11px]" onClick={() => openDetails(training)}>Ver</Button>
+                      <Button size="sm" variant="outline" className="h-7 px-2 text-[11px]" onClick={() => openEditSchedule(training)}>Editar</Button>
+                      <Button size="sm" variant="ghost" className="h-7 px-2 text-[11px]" onClick={() => deleteScheduled(training)}>Apagar</Button>
                     </div>
                   </div>
-                  <div className="flex flex-wrap gap-1 sm:shrink-0">
-                    <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => openAttendance(training)}>Presenças</Button>
-                    <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => openDetails(training)}>Ver</Button>
-                    <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => openEditSchedule(training)}>Editar</Button>
-                    <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => deleteScheduled(training)}>Apagar</Button>
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </CardContent>
         </Card>
       </div>
+
+      <TrainingsOverlayCalendar
+        macrocycles={currentSeasonMacrocycles}
+        mesocycles={currentSeasonMesocycles}
+        microcycles={microcycles}
+        trainings={calendarTrainings}
+      />
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-5xl max-h-[90vh] overflow-y-auto">
@@ -924,8 +1080,8 @@ export function DesportivoTreinosTab({ trainings, seasons, ageGroups, users, tra
             </div>
 
             <div className="space-y-1.5">
-              <Label>Nº treino selecionado</Label>
-              <Input value={schedulingTraining?.numero_treino ?? '-'} readOnly />
+              <Label>Nº de Treino Agendado</Label>
+              <Input value={nextTrainingNumber} readOnly />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

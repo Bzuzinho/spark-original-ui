@@ -29,6 +29,7 @@ export interface Training extends BasicItem {
   created_at?: string | null;
   epoca_id?: string | null;
   macrocycle_id?: string | null;
+  mesociclo_id?: string | null;
   microciclo_id?: string | null;
   tipo_treino: string;
   volume_planeado_m?: number | null;

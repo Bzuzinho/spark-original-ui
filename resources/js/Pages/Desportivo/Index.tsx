@@ -133,6 +133,7 @@ interface DesportivoProps {
   trainingTypeOptions?: Array<{ id: string; nome: string }>;
   trainingZoneOptions?: Array<{ id: string; codigo: string; nome: string }>;
   trainings?: { data: Training[] };
+  calendarTrainings?: Array<{ id: string; numero_treino?: string | null; data: string; macrocycle_id?: string | null; mesociclo_id?: string | null; microciclo_id?: string | null }>;
   trainingOptions?: TrainingOption[];
   selectedTraining?: Training | null;
   presences?: PresenceRow[];
@@ -185,6 +186,7 @@ export default function DesportivoIndex({
   trainingTypeOptions = [],
   trainingZoneOptions = [],
   trainings = { data: [] },
+  calendarTrainings = [],
   trainingOptions = [],
   selectedTraining = null,
   presences = [],
@@ -202,11 +204,21 @@ export default function DesportivoIndex({
   volumeByAthlete = [],
   athleteOperationalRows = [],
 }: DesportivoProps) {
-  const athletesQuery = useAthletes();
-  const trainingsQuery = useTrainings();
-  const competitionsQuery = useCompetitions();
-  const competitionResultsQuery = useCompetitionResults();
-  const performanceQuery = usePerformance();
+  const initialTab = (tab === 'presencas' ? 'cais' : tab === 'resultados' ? 'competicoes' : tab) as TabValue;
+  const [activeTab, setActiveTab] = useState<TabValue>(initialTab);
+  const [isNavigatingToCais, setIsNavigatingToCais] = useState(false);
+
+  const shouldFetchAthletes = users.length === 0 && ['dashboard', 'atletas', 'treinos', 'cais', 'competicoes', 'performance'].includes(activeTab);
+  const shouldFetchTrainings = trainings.data.length === 0 && ['dashboard', 'treinos', 'cais'].includes(activeTab);
+  const shouldFetchCompetitions = competitions.length === 0 && ['dashboard', 'competicoes'].includes(activeTab);
+  const shouldFetchCompetitionResults = results.length === 0 && ['competicoes'].includes(activeTab);
+  const shouldFetchPerformance = volumeByAthlete.length === 0 && ['dashboard', 'performance'].includes(activeTab);
+
+  const athletesQuery = useAthletes(shouldFetchAthletes);
+  const trainingsQuery = useTrainings(shouldFetchTrainings);
+  const competitionsQuery = useCompetitions(shouldFetchCompetitions);
+  const competitionResultsQuery = useCompetitionResults(shouldFetchCompetitionResults);
+  const performanceQuery = usePerformance(shouldFetchPerformance);
 
   const safeUsers = Array.isArray(users) ? users : [];
   const safeTrainings = Array.isArray(trainings?.data) ? trainings.data : [];
@@ -240,10 +252,6 @@ export default function DesportivoIndex({
         nome,
       }));
 
-  const initialTab = (tab === 'presencas' ? 'cais' : tab === 'resultados' ? 'competicoes' : tab) as TabValue;
-  const [activeTab, setActiveTab] = useState<TabValue>(initialTab);
-  const [isNavigatingToCais, setIsNavigatingToCais] = useState(false);
-
   useEffect(() => {
     setActiveTab(initialTab);
     setIsNavigatingToCais(false);
@@ -271,10 +279,6 @@ export default function DesportivoIndex({
 
     setIsNavigatingToCais(false);
     setActiveTab(t);
-
-    if (t !== activeTab) {
-      router.get(route('desportivo.index'), {}, { preserveState: true, replace: true });
-    }
   };
 
   return (
@@ -331,6 +335,7 @@ export default function DesportivoIndex({
               users={resolvedUsers}
               volumeByAthlete={resolvedVolumeByAthlete}
               athleteOperationalRows={athleteOperationalRows}
+              ageGroups={ageGroups}
             />
           </TabsContent>
 
@@ -346,6 +351,10 @@ export default function DesportivoIndex({
               macrocycles={macrocycleOptions.length > 0 ? macrocycleOptions : macrocycles}
               mesocycles={mesocycleOptions.length > 0 ? mesocycleOptions : mesocycles}
               microcycles={microcycleOptions.length > 0 ? microcycleOptions : microcycles}
+              planningSeason={selectedSeason}
+              planningMacrocycles={macrocycles}
+              planningMesocycles={mesocycles}
+              calendarTrainings={calendarTrainings}
             />
           </TabsContent>
 

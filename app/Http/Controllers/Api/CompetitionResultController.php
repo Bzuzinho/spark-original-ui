@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Sports\StoreResultRequest;
+use App\Models\Competition;
+use App\Models\Event;
 use App\Models\Prova;
 use App\Models\ProvaTipo;
 use App\Models\Result;
@@ -84,11 +86,11 @@ class CompetitionResultController extends Controller
         $resolvedProvaId = $validated['prova_id'] ?? null;
 
         if (!$resolvedProvaId && !empty($validated['prova_tipo_id'])) {
-            $competitionId = $validated['competition_id'] ?? null;
+            $competitionId = $this->resolveCompetitionId($validated['competition_id'] ?? null);
 
             if (!$competitionId) {
                 throw ValidationException::withMessages([
-                    'competition_id' => 'Competição é obrigatória quando a prova vem das configurações.',
+                    'competition_id' => 'Competição inválida para criação do resultado.',
                 ]);
             }
 
@@ -148,6 +150,42 @@ class CompetitionResultController extends Controller
             'created_at' => $result->created_at,
             'updated_at' => $result->updated_at,
         ], 201);
+    }
+
+    private function resolveCompetitionId(?string $competitionOrEventId): ?string
+    {
+        if (!$competitionOrEventId) {
+            return null;
+        }
+
+        $competition = Competition::query()->find($competitionOrEventId);
+        if ($competition) {
+            return $competition->id;
+        }
+
+        $competitionByEvent = Competition::query()
+            ->where('evento_id', $competitionOrEventId)
+            ->first();
+
+        if ($competitionByEvent) {
+            return $competitionByEvent->id;
+        }
+
+        $event = Event::query()->find($competitionOrEventId);
+        if (!$event) {
+            return null;
+        }
+
+        $created = Competition::query()->create([
+            'nome' => $event->titulo,
+            'local' => $event->local,
+            'data_inicio' => $event->data_inicio,
+            'data_fim' => $event->data_fim,
+            'tipo' => $event->tipo ?? 'prova',
+            'evento_id' => $event->id,
+        ]);
+
+        return $created->id;
     }
 
     /**

@@ -41,6 +41,9 @@ export function EventosRelatorios({
 }: EventosRelatoriosProps) {
   const [activeTab, setActiveTab] = useState('geral');
 
+  const normalizeStatus = (value: unknown): string => String(value ?? '').trim().toLowerCase();
+  const sameId = (left: unknown, right: unknown): boolean => String(left ?? '') === String(right ?? '');
+
   const getEscaloesNames = (escaloes: string[] = []) => {
     if (!Array.isArray(escaloes) || escaloes.length === 0) {
       return '-';
@@ -56,34 +59,44 @@ export function EventosRelatorios({
 
   // Relatório Geral
   const relatorioGeral = useMemo(() => {
+    const eventosById = new Map(events.map((event: any) => [String(event.id), event]));
+
     const totalEventos = events.length;
-    const eventosAgendados = events.filter((e) => e.estado === 'agendado').length;
-    const eventosEmCurso = events.filter((e) => e.estado === 'em_curso').length;
-    const eventosConcluidos = events.filter((e) => e.estado === 'concluido').length;
-    const eventosCancelados = events.filter((e) => e.estado === 'cancelado').length;
+    const eventosAgendados = events.filter((e) => normalizeStatus(e.estado) === 'agendado').length;
+    const eventosEmCurso = events.filter((e) => normalizeStatus(e.estado) === 'em_curso').length;
+    const eventosConcluidos = events.filter((e) => normalizeStatus(e.estado) === 'concluido').length;
+    const eventosCancelados = events.filter((e) => normalizeStatus(e.estado) === 'cancelado').length;
 
     const totalConvocatorias = convocatorias.length;
     const convocatoriasConfirmadas = convocatorias.filter(
-      (c: any) => c.estado_confirmacao === 'confirmado'
+      (c: any) => normalizeStatus(c.estado_confirmacao) === 'confirmado'
     ).length;
     const convocatoriasPendentes = convocatorias.filter(
-      (c: any) => c.estado_confirmacao === 'pendente'
+      (c: any) => normalizeStatus(c.estado_confirmacao) === 'pendente'
     ).length;
     const convocatoriasRecusadas = convocatorias.filter(
-      (c: any) => c.estado_confirmacao === 'recusado'
+      (c: any) => normalizeStatus(c.estado_confirmacao) === 'recusado'
     ).length;
 
     const totalPresencas = attendances.length;
-    const presentes = attendances.filter((a: any) => a.estado === 'presente').length;
-    const ausentes = attendances.filter((a: any) => a.estado === 'ausente').length;
-    const justificados = attendances.filter((a: any) => a.estado === 'justificado').length;
+    const presentes = attendances.filter((a: any) => normalizeStatus(a.estado) === 'presente').length;
+    const ausentes = attendances.filter((a: any) => normalizeStatus(a.estado) === 'ausente').length;
+    const justificados = attendances.filter((a: any) => normalizeStatus(a.estado) === 'justificado').length;
     const mediaPresencas =
       totalPresencas > 0 ? ((presentes / totalPresencas) * 100).toFixed(1) : 0;
 
     const totalResultados = results.length;
-    const primeirosLugares = results.filter((r: any) => r.classificacao === 1).length;
-    const segundosLugares = results.filter((r: any) => r.classificacao === 2).length;
-    const terceirosLugares = results.filter((r: any) => r.classificacao === 3).length;
+    const resultadosConcluidos = results.filter((result: any) => {
+      const estadoDoEvento =
+        normalizeStatus(result?.event?.estado) ||
+        normalizeStatus(eventosById.get(String(result?.evento_id))?.estado);
+
+      return estadoDoEvento === 'concluido';
+    });
+
+    const primeirosLugares = resultadosConcluidos.filter((r: any) => Number(r.classificacao) === 1).length;
+    const segundosLugares = resultadosConcluidos.filter((r: any) => Number(r.classificacao) === 2).length;
+    const terceirosLugares = resultadosConcluidos.filter((r: any) => Number(r.classificacao) === 3).length;
 
     // Distribuição por tipo
     const distribuicaoPorTipo = events.reduce((acc: any, event: any) => {
@@ -119,13 +132,13 @@ export function EventosRelatorios({
   const relatorioPorEvento = useMemo(() => {
     return events.map((event: any) => {
       const eventConvocatorias = convocatorias.filter(
-        (c: any) => c.evento_id === event.id
+        (c: any) => sameId(c.evento_id, event.id)
       );
-      const eventAttendances = attendances.filter((a: any) => a.evento_id === event.id);
-      const presentes = eventAttendances.filter((a: any) => a.estado === 'presente').length;
-      const ausentes = eventAttendances.filter((a: any) => a.estado === 'ausente').length;
+      const eventAttendances = attendances.filter((a: any) => sameId(a.evento_id, event.id));
+      const presentes = eventAttendances.filter((a: any) => normalizeStatus(a.estado) === 'presente').length;
+      const ausentes = eventAttendances.filter((a: any) => normalizeStatus(a.estado) === 'ausente').length;
       const justificados = eventAttendances.filter(
-        (a: any) => a.estado === 'justificado'
+        (a: any) => normalizeStatus(a.estado) === 'justificado'
       ).length;
       const taxaPresenca =
         eventAttendances.length > 0
@@ -150,21 +163,31 @@ export function EventosRelatorios({
   // Relatório por Atleta
   const relatorioPorAtleta = useMemo(() => {
     return users.map((user: any) => {
-      const userConvocatorias = convocatorias.filter((c: any) => c.user_id === user.id);
-      const userAttendances = attendances.filter((a: any) => a.user_id === user.id);
-      const presentes = userAttendances.filter((a: any) => a.estado === 'presente').length;
-      const ausentes = userAttendances.filter((a: any) => a.estado === 'ausente').length;
+      const userConvocatorias = convocatorias.filter((c: any) => sameId(c.user_id, user.id));
+      const userAttendances = attendances.filter((a: any) => sameId(a.user_id, user.id));
+      const presentes = userAttendances.filter((a: any) => normalizeStatus(a.estado) === 'presente').length;
+      const ausentes = userAttendances.filter((a: any) => normalizeStatus(a.estado) === 'ausente').length;
       const justificados = userAttendances.filter(
-        (a: any) => a.estado === 'justificado'
+        (a: any) => normalizeStatus(a.estado) === 'justificado'
       ).length;
       const taxaPresenca =
         userAttendances.length > 0
           ? ((presentes / userAttendances.length) * 100).toFixed(1)
           : 0;
 
-      const userResults = results.filter((r: any) => r.user_id === user.id);
+      const userResults = results.filter((r: any) => sameId(r.user_id, user.id));
       const podios = userResults.filter(
-        (r: any) => r.classificacao && r.classificacao <= 3
+        (r: any) => {
+          if (!(Number(r.classificacao) >= 1 && Number(r.classificacao) <= 3)) {
+            return false;
+          }
+
+          const estadoDoEvento =
+            normalizeStatus(r?.event?.estado) ||
+            normalizeStatus(events.find((event: any) => sameId(event.id, r.evento_id))?.estado);
+
+          return estadoDoEvento === 'concluido';
+        }
       ).length;
 
       return {
@@ -204,26 +227,27 @@ export function EventosRelatorios({
   return (
     <div className="space-y-4">
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <div className="flex justify-between items-center mb-4">
-          <TabsList>
-            <TabsTrigger value="geral">
-              <ChartBar size={16} className="mr-2" />
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <TabsList className="grid h-auto w-full grid-cols-3 gap-1 p-1 sm:w-auto">
+            <TabsTrigger value="geral" className="px-2 py-2 text-xs sm:text-sm">
+              <ChartBar size={16} className="mr-1 sm:mr-2" />
               Relatório Geral
             </TabsTrigger>
-            <TabsTrigger value="evento">
-              <Calendar size={16} className="mr-2" />
+            <TabsTrigger value="evento" className="px-2 py-2 text-xs sm:text-sm">
+              <Calendar size={16} className="mr-1 sm:mr-2" />
               Por Evento
             </TabsTrigger>
-            <TabsTrigger value="atleta">
-              <Users size={16} className="mr-2" />
+            <TabsTrigger value="atleta" className="px-2 py-2 text-xs sm:text-sm">
+              <Users size={16} className="mr-1 sm:mr-2" />
               Por Atleta
             </TabsTrigger>
           </TabsList>
 
-          <div className="flex gap-2">
+          <div className="flex w-full gap-2 sm:w-auto">
             <Button
               size="sm"
               variant="outline"
+              className="flex-1 sm:flex-none"
               onClick={() => {
                 if (activeTab === 'evento') {
                   exportToCSV(relatorioPorEvento, 'relatorio-eventos.csv');
@@ -235,7 +259,12 @@ export function EventosRelatorios({
               <DownloadSimple size={16} className="mr-2" />
               Exportar CSV
             </Button>
-            <Button size="sm" variant="outline" onClick={() => window.print()}>
+            <Button
+              size="sm"
+              variant="outline"
+              className="flex-1 sm:flex-none"
+              onClick={() => window.print()}
+            >
               <Printer size={16} className="mr-2" />
               Imprimir
             </Button>

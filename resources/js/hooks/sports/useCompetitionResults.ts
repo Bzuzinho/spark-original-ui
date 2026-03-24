@@ -8,12 +8,17 @@ interface UseCompetitionResultsResult {
   error: string | null;
 }
 
-export function useCompetitionResults(): UseCompetitionResultsResult {
+export function useCompetitionResults(enabled = true): UseCompetitionResultsResult {
   const [data, setData] = useState<CompetitionResult[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!enabled) {
+      setLoading(false);
+      return;
+    }
+
     let active = true;
 
     void getCompetitionResults()
@@ -34,7 +39,7 @@ export function useCompetitionResults(): UseCompetitionResultsResult {
     return () => {
       active = false;
     };
-  }, []);
+  }, [enabled]);
 
   return { data, loading, error };
 }

@@ -11,6 +11,8 @@ use App\Models\EventConvocation;
 use App\Models\ConvocationGroup;
 use App\Models\EventAttendance;
 use App\Models\EventResult;
+use App\Models\Competition;
+use App\Models\Result;
 use App\Models\CostCenter;
 use App\Models\AgeGroup;
 use App\Models\User;
@@ -54,6 +56,50 @@ class EventosController extends Controller
             ->orderBy('idade_minima')
             ->get(['id', 'nome', 'idade_minima', 'idade_maxima', 'ativo']);
 
+        $competitionEventIds = Competition::query()
+            ->whereNotNull('evento_id')
+            ->pluck('evento_id')
+            ->map(fn ($id) => (string) $id)
+            ->unique();
+
+        // Keep non-competition event results from EventResult table.
+        $eventResults = EventResult::with(['event', 'user', 'ageGroup'])
+            ->get()
+            ->reject(fn (EventResult $result) => $competitionEventIds->contains((string) $result->evento_id))
+            ->values();
+
+        // Competition results are maintained in the legacy Result table.
+        $legacyCompetitionResults = Result::with(['prova.competition.evento', 'athlete'])
+            ->get()
+            ->map(function (Result $result) {
+                $competition = $result->prova?->competition;
+                $event = $competition?->evento;
+
+                return [
+                    'id' => 'legacy_' . $result->id,
+                    'evento_id' => $competition?->evento_id,
+                    'user_id' => $result->user_id,
+                    'prova' => trim((string) (($result->prova?->distancia_m ?? '') . ' ' . ($result->prova?->estilo ?? ''))),
+                    'tempo' => $result->tempo_oficial,
+                    'classificacao' => $result->posicao,
+                    'event' => $event ? [
+                        'id' => $event->id,
+                        'titulo' => $event->titulo,
+                        'estado' => $event->estado,
+                    ] : null,
+                    'user' => $result->athlete ? [
+                        'id' => $result->athlete->id,
+                        'nome_completo' => $result->athlete->nome_completo,
+                    ] : null,
+                ];
+            })
+            ->values();
+
+        $results = $eventResults
+            ->map(fn (EventResult $result) => $result->toArray())
+            ->concat($legacyCompetitionResults)
+            ->values();
+
         return Inertia::render('Eventos/Index', [
             'eventos' => $eventos,
             'stats' => $stats,
@@ -92,9 +138,10 @@ class EventosController extends Controller
                     'ativo',
                 ]),
             'ageGroups' => $ageGroups,
-            'convocations' => ConvocationGroup::all(),
+            // Use individual convocations so reports can aggregate confirmations per athlete.
+            'convocations' => EventConvocation::with(['event:id,titulo,data_inicio', 'user:id,nome_completo'])->get(),
             'attendances' => EventAttendance::with('event', 'user')->get(),
-            'results' => EventResult::with(['event', 'user', 'ageGroup'])->get(),
+            'results' => $results,
         ]);
     }
 

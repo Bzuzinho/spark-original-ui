@@ -6,6 +6,7 @@ import { RegistoPresencasTab } from './Sports/RegistoPresencasTab';
 import { ResultadosTab } from './Sports/ResultadosTab';
 import { TreinosTab } from './Sports/TreinosTab';
 import { PlaneamentoTab } from './Sports/PlaneamentoTab';
+import { MedicalInfoTab } from './Sports/MedicalInfoTab';
 
 interface NavigationContext {
   eventId?: string;
@@ -34,29 +35,36 @@ export function SportsTab({ user, onChange, isAdmin, onNavigate }: SportsTabProp
   return (
     <div className="space-y-1">
       <Tabs defaultValue="dados" className="space-y-1">
-        <TabsList className="h-8 bg-slate-200">
-          <TabsTrigger value="dados" className="whitespace-nowrap text-xs px-3 py-1">
-            Dados Desportivos
-          </TabsTrigger>
-          <TabsTrigger value="convocatorias" className="whitespace-nowrap text-xs px-3 py-1">
-            Convocatórias
-          </TabsTrigger>
-          <TabsTrigger value="presencas" className="whitespace-nowrap text-xs px-3 py-1">
-            Registo Presenças
-          </TabsTrigger>
-          <TabsTrigger value="resultados" className="whitespace-nowrap text-xs px-3 py-1">
-            Resultados
-          </TabsTrigger>
-          <TabsTrigger value="treinos" className="whitespace-nowrap text-xs px-3 py-1">
-            Treinos
-          </TabsTrigger>
-          <TabsTrigger value="planeamento" className="whitespace-nowrap text-xs px-3 py-1">
-            Planeamento
-          </TabsTrigger>
-        </TabsList>
+        <TabsList className="grid w-full h-auto grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 bg-slate-200 gap-1 p-1">
+            <TabsTrigger value="dados" className="text-xs px-2 py-1.5 whitespace-normal leading-tight text-center min-h-8">
+              Dados Desportivos
+            </TabsTrigger>
+            <TabsTrigger value="inf-medcas" className="text-xs px-2 py-1.5 whitespace-normal leading-tight text-center min-h-8">
+              Inf. Médicas
+            </TabsTrigger>
+            <TabsTrigger value="convocatorias" className="text-xs px-2 py-1.5 whitespace-normal leading-tight text-center min-h-8">
+              Convocatórias
+            </TabsTrigger>
+            <TabsTrigger value="presencas" className="text-xs px-2 py-1.5 whitespace-normal leading-tight text-center min-h-8">
+              Registo Presenças
+            </TabsTrigger>
+            <TabsTrigger value="resultados" className="text-xs px-2 py-1.5 whitespace-normal leading-tight text-center min-h-8">
+              Resultados
+            </TabsTrigger>
+            <TabsTrigger value="treinos" className="text-xs px-2 py-1.5 whitespace-normal leading-tight text-center min-h-8">
+              Treinos
+            </TabsTrigger>
+            <TabsTrigger value="disciplica" className="text-xs px-2 py-1.5 whitespace-normal leading-tight text-center min-h-8">
+              Disciplina
+            </TabsTrigger>
+          </TabsList>
 
         <TabsContent value="dados" className="mt-1 bg-white p-0 rounded-lg border border-white">
           <DadosDesportivosTab user={user} onChange={onChange} isAdmin={isAdmin} />
+        </TabsContent>
+
+        <TabsContent value="inf-medcas" className="mt-1 bg-white p-0 rounded-lg border border-white">
+          <MedicalInfoTab user={user} onChange={onChange} isAdmin={isAdmin} />
         </TabsContent>
 
         <TabsContent value="convocatorias" className="mt-1 bg-white p-0 rounded-lg border border-white">
@@ -75,7 +83,7 @@ export function SportsTab({ user, onChange, isAdmin, onNavigate }: SportsTabProp
           <TreinosTab user={user} />
         </TabsContent>
 
-        <TabsContent value="planeamento" className="mt-1 bg-white p-0 rounded-lg border border-white">
+        <TabsContent value="disciplica" className="mt-1 bg-white p-0 rounded-lg border border-white">
           <PlaneamentoTab user={user} />
         </TabsContent>
       </Tabs>

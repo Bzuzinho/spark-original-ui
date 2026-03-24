@@ -168,6 +168,7 @@ export default function EventosIndex({
           <TabsContent value="relatorios" className="space-y-3">
             <EventosRelatorios
               events={eventos}
+              convocatorias={convocations}
               attendances={attendances}
               results={results}
               users={users}

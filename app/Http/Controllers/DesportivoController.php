@@ -100,6 +100,64 @@ class DesportivoController extends Controller
 
     private function renderSportsPage(string $tab, string $view = 'Desportivo/Index'): Response
     {
+        $partialDataHeader = (string) request()->header('X-Inertia-Partial-Data', '');
+        $partialComponent = (string) request()->header('X-Inertia-Partial-Component', '');
+        $requestedPartialKeys = collect(explode(',', $partialDataHeader))
+            ->map(fn (string $key) => trim($key))
+            ->filter();
+
+        $planningPartialKeys = ['selectedSeason', 'macrocycles', 'mesocycles'];
+
+        if (
+            $tab === 'planeamento'
+            && $partialComponent === $view
+            && $requestedPartialKeys->isNotEmpty()
+            && $requestedPartialKeys->every(fn ($key) => in_array($key, $planningPartialKeys, true))
+        ) {
+            $activeSeason = Season::where('estado', 'Em curso')->first();
+
+            $selectedSeason = request('season_id')
+                ? Season::query()->find(request('season_id'))
+                : $activeSeason;
+
+            $macrocycles = $selectedSeason
+                ? $selectedSeason->macrocycles()->orderBy('data_inicio')->get()
+                : collect();
+
+            $hasMesocycleObjectiveColumns = Schema::hasColumn('mesocycles', 'objetivo_principal')
+                && Schema::hasColumn('mesocycles', 'objetivo_secundario');
+
+            $mesocycleColumns = ['id', 'macrociclo_id', 'nome', 'foco', 'data_inicio', 'data_fim'];
+            if ($hasMesocycleObjectiveColumns) {
+                $mesocycleColumns[] = 'objetivo_principal';
+                $mesocycleColumns[] = 'objetivo_secundario';
+            }
+
+            $mesocycles = $macrocycles->isEmpty()
+                ? collect()
+                : Mesocycle::query()
+                    ->whereIn('macrociclo_id', $macrocycles->pluck('id')->values())
+                    ->orderBy('data_inicio')
+                    ->get($mesocycleColumns)
+                    ->map(fn (Mesocycle $mesocycle) => [
+                        'id' => $mesocycle->id,
+                        'macrociclo_id' => $mesocycle->macrociclo_id,
+                        'nome' => $mesocycle->nome,
+                        'data_inicio' => optional($mesocycle->data_inicio)->toDateString(),
+                        'data_fim' => optional($mesocycle->data_fim)->toDateString(),
+                        'objetivo_principal' => ($hasMesocycleObjectiveColumns ? $mesocycle->objetivo_principal : null) ?: $mesocycle->foco,
+                        'objetivo_secundario' => $hasMesocycleObjectiveColumns ? $mesocycle->objetivo_secundario : null,
+                    ])
+                    ->values();
+
+            return Inertia::render($view, [
+                'tab' => $tab,
+                'selectedSeason' => $selectedSeason,
+                'macrocycles' => $macrocycles,
+                'mesocycles' => $mesocycles,
+            ]);
+        }
+
         $now = Carbon::now();
         $sevenDaysAgo = $now->copy()->subDays(7);
         $thirtyDaysAgo = $now->copy()->subDays(30);
@@ -239,13 +297,24 @@ class DesportivoController extends Controller
             ? $selectedSeason->macrocycles()->orderBy('data_inicio')->get()
             : collect();
 
+           // Se estamos na tab treinos e não há macrocycles, carrega da época mais recente
+           if ($tab === 'treinos' && $macrocycles->isEmpty() && $seasons->isNotEmpty()) {
+               $fallbackSeason = $seasons->first();
+               $macrocycles = $fallbackSeason->macrocycles()->orderBy('data_inicio')->get();
+               if ($selectedSeason === null) {
+                   $selectedSeason = $fallbackSeason;
+               }
+           }
+
         $macrocycleOptions = Macrocycle::query()
             ->orderBy('data_inicio')
-            ->get(['id', 'epoca_id', 'nome'])
+            ->get(['id', 'epoca_id', 'nome', 'data_inicio', 'data_fim'])
             ->map(fn (Macrocycle $macrocycle) => [
                 'id' => $macrocycle->id,
                 'epoca_id' => $macrocycle->epoca_id,
                 'nome' => $macrocycle->nome,
+                'data_inicio' => optional($macrocycle->data_inicio)->toDateString(),
+                'data_fim' => optional($macrocycle->data_fim)->toDateString(),
             ])
             ->values();
 
@@ -276,7 +345,7 @@ class DesportivoController extends Controller
                 ->values();
 
         $mesocycleOptions = Mesocycle::query()
-            ->select('mesocycles.id', 'mesocycles.macrociclo_id', 'mesocycles.nome', 'macrocycles.epoca_id')
+            ->select('mesocycles.id', 'mesocycles.macrociclo_id', 'mesocycles.nome', 'mesocycles.data_inicio', 'mesocycles.data_fim', 'macrocycles.epoca_id')
             ->join('macrocycles', 'macrocycles.id', '=', 'mesocycles.macrociclo_id')
             ->orderBy('mesocycles.data_inicio')
             ->get()
@@ -285,6 +354,8 @@ class DesportivoController extends Controller
                 'macrociclo_id' => $mesocycle->macrociclo_id,
                 'nome' => $mesocycle->nome,
                 'epoca_id' => $mesocycle->epoca_id,
+                'data_inicio' => optional($mesocycle->data_inicio)->toDateString(),
+                'data_fim' => optional($mesocycle->data_fim)->toDateString(),
             ])
             ->values();
 
@@ -353,6 +424,21 @@ class DesportivoController extends Controller
 
                 return $training;
             });
+
+        // Get ALL scheduled trainings for the calendar (not limited by pagination)
+        $allScheduledTrainings = Training::query()
+            ->whereNotNull('data')
+            ->orderBy('data')
+            ->get()
+            ->map(fn ($training) => [
+                'id' => $training->id,
+                'numero_treino' => $training->numero_treino,
+                'data' => $training->data?->format('Y-m-d'),
+                'macrocycle_id' => $training->macrocycle_id,
+                'mesociclo_id' => $training->mesociclo_id,
+                'microciclo_id' => $training->microciclo_id,
+            ])
+            ->values();
 
         $selectedTraining = null;
         if (request('training_id')) {
@@ -697,6 +783,7 @@ class DesportivoController extends Controller
                 ])
                 ->values(),
             'trainings' => $trainings,
+            'calendarTrainings' => $allScheduledTrainings,
             'trainingOptions' => Training::where('data', '>=', $thirtyDaysAgo->format('Y-m-d'))
                 ->orderByDesc('data')
                 ->get(['id', 'numero_treino', 'data']),
@@ -980,7 +1067,6 @@ class DesportivoController extends Controller
         $validated = $request->validated();
 
         $payload = [
-            'numero_treino' => $training->numero_treino,
             'data' => $validated['data'],
             'hora_inicio' => $validated['hora_inicio'],
             'hora_fim' => $validated['hora_fim'] ?? null,
@@ -997,6 +1083,10 @@ class DesportivoController extends Controller
 
         if (Schema::hasColumn('trainings', 'macrocycle_id')) {
             $payload['macrocycle_id'] = $validated['macrocycle_id'] ?? null;
+        }
+
+        if (Schema::hasColumn('trainings', 'mesociclo_id')) {
+            $payload['mesociclo_id'] = $validated['mesociclo_id'] ?? null;
         }
 
         $scheduledTraining = app(CreateTrainingAction::class)->execute($payload, auth()->user());
@@ -1030,7 +1120,17 @@ class DesportivoController extends Controller
     {
         $validated = $request->validated();
 
-        $training->update(collect($validated)->except('escaloes')->all());
+        $payload = collect($validated)->except('escaloes')->all();
+
+        if (!Schema::hasColumn('trainings', 'macrocycle_id')) {
+            unset($payload['macrocycle_id']);
+        }
+
+        if (!Schema::hasColumn('trainings', 'mesociclo_id')) {
+            unset($payload['mesociclo_id']);
+        }
+
+        $training->update($payload);
 
         if (Schema::hasTable('training_age_group')) {
             $training->syncAgeGroupsWithPivot($validated['escaloes'] ?? []);

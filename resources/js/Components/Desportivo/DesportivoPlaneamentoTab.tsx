@@ -97,9 +97,16 @@ export function DesportivoPlaneamentoTab({ seasons, macrocycles, mesocycles = []
   }, [mesocycles]);
 
   const selectSeason = (id: string) => {
+    if (id === seasonId) return;
+
     setHasSelectedSeason(true);
     setSeasonId(id);
-    router.get(route('desportivo.planeamento'), { season_id: id }, { preserveScroll: true, preserveState: true });
+    router.get(route('desportivo.planeamento'), { season_id: id }, {
+      preserveScroll: true,
+      preserveState: true,
+      replace: true,
+      only: ['selectedSeason', 'macrocycles', 'mesocycles'],
+    });
   };
 
   const submitSeason = () => {

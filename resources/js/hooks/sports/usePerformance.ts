@@ -13,12 +13,17 @@ interface UsePerformanceResult {
   error: string | null;
 }
 
-export function usePerformance(): UsePerformanceResult {
+export function usePerformance(enabled = true): UsePerformanceResult {
   const [data, setData] = useState<UsePerformanceData>({ performance: [], scientificMetrics: [] });
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!enabled) {
+      setLoading(false);
+      return;
+    }
+
     let active = true;
 
     void getPerformance()
@@ -42,7 +47,7 @@ export function usePerformance(): UsePerformanceResult {
     return () => {
       active = false;
     };
-  }, []);
+  }, [enabled]);
 
   return { data, loading, error };
 }

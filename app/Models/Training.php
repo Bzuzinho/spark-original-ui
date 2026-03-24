@@ -23,6 +23,7 @@ class Training extends Model
         'local',
         'epoca_id',
         'macrocycle_id',
+        'mesociclo_id',
         'microciclo_id',
         'grupo_escalao_id',
         'escaloes',

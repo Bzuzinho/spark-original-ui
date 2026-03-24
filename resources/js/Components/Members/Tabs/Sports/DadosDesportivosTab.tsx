@@ -1,7 +1,6 @@
 import { User } from '@/types';
 import { Label } from '@/Components/ui/label';
 import { Input } from '@/Components/ui/input';
-import { Textarea } from '@/Components/ui/textarea';
 import { Switch } from '@/Components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select';
 import { Calendar } from '@/Components/ui/calendar';
@@ -58,7 +57,6 @@ export function DadosDesportivosTab({ user, onChange, isAdmin }: DadosDesportivo
 
   return (
     <div className="space-y-1">
-      {/* Linha 1: Dados Básicos */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-1">
         <Card className="p-2">
           <div className="flex items-center justify-between">
@@ -110,12 +108,12 @@ export function DadosDesportivosTab({ user, onChange, isAdmin }: DadosDesportivo
             disabled={!isAdmin || isLoading || ageGroups.length === 0}
           >
             <SelectTrigger id="escalao" className="h-7 text-xs bg-white mt-1">
-              <SelectValue placeholder={isLoading ? "A carregar..." : "Selecionar"} />
+              <SelectValue placeholder={isLoading ? 'A carregar...' : 'Selecionar'} />
             </SelectTrigger>
             <SelectContent>
               {ageGroups.length === 0 ? (
                 <SelectItem value="placeholder" disabled>
-                  {isLoading ? "A carregar escalões..." : "Nenhum escalão configurado"}
+                  {isLoading ? 'A carregar escalões...' : 'Nenhum escalão configurado'}
                 </SelectItem>
               ) : (
                 ageGroups
@@ -131,10 +129,9 @@ export function DadosDesportivosTab({ user, onChange, isAdmin }: DadosDesportivo
         </Card>
       </div>
 
-      {/* Linha 2: Documentação */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-1">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-1">
         <Card className="p-2">
-          <Label htmlFor="cartao_federacao" className="text-xs">Cartão Federação</Label>
+          <h3 className="text-xs font-semibold mb-1.5">Cartão Federação</h3>
           {user.cartao_federacao && (
             <div
               className="w-full h-16 border-2 border-border rounded-lg overflow-hidden cursor-pointer hover:border-primary transition-colors my-1"
@@ -154,82 +151,75 @@ export function DadosDesportivosTab({ user, onChange, isAdmin }: DadosDesportivo
         </Card>
 
         <Card className="p-2">
-          <Label htmlFor="data_inscricao" className="text-xs">Data de Inscrição</Label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className="w-full justify-start text-left font-normal h-7 text-xs bg-white mt-1" disabled={!isAdmin}>
-                {user.data_inscricao ? format(new Date(user.data_inscricao), 'PPP', { locale: pt }) : 'Selecionar data'}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={user.data_inscricao ? new Date(user.data_inscricao) : undefined}
-                onSelect={(date) => onChange('data_inscricao', date ? format(date, 'yyyy-MM-dd') : '')}
-                disabled={(date) => date > new Date()}
-                initialFocus
+          <h3 className="text-xs font-semibold mb-1.5">Inscrição</h3>
+          <div className="space-y-1.5">
+            <div>
+              <Label htmlFor="data_inscricao" className="text-xs">Data</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-start text-left font-normal h-7 text-xs bg-white mt-1" disabled={!isAdmin}>
+                    {user.data_inscricao ? format(new Date(user.data_inscricao), 'PPP', { locale: pt }) : 'Selecionar data'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={user.data_inscricao ? new Date(user.data_inscricao) : undefined}
+                    onSelect={(date) => onChange('data_inscricao', date ? format(date, 'yyyy-MM-dd') : '')}
+                    disabled={(date) => date > new Date()}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            <div>
+              <Label htmlFor="inscricao" className="text-xs">Documento</Label>
+              <FileUpload
+                value={user.inscricao || ''}
+                onChange={(value) => onChange('inscricao', value)}
+                disabled={!isAdmin}
+                accept=".pdf,.doc,.docx,image/*"
+                placeholder="Carregar ficheiro"
               />
-            </PopoverContent>
-          </Popover>
+            </div>
+          </div>
         </Card>
 
         <Card className="p-2">
-          <Label htmlFor="inscricao" className="text-xs">Inscrição</Label>
-          <FileUpload
-            value={user.inscricao || ''}
-            onChange={(value) => onChange('inscricao', value)}
-            disabled={!isAdmin}
-            accept=".pdf,.doc,.docx,image/*"
-            placeholder="Carregar ficheiro"
-          />
-        </Card>
-      </div>
+          <h3 className="text-xs font-semibold mb-1.5">Atestado Médico</h3>
+          <div className="space-y-1.5">
+            <div>
+              <Label htmlFor="data_atestado_medico" className="text-xs">Data</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-start text-left font-normal h-7 text-xs bg-white mt-1" disabled={!isAdmin}>
+                    {user.data_atestado_medico ? format(new Date(user.data_atestado_medico), 'PPP', { locale: pt }) : 'Selecionar data'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={user.data_atestado_medico ? new Date(user.data_atestado_medico) : undefined}
+                    onSelect={(date) => onChange('data_atestado_medico', date ? format(date, 'yyyy-MM-dd') : '')}
+                    disabled={(date) => date > new Date()}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
 
-      {/* Linha 3: Atestado Médico */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-1">
-        <Card className="p-2">
-          <Label htmlFor="data_atestado_medico" className="text-xs">Data Atestado Médico</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className="w-full justify-start text-left font-normal h-7 text-xs bg-white mt-1" disabled={!isAdmin}>
-                  {user.data_atestado_medico ? format(new Date(user.data_atestado_medico), 'PPP', { locale: pt }) : 'Selecionar data'}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={user.data_atestado_medico ? new Date(user.data_atestado_medico) : undefined}
-                  onSelect={(date) => onChange('data_atestado_medico', date ? format(date, 'yyyy-MM-dd') : '')}
-                  disabled={(date) => date > new Date()}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
-        </Card>
-
-        <Card className="p-2">
-          <Label htmlFor="arquivo_atestado_medico" className="text-xs">Arquivo Atestado Médico</Label>
-            <FileUpload
-              value={user.arquivo_atestado_medico || []}
-              onChange={(value) => onChange('arquivo_atestado_medico', value)}
-              disabled={!isAdmin}
-              accept=".pdf,.doc,.docx,image/*"
-              multiple={true}
-              placeholder="Carregar ficheiros"
-            />
-        </Card>
-
-        <Card className="p-2">
-          <Label htmlFor="informacoes_medicas" className="text-xs">Informações Médicas</Label>
-            <Textarea
-              id="informacoes_medicas"
-              value={user.informacoes_medicas || ''}
-              onChange={(e) => onChange('informacoes_medicas', e.target.value)}
-              disabled={!isAdmin}
-              placeholder="Alergias, condições, medicação..."
-              rows={3}
-              className="text-xs bg-white mt-1"
-            />
+            <div>
+              <Label htmlFor="arquivo_atestado_medico" className="text-xs">Documento</Label>
+              <FileUpload
+                value={user.arquivo_atestado_medico || []}
+                onChange={(value) => onChange('arquivo_atestado_medico', value)}
+                disabled={!isAdmin}
+                accept=".pdf,.doc,.docx,image/*"
+                placeholder="Carregar ficheiro"
+              />
+            </div>
+          </div>
         </Card>
       </div>
 

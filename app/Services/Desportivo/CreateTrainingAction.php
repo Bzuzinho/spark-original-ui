@@ -95,6 +95,7 @@ class CreateTrainingAction
             'local' => 'nullable|string|max:255',
             'epoca_id' => 'nullable|uuid|exists:seasons,id',
             'macrocycle_id' => 'nullable|uuid|exists:macrocycles,id',
+            'mesociclo_id' => 'nullable|uuid|exists:mesocycles,id',
             'microciclo_id' => 'nullable|uuid|exists:microcycles,id',
             'tipo_treino' => 'required|string|max:100',
             'volume_planeado_m' => 'nullable|integer|min:0',
@@ -138,6 +139,10 @@ class CreateTrainingAction
 
         if (Schema::hasColumn('trainings', 'macrocycle_id')) {
             $payload['macrocycle_id'] = $data['macrocycle_id'] ?? null;
+        }
+
+        if (Schema::hasColumn('trainings', 'mesociclo_id')) {
+            $payload['mesociclo_id'] = $data['mesociclo_id'] ?? null;
         }
 
         return Training::create($payload);
