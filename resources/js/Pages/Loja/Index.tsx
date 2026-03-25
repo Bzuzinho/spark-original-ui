@@ -1,364 +1,503 @@
+import { FormEvent, useMemo, useState } from 'react';
 import { Head, router } from '@inertiajs/react';
-import { useState, FormEvent } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Button } from '@/Components/ui/button';
-import { Card } from '@/Components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs';
+import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import { Input } from '@/Components/ui/input';
-import { Badge } from '@/Components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/Components/ui/dialog';
+import { Button } from '@/Components/ui/button';
 import { Label } from '@/Components/ui/label';
-import { Textarea } from '@/Components/ui/textarea';
-import { Plus, ShoppingCart, Package, TrendUp } from '@phosphor-icons/react';
+import { Badge } from '@/Components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select';
 
-interface Product {
+type StoreProduct = {
+  id: string;
+  codigo: string;
+  nome: string;
+  categoria?: string | null;
+  descricao?: string | null;
+  imagem?: string | null;
+  preco: number;
+  stock_available: number;
+  variant_options: string[];
+};
+
+type Profile = {
+  id: string;
+  nome_completo: string;
+  is_self: boolean;
+};
+
+type CartItem = {
+  id: string;
+  article_id: string;
+  variant?: string | null;
+  quantity: number;
+  unit_price: number;
+  line_total: number;
+  article: {
     id: string;
-    nome: string;
-    descricao?: string;
     codigo: string;
-    categoria?: string;
-    preco: number;
-    stock: number;
-    stock_minimo: number;
-    imagem?: string;
-    ativo: boolean;
-    is_low_stock: boolean;
+    nome: string;
+    imagem?: string | null;
+    stock_available: number;
+  } | null;
+};
+
+type OrderItem = {
+  id: string;
+  article_code_snapshot: string;
+  article_name_snapshot: string;
+  variant_snapshot?: string | null;
+  quantity: number;
+  unit_price: number;
+  line_total: number;
+};
+
+type StoreOrder = {
+  id: string;
+  status: string;
+  subtotal: number;
+  total: number;
+  notes?: string | null;
+  created_at: string;
+  user: { id: string; nome_completo: string } | null;
+  target_user: { id: string; nome_completo: string } | null;
+  financial_invoice: {
+    id: string;
+    valor_total: number;
+    estado_pagamento: string;
+  } | null;
+  items: OrderItem[];
+};
+
+type Props = {
+  activeTab: 'loja' | 'carrinho' | 'pedidos';
+  products: StoreProduct[];
+  categories: string[];
+  filters: {
+    search?: string;
+    category?: string | null;
+  };
+  profiles: Profile[];
+  selectedProfileId: string;
+  cart: {
+    items: CartItem[];
+    subtotal: number;
+    total: number;
+  };
+  orders: StoreOrder[];
+  statusLabels: Record<string, string>;
+};
+
+function euro(value: number): string {
+  return new Intl.NumberFormat('pt-PT', {
+    style: 'currency',
+    currency: 'EUR',
+  }).format(value || 0);
 }
 
-interface Stats {
-    total_produtos: number;
-    valor_total_stock: number;
-    produtos_baixo_stock: number;
+function formatDate(value?: string | null): string {
+  if (!value) return '-';
+  return new Date(value).toLocaleString('pt-PT');
 }
 
-interface Props {
-    products: Product[];
-    stats: Stats;
-    categorias: string[];
-    filters?: {
-        categoria?: string;
-        ativo?: boolean;
-        low_stock?: boolean;
-    };
-}
+export default function LojaIndex({
+  activeTab,
+  products,
+  categories,
+  filters,
+  profiles,
+  selectedProfileId,
+  cart,
+  orders,
+  statusLabels,
+}: Props) {
+  const [search, setSearch] = useState(filters.search || '');
+  const [category, setCategory] = useState(filters.category || 'all');
+  const [productQty, setProductQty] = useState<Record<string, number>>({});
+  const [productVariant, setProductVariant] = useState<Record<string, string>>({});
+  const [cartVariantDraft, setCartVariantDraft] = useState<Record<string, string>>({});
+  const [orderNotes, setOrderNotes] = useState('');
 
-export default function LojaIndex({ products, stats, categorias, filters }: Props) {
-    const [dialogOpen, setDialogOpen] = useState(false);
-    const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-    
-    const [formData, setFormData] = useState({
-        nome: '',
-        descricao: '',
-        codigo: '',
-        categoria: '',
-        preco: 0,
-        stock: 0,
-        stock_minimo: 0,
-        ativo: true,
-    });
+  const selectedProfile = useMemo(
+    () => profiles.find((profile) => profile.id === selectedProfileId) || profiles[0],
+    [profiles, selectedProfileId],
+  );
 
-    const resetForm = () => {
-        setFormData({
-            nome: '',
-            descricao: '',
-            codigo: '',
-            categoria: '',
-            preco: 0,
-            stock: 0,
-            stock_minimo: 0,
-            ativo: true,
-        });
-        setEditingProduct(null);
-    };
+  const goToTab = (tab: string, extraParams?: Record<string, string>) => {
+    const routeName = tab === 'carrinho' ? 'loja.carrinho' : tab === 'pedidos' ? 'loja.pedidos' : 'loja.index';
 
-    const handleSubmit = (e: FormEvent) => {
-        e.preventDefault();
-        
-        if (editingProduct) {
-            router.put(`/loja/${editingProduct.id}`, formData, {
-                onSuccess: () => {
-                    setDialogOpen(false);
-                    resetForm();
-                },
-            });
-        } else {
-            router.post('/loja', formData, {
-                onSuccess: () => {
-                    setDialogOpen(false);
-                    resetForm();
-                },
-            });
-        }
-    };
-
-    const handleEdit = (product: Product) => {
-        setEditingProduct(product);
-        setFormData({
-            nome: product.nome,
-            descricao: product.descricao || '',
-            codigo: product.codigo,
-            categoria: product.categoria || '',
-            preco: product.preco,
-            stock: product.stock,
-            stock_minimo: product.stock_minimo,
-            ativo: product.ativo,
-        });
-        setDialogOpen(true);
-    };
-
-    const handleDelete = (id: string) => {
-        if (confirm('Tem certeza que deseja eliminar este produto?')) {
-            router.delete(`/loja/${id}`);
-        }
-    };
-
-    return (
-        <AuthenticatedLayout
-            header={
-                <h1 className="text-2xl font-bold text-gray-800">
-                    Gestão de Inventário
-                </h1>
-            }
-        >
-            <Head title="Gestão de Inventário" />
-
-            <div className="container mx-auto px-2 sm:px-4 py-3 sm:py-4 max-w-7xl space-y-2 sm:space-y-3">
-                <div className="flex flex-col gap-2 sm:gap-3 md:flex-row md:items-center md:justify-between">
-                    <div>
-                        <h1 className="text-lg sm:text-xl font-semibold tracking-tight">Gestão de Inventário</h1>
-                        <p className="text-muted-foreground text-xs mt-0.5">
-                            {products?.length || 0} produtos em stock
-                        </p>
-                    </div>
-                    
-                    <Dialog open={dialogOpen} onOpenChange={(open) => {
-                        setDialogOpen(open);
-                        if (!open) resetForm();
-                    }}>
-                        <DialogTrigger asChild>
-                            <Button onClick={resetForm} className="h-8 text-xs">
-                                <Plus className="mr-1.5 sm:mr-2" size={16} />
-                                <span className="hidden sm:inline">Novo Produto</span>
-                                <span className="sm:hidden">Novo</span>
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-2xl">
-                            <DialogHeader>
-                                <DialogTitle>{editingProduct ? 'Editar Produto' : 'Novo Produto'}</DialogTitle>
-                            </DialogHeader>
-                            <form onSubmit={handleSubmit} className="space-y-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="nome">Nome *</Label>
-                                    <Input
-                                        id="nome"
-                                        value={formData.nome}
-                                        onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
-                                        placeholder="Nome do produto"
-                                        required
-                                    />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="codigo">Código *</Label>
-                                    <Input
-                                        id="codigo"
-                                        value={formData.codigo}
-                                        onChange={(e) => setFormData({ ...formData, codigo: e.target.value })}
-                                        placeholder="Código único do produto"
-                                        required
-                                    />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="categoria">Categoria</Label>
-                                    <Input
-                                        id="categoria"
-                                        value={formData.categoria}
-                                        onChange={(e) => setFormData({ ...formData, categoria: e.target.value })}
-                                        placeholder="Ex: Equipamento, Merchandising"
-                                    />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="descricao">Descrição</Label>
-                                    <Textarea
-                                        id="descricao"
-                                        value={formData.descricao}
-                                        onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
-                                        placeholder="Descrição do produto"
-                                        rows={2}
-                                    />
-                                </div>
-
-                                <div className="grid grid-cols-3 gap-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="preco">Preço (€) *</Label>
-                                        <Input
-                                            id="preco"
-                                            type="number"
-                                            min="0"
-                                            step="0.01"
-                                            value={formData.preco}
-                                            onChange={(e) => setFormData({ ...formData, preco: parseFloat(e.target.value) || 0 })}
-                                            placeholder="0.00"
-                                            required
-                                        />
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <Label htmlFor="stock">Stock *</Label>
-                                        <Input
-                                            id="stock"
-                                            type="number"
-                                            min="0"
-                                            value={formData.stock}
-                                            onChange={(e) => setFormData({ ...formData, stock: parseInt(e.target.value) || 0 })}
-                                            placeholder="0"
-                                            required
-                                        />
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <Label htmlFor="stock_minimo">Stock Mínimo *</Label>
-                                        <Input
-                                            id="stock_minimo"
-                                            type="number"
-                                            min="0"
-                                            value={formData.stock_minimo}
-                                            onChange={(e) => setFormData({ ...formData, stock_minimo: parseInt(e.target.value) || 0 })}
-                                            placeholder="0"
-                                            required
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="flex gap-2 justify-end pt-4">
-                                    <Button type="button" variant="outline" onClick={() => {
-                                        setDialogOpen(false);
-                                        resetForm();
-                                    }}>
-                                        Cancelar
-                                    </Button>
-                                    <Button type="submit">
-                                        {editingProduct ? 'Atualizar Produto' : 'Adicionar Produto'}
-                                    </Button>
-                                </div>
-                            </form>
-                        </DialogContent>
-                    </Dialog>
-                </div>
-
-                {/* Stats Cards */}
-                <div className="grid gap-2 grid-cols-2 sm:grid-cols-3">
-                    <Card className="p-2 sm:p-3">
-                        <div className="flex items-start justify-between gap-1">
-                            <div className="min-w-0 flex-1">
-                                <p className="text-xs text-muted-foreground font-medium leading-tight">Valor Total em Stock</p>
-                                <p className="text-lg sm:text-xl font-bold text-blue-600 mt-0.5 truncate">€{stats.valor_total_stock.toFixed(2)}</p>
-                            </div>
-                            <div className="p-1.5 rounded-lg bg-blue-50 flex-shrink-0">
-                                <Package className="text-blue-600" size={16} weight="bold" />
-                            </div>
-                        </div>
-                    </Card>
-
-                    <Card className="p-2 sm:p-3">
-                        <div className="flex items-start justify-between gap-1">
-                            <div className="min-w-0 flex-1">
-                                <p className="text-xs text-muted-foreground font-medium leading-tight">Produtos</p>
-                                <p className="text-lg sm:text-xl font-bold mt-0.5">{stats.total_produtos}</p>
-                            </div>
-                            <div className="p-1.5 rounded-lg bg-green-50 flex-shrink-0">
-                                <ShoppingCart className="text-green-600" size={16} weight="bold" />
-                            </div>
-                        </div>
-                    </Card>
-
-                    <Card className="p-2 sm:p-3 col-span-2 sm:col-span-1">
-                        <div className="flex items-start justify-between gap-1">
-                            <div className="min-w-0 flex-1">
-                                <p className="text-xs text-muted-foreground font-medium leading-tight">Stock Baixo</p>
-                                <p className="text-lg sm:text-xl font-bold text-orange-600 mt-0.5">{stats.produtos_baixo_stock}</p>
-                            </div>
-                            <div className="p-1.5 rounded-lg bg-orange-50 flex-shrink-0">
-                                <TrendUp className="text-orange-600" size={16} weight="bold" />
-                            </div>
-                        </div>
-                    </Card>
-                </div>
-
-                {/* Products Grid */}
-                <div className="grid gap-2 sm:gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-                    {products.map(product => (
-                        <Card key={product.id} className="p-2.5 sm:p-3 transition-all hover:shadow-md">
-                            <div className="space-y-2">
-                                <div className="flex items-start justify-between gap-2">
-                                    <h3 className="font-semibold text-sm line-clamp-2 flex-1">{product.nome}</h3>
-                                    <Badge variant={product.is_low_stock ? 'destructive' : 'default'} className="text-xs flex-shrink-0">
-                                        {product.is_low_stock ? 'Stock Baixo' : 'OK'}
-                                    </Badge>
-                                </div>
-
-                                <div className="text-lg sm:text-xl font-bold text-primary">
-                                    €{product.preco.toFixed(2)}
-                                </div>
-
-                                <div className="space-y-0.5 text-xs">
-                                    <p className="text-muted-foreground truncate">Código: {product.codigo}</p>
-                                    {product.categoria && (
-                                        <p className="text-muted-foreground truncate">Categoria: {product.categoria}</p>
-                                    )}
-                                    {product.descricao && (
-                                        <p className="text-muted-foreground line-clamp-2">{product.descricao}</p>
-                                    )}
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-1.5 pt-1.5 border-t">
-                                    <div>
-                                        <p className="text-xs text-muted-foreground">Stock Atual</p>
-                                        <p className="font-semibold text-sm">{product.stock}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs text-muted-foreground">Stock Mínimo</p>
-                                        <p className="font-semibold text-sm">{product.stock_minimo}</p>
-                                    </div>
-                                </div>
-
-                                <div className="flex gap-2 pt-2">
-                                    <Button
-                                        size="sm"
-                                        variant="outline"
-                                        className="flex-1 h-8 text-xs"
-                                        onClick={() => handleEdit(product)}
-                                    >
-                                        Editar
-                                    </Button>
-                                    <Button
-                                        size="sm"
-                                        variant="destructive"
-                                        className="h-8 text-xs"
-                                        onClick={() => handleDelete(product.id)}
-                                    >
-                                        Eliminar
-                                    </Button>
-                                </div>
-                            </div>
-                        </Card>
-                    ))}
-                </div>
-
-                {/* Empty State */}
-                {(!products || products.length === 0) && (
-                    <Card className="p-6 sm:p-8">
-                        <div className="text-center">
-                            <Package className="mx-auto text-muted-foreground mb-2 sm:mb-3" size={40} weight="thin" />
-                            <h3 className="font-semibold text-sm mb-0.5">Nenhum produto registado</h3>
-                            <p className="text-muted-foreground text-xs">
-                                Adicione produtos ao seu inventário.
-                            </p>
-                        </div>
-                    </Card>
-                )}
-            </div>
-        </AuthenticatedLayout>
+    router.get(
+      route(routeName),
+      {
+        target_user_id: selectedProfileId,
+        ...(tab === 'loja' ? { search: search || undefined, category: category === 'all' ? undefined : category } : {}),
+        ...extraParams,
+      },
+      { preserveState: true, replace: true },
     );
+  };
+
+  const submitFilters = (e: FormEvent) => {
+    e.preventDefault();
+    goToTab('loja');
+  };
+
+  const onProfileChange = (profileId: string) => {
+    goToTab(activeTab, { target_user_id: profileId });
+  };
+
+  const addToCart = (product: StoreProduct) => {
+    const quantity = Math.max(1, Number(productQty[product.id] || 1));
+    const variant = productVariant[product.id] || null;
+
+    if (product.variant_options.length > 0 && !variant) {
+      return;
+    }
+
+    router.post(
+      route('loja.cart.store'),
+      {
+        article_id: product.id,
+        target_user_id: selectedProfileId,
+        quantity,
+        variant,
+      },
+      {
+        preserveScroll: true,
+      },
+    );
+  };
+
+  const updateCartItem = (item: CartItem, nextQuantity: number, nextVariant?: string) => {
+    router.put(
+      route('loja.cart.update', item.id),
+      {
+        quantity: Math.max(1, nextQuantity),
+        variant: nextVariant ?? item.variant ?? null,
+      },
+      {
+        preserveScroll: true,
+      },
+    );
+  };
+
+  const removeCartItem = (item: CartItem) => {
+    router.delete(route('loja.cart.destroy', item.id), {
+      preserveScroll: true,
+    });
+  };
+
+  const confirmOrder = () => {
+    router.post(
+      route('loja.orders.store'),
+      {
+        target_user_id: selectedProfileId,
+        notes: orderNotes || null,
+      },
+      {
+        preserveScroll: true,
+      },
+    );
+  };
+
+  return (
+    <AuthenticatedLayout
+      fullWidth
+      header={
+        <div>
+          <h1 className="text-lg sm:text-xl font-semibold tracking-tight">Loja do Clube</h1>
+          <p className="text-muted-foreground text-xs mt-0.5">Loja interna para membros, atletas e encarregados</p>
+        </div>
+      }
+    >
+      <Head title="Loja do Clube" />
+
+      <div className="space-y-3">
+        <Card>
+          <CardContent className="pt-4">
+            <div className="grid gap-3 md:grid-cols-2">
+              <div>
+                <Label>Perfil de compra</Label>
+                <Select value={selectedProfileId} onValueChange={onProfileChange}>
+                  <SelectTrigger className="bg-white mt-1">
+                    <SelectValue placeholder="Selecionar perfil" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {profiles.map((profile) => (
+                      <SelectItem key={profile.id} value={profile.id}>
+                        {profile.nome_completo} {profile.is_self ? '(Eu)' : '(Dependente)'}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="rounded-md border p-3 bg-muted/30 text-sm">
+                <p className="font-medium">A comprar para</p>
+                <p className="text-muted-foreground">{selectedProfile?.nome_completo || '-'}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Tabs value={activeTab} onValueChange={goToTab} className="space-y-3">
+          <TabsList className="grid w-full grid-cols-3 h-auto gap-1">
+            <TabsTrigger value="loja">Loja</TabsTrigger>
+            <TabsTrigger value="carrinho">Carrinho</TabsTrigger>
+            <TabsTrigger value="pedidos">Pedidos</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="loja" className="space-y-3">
+            <Card>
+              <CardContent className="pt-4">
+                <form onSubmit={submitFilters} className="grid gap-3 md:grid-cols-4">
+                  <div className="md:col-span-2">
+                    <Label>Pesquisar</Label>
+                    <Input
+                      className="bg-white mt-1"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      placeholder="Nome, código ou descrição"
+                    />
+                  </div>
+                  <div>
+                    <Label>Categoria</Label>
+                    <Select value={category} onValueChange={setCategory}>
+                      <SelectTrigger className="bg-white mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todas</SelectItem>
+                        {categories.map((cat) => (
+                          <SelectItem key={cat} value={cat}>
+                            {cat}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-end">
+                    <Button type="submit" className="w-full">Filtrar</Button>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
+
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {products.map((product) => {
+                const qty = productQty[product.id] ?? 1;
+                const variant = productVariant[product.id] ?? '';
+
+                return (
+                  <Card key={product.id}>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-base">{product.nome}</CardTitle>
+                      <div className="text-xs text-muted-foreground">{product.codigo}</div>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      {product.categoria && <Badge variant="secondary">{product.categoria}</Badge>}
+                      {product.descricao && <p className="text-sm text-muted-foreground">{product.descricao}</p>}
+
+                      <div className="flex items-center justify-between">
+                        <span className="text-lg font-semibold">{euro(product.preco)}</span>
+                        <span className="text-xs text-muted-foreground">Stock: {product.stock_available}</span>
+                      </div>
+
+                      {product.variant_options.length > 0 && (
+                        <div>
+                          <Label>Tamanho / Variante</Label>
+                          <Select
+                            value={variant}
+                            onValueChange={(value) => setProductVariant((prev) => ({ ...prev, [product.id]: value }))}
+                          >
+                            <SelectTrigger className="bg-white mt-1">
+                              <SelectValue placeholder="Selecionar" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {product.variant_options.map((option) => (
+                                <SelectItem key={option} value={option}>
+                                  {option}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <Label>Quantidade</Label>
+                          <Input
+                            className="bg-white mt-1"
+                            type="number"
+                            min={1}
+                            max={Math.max(1, product.stock_available)}
+                            value={qty}
+                            onChange={(e) =>
+                              setProductQty((prev) => ({
+                                ...prev,
+                                [product.id]: Number(e.target.value || 1),
+                              }))
+                            }
+                          />
+                        </div>
+                        <div className="flex items-end">
+                          <Button
+                            className="w-full"
+                            onClick={() => addToCart(product)}
+                            disabled={product.stock_available <= 0 || (product.variant_options.length > 0 && !variant)}
+                            type="button"
+                          >
+                            Adicionar
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+
+            {products.length === 0 && (
+              <Card>
+                <CardContent className="pt-6 text-sm text-muted-foreground">Sem artigos visíveis na loja para os filtros atuais.</CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          <TabsContent value="carrinho" className="space-y-3">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Carrinho</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {cart.items.map((item) => (
+                  <div key={item.id} className="border rounded-md p-3 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <div>
+                        <p className="font-medium">{item.article?.nome || 'Artigo removido'}</p>
+                        <p className="text-xs text-muted-foreground">{item.article?.codigo || '-'}</p>
+                      </div>
+                      <div className="font-medium">{euro(item.line_total)}</div>
+                    </div>
+
+                    <div className="grid md:grid-cols-4 gap-2">
+                      <div>
+                        <Label>Quantidade</Label>
+                        <Input
+                          className="bg-white mt-1"
+                          type="number"
+                          min={1}
+                          value={item.quantity}
+                          onChange={(e) => updateCartItem(item, Number(e.target.value || 1))}
+                        />
+                      </div>
+
+                      <div>
+                        <Label>Variante</Label>
+                        <Input
+                          className="bg-white mt-1"
+                          value={cartVariantDraft[item.id] ?? item.variant ?? ''}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            setCartVariantDraft((prev) => ({ ...prev, [item.id]: value }));
+                          }}
+                          onBlur={(e) => {
+                            const nextVariant = e.target.value || '';
+                            updateCartItem(item, item.quantity, nextVariant);
+                          }}
+                          placeholder="Opcional"
+                        />
+                      </div>
+
+                      <div className="flex items-end text-sm text-muted-foreground">
+                        Unitário: {euro(item.unit_price)}
+                      </div>
+
+                      <div className="flex items-end">
+                        <Button type="button" variant="destructive" className="w-full" onClick={() => removeCartItem(item)}>
+                          Remover
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+                {cart.items.length === 0 && <p className="text-sm text-muted-foreground">Carrinho vazio.</p>}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Confirmar pedido</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-sm">
+                  <div className="flex items-center justify-between"><span>Subtotal</span><span>{euro(cart.subtotal)}</span></div>
+                  <div className="flex items-center justify-between font-semibold"><span>Total</span><span>{euro(cart.total)}</span></div>
+                </div>
+
+                <div>
+                  <Label>Notas</Label>
+                  <Input className="bg-white mt-1" value={orderNotes} onChange={(e) => setOrderNotes(e.target.value)} placeholder="Notas opcionais do pedido" />
+                </div>
+
+                <Button type="button" className="w-full" disabled={cart.items.length === 0} onClick={confirmOrder}>
+                  Confirmar pedido
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="pedidos" className="space-y-3">
+            {orders.map((order) => (
+              <Card key={order.id}>
+                <CardHeader>
+                  <div className="flex items-center justify-between gap-2">
+                    <CardTitle className="text-base">Pedido {order.id.slice(0, 8)}</CardTitle>
+                    <Badge>{statusLabels[order.status] || order.status}</Badge>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Criado em {formatDate(order.created_at)} · Para {order.target_user?.nome_completo || order.user?.nome_completo || '-'}
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {order.items.map((item) => (
+                    <div key={item.id} className="flex items-center justify-between text-sm border rounded-md px-3 py-2">
+                      <div>
+                        <div className="font-medium">{item.article_name_snapshot}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {item.article_code_snapshot}
+                          {item.variant_snapshot ? ` · ${item.variant_snapshot}` : ''}
+                          {` · x${item.quantity}`}
+                        </div>
+                      </div>
+                      <div>{euro(item.line_total)}</div>
+                    </div>
+                  ))}
+
+                  <div className="flex items-center justify-between pt-2 border-t text-sm font-semibold">
+                    <span>Total</span>
+                    <span>{euro(order.total)}</span>
+                  </div>
+
+                  {order.financial_invoice && (
+                    <div className="text-xs text-muted-foreground">
+                      Fatura: {order.financial_invoice.id.slice(0, 8)} · Estado pagamento: {order.financial_invoice.estado_pagamento}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+
+            {orders.length === 0 && (
+              <Card>
+                <CardContent className="pt-6 text-sm text-muted-foreground">Sem pedidos registados.</CardContent>
+              </Card>
+            )}
+          </TabsContent>
+        </Tabs>
+      </div>
+    </AuthenticatedLayout>
+  );
 }

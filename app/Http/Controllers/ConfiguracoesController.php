@@ -404,6 +404,7 @@ class ConfiguracoesController extends Controller
             'preco' => 'required|numeric|min:0',
             'descricao' => 'nullable|string',
             'ativo' => 'boolean',
+            'visible_in_store' => 'boolean',
         ]);
 
         $data['stock'] = $data['stock'] ?? 0;
@@ -424,6 +425,7 @@ class ConfiguracoesController extends Controller
             'preco' => 'required|numeric|min:0',
             'descricao' => 'nullable|string',
             'ativo' => 'boolean',
+            'visible_in_store' => 'boolean',
         ]);
 
         $product->update($data);

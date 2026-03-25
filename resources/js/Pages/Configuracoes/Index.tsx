@@ -121,6 +121,7 @@ interface Product {
     categoria?: string | null;
     preco: number;
     ativo: boolean;
+    visible_in_store?: boolean;
 }
 
 const toNumber = (value: unknown, fallback = 0): number => {
@@ -528,6 +529,9 @@ export default function SettingsIndex({
 
     const openAddDialog = (type: string) => {
         reset();
+        if (type === 'product') {
+            setData('visible_in_store', false);
+        }
         setEditingItem({ type });
         setDialogOpen(true);
     };
@@ -1462,13 +1466,14 @@ export default function SettingsIndex({
                                             <TableHead>Nome</TableHead>
                                             <TableHead>Categoria</TableHead>
                                             <TableHead>Preco</TableHead>
+                                            <TableHead>Visível na Loja</TableHead>
                                             <TableHead className="text-right">Ações</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {products.length === 0 ? (
                                             <TableRow>
-                                                <TableCell colSpan={5} className="text-center text-muted-foreground">
+                                                <TableCell colSpan={6} className="text-center text-muted-foreground">
                                                     Nenhum artigo cadastrado
                                                 </TableCell>
                                             </TableRow>
@@ -1479,6 +1484,11 @@ export default function SettingsIndex({
                                                     <TableCell>{product.nome}</TableCell>
                                                     <TableCell>{product.categoria || '-'}</TableCell>
                                                     <TableCell>€{Number(product.preco).toFixed(2)}</TableCell>
+                                                    <TableCell>
+                                                        <Badge variant={product.visible_in_store ? 'secondary' : 'outline'}>
+                                                            {product.visible_in_store ? 'Sim' : 'Não'}
+                                                        </Badge>
+                                                    </TableCell>
                                                     <TableCell className="text-right">
                                                         <div className="flex justify-end gap-2">
                                                             <Button
@@ -2315,6 +2325,21 @@ export default function SettingsIndex({
                                             onChange={e => setData('preco', e.target.value ? parseFloat(e.target.value) : '')}
                                             required
                                         />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="visible_in_store">Visível na Loja</Label>
+                                        <Select
+                                            value={(data.visible_in_store ?? false) ? 'sim' : 'nao'}
+                                            onValueChange={(value) => setData('visible_in_store', value === 'sim')}
+                                        >
+                                            <SelectTrigger id="visible_in_store">
+                                                <SelectValue placeholder="Selecionar" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="sim">Sim</SelectItem>
+                                                <SelectItem value="nao">Não</SelectItem>
+                                            </SelectContent>
+                                        </Select>
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="descricao">Descricao</Label>

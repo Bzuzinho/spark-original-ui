@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Supplier extends Model
 {
@@ -16,10 +17,21 @@ class Supplier extends Model
         'telefone',
         'morada',
         'categoria',
+        'notas',
         'ativo',
     ];
 
     protected $casts = [
         'ativo' => 'boolean',
     ];
+
+    public function products(): HasMany
+    {
+        return $this->hasMany(Product::class, 'supplier_id');
+    }
+
+    public function purchases(): HasMany
+    {
+        return $this->hasMany(SupplierPurchase::class, 'supplier_id');
+    }
 }

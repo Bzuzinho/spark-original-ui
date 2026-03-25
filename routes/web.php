@@ -12,12 +12,15 @@ use App\Http\Controllers\TransacoesController;
 use App\Http\Controllers\TaxasController;
 use App\Http\Controllers\CategoriasFinanceirasController;
 use App\Http\Controllers\RelatoriosFinanceirosController;
-use App\Http\Controllers\LojaController;
+use App\Http\Controllers\StoreCartController;
+use App\Http\Controllers\StoreController;
+use App\Http\Controllers\StoreOrderController;
 use App\Http\Controllers\PatrocinosController;
 use App\Http\Controllers\ComunicacaoController;
 use App\Http\Controllers\CampanhasMarketingController;
 use App\Http\Controllers\ConfiguracoesController;
 use App\Http\Controllers\ConfiguracoesDesportivoController;
+use App\Http\Controllers\LogisticaController;
 use App\Http\Controllers\EquipasController;
 use App\Http\Controllers\MembrosEquipaController;
 use App\Http\Controllers\SessoesFormacaoController;
@@ -99,8 +102,38 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
     
     Route::resource('financeiro', FinanceiroController::class)->except(['create']);
+    Route::prefix('logistica')->group(function () {
+        Route::get('/', [LogisticaController::class, 'index'])->name('logistica.index');
+        Route::post('/requisicoes', [LogisticaController::class, 'storeRequest'])->name('logistica.requisicoes.store');
+        Route::put('/requisicoes/{logisticsRequest}', [LogisticaController::class, 'updateRequest'])->name('logistica.requisicoes.update');
+        Route::delete('/requisicoes/{logisticsRequest}', [LogisticaController::class, 'destroyRequest'])->name('logistica.requisicoes.destroy');
+        Route::post('/requisicoes/{logisticsRequest}/aprovar', [LogisticaController::class, 'approveRequest'])->name('logistica.requisicoes.approve');
+        Route::post('/requisicoes/{logisticsRequest}/faturar', [LogisticaController::class, 'invoiceRequest'])->name('logistica.requisicoes.invoice');
+        Route::post('/requisicoes/{logisticsRequest}/entregar', [LogisticaController::class, 'deliverRequest'])->name('logistica.requisicoes.deliver');
+
+        Route::post('/stock/movimentos', [LogisticaController::class, 'registerStockMovement'])->name('logistica.stock.movimentos.store');
+
+        Route::post('/emprestimos', [LogisticaController::class, 'storeLoan'])->name('logistica.emprestimos.store');
+        Route::put('/emprestimos/{equipmentLoan}', [LogisticaController::class, 'updateLoan'])->name('logistica.emprestimos.update');
+        Route::delete('/emprestimos/{equipmentLoan}', [LogisticaController::class, 'destroyLoan'])->name('logistica.emprestimos.destroy');
+        Route::post('/emprestimos/{equipmentLoan}/devolver', [LogisticaController::class, 'returnLoan'])->name('logistica.emprestimos.return');
+
+        Route::post('/fornecedores/compras', [LogisticaController::class, 'registerSupplierPurchase'])->name('logistica.fornecedores.compras.store');
+        Route::put('/fornecedores/compras/{supplierPurchase}', [LogisticaController::class, 'updateSupplierPurchase'])->name('logistica.fornecedores.compras.update');
+        Route::delete('/fornecedores/compras/{supplierPurchase}', [LogisticaController::class, 'destroySupplierPurchase'])->name('logistica.fornecedores.compras.destroy');
+    });
     Route::post('financeiro/{financeiro}/apagar', [FinanceiroController::class, 'destroy'])->name('financeiro.destroy.post');
-    Route::resource('loja', LojaController::class);
+    Route::prefix('loja')->group(function () {
+        Route::get('/', [StoreController::class, 'index'])->name('loja.index');
+        Route::get('/carrinho', [StoreController::class, 'cart'])->name('loja.carrinho');
+        Route::get('/pedidos', [StoreController::class, 'orders'])->name('loja.pedidos');
+
+        Route::post('/carrinho/items', [StoreCartController::class, 'store'])->name('loja.cart.store');
+        Route::put('/carrinho/items/{storeCartItem}', [StoreCartController::class, 'update'])->name('loja.cart.update');
+        Route::delete('/carrinho/items/{storeCartItem}', [StoreCartController::class, 'destroy'])->name('loja.cart.destroy');
+
+        Route::post('/pedidos', [StoreOrderController::class, 'store'])->name('loja.orders.store');
+    });
     Route::resource('patrocinios', PatrocinosController::class);
     Route::resource('comunicacao', ComunicacaoController::class);
     Route::post('/comunicacao/{communication}/enviar', [ComunicacaoController::class, 'send'])->name('comunicacao.enviar');

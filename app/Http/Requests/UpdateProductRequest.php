@@ -24,6 +24,9 @@ class UpdateProductRequest extends FormRequest
             'stock_minimo' => ['required', 'integer', 'min:0'],
             'imagem' => ['nullable', 'string'],
             'ativo' => ['boolean'],
+            'visible_in_store' => ['sometimes', 'boolean'],
+            'variant_options' => ['nullable', 'array'],
+            'variant_options.*' => ['string', 'max:80'],
         ];
     }
 }
