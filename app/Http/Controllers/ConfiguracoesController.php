@@ -15,6 +15,7 @@ use App\Models\ClubSetting;
 use App\Models\CostCenter;
 use App\Models\InvoiceType;
 use App\Models\MonthlyFee;
+use App\Models\ItemCategory;
 use App\Models\Product;
 use App\Models\Supplier;
 use App\Models\UserTypePermission;
@@ -49,6 +50,7 @@ class ConfiguracoesController extends Controller
             'invoiceTypes' => InvoiceType::orderBy('nome')->get(),
             'products' => Product::all(),
             'suppliers' => Supplier::all(),
+            'itemCategories' => ItemCategory::orderBy('nome')->get(),
             'provaTipos' => ProvaTipo::all(),
             'notificationPrefs' => NotificationPreference::first(),
             'users' => User::select('id', 'numero_socio', 'nome_completo', 'email_utilizador', 'perfil', 'estado')->get(),
@@ -402,10 +404,18 @@ class ConfiguracoesController extends Controller
             'nome' => 'required|string|max:255',
             'categoria' => 'nullable|string|max:100',
             'preco' => 'required|numeric|min:0',
+            'stock_minimo' => 'nullable|integer|min:0',
+            'area_armazenamento' => 'nullable|string|max:120',
             'descricao' => 'nullable|string',
             'ativo' => 'boolean',
             'visible_in_store' => 'boolean',
         ]);
+
+        if ($request->hasFile('imagem_file')) {
+            $path = $request->file('imagem_file')->store('products', 'public');
+            $data['imagem'] = Storage::url($path);
+        }
+        unset($data['imagem_file']);
 
         $data['stock'] = $data['stock'] ?? 0;
         $data['stock_minimo'] = $data['stock_minimo'] ?? 0;
@@ -423,10 +433,18 @@ class ConfiguracoesController extends Controller
             'nome' => 'required|string|max:255',
             'categoria' => 'nullable|string|max:100',
             'preco' => 'required|numeric|min:0',
+            'stock_minimo' => 'nullable|integer|min:0',
+            'area_armazenamento' => 'nullable|string|max:120',
             'descricao' => 'nullable|string',
             'ativo' => 'boolean',
             'visible_in_store' => 'boolean',
         ]);
+
+        if ($request->hasFile('imagem_file')) {
+            $path = $request->file('imagem_file')->store('products', 'public');
+            $data['imagem'] = Storage::url($path);
+        }
+        unset($data['imagem_file']);
 
         $product->update($data);
 
@@ -524,6 +542,42 @@ class ConfiguracoesController extends Controller
 
         return redirect()->route('configuracoes')
             ->with('success', 'Prova eliminada com sucesso!');
+    }
+
+    public function storeItemCategory(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'codigo' => 'required|string|max:50|unique:item_categories,codigo',
+            'nome' => 'required|string|max:255',
+            'ativo' => 'boolean',
+        ]);
+
+        ItemCategory::create($data);
+
+        return redirect()->route('configuracoes')
+            ->with('success', 'Categoria criada com sucesso!');
+    }
+
+    public function updateItemCategory(Request $request, ItemCategory $itemCategory): RedirectResponse
+    {
+        $data = $request->validate([
+            'codigo' => 'required|string|max:50|unique:item_categories,codigo,' . $itemCategory->id,
+            'nome' => 'required|string|max:255',
+            'ativo' => 'boolean',
+        ]);
+
+        $itemCategory->update($data);
+
+        return redirect()->route('configuracoes')
+            ->with('success', 'Categoria atualizada com sucesso!');
+    }
+
+    public function destroyItemCategory(ItemCategory $itemCategory): RedirectResponse
+    {
+        $itemCategory->delete();
+
+        return redirect()->route('configuracoes')
+            ->with('success', 'Categoria eliminada com sucesso!');
     }
 
     public function updateNotificationPreferences(Request $request): RedirectResponse

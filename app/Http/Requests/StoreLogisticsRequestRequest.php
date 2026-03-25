@@ -17,7 +17,7 @@ class StoreLogisticsRequestRequest extends FormRequest
             'requester_user_id' => ['nullable', 'exists:users,id'],
             'requester_name_snapshot' => ['required', 'string', 'max:255'],
             'requester_area' => ['nullable', 'string', 'max:100'],
-            'requester_type' => ['nullable', 'in:athlete,coach,staff,department'],
+            'requester_type' => ['nullable', 'string', 'max:100'],
             'status' => ['nullable', 'in:draft,pending'],
             'allow_overdraw' => ['nullable', 'boolean'],
             'notes' => ['nullable', 'string'],

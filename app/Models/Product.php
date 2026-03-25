@@ -21,6 +21,7 @@ class Product extends Model
         'stock',
         'stock_reservado',
         'stock_minimo',
+        'area_armazenamento',
         'supplier_id',
         'imagem',
         'ativo',

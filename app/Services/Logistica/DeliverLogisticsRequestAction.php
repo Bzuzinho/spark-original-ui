@@ -34,15 +34,6 @@ class DeliverLogisticsRequestAction
                     'reference_id' => $request->id,
                     'notes' => 'Libertação de reserva na entrega da requisição',
                 ], $actor);
-
-                $this->registerStockMovementAction->execute([
-                    'article_id' => $item->article_id,
-                    'movement_type' => 'exit',
-                    'quantity' => (int) $item->quantity,
-                    'reference_type' => 'logistics_request',
-                    'reference_id' => $request->id,
-                    'notes' => 'Saída de stock por entrega da requisição',
-                ], $actor);
             }
 
             $request->update([

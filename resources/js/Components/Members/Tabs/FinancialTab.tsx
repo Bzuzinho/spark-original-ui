@@ -91,6 +91,15 @@ export function FinancialTab({
     return toNumber(user.conta_corrente ?? 0) + toNumber(user.conta_corrente_manual ?? 0);
   }, [user.conta_corrente, user.conta_corrente_manual]);
 
+  const contaCorrenteBase = useMemo(() => {
+    return toNumber(user.conta_corrente ?? 0);
+  }, [user.conta_corrente]);
+
+  const formatSignedEuro = (value: number) => {
+    const absoluteValue = Math.abs(value).toFixed(2);
+    return value < 0 ? `-€${absoluteValue}` : `€${absoluteValue}`;
+  };
+
   const getEstadoBadge = (estado: string) => {
     const variants: Record<string, string> = {
       pendente: 'bg-yellow-100 text-yellow-800',
@@ -200,7 +209,7 @@ export function FinancialTab({
               Conta Corrente
             </div>
             <div className={`text-lg font-bold leading-none ${contaCorrente < 0 ? 'text-red-600' : 'text-green-600'}`}>
-              {contaCorrente.toFixed(2)}€
+              {formatSignedEuro(contaCorrente)}
             </div>
           </div>
         </Card>
@@ -308,13 +317,11 @@ export function FinancialTab({
 
         <Card className="p-2">
           <h3 className="text-xs font-semibold mb-1.5">Conta Corrente Base</h3>
-          <Input
-            type="text"
-            value={user.conta_corrente ? `€${parseFloat(user.conta_corrente).toFixed(2)}` : '€0.00'}
-            readOnly
-            disabled
-            className="h-7 text-xs bg-muted"
-          />
+          <div
+            className={`h-7 px-3 rounded-md border bg-muted text-xs font-semibold flex items-center ${contaCorrenteBase < 0 ? 'text-red-600' : 'text-green-600'}`}
+          >
+            {formatSignedEuro(contaCorrenteBase)}
+          </div>
         </Card>
 
         <Card className="p-2">

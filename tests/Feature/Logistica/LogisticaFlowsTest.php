@@ -61,7 +61,7 @@ class LogisticaFlowsTest extends TestCase
         $request->refresh();
 
         $this->assertSame('approved', $request->status);
-        $this->assertSame(20, (int) $product->stock);
+        $this->assertSame(16, (int) $product->stock);
         $this->assertSame(4, (int) $product->stock_reservado);
 
         $this->actingAs($admin)
@@ -73,6 +73,9 @@ class LogisticaFlowsTest extends TestCase
         $request->refresh();
         $this->assertSame('invoiced', $request->status);
         $this->assertNotNull($request->financial_invoice_id);
+        $product->refresh();
+        $this->assertSame(16, (int) $product->stock);
+        $this->assertSame(4, (int) $product->stock_reservado);
         $this->assertDatabaseHas('invoice_items', [
             'fatura_id' => $request->financial_invoice_id,
             'produto_id' => $product->id,
@@ -216,5 +219,248 @@ class LogisticaFlowsTest extends TestCase
             'reference_type' => 'equipment_loan',
             'reference_id' => $loan->id,
         ]);
+    }
+
+    public function test_updating_invoiced_request_updates_invoice_and_stock_delta(): void
+    {
+        $admin = User::factory()->create();
+        $requesterA = User::factory()->athlete()->create();
+        $requesterB = User::factory()->athlete()->create();
+
+        $product = Product::create([
+            'codigo' => 'ART-EDIT-01',
+            'nome' => 'Pala de Mão',
+            'categoria' => 'Material',
+            'preco' => 12.00,
+            'stock' => 30,
+            'stock_reservado' => 0,
+            'stock_minimo' => 2,
+            'ativo' => true,
+        ]);
+
+        $this->actingAs($admin)
+            ->post(route('logistica.requisicoes.store'), [
+                'requester_user_id' => $requesterA->id,
+                'requester_name_snapshot' => $requesterA->nome_completo,
+                'requester_area' => 'Natação',
+                'requester_type' => 'Atleta',
+                'status' => 'pending',
+                'items' => [
+                    [
+                        'article_id' => $product->id,
+                        'quantity' => 5,
+                        'unit_price' => 12.00,
+                    ],
+                ],
+            ])
+            ->assertRedirect(route('logistica.index'));
+
+        $request = LogisticsRequest::query()->latest()->firstOrFail();
+
+        $this->actingAs($admin)->post(route('logistica.requisicoes.approve', $request->id))->assertRedirect(route('logistica.index'));
+        $this->actingAs($admin)->post(route('logistica.requisicoes.invoice', $request->id))->assertRedirect(route('logistica.index'));
+
+        $request->refresh();
+        $this->assertSame('invoiced', $request->status);
+        $this->assertNotNull($request->financial_invoice_id);
+
+        $this->actingAs($admin)
+            ->put(route('logistica.requisicoes.update', $request->id), [
+                'requester_user_id' => $requesterB->id,
+                'requester_name_snapshot' => $requesterB->nome_completo,
+                'requester_area' => 'Competição',
+                'requester_type' => 'Atleta',
+                'items' => [
+                    [
+                        'article_id' => $product->id,
+                        'quantity' => 3,
+                        'unit_price' => 12.00,
+                    ],
+                ],
+            ])
+            ->assertRedirect(route('logistica.index'));
+
+        $request->refresh();
+        $product->refresh();
+        $invoice = Invoice::findOrFail($request->financial_invoice_id);
+
+        $this->assertSame(27, (int) $product->stock);
+        $this->assertSame(3, (int) $product->stock_reservado);
+        $this->assertSame($requesterB->id, $invoice->user_id);
+        $this->assertEquals(36.00, (float) $invoice->valor_total);
+        $this->assertDatabaseHas('invoice_items', [
+            'fatura_id' => $invoice->id,
+            'produto_id' => $product->id,
+            'quantidade' => 3,
+        ]);
+    }
+
+    public function test_deleting_invoiced_request_deletes_invoice_and_restores_stock(): void
+    {
+        $admin = User::factory()->create();
+        $requester = User::factory()->athlete()->create();
+
+        $product = Product::create([
+            'codigo' => 'ART-DEL-01',
+            'nome' => 'Barbatanas',
+            'categoria' => 'Material',
+            'preco' => 18.00,
+            'stock' => 14,
+            'stock_reservado' => 0,
+            'stock_minimo' => 2,
+            'ativo' => true,
+        ]);
+
+        $this->actingAs($admin)
+            ->post(route('logistica.requisicoes.store'), [
+                'requester_user_id' => $requester->id,
+                'requester_name_snapshot' => $requester->nome_completo,
+                'requester_area' => 'Natação',
+                'requester_type' => 'Atleta',
+                'status' => 'pending',
+                'items' => [
+                    [
+                        'article_id' => $product->id,
+                        'quantity' => 4,
+                        'unit_price' => 18.00,
+                    ],
+                ],
+            ])
+            ->assertRedirect(route('logistica.index'));
+
+        $request = LogisticsRequest::query()->latest()->firstOrFail();
+
+        $this->actingAs($admin)->post(route('logistica.requisicoes.approve', $request->id))->assertRedirect(route('logistica.index'));
+        $this->actingAs($admin)->post(route('logistica.requisicoes.invoice', $request->id))->assertRedirect(route('logistica.index'));
+
+        $request->refresh();
+        $invoiceId = $request->financial_invoice_id;
+        $this->assertNotNull($invoiceId);
+
+        $this->actingAs($admin)
+            ->delete(route('logistica.requisicoes.destroy', $request->id))
+            ->assertRedirect(route('logistica.index'));
+
+        $product->refresh();
+
+        $this->assertDatabaseMissing('logistics_requests', ['id' => $request->id]);
+        $this->assertDatabaseMissing('invoices', ['id' => $invoiceId]);
+        $this->assertSame(14, (int) $product->stock);
+        $this->assertSame(0, (int) $product->stock_reservado);
+    }
+
+    public function test_updating_delivered_request_updates_invoice_and_adjusts_physical_stock(): void
+    {
+        $admin = User::factory()->create();
+        $requesterA = User::factory()->athlete()->create();
+        $requesterB = User::factory()->athlete()->create();
+
+        $product = Product::create([
+            'codigo' => 'ART-ED-DEL-01',
+            'nome' => 'Pullbuoy',
+            'categoria' => 'Material',
+            'preco' => 15.00,
+            'stock' => 20,
+            'stock_reservado' => 0,
+            'stock_minimo' => 2,
+            'ativo' => true,
+        ]);
+
+        $this->actingAs($admin)
+            ->post(route('logistica.requisicoes.store'), [
+                'requester_user_id' => $requesterA->id,
+                'requester_name_snapshot' => $requesterA->nome_completo,
+                'requester_area' => 'Natação',
+                'requester_type' => 'Atleta',
+                'status' => 'pending',
+                'items' => [[
+                    'article_id' => $product->id,
+                    'quantity' => 4,
+                    'unit_price' => 15.00,
+                ]],
+            ])
+            ->assertRedirect(route('logistica.index'));
+
+        $request = LogisticsRequest::query()->latest()->firstOrFail();
+
+        $this->actingAs($admin)->post(route('logistica.requisicoes.approve', $request->id))->assertRedirect(route('logistica.index'));
+        $this->actingAs($admin)->post(route('logistica.requisicoes.invoice', $request->id))->assertRedirect(route('logistica.index'));
+        $this->actingAs($admin)->post(route('logistica.requisicoes.deliver', $request->id))->assertRedirect(route('logistica.index'));
+
+        $this->actingAs($admin)
+            ->put(route('logistica.requisicoes.update', $request->id), [
+                'requester_user_id' => $requesterB->id,
+                'requester_name_snapshot' => $requesterB->nome_completo,
+                'requester_area' => 'Competição',
+                'requester_type' => 'Atleta',
+                'items' => [[
+                    'article_id' => $product->id,
+                    'quantity' => 3,
+                    'unit_price' => 15.00,
+                ]],
+            ])
+            ->assertRedirect(route('logistica.index'));
+
+        $request->refresh();
+        $product->refresh();
+        $invoice = Invoice::findOrFail($request->financial_invoice_id);
+
+        $this->assertSame('delivered', $request->status);
+        $this->assertSame(17, (int) $product->stock);
+        $this->assertSame(0, (int) $product->stock_reservado);
+        $this->assertSame($requesterB->id, $invoice->user_id);
+        $this->assertEquals(45.00, (float) $invoice->valor_total);
+    }
+
+    public function test_deleting_delivered_request_deletes_invoice_and_restores_physical_stock(): void
+    {
+        $admin = User::factory()->create();
+        $requester = User::factory()->athlete()->create();
+
+        $product = Product::create([
+            'codigo' => 'ART-DEL-ENT-01',
+            'nome' => 'Prancha',
+            'categoria' => 'Material',
+            'preco' => 10.00,
+            'stock' => 12,
+            'stock_reservado' => 0,
+            'stock_minimo' => 2,
+            'ativo' => true,
+        ]);
+
+        $this->actingAs($admin)
+            ->post(route('logistica.requisicoes.store'), [
+                'requester_user_id' => $requester->id,
+                'requester_name_snapshot' => $requester->nome_completo,
+                'requester_area' => 'Natação',
+                'requester_type' => 'Atleta',
+                'status' => 'pending',
+                'items' => [[
+                    'article_id' => $product->id,
+                    'quantity' => 3,
+                    'unit_price' => 10.00,
+                ]],
+            ])
+            ->assertRedirect(route('logistica.index'));
+
+        $request = LogisticsRequest::query()->latest()->firstOrFail();
+
+        $this->actingAs($admin)->post(route('logistica.requisicoes.approve', $request->id))->assertRedirect(route('logistica.index'));
+        $this->actingAs($admin)->post(route('logistica.requisicoes.invoice', $request->id))->assertRedirect(route('logistica.index'));
+        $this->actingAs($admin)->post(route('logistica.requisicoes.deliver', $request->id))->assertRedirect(route('logistica.index'));
+
+        $request->refresh();
+        $invoiceId = $request->financial_invoice_id;
+
+        $this->actingAs($admin)
+            ->delete(route('logistica.requisicoes.destroy', $request->id))
+            ->assertRedirect(route('logistica.index'));
+
+        $product->refresh();
+
+        $this->assertDatabaseMissing('logistics_requests', ['id' => $request->id]);
+        $this->assertDatabaseMissing('invoices', ['id' => $invoiceId]);
+        $this->assertSame(12, (int) $product->stock);
+        $this->assertSame(0, (int) $product->stock_reservado);
     }
 }

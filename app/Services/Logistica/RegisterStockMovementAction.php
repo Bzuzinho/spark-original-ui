@@ -31,7 +31,7 @@ class RegisterStockMovementAction
                 'article_id' => $product->id,
                 'movement_type' => $movementType,
                 'quantity' => $quantity,
-                'unit_cost' => $data['unit_cost'] ?? null,
+                'unit_cost' => null,
                 'reference_type' => $data['reference_type'] ?? null,
                 'reference_id' => $data['reference_id'] ?? null,
                 'notes' => $data['notes'] ?? null,
@@ -44,7 +44,6 @@ class RegisterStockMovementAction
     {
         $stock = (int) $product->stock;
         $reserved = (int) ($product->stock_reservado ?? 0);
-        $available = $stock - $reserved;
 
         switch ($movementType) {
             case 'entry':
@@ -57,7 +56,7 @@ class RegisterStockMovementAction
                     throw ValidationException::withMessages(['quantity' => 'Saída de stock requer quantidade positiva.']);
                 }
 
-                if ($available < $quantity) {
+                if ($stock < $quantity) {
                     throw ValidationException::withMessages(['quantity' => 'Stock disponível insuficiente para saída.']);
                 }
 
@@ -65,30 +64,41 @@ class RegisterStockMovementAction
                 break;
 
             case 'reservation':
-                $newReserved = $reserved + $quantity;
-
-                if ($newReserved < 0) {
-                    throw ValidationException::withMessages(['quantity' => 'Não é possível libertar reserva abaixo de zero.']);
+                if ($quantity < 0) {
+                    throw ValidationException::withMessages(['quantity' => 'Reserva requer quantidade positiva.']);
                 }
 
-                if ($quantity > 0 && $available < $quantity) {
+                if ($stock < $quantity) {
                     throw ValidationException::withMessages(['quantity' => 'Stock disponível insuficiente para reservar.']);
                 }
 
-                $product->stock_reservado = $newReserved;
+                $product->stock = $stock - $quantity;
+                $product->stock_reservado = $reserved + $quantity;
                 break;
 
-            case 'adjustment':
-                $newStock = $stock + $quantity;
-                if ($newStock < 0) {
-                    throw ValidationException::withMessages(['quantity' => 'Ajuste inválido: stock final negativo.']);
+            case 'cancel_reservation':
+                if ($quantity < 0) {
+                    throw ValidationException::withMessages(['quantity' => 'Anular reserva requer quantidade positiva.']);
                 }
 
-                if ($newStock < $reserved) {
-                    throw ValidationException::withMessages(['quantity' => 'Ajuste inválido: stock final inferior ao reservado.']);
+                if ($reserved < $quantity) {
+                    throw ValidationException::withMessages(['quantity' => 'Quantidade reservada insuficiente para anular.']);
                 }
 
-                $product->stock = $newStock;
+                $product->stock = $stock + $quantity;
+                $product->stock_reservado = $reserved - $quantity;
+                break;
+
+            case 'deliver_reservation':
+                if ($quantity < 0) {
+                    throw ValidationException::withMessages(['quantity' => 'Entrega de reserva requer quantidade positiva.']);
+                }
+
+                if ($reserved < $quantity) {
+                    throw ValidationException::withMessages(['quantity' => 'Quantidade reservada insuficiente para entrega.']);
+                }
+
+                $product->stock_reservado = $reserved - $quantity;
                 break;
 
             default:

@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" modified="2026-03-25T13:00:00.000Z" agent="GPT-5.3-Codex" version="24.7.17">
+  <diagram id="configuracoes-detalhado" name="Modulo Configuracoes - Detalhado">
+    <mxGraphModel dx="2400" dy="1600" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="3400" pageHeight="2200" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <mxCell id="n1" value="Modulo Configuracoes&#xa;Tabs + Subtabs + Tabelas + Campos + Endpoints + Consumo" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1450" y="30" width="500" height="70" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="t1" value="Tab Geral" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="120" y="150" width="170" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="t2" value="Tab Clube" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="340" y="150" width="170" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="t3" value="Tab Desportivo" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="560" y="150" width="190" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="t4" value="Tab Financeiro" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="800" y="150" width="190" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="t5" value="Tab Logistica" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1040" y="150" width="190" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="t6" value="Tab Notificacoes" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1280" y="150" width="210" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="t7" value="Tab Base de Dados" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1540" y="150" width="210" height="50" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="g1" value="Subtab Tipos Utilizador&#xa;Tabela: user_types&#xa;Campos: id, nome, descricao, ativo, created_at&#xa;CRUD:&#xa;POST /configuracoes/user-types&#xa;PUT /configuracoes/user-types/{id}&#xa;DELETE /configuracoes/user-types/{id}" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="40" y="260" width="300" height="170" as="geometry"/>
+        </mxCell>
+        <mxCell id="g2" value="Subtab Permissoes&#xa;Tabela: user_type_permissions&#xa;Campos: id, user_type_id, modulo, permissao, valor&#xa;CRUD:&#xa;POST /configuracoes/permissions&#xa;PUT /configuracoes/permissions/{id}&#xa;DELETE /configuracoes/permissions/{id}" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="360" y="260" width="300" height="170" as="geometry"/>
+        </mxCell>
+        <mxCell id="g3" value="Subtab Escaloes&#xa;Tabela: age_groups&#xa;Campos: id, nome, idade_min, idade_max, genero, ativo&#xa;CRUD:&#xa;POST /configuracoes/age-groups&#xa;PUT /configuracoes/age-groups/{id}&#xa;DELETE /configuracoes/age-groups/{id}" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="680" y="260" width="300" height="170" as="geometry"/>
+        </mxCell>
+        <mxCell id="g4" value="Subtab Tipos Evento&#xa;Tabela principal: event_type_configs&#xa;Legado coexistente: event_types&#xa;Campos: id, nome, descricao, ativo, color&#xa;CRUD:&#xa;POST /configuracoes/event-types&#xa;PUT /configuracoes/event-types/{id}&#xa;DELETE /configuracoes/event-types/{id}" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="260" width="320" height="190" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="c1" value="Subtab Definicoes Clube&#xa;Tabela: club_settings&#xa;Campos: club_name, nif, email, telefone, morada, logo_url&#xa;CRUD:&#xa;GET /configuracoes&#xa;PUT /configuracoes/club-settings" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="1360" y="260" width="300" height="150" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="d1" value="Subtab Estado Atleta&#xa;Tabela: athlete_status_configs&#xa;Campos: id, nome, codigo, color, ativo&#xa;CRUD: /configuracoes/desportivo/athlete-status [POST,PUT,DELETE]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="1700" y="250" width="280" height="130" as="geometry"/>
+        </mxCell>
+        <mxCell id="d2" value="Subtab Tipo Treino&#xa;Tabela: training_type_configs&#xa;Campos: id, nome, codigo, color, ativo&#xa;CRUD: /configuracoes/desportivo/training-types [POST,PUT,DELETE]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="2000" y="250" width="280" height="130" as="geometry"/>
+        </mxCell>
+        <mxCell id="d3" value="Subtab Zona Treino&#xa;Tabela: training_zone_configs&#xa;Campos: id, nome, codigo, intensidade_min, intensidade_max, ativo&#xa;CRUD: /configuracoes/desportivo/training-zones [POST,PUT,DELETE]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="2300" y="250" width="300" height="140" as="geometry"/>
+        </mxCell>
+        <mxCell id="d4" value="Subtab Motivo Ausencia&#xa;Tabela: absence_reason_configs&#xa;Campos: id, nome, codigo, justificavel, ativo&#xa;CRUD: /configuracoes/desportivo/absence-reasons [POST,PUT,DELETE]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="1700" y="410" width="290" height="130" as="geometry"/>
+        </mxCell>
+        <mxCell id="d5" value="Subtab Motivo Lesao&#xa;Tabela: injury_reason_configs&#xa;Campos: id, nome, codigo, gravidade, ativo&#xa;CRUD: /configuracoes/desportivo/injury-reasons [POST,PUT,DELETE]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="2010" y="410" width="290" height="130" as="geometry"/>
+        </mxCell>
+        <mxCell id="d6" value="Subtab Tipo Piscina&#xa;Tabela: pool_type_configs&#xa;Campos: id, nome, tamanho_metros, indoor, ativo&#xa;CRUD: /configuracoes/desportivo/pool-types [POST,PUT,DELETE]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="2320" y="410" width="280" height="130" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="f1" value="Subtab Centros de Custo&#xa;Tabela: cost_centers&#xa;Campos: id, codigo, nome, descricao, ativo&#xa;CRUD: /configuracoes/cost-centers [POST,PUT,DELETE]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="40" y="500" width="290" height="130" as="geometry"/>
+        </mxCell>
+        <mxCell id="f2" value="Subtab Tipos de Fatura&#xa;Tabela: invoice_types&#xa;Campos: id, nome, serie, taxa_iva, ativo&#xa;CRUD: /configuracoes/invoice-types [POST,PUT,DELETE]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="350" y="500" width="290" height="130" as="geometry"/>
+        </mxCell>
+        <mxCell id="f3" value="Subtab Mensalidades&#xa;Tabela: monthly_fees&#xa;Campos: id, age_group_id, valor, data_inicio, data_fim, ativo&#xa;CRUD: /configuracoes/monthly-fees [POST,PUT,DELETE]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="660" y="500" width="310" height="130" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="l1" value="Subtab Produtos&#xa;Tabela: products&#xa;Campos: id, nome, sku, preco, stock, visible_in_store, ativo&#xa;CRUD: /configuracoes/products [POST,PUT,DELETE]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#cfe2f3;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="500" width="310" height="130" as="geometry"/>
+        </mxCell>
+        <mxCell id="l2" value="Subtab Fornecedores&#xa;Tabela: suppliers&#xa;Campos: id, nome, nif, email, telefone, contacto, ativo&#xa;CRUD: /configuracoes/suppliers [POST,PUT,DELETE]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#cfe2f3;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="1330" y="500" width="300" height="130" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="n2" value="Subtab Preferencias&#xa;Tabela: notification_preferences&#xa;Campos: id, user_type_id, canal, evento, ativo&#xa;CRUD: /configuracoes/notification-preferences [POST,PUT,DELETE]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f4cccc;strokeColor=#cc0000;" vertex="1" parent="1">
+          <mxGeometry x="1660" y="500" width="320" height="130" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="b1" value="Subtab Utilizadores&#xa;Tabela: users&#xa;Campos exibidos: id, nome, email, tipo_utilizador, ativo, created_at&#xa;Acoes: listar, filtrar, exportar" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ead1dc;strokeColor=#a64d79;" vertex="1" parent="1">
+          <mxGeometry x="2010" y="500" width="320" height="130" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="m1" value="Consumo: Modulo Membros&#xa;user_types&#xa;monthly_fees&#xa;cost_centers" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="100" y="760" width="260" height="110" as="geometry"/>
+        </mxCell>
+        <mxCell id="m2" value="Consumo: Modulo Eventos&#xa;event_type_configs/event_types&#xa;age_groups&#xa;cost_centers" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="390" y="760" width="280" height="110" as="geometry"/>
+        </mxCell>
+        <mxCell id="m3" value="Consumo: Modulo Desportivo&#xa;athlete_status_configs&#xa;training_type_configs&#xa;training_zone_configs" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="700" y="760" width="300" height="110" as="geometry"/>
+        </mxCell>
+        <mxCell id="m4" value="Consumo: Modulo Financeiro&#xa;invoice_types&#xa;monthly_fees&#xa;cost_centers" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1030" y="760" width="280" height="110" as="geometry"/>
+        </mxCell>
+        <mxCell id="m5" value="Consumo: Modulo Logistica&#xa;products&#xa;suppliers" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1340" y="760" width="240" height="110" as="geometry"/>
+        </mxCell>
+        <mxCell id="m6" value="Consumo: Modulo Loja&#xa;products.visible_in_store&#xa;stock&#xa;preco" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1610" y="760" width="250" height="110" as="geometry"/>
+        </mxCell>
+        <mxCell id="m7" value="Consumo: APIs / Exportacao&#xa;users&#xa;dados de configuracao para selects e filtros" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1890" y="760" width="300" height="110" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="r1" value="Nota tecnica: coexistencia event_types (legado) e event_type_configs (novo)&#xa;Risco: inconsistencias em dropdowns/relatorios se origem nao for unificada." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fde9d9;strokeColor=#b45f06;" vertex="1" parent="1">
+          <mxGeometry x="2240" y="760" width="500" height="110" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="1" source="n1" target="t1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="1" source="n1" target="t2"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="1" source="n1" target="t3"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e4" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="1" source="n1" target="t4"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e5" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="1" source="n1" target="t5"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e6" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="1" source="n1" target="t6"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e7" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="1" source="n1" target="t7"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <mxCell id="e8" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#b85450;" edge="1" parent="1" source="t1" target="g1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e9" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#b85450;" edge="1" parent="1" source="t1" target="g2"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e10" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#b85450;" edge="1" parent="1" source="t1" target="g3"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e11" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#b85450;" edge="1" parent="1" source="t1" target="g4"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <mxCell id="e12" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#d79b00;" edge="1" parent="1" source="t2" target="c1"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <mxCell id="e13" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;" edge="1" parent="1" source="t3" target="d1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e14" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;" edge="1" parent="1" source="t3" target="d2"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e15" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;" edge="1" parent="1" source="t3" target="d3"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e16" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;" edge="1" parent="1" source="t3" target="d4"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e17" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;" edge="1" parent="1" source="t3" target="d5"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e18" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;" edge="1" parent="1" source="t3" target="d6"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <mxCell id="e19" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="1" source="t4" target="f1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e20" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="1" source="t4" target="f2"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e21" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="1" source="t4" target="f3"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <mxCell id="e22" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="1" source="t5" target="l1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e23" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="1" source="t5" target="l2"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <mxCell id="e24" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#cc0000;" edge="1" parent="1" source="t6" target="n2"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e25" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#a64d79;" edge="1" parent="1" source="t7" target="b1"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <mxCell id="u1" style="edgeStyle=orthogonalEdgeStyle;dashed=1;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="1" source="g1" target="m1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="u2" style="edgeStyle=orthogonalEdgeStyle;dashed=1;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="1" source="g3" target="m2"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="u3" style="edgeStyle=orthogonalEdgeStyle;dashed=1;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="1" source="g4" target="m2"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="u4" style="edgeStyle=orthogonalEdgeStyle;dashed=1;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="1" source="d1" target="m3"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="u5" style="edgeStyle=orthogonalEdgeStyle;dashed=1;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="1" source="d2" target="m3"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="u6" style="edgeStyle=orthogonalEdgeStyle;dashed=1;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="1" source="d3" target="m3"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="u7" style="edgeStyle=orthogonalEdgeStyle;dashed=1;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="1" source="f1" target="m1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="u8" style="edgeStyle=orthogonalEdgeStyle;dashed=1;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="1" source="f1" target="m2"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="u9" style="edgeStyle=orthogonalEdgeStyle;dashed=1;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="1" source="f1" target="m4"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="u10" style="edgeStyle=orthogonalEdgeStyle;dashed=1;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="1" source="f2" target="m4"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="u11" style="edgeStyle=orthogonalEdgeStyle;dashed=1;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="1" source="f3" target="m1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="u12" style="edgeStyle=orthogonalEdgeStyle;dashed=1;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="1" source="f3" target="m4"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="u13" style="edgeStyle=orthogonalEdgeStyle;dashed=1;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="1" source="l1" target="m5"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="u14" style="edgeStyle=orthogonalEdgeStyle;dashed=1;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="1" source="l2" target="m5"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="u15" style="edgeStyle=orthogonalEdgeStyle;dashed=1;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="1" source="l1" target="m6"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="u16" style="edgeStyle=orthogonalEdgeStyle;dashed=1;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="1" source="b1" target="m7"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="u17" style="edgeStyle=orthogonalEdgeStyle;dashed=1;html=1;endArrow=block;endFill=1;strokeColor=#b45f06;" edge="1" parent="1" source="g4" target="r1"><mxGeometry relative="1" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

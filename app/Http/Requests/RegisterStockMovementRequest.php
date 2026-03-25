@@ -15,9 +15,8 @@ class RegisterStockMovementRequest extends FormRequest
     {
         return [
             'article_id' => ['required', 'exists:products,id'],
-            'movement_type' => ['required', 'in:entry,exit,reservation,adjustment,return'],
+            'movement_type' => ['required', 'in:entry,exit,reservation,cancel_reservation,deliver_reservation,return'],
             'quantity' => ['required', 'integer', 'not_in:0'],
-            'unit_cost' => ['nullable', 'numeric', 'min:0'],
             'reference_type' => ['nullable', 'string', 'max:40'],
             'reference_id' => ['nullable', 'uuid'],
             'notes' => ['nullable', 'string'],

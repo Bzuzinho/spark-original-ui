@@ -217,6 +217,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('/configuracoes/artigos/{product}', [ConfiguracoesController::class, 'updateProduct'])->name('configuracoes.artigos.update');
     Route::delete('/configuracoes/artigos/{product}', [ConfiguracoesController::class, 'destroyProduct'])->name('configuracoes.artigos.destroy');
 
+    Route::post('/configuracoes/categorias-itens', [ConfiguracoesController::class, 'storeItemCategory'])->name('configuracoes.categorias-itens.store');
+    Route::put('/configuracoes/categorias-itens/{itemCategory}', [ConfiguracoesController::class, 'updateItemCategory'])->name('configuracoes.categorias-itens.update');
+    Route::delete('/configuracoes/categorias-itens/{itemCategory}', [ConfiguracoesController::class, 'destroyItemCategory'])->name('configuracoes.categorias-itens.destroy');
+
     Route::post('/configuracoes/fornecedores', [ConfiguracoesController::class, 'storeSupplier'])->name('configuracoes.fornecedores.store');
     Route::put('/configuracoes/fornecedores/{supplier}', [ConfiguracoesController::class, 'updateSupplier'])->name('configuracoes.fornecedores.update');
     Route::delete('/configuracoes/fornecedores/{supplier}', [ConfiguracoesController::class, 'destroySupplier'])->name('configuracoes.fornecedores.destroy');

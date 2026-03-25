@@ -17,6 +17,7 @@ use App\Models\StockMovement;
 use App\Models\Supplier;
 use App\Models\SupplierPurchase;
 use App\Models\User;
+use App\Models\UserType;
 use App\Services\Logistica\ApproveLogisticsRequestAction;
 use App\Services\Logistica\CreateEquipmentLoanAction;
 use App\Services\Logistica\CreateLogisticsRequestAction;
@@ -39,6 +40,8 @@ class LogisticaController extends Controller
 {
     public function index(): Response
     {
+        $tab = request()->query('tab', 'dashboard');
+
         $products = Product::query()
             ->with('supplier:id,nome')
             ->orderBy('nome')
@@ -120,9 +123,11 @@ class LogisticaController extends Controller
             ->values();
 
         return Inertia::render('Logistica/Index', [
+            'tab' => $tab,
             'products' => $products,
             'suppliers' => Supplier::query()->orderBy('nome')->get(),
             'users' => User::query()->select('id', 'nome_completo')->where('estado', 'ativo')->orderBy('nome_completo')->get(),
+            'userTypes' => UserType::query()->where('ativo', true)->orderBy('nome')->get(['id', 'nome']),
             'requests' => $requests,
             'stockMovements' => StockMovement::query()->with('article:id,nome')->latest()->limit(200)->get(),
             'loans' => $loans,
@@ -152,7 +157,7 @@ class LogisticaController extends Controller
         LogisticsRequest $logisticsRequest,
         UpdateLogisticsRequestAction $action
     ): RedirectResponse {
-        $action->execute($logisticsRequest, $request->validated());
+        $action->execute($logisticsRequest, $request->validated(), $request->user());
 
         return redirect()->route('logistica.index')->with('success', 'Requisição atualizada com sucesso.');
     }
@@ -161,7 +166,7 @@ class LogisticaController extends Controller
         LogisticsRequest $logisticsRequest,
         DeleteLogisticsRequestAction $action
     ): RedirectResponse {
-        $action->execute($logisticsRequest);
+        $action->execute($logisticsRequest, request()->user());
 
         return redirect()->route('logistica.index')->with('success', 'Requisição apagada com sucesso.');
     }
@@ -200,7 +205,7 @@ class LogisticaController extends Controller
     ): RedirectResponse {
         $action->execute($request->validated(), $request->user());
 
-        return redirect()->route('logistica.index')->with('success', 'Movimento de stock registado.');
+        return redirect()->route('logistica.index', ['tab' => 'stock'])->with('success', 'Movimento de stock registado.');
     }
 
     public function storeLoan(

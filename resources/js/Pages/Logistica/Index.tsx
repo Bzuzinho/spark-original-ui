@@ -111,6 +111,11 @@ type User = {
   nome_completo: string;
 };
 
+type UserType = {
+  id: string;
+  nome: string;
+};
+
 type Dashboard = {
   stock_valuation: number;
   low_stock_alerts: number;
@@ -126,9 +131,11 @@ type Dashboard = {
 };
 
 interface Props {
+  tab?: string;
   products: Product[];
   suppliers: Supplier[];
   users: User[];
+  userTypes: UserType[];
   requests: LogisticsRequest[];
   loans: Loan[];
   stockMovements: StockMovement[];
@@ -161,15 +168,15 @@ const statusLoanLabel: Record<string, string> = {
 
 const movTypeLabel: Record<string, string> = {
   entry: 'Entrada', exit: 'Saída', reservation: 'Reserva',
-  adjustment: 'Ajuste', return: 'Devolução',
+  cancel_reservation: 'Anula Reserva', deliver_reservation: 'Entrega Reserva', return: 'Devolução',
 };
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function LogisticaIndex({
-  products, suppliers, users, requests, loans, stockMovements, supplierPurchases, dashboard,
+  tab = 'dashboard', products, suppliers, users, userTypes, requests, loans, stockMovements, supplierPurchases, dashboard,
 }: Props) {
-  const [tab, setTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState(tab);
 
   // ── Requisições state ──
   const [reqDialogOpen, setReqDialogOpen] = useState(false);
@@ -202,7 +209,7 @@ export default function LogisticaIndex({
     requester_user_id: '',
     requester_name_snapshot: '',
     requester_area: '',
-    requester_type: 'department',
+    requester_type: '',
     status: 'pending',
     notes: '',
     items: [{ article_id: '', quantity: 1, unit_price: '' }],
@@ -212,16 +219,15 @@ export default function LogisticaIndex({
     requester_user_id: '',
     requester_name_snapshot: '',
     requester_area: '',
-    requester_type: 'department',
+    requester_type: '',
     notes: '',
     items: [{ article_id: '', quantity: 1, unit_price: '' }],
   });
 
   const stockForm = useForm({
     article_id: '',
-    movement_type: 'adjustment',
+    movement_type: 'entry',
     quantity: 1,
-    unit_cost: '',
     notes: '',
   });
 
@@ -317,8 +323,9 @@ export default function LogisticaIndex({
   const submitRequest = (e: FormEvent) => {
     e.preventDefault();
     requestForm.post(route('logistica.requisicoes.store'), {
-      preserveState: false,
-      onSuccess: () => { setReqDialogOpen(false); requestForm.reset(); },
+      preserveState: true,
+      preserveScroll: true,
+      onSuccess: () => { setReqDialogOpen(false); requestForm.reset(); setActiveTab('requisicoes'); },
     });
   };
 
@@ -328,7 +335,7 @@ export default function LogisticaIndex({
       requester_user_id: r.requester_user_id || '',
       requester_name_snapshot: r.requester_name_snapshot,
       requester_area: r.requester_area || '',
-      requester_type: r.requester_type || 'department',
+      requester_type: r.requester_type || '',
       notes: r.notes || '',
       items: r.items.length > 0
         ? r.items.map((item) => ({
@@ -345,14 +352,15 @@ export default function LogisticaIndex({
     e.preventDefault();
     if (!editingReqId) return;
     requestEditForm.put(route('logistica.requisicoes.update', editingReqId), {
-      preserveState: false,
-      onSuccess: () => { setReqDialogOpen(false); setEditingReqId(null); requestEditForm.reset(); },
+      preserveState: true,
+      preserveScroll: true,
+      onSuccess: () => { setReqDialogOpen(false); setEditingReqId(null); requestEditForm.reset(); setActiveTab('requisicoes'); },
     });
   };
 
   const deleteRequest = (id: string) => {
-    if (!confirm('Apagar esta requisição? Apenas permitido em estado rascunho ou pendente.')) return;
-    router.delete(route('logistica.requisicoes.destroy', id), { preserveState: false });
+    if (!confirm('Apagar esta requisição? Permitido enquanto estiver em rascunho, pendente, aprovada, faturada ou entregue.')) return;
+    router.delete(route('logistica.requisicoes.destroy', id), { preserveState: true, preserveScroll: true, onSuccess: () => setActiveTab('requisicoes') });
   };
 
   // ── Stock handlers ──
@@ -360,7 +368,7 @@ export default function LogisticaIndex({
     e.preventDefault();
     stockForm.post(route('logistica.stock.movimentos.store'), {
       preserveState: false,
-      onSuccess: () => { setStockDialogOpen(false); stockForm.reset(); },
+      onSuccess: () => { setStockDialogOpen(false); stockForm.reset(); setActiveTab('stock'); },
     });
   };
 
@@ -406,7 +414,7 @@ export default function LogisticaIndex({
     e.preventDefault();
     purchaseForm.post(route('logistica.fornecedores.compras.store'), {
       preserveState: false,
-      onSuccess: () => { setPurchaseDialogOpen(false); purchaseForm.reset(); setTab('stock'); },
+      onSuccess: () => { setPurchaseDialogOpen(false); purchaseForm.reset(); setActiveTab('stock'); },
     });
   };
 
@@ -433,13 +441,13 @@ export default function LogisticaIndex({
     if (!editingPurchaseId) return;
     purchaseEditForm.put(route('logistica.fornecedores.compras.update', editingPurchaseId), {
       preserveState: false,
-      onSuccess: () => { setPurchaseDialogOpen(false); setEditingPurchaseId(null); purchaseEditForm.reset(); setTab('stock'); },
+      onSuccess: () => { setPurchaseDialogOpen(false); setEditingPurchaseId(null); purchaseEditForm.reset(); setActiveTab('stock'); },
     });
   };
 
   const deletePurchase = (id: string) => {
     if (!confirm('Apagar compra? O stock e o financeiro serão recalculados.')) return;
-    router.delete(route('logistica.fornecedores.compras.destroy', id), { preserveState: false, onSuccess: () => setTab('stock') });
+    router.delete(route('logistica.fornecedores.compras.destroy', id), { preserveState: false, onSuccess: () => setActiveTab('stock') });
   };
 
   // ── Inline item list helpers ──
@@ -473,7 +481,7 @@ export default function LogisticaIndex({
     >
       <Head title="Logística" />
 
-      <Tabs value={tab} onValueChange={setTab} className="space-y-3">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-3">
         <TabsList className="grid w-full grid-cols-2 sm:grid-cols-5 h-auto gap-1">
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="requisicoes">Requisições</TabsTrigger>
@@ -566,10 +574,7 @@ export default function LogisticaIndex({
                         >
                           <SelectTrigger className={ws}><SelectValue /></SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="athlete">Atleta</SelectItem>
-                            <SelectItem value="coach">Treinador</SelectItem>
-                            <SelectItem value="staff">Staff</SelectItem>
-                            <SelectItem value="department">Departamento</SelectItem>
+                            {userTypes.map((ut) => <SelectItem key={ut.id} value={ut.nome}>{ut.nome}</SelectItem>)}
                           </SelectContent>
                         </Select>
                       </div>
@@ -593,7 +598,10 @@ export default function LogisticaIndex({
                       {reqItems(!!editingReqId).map((item, idx) => (
                         <div key={idx} className="grid grid-cols-12 gap-2">
                           <div className="col-span-6">
-                            <Select value={item.article_id} onValueChange={(v) => setReqItems(!!editingReqId, reqItems(!!editingReqId).map((l, i) => i === idx ? { ...l, article_id: v } : l))}>
+                            <Select value={item.article_id} onValueChange={(v) => {
+                              const product = selectableProducts.find((p) => p.id === v);
+                              setReqItems(!!editingReqId, reqItems(!!editingReqId).map((l, i) => i === idx ? { ...l, article_id: v, unit_price: product ? String(product.preco) : l.unit_price } : l));
+                            }}>
                               <SelectTrigger className={ws}><SelectValue placeholder="Artigo" /></SelectTrigger>
                               <SelectContent>{selectableProducts.map((p) => <SelectItem key={p.id} value={p.id}>{p.codigo} · {p.nome}</SelectItem>)}</SelectContent>
                             </Select>
@@ -641,10 +649,7 @@ export default function LogisticaIndex({
                     <SelectTrigger className={ws}><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Todos</SelectItem>
-                      <SelectItem value="athlete">Atleta</SelectItem>
-                      <SelectItem value="coach">Treinador</SelectItem>
-                      <SelectItem value="staff">Staff</SelectItem>
-                      <SelectItem value="department">Departamento</SelectItem>
+                      {userTypes.map((ut) => <SelectItem key={ut.id} value={ut.nome}>{ut.nome}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -654,48 +659,107 @@ export default function LogisticaIndex({
                   </Button>
                 </div>
               </div>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Requisitante</TableHead>
-                    <TableHead>Área</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead>Total</TableHead>
-                    <TableHead>Data</TableHead>
-                    <TableHead>Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredRequests.map((r) => (
-                    <TableRow key={r.id}>
-                      <TableCell>{r.requester_name_snapshot}</TableCell>
-                      <TableCell>{r.requester_area || '-'}</TableCell>
-                      <TableCell>{r.requester_type || '-'}</TableCell>
-                      <TableCell>
-                        <Badge variant={r.status === 'delivered' ? 'secondary' : r.status === 'cancelled' ? 'outline' : 'default'}>
-                          {statusReqLabel[r.status] ?? r.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{euro(r.total_amount)}</TableCell>
-                      <TableCell>{formatDateYmd(r.created_at)}</TableCell>
-                      <TableCell>
-                        <div className="flex flex-wrap gap-1">
-                          {['draft', 'pending'].includes(r.status) && (
-                            <>
-                              <Button size="sm" variant="secondary" onClick={() => openEditRequest(r)}>Editar</Button>
-                              <Button size="sm" variant="destructive" onClick={() => deleteRequest(r.id)}>Apagar</Button>
-                            </>
-                          )}
-                          <Button size="sm" variant="secondary" onClick={() => router.post(route('logistica.requisicoes.approve', r.id))} disabled={!['draft', 'pending'].includes(r.status)}>Aprovar</Button>
-                          <Button size="sm" variant="secondary" onClick={() => router.post(route('logistica.requisicoes.invoice', r.id))} disabled={!['approved', 'invoiced'].includes(r.status)}>Faturar</Button>
-                          <Button size="sm" onClick={() => router.post(route('logistica.requisicoes.deliver', r.id))} disabled={!['approved', 'invoiced'].includes(r.status)}>Entregar</Button>
-                        </div>
-                      </TableCell>
+              <div className="space-y-3 md:hidden">
+                {filteredRequests.map((r) => (
+                  <div key={r.id} className="rounded-lg border p-3 space-y-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="font-medium truncate">{r.requester_name_snapshot}</div>
+                        <div className="text-xs text-muted-foreground">{r.requester_area || '-'}</div>
+                      </div>
+                      <Badge variant={r.status === 'delivered' ? 'secondary' : r.status === 'cancelled' ? 'outline' : 'default'}>
+                        {statusReqLabel[r.status] ?? r.status}
+                      </Badge>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div>
+                        <div className="text-xs text-muted-foreground">Tipo</div>
+                        <div>{r.requester_type || '-'}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-muted-foreground">Total</div>
+                        <div>{euro(r.total_amount)}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-muted-foreground">Data</div>
+                        <div>{formatDateYmd(r.created_at)}</div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      {['draft', 'pending', 'approved', 'invoiced', 'delivered'].includes(r.status) && (
+                        <>
+                          <Button size="sm" variant="secondary" onClick={() => openEditRequest(r)}>Editar</Button>
+                          <Button size="sm" variant="destructive" onClick={() => deleteRequest(r.id)}>Apagar</Button>
+                        </>
+                      )}
+                      <Button size="sm" variant="secondary" onClick={() => router.post(route('logistica.requisicoes.approve', r.id))} disabled={!['draft', 'pending'].includes(r.status)}>Aprovar</Button>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => router.post(route('logistica.requisicoes.invoice', r.id), {}, { preserveState: true, preserveScroll: true, onSuccess: () => setActiveTab('requisicoes') })}
+                        disabled={r.status !== 'approved' || !!r.financial_invoice_id}
+                      >
+                        Faturar
+                      </Button>
+                      <Button size="sm" onClick={() => router.post(route('logistica.requisicoes.deliver', r.id))} disabled={!['approved', 'invoiced'].includes(r.status)}>Entregar</Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="hidden md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Requisitante</TableHead>
+                      <TableHead>Área</TableHead>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead>Estado</TableHead>
+                      <TableHead>Total</TableHead>
+                      <TableHead>Data</TableHead>
+                      <TableHead>Ações</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredRequests.map((r) => (
+                      <TableRow key={r.id}>
+                        <TableCell>{r.requester_name_snapshot}</TableCell>
+                        <TableCell>{r.requester_area || '-'}</TableCell>
+                        <TableCell>{r.requester_type || '-'}</TableCell>
+                        <TableCell>
+                          <Badge variant={r.status === 'delivered' ? 'secondary' : r.status === 'cancelled' ? 'outline' : 'default'}>
+                            {statusReqLabel[r.status] ?? r.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{euro(r.total_amount)}</TableCell>
+                        <TableCell>{formatDateYmd(r.created_at)}</TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap gap-1">
+                            {['draft', 'pending', 'approved', 'invoiced', 'delivered'].includes(r.status) && (
+                              <>
+                                <Button size="sm" variant="secondary" onClick={() => openEditRequest(r)}>Editar</Button>
+                                <Button size="sm" variant="destructive" onClick={() => deleteRequest(r.id)}>Apagar</Button>
+                              </>
+                            )}
+                            <Button size="sm" variant="secondary" onClick={() => router.post(route('logistica.requisicoes.approve', r.id))} disabled={!['draft', 'pending'].includes(r.status)}>Aprovar</Button>
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => router.post(route('logistica.requisicoes.invoice', r.id), {}, { preserveState: true, preserveScroll: true, onSuccess: () => setActiveTab('requisicoes') })}
+                              disabled={r.status !== 'approved' || !!r.financial_invoice_id}
+                            >
+                              Faturar
+                            </Button>
+                            <Button size="sm" onClick={() => router.post(route('logistica.requisicoes.deliver', r.id))} disabled={!['approved', 'invoiced'].includes(r.status)}>Entregar</Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -729,20 +793,15 @@ export default function LogisticaIndex({
                           <SelectItem value="entry">Entrada</SelectItem>
                           <SelectItem value="exit">Saída</SelectItem>
                           <SelectItem value="reservation">Reserva</SelectItem>
-                          <SelectItem value="adjustment">Ajuste</SelectItem>
+                          <SelectItem value="cancel_reservation">Anula Reserva</SelectItem>
+                          <SelectItem value="deliver_reservation">Entrega Reserva</SelectItem>
                           <SelectItem value="return">Devolução</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <Label>Quantidade</Label>
-                        <Input className={wi} type="number" value={stockForm.data.quantity} onChange={(e) => stockForm.setData('quantity', Number(e.target.value || 0))} />
-                      </div>
-                      <div>
-                        <Label>Custo unitário</Label>
-                        <Input className={wi} type="number" step="0.01" min={0} value={stockForm.data.unit_cost} onChange={(e) => stockForm.setData('unit_cost', e.target.value)} />
-                      </div>
+                    <div>
+                      <Label>Quantidade</Label>
+                      <Input className={wi} type="number" value={stockForm.data.quantity} onChange={(e) => stockForm.setData('quantity', Number(e.target.value || 0))} />
                     </div>
                     <div>
                       <Label>Notas</Label>
@@ -786,70 +845,129 @@ export default function LogisticaIndex({
                   </Button>
                 </div>
               </div>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Código</TableHead>
-                    <TableHead>Nome</TableHead>
-                    <TableHead>Categoria</TableHead>
-                    <TableHead>Stock</TableHead>
-                    <TableHead>Reservado</TableHead>
-                    <TableHead>Mínimo</TableHead>
-                    <TableHead>Fornecedor</TableHead>
-                    <TableHead>Preço</TableHead>
-                    <TableHead>Estado</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredProducts.map((p) => (
-                    <TableRow key={p.id}>
-                      <TableCell>{p.codigo}</TableCell>
-                      <TableCell>{p.nome}</TableCell>
-                      <TableCell>{p.categoria || '-'}</TableCell>
-                      <TableCell>{p.stock}</TableCell>
-                      <TableCell>{p.stock_reservado}</TableCell>
-                      <TableCell>{p.stock_minimo}</TableCell>
-                      <TableCell>{p.supplier?.nome || '-'}</TableCell>
-                      <TableCell>{euro(p.preco)}</TableCell>
-                      <TableCell>
-                        <Badge variant={p.status === 'baixo' ? 'destructive' : 'secondary'}>
-                          {p.status === 'baixo' ? 'Baixo' : 'OK'}
-                        </Badge>
-                      </TableCell>
+              <div className="space-y-3 md:hidden">
+                {filteredProducts.map((p) => (
+                  <div key={p.id} className="rounded-lg border p-3 space-y-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="font-medium truncate">{p.nome}</div>
+                        <div className="text-xs text-muted-foreground">{p.codigo}</div>
+                      </div>
+                      <Badge variant={p.status === 'baixo' ? 'destructive' : 'secondary'}>
+                        {p.status === 'baixo' ? 'Baixo' : 'OK'}
+                      </Badge>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div>
+                        <div className="text-xs text-muted-foreground">Categoria</div>
+                        <div>{p.categoria || '-'}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-muted-foreground">Stock</div>
+                        <div>{p.stock}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-muted-foreground">Reservado</div>
+                        <div>{p.stock_reservado}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-muted-foreground">Mínimo</div>
+                        <div>{p.stock_minimo}</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="hidden md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Código</TableHead>
+                      <TableHead>Nome</TableHead>
+                      <TableHead>Categoria</TableHead>
+                      <TableHead>Stock</TableHead>
+                      <TableHead>Reservado</TableHead>
+                      <TableHead>Mínimo</TableHead>
+                      <TableHead>Estado</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredProducts.map((p) => (
+                      <TableRow key={p.id}>
+                        <TableCell>{p.codigo}</TableCell>
+                        <TableCell>{p.nome}</TableCell>
+                        <TableCell>{p.categoria || '-'}</TableCell>
+                        <TableCell>{p.stock}</TableCell>
+                        <TableCell>{p.stock_reservado}</TableCell>
+                        <TableCell>{p.stock_minimo}</TableCell>
+                        <TableCell>
+                          <Badge variant={p.status === 'baixo' ? 'destructive' : 'secondary'}>
+                            {p.status === 'baixo' ? 'Baixo' : 'OK'}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader><CardTitle className="text-sm">Histórico de Movimentos</CardTitle></CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Artigo</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Qtd.</TableHead>
-                    <TableHead>Custo unit.</TableHead>
-                    <TableHead>Data</TableHead>
-                    <TableHead>Notas</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+              <div className="max-h-[280px] overflow-y-auto">
+                <div className="space-y-3 md:hidden">
                   {stockMovements.map((m) => (
-                    <TableRow key={m.id}>
-                      <TableCell>{m.article?.nome ?? '-'}</TableCell>
-                      <TableCell>{movTypeLabel[m.movement_type] ?? m.movement_type}</TableCell>
-                      <TableCell>{m.quantity}</TableCell>
-                      <TableCell>{m.unit_cost != null ? euro(m.unit_cost) : '-'}</TableCell>
-                      <TableCell>{formatDateYmd(m.created_at)}</TableCell>
-                      <TableCell>{m.notes || '-'}</TableCell>
-                    </TableRow>
+                    <div key={m.id} className="rounded-lg border p-3 space-y-2">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="font-medium">{m.article?.nome ?? '-'}</div>
+                        <div className="text-xs text-muted-foreground">{formatDateYmd(m.created_at)}</div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div>
+                          <div className="text-xs text-muted-foreground">Tipo</div>
+                          <div>{movTypeLabel[m.movement_type] ?? m.movement_type}</div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-muted-foreground">Quantidade</div>
+                          <div>{m.quantity}</div>
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-muted-foreground">Notas</div>
+                        <div className="text-sm">{m.notes || '-'}</div>
+                      </div>
+                    </div>
                   ))}
-                </TableBody>
-              </Table>
+                </div>
+
+                <div className="hidden md:block">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Artigo</TableHead>
+                        <TableHead>Tipo</TableHead>
+                        <TableHead>Qtd.</TableHead>
+                        <TableHead>Data</TableHead>
+                        <TableHead>Notas</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {stockMovements.map((m) => (
+                        <TableRow key={m.id}>
+                          <TableCell>{m.article?.nome ?? '-'}</TableCell>
+                          <TableCell>{movTypeLabel[m.movement_type] ?? m.movement_type}</TableCell>
+                          <TableCell>{m.quantity}</TableCell>
+                          <TableCell>{formatDateYmd(m.created_at)}</TableCell>
+                          <TableCell>{m.notes || '-'}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -951,46 +1069,89 @@ export default function LogisticaIndex({
                   </Button>
                 </div>
               </div>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Requisitante</TableHead>
-                    <TableHead>Artigo</TableHead>
-                    <TableHead>Qtd.</TableHead>
-                    <TableHead>Data</TableHead>
-                    <TableHead>Limite</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead>Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredLoans.map((loan) => (
-                    <TableRow key={loan.id}>
-                      <TableCell>{loan.borrower_name_snapshot}</TableCell>
-                      <TableCell>{loan.article_name_snapshot}</TableCell>
-                      <TableCell>{loan.quantity}</TableCell>
-                      <TableCell>{formatDateYmd(loan.loan_date)}</TableCell>
-                      <TableCell>{loan.due_date ? formatDateYmd(loan.due_date) : '-'}</TableCell>
-                      <TableCell>
-                        <Badge variant={loan.status === 'overdue' ? 'destructive' : loan.status === 'returned' ? 'secondary' : 'default'}>
-                          {statusLoanLabel[loan.status] ?? loan.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-wrap gap-1">
-                          {['active', 'overdue'].includes(loan.status) && (
-                            <>
-                              <Button size="sm" variant="secondary" onClick={() => openEditLoan(loan)}>Editar</Button>
-                              <Button size="sm" onClick={() => router.post(route('logistica.emprestimos.return', loan.id))}>Devolver</Button>
-                              <Button size="sm" variant="destructive" onClick={() => deleteLoan(loan.id)}>Apagar</Button>
-                            </>
-                          )}
-                        </div>
-                      </TableCell>
+              <div className="space-y-3 md:hidden">
+                {filteredLoans.map((loan) => (
+                  <div key={loan.id} className="rounded-lg border p-3 space-y-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="font-medium truncate">{loan.borrower_name_snapshot}</div>
+                        <div className="text-xs text-muted-foreground truncate">{loan.article_name_snapshot}</div>
+                      </div>
+                      <Badge variant={loan.status === 'overdue' ? 'destructive' : loan.status === 'returned' ? 'secondary' : 'default'}>
+                        {statusLoanLabel[loan.status] ?? loan.status}
+                      </Badge>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div>
+                        <div className="text-xs text-muted-foreground">Quantidade</div>
+                        <div>{loan.quantity}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-muted-foreground">Data</div>
+                        <div>{formatDateYmd(loan.loan_date)}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-muted-foreground">Limite</div>
+                        <div>{loan.due_date ? formatDateYmd(loan.due_date) : '-'}</div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      {['active', 'overdue'].includes(loan.status) && (
+                        <>
+                          <Button size="sm" variant="secondary" onClick={() => openEditLoan(loan)}>Editar</Button>
+                          <Button size="sm" onClick={() => router.post(route('logistica.emprestimos.return', loan.id))}>Devolver</Button>
+                          <Button size="sm" variant="destructive" onClick={() => deleteLoan(loan.id)}>Apagar</Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="hidden md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Requisitante</TableHead>
+                      <TableHead>Artigo</TableHead>
+                      <TableHead>Qtd.</TableHead>
+                      <TableHead>Data</TableHead>
+                      <TableHead>Limite</TableHead>
+                      <TableHead>Estado</TableHead>
+                      <TableHead>Ações</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredLoans.map((loan) => (
+                      <TableRow key={loan.id}>
+                        <TableCell>{loan.borrower_name_snapshot}</TableCell>
+                        <TableCell>{loan.article_name_snapshot}</TableCell>
+                        <TableCell>{loan.quantity}</TableCell>
+                        <TableCell>{formatDateYmd(loan.loan_date)}</TableCell>
+                        <TableCell>{loan.due_date ? formatDateYmd(loan.due_date) : '-'}</TableCell>
+                        <TableCell>
+                          <Badge variant={loan.status === 'overdue' ? 'destructive' : loan.status === 'returned' ? 'secondary' : 'default'}>
+                            {statusLoanLabel[loan.status] ?? loan.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap gap-1">
+                            {['active', 'overdue'].includes(loan.status) && (
+                              <>
+                                <Button size="sm" variant="secondary" onClick={() => openEditLoan(loan)}>Editar</Button>
+                                <Button size="sm" onClick={() => router.post(route('logistica.emprestimos.return', loan.id))}>Devolver</Button>
+                                <Button size="sm" variant="destructive" onClick={() => deleteLoan(loan.id)}>Apagar</Button>
+                              </>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -1101,33 +1262,65 @@ export default function LogisticaIndex({
                   </Button>
                 </div>
               </div>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Fornecedor</TableHead>
-                    <TableHead>Ref. Fatura</TableHead>
-                    <TableHead>Data</TableHead>
-                    <TableHead>Total</TableHead>
-                    <TableHead>Mov. Financeiro</TableHead>
-                    <TableHead>Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredSupplierPurchases.map((p) => (
-                    <TableRow key={p.id}>
-                      <TableCell>{p.supplier_name_snapshot}</TableCell>
-                      <TableCell>{p.invoice_reference}</TableCell>
-                      <TableCell>{formatDateYmd(p.invoice_date)}</TableCell>
-                      <TableCell>{euro(p.total_amount)}</TableCell>
-                      <TableCell>{p.financial_movement_id ? p.financial_movement_id.slice(0, 8) : '-'}</TableCell>
-                      <TableCell className="space-x-1">
-                        <Button size="sm" variant="secondary" onClick={() => openEditPurchase(p)}>Editar</Button>
-                        <Button size="sm" variant="destructive" onClick={() => deletePurchase(p.id)}>Apagar</Button>
-                      </TableCell>
+              <div className="space-y-3 md:hidden">
+                {filteredSupplierPurchases.map((p) => (
+                  <div key={p.id} className="rounded-lg border p-3 space-y-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="font-medium truncate">{p.supplier_name_snapshot}</div>
+                        <div className="text-xs text-muted-foreground truncate">{p.invoice_reference}</div>
+                      </div>
+                      <div className="text-sm font-medium">{euro(p.total_amount)}</div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div>
+                        <div className="text-xs text-muted-foreground">Data</div>
+                        <div>{formatDateYmd(p.invoice_date)}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-muted-foreground">Mov. Financeiro</div>
+                        <div>{p.financial_movement_id ? p.financial_movement_id.slice(0, 8) : '-'}</div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <Button size="sm" variant="secondary" onClick={() => openEditPurchase(p)}>Editar</Button>
+                      <Button size="sm" variant="destructive" onClick={() => deletePurchase(p.id)}>Apagar</Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="hidden md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Fornecedor</TableHead>
+                      <TableHead>Ref. Fatura</TableHead>
+                      <TableHead>Data</TableHead>
+                      <TableHead>Total</TableHead>
+                      <TableHead>Mov. Financeiro</TableHead>
+                      <TableHead>Ações</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredSupplierPurchases.map((p) => (
+                      <TableRow key={p.id}>
+                        <TableCell>{p.supplier_name_snapshot}</TableCell>
+                        <TableCell>{p.invoice_reference}</TableCell>
+                        <TableCell>{formatDateYmd(p.invoice_date)}</TableCell>
+                        <TableCell>{euro(p.total_amount)}</TableCell>
+                        <TableCell>{p.financial_movement_id ? p.financial_movement_id.slice(0, 8) : '-'}</TableCell>
+                        <TableCell className="space-x-1">
+                          <Button size="sm" variant="secondary" onClick={() => openEditPurchase(p)}>Editar</Button>
+                          <Button size="sm" variant="destructive" onClick={() => deletePurchase(p.id)}>Apagar</Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

@@ -2,6 +2,7 @@
 
 namespace App\Services\Logistica;
 
+use App\Models\CostCenter;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\InvoiceType;
@@ -15,7 +16,11 @@ class InvoiceLogisticsRequestAction
     public function execute(LogisticsRequest $request, array $payload = [], ?User $actor = null): LogisticsRequest
     {
         return DB::transaction(function () use ($request, $payload, $actor) {
-            $request->refresh()->load('items');
+            $request = LogisticsRequest::query()
+                ->whereKey($request->id)
+                ->lockForUpdate()
+                ->with(['items', 'requester'])
+                ->firstOrFail();
 
             if (!in_array($request->status, ['approved', 'invoiced'], true)) {
                 throw ValidationException::withMessages([
@@ -33,9 +38,7 @@ class InvoiceLogisticsRequestAction
                 return $request->fresh(['items', 'financialInvoice']);
             }
 
-            $invoiceType = !empty($payload['tipo'])
-                ? InvoiceType::query()->where('codigo', $payload['tipo'])->first()
-                : InvoiceType::query()->orderBy('nome')->first();
+            $invoiceType = InvoiceType::query()->where('codigo', 'material')->first();
 
             if (!$invoiceType) {
                 throw ValidationException::withMessages([
@@ -45,6 +48,23 @@ class InvoiceLogisticsRequestAction
 
             $issueDate = $payload['data_emissao'] ?? now()->toDateString();
             $dueDate = $payload['data_vencimento'] ?? now()->addDays(15)->toDateString();
+            $requesterEscalao = $request->requester?->escalao;
+            $escalaoNome = is_array($requesterEscalao)
+                ? (string) collect($requesterEscalao)->filter()->first()
+                : (string) ($requesterEscalao ?? '');
+
+            $centroCustoId = null;
+
+            if ($escalaoNome !== '') {
+                $normalizedEscalao = mb_strtolower(trim($escalaoNome));
+
+                $centroCustoId = CostCenter::query()
+                    ->where(function ($query) use ($normalizedEscalao) {
+                        $query->whereRaw('LOWER(nome) = ?', [$normalizedEscalao])
+                            ->orWhereRaw('LOWER(codigo) = ?', [$normalizedEscalao]);
+                    })
+                    ->value('id');
+            }
 
             $invoice = Invoice::create([
                 'user_id' => $request->requester_user_id,
@@ -54,6 +74,7 @@ class InvoiceLogisticsRequestAction
                 'valor_total' => $request->total_amount,
                 'estado_pagamento' => 'pendente',
                 'tipo' => $invoiceType->codigo,
+                'centro_custo_id' => $centroCustoId,
                 'origem_tipo' => 'stock',
                 'origem_id' => $request->id,
                 'observacoes' => $payload['observacoes'] ?? 'Fatura gerada automaticamente pela logística.',
