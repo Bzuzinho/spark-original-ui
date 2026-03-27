@@ -30,7 +30,7 @@ class AddToStoreCartAction
                 ]);
             }
 
-            $availableStock = (int) $product->stock - (int) ($product->stock_reservado ?? 0);
+            $availableStock = (int) $product->stock;
 
             $existing = StoreCartItem::query()
                 ->where('user_id', $actor->id)

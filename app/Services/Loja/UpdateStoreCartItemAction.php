@@ -26,7 +26,7 @@ class UpdateStoreCartItemAction
 
             $product = Product::query()->lockForUpdate()->findOrFail($cartItem->article_id);
 
-            $availableStock = (int) $product->stock - (int) ($product->stock_reservado ?? 0);
+            $availableStock = (int) $product->stock;
             if ($quantity > $availableStock) {
                 throw ValidationException::withMessages([
                     'quantity' => 'Quantidade solicitada excede o stock disponível.',

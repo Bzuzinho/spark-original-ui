@@ -23,11 +23,6 @@ class StoreController extends Controller
         return $this->renderPage($request, 'loja');
     }
 
-    public function cart(Request $request): Response
-    {
-        return $this->renderPage($request, 'carrinho');
-    }
-
     public function orders(Request $request): Response
     {
         return $this->renderPage($request, 'pedidos');
@@ -68,7 +63,7 @@ class StoreController extends Controller
         }
 
         $products = $productsQuery->get()->map(function (Product $product) {
-            $availableStock = (int) $product->stock - (int) ($product->stock_reservado ?? 0);
+            $totalStock = (int) $product->stock;
 
             return [
                 'id' => $product->id,
@@ -78,7 +73,7 @@ class StoreController extends Controller
                 'descricao' => $product->descricao,
                 'imagem' => $product->imagem,
                 'preco' => (float) $product->preco,
-                'stock_available' => $availableStock,
+                'stock_available' => $totalStock,
                 'variant_options' => array_values(array_filter((array) ($product->variant_options ?? []))),
                 'ativo' => (bool) $product->ativo,
                 'visible_in_store' => (bool) ($product->visible_in_store ?? false),
@@ -123,7 +118,7 @@ class StoreController extends Controller
                         'codigo' => $product->codigo,
                         'nome' => $product->nome,
                         'imagem' => $product->imagem,
-                        'stock_available' => (int) $product->stock - (int) ($product->stock_reservado ?? 0),
+                        'stock_available' => (int) $product->stock,
                     ] : null,
                 ];
             })
@@ -133,12 +128,17 @@ class StoreController extends Controller
 
         $allowedTargetIds = $profiles->pluck('id')->all();
 
-        $orders = StoreOrder::query()
-            ->with(['items', 'financialInvoice:id,valor_total,estado_pagamento', 'user:id,nome_completo', 'targetUser:id,nome_completo'])
-            ->where(function ($query) use ($authUser, $allowedTargetIds) {
+        $ordersQuery = StoreOrder::query()
+            ->with(['items', 'financialInvoice:id,valor_total,estado_pagamento', 'user:id,nome_completo', 'targetUser:id,nome_completo']);
+
+        if ($authUser->perfil !== 'admin') {
+            $ordersQuery->where(function ($query) use ($authUser, $allowedTargetIds) {
                 $query->where('user_id', $authUser->id)
                     ->orWhereIn('target_user_id', $allowedTargetIds);
-            })
+            });
+        }
+
+        $orders = $ordersQuery
             ->latest()
             ->limit(100)
             ->get()
@@ -200,6 +200,7 @@ class StoreController extends Controller
                 'total' => $cartSubtotal,
             ],
             'orders' => $orders,
+            'canManagePendingOrders' => $authUser->perfil === 'admin',
             'statusLabels' => [
                 'pending_payment' => 'Pendente pagamento',
                 'paid' => 'Pago',

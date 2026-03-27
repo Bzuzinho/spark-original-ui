@@ -86,4 +86,9 @@ class Product extends Model
     {
         return $this->hasMany(StockMovement::class, 'article_id');
     }
+
+    public function sponsorshipGoodsItems(): HasMany
+    {
+        return $this->hasMany(SponsorshipGoodsItem::class, 'item_id');
+    }
 }

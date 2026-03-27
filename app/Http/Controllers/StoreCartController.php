@@ -17,7 +17,7 @@ class StoreCartController extends Controller
         $action->execute($request->validated(), $request->user());
 
         return redirect()
-            ->route('loja.carrinho', ['target_user_id' => $request->validated('target_user_id')])
+            ->route('loja.index', ['target_user_id' => $request->validated('target_user_id')])
             ->with('success', 'Artigo adicionado ao carrinho.');
     }
 
@@ -26,7 +26,7 @@ class StoreCartController extends Controller
         $action->execute($storeCartItem, $request->validated(), $request->user());
 
         return redirect()
-            ->route('loja.carrinho', ['target_user_id' => $storeCartItem->target_user_id])
+            ->route('loja.index', ['target_user_id' => $storeCartItem->target_user_id])
             ->with('success', 'Carrinho atualizado com sucesso.');
     }
 
@@ -36,7 +36,7 @@ class StoreCartController extends Controller
         $action->execute($storeCartItem, request()->user());
 
         return redirect()
-            ->route('loja.carrinho', ['target_user_id' => $targetUserId])
+            ->route('loja.index', ['target_user_id' => $targetUserId])
             ->with('success', 'Artigo removido do carrinho.');
     }
 }

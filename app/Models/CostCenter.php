@@ -67,4 +67,9 @@ class CostCenter extends Model
     {
         return $this->hasMany(BankStatement::class, 'centro_custo_id');
     }
+
+    public function sponsorships(): HasMany
+    {
+        return $this->hasMany(Sponsorship::class, 'cost_center_id');
+    }
 }

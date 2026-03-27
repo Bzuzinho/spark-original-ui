@@ -125,7 +125,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('financeiro/{financeiro}/apagar', [FinanceiroController::class, 'destroy'])->name('financeiro.destroy.post');
     Route::prefix('loja')->group(function () {
         Route::get('/', [StoreController::class, 'index'])->name('loja.index');
-        Route::get('/carrinho', [StoreController::class, 'cart'])->name('loja.carrinho');
         Route::get('/pedidos', [StoreController::class, 'orders'])->name('loja.pedidos');
 
         Route::post('/carrinho/items', [StoreCartController::class, 'store'])->name('loja.cart.store');
@@ -133,6 +132,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/carrinho/items/{storeCartItem}', [StoreCartController::class, 'destroy'])->name('loja.cart.destroy');
 
         Route::post('/pedidos', [StoreOrderController::class, 'store'])->name('loja.orders.store');
+        Route::put('/pedidos/{storeOrder}', [StoreOrderController::class, 'update'])->name('loja.orders.update');
+        Route::delete('/pedidos/{storeOrder}', [StoreOrderController::class, 'destroy'])->name('loja.orders.destroy');
+    });
+    Route::prefix('patrocinios')->group(function () {
+        Route::get('/integracoes', [PatrocinosController::class, 'integrationsIndex'])->name('patrocinios.integrations.index');
+        Route::post('/{patrocinio}/integracoes/retry', [PatrocinosController::class, 'retry'])->name('patrocinios.integrations.retry');
+        Route::post('/{patrocinio}/fechar', [PatrocinosController::class, 'close'])->name('patrocinios.close');
+        Route::post('/{patrocinio}/cancelar', [PatrocinosController::class, 'cancel'])->name('patrocinios.cancel');
     });
     Route::resource('patrocinios', PatrocinosController::class);
     Route::resource('comunicacao', ComunicacaoController::class);
@@ -215,11 +222,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::post('/configuracoes/artigos', [ConfiguracoesController::class, 'storeProduct'])->name('configuracoes.artigos.store');
     Route::put('/configuracoes/artigos/{product}', [ConfiguracoesController::class, 'updateProduct'])->name('configuracoes.artigos.update');
+    Route::post('/configuracoes/artigos/{product}', [ConfiguracoesController::class, 'updateProduct']);
     Route::delete('/configuracoes/artigos/{product}', [ConfiguracoesController::class, 'destroyProduct'])->name('configuracoes.artigos.destroy');
 
     Route::post('/configuracoes/categorias-itens', [ConfiguracoesController::class, 'storeItemCategory'])->name('configuracoes.categorias-itens.store');
     Route::put('/configuracoes/categorias-itens/{itemCategory}', [ConfiguracoesController::class, 'updateItemCategory'])->name('configuracoes.categorias-itens.update');
     Route::delete('/configuracoes/categorias-itens/{itemCategory}', [ConfiguracoesController::class, 'destroyItemCategory'])->name('configuracoes.categorias-itens.destroy');
+
+    Route::post('/configuracoes/patrocinadores', [ConfiguracoesController::class, 'storeSponsor'])->name('configuracoes.patrocinadores.store');
+    Route::put('/configuracoes/patrocinadores/{sponsor}', [ConfiguracoesController::class, 'updateSponsor'])->name('configuracoes.patrocinadores.update');
+    Route::delete('/configuracoes/patrocinadores/{sponsor}', [ConfiguracoesController::class, 'destroySponsor'])->name('configuracoes.patrocinadores.destroy');
 
     Route::post('/configuracoes/fornecedores', [ConfiguracoesController::class, 'storeSupplier'])->name('configuracoes.fornecedores.store');
     Route::put('/configuracoes/fornecedores/{supplier}', [ConfiguracoesController::class, 'updateSupplier'])->name('configuracoes.fornecedores.update');

@@ -31,7 +31,7 @@ class RegisterStockMovementAction
                 'article_id' => $product->id,
                 'movement_type' => $movementType,
                 'quantity' => $quantity,
-                'unit_cost' => null,
+                'unit_cost' => $data['unit_cost'] ?? null,
                 'reference_type' => $data['reference_type'] ?? null,
                 'reference_id' => $data['reference_id'] ?? null,
                 'notes' => $data['notes'] ?? null,
