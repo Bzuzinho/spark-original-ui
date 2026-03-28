@@ -1,9 +1,10 @@
-import { Head } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Users, Trophy, CalendarBlank, CurrencyCircleDollar, Heartbeat, UserCircle } from '@phosphor-icons/react';
 import { Card } from '@/Components/ui/card';
 import { Button } from '@/Components/ui/button';
 import { router } from '@inertiajs/react';
+import UnreadAlertsList from '@/Components/Comunicacao/UnreadAlertsList';
 
 interface Event {
     id: string;
@@ -33,7 +34,23 @@ interface Props {
     recentActivity: FinancialEntry[];
 }
 
+interface PageProps {
+    communicationAlerts?: {
+        unreadCount: number;
+        recent: Array<{
+            id: string;
+            title: string;
+            message: string;
+            type: 'info' | 'warning' | 'success' | 'error';
+            link?: string | null;
+            is_read: boolean;
+            created_at: string;
+        }>;
+    };
+}
+
 export default function Dashboard({ stats, recentEvents = [], recentActivity = [] }: Props) {
+    const { communicationAlerts } = usePage<PageProps>().props;
     // Validação de dados
     const toNumber = (value: unknown, fallback = 0) => {
         if (typeof value === 'number' && !Number.isNaN(value)) return value;
@@ -211,6 +228,11 @@ export default function Dashboard({ stats, recentEvents = [], recentActivity = [
                         </Button>
                     </Card>
                 </div>
+
+                <UnreadAlertsList
+                    unreadCount={communicationAlerts?.unreadCount ?? 0}
+                    alerts={(communicationAlerts?.recent ?? []).filter((alert) => !alert.is_read)}
+                />
 
                 {/* Acesso Rápido */}
                 <Card className="p-2 sm:p-3">

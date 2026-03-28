@@ -2,150 +2,141 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\StoreCommunicationRequest;
-use App\Http\Requests\UpdateCommunicationRequest;
-use App\Models\Communication;
+use App\Models\CommunicationCampaign;
+use App\Models\CommunicationDelivery;
+use App\Models\CommunicationSegment;
+use App\Models\CommunicationTemplate;
+use App\Models\InAppAlert;
 use App\Models\User;
+use App\Services\Communication\SegmentResolverService;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
-use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 
 class ComunicacaoController extends Controller
 {
-    public function index(): Response
+    public function __construct(private readonly SegmentResolverService $segmentResolverService)
     {
-        $communications = Communication::query()
-            ->latest()
-            ->paginate(15);
+    }
 
-        $totalCommunications = Communication::count();
-        $scheduledCount = Communication::scheduled()->count();
-        
-        // Cache sent communications query to avoid redundant queries
-        $sentCommunications = Communication::sent();
-        $sentToday = (clone $sentCommunications)->whereDate('enviado_em', today())->count();
-        $totalSent = (clone $sentCommunications)->count();
-        
-        $totalEnviados = (clone $sentCommunications)->sum('total_enviados');
-        $totalFalhados = (clone $sentCommunications)->sum('total_falhados');
-        $successRate = ($totalEnviados + $totalFalhados) > 0 
-            ? round(($totalEnviados / ($totalEnviados + $totalFalhados)) * 100, 1)
-            : 0;
+    public function index(Request $request): Response
+    {
+        $campaignsQuery = CommunicationCampaign::query()
+            ->with(['segment:id,name', 'author:id,name,nome_completo', 'channels:id,campaign_id,channel,is_enabled'])
+            ->latest();
+
+        if ($request->filled('search')) {
+            $search = $request->string('search')->toString();
+            $campaignsQuery->where(function ($query) use ($search) {
+                $query->where('title', 'like', "%{$search}%")
+                    ->orWhere('codigo', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('channel')) {
+            $channel = $request->string('channel')->toString();
+            $campaignsQuery->whereHas('channels', fn ($query) => $query->where('channel', $channel));
+        }
+
+        if ($request->filled('status')) {
+            $campaignsQuery->where('status', $request->string('status')->toString());
+        }
+
+        if ($request->filled('author')) {
+            $campaignsQuery->where('author_id', $request->string('author')->toString());
+        }
+
+        if ($request->filled('period_start')) {
+            $campaignsQuery->whereDate('created_at', '>=', $request->string('period_start')->toString());
+        }
+
+        if ($request->filled('period_end')) {
+            $campaignsQuery->whereDate('created_at', '<=', $request->string('period_end')->toString());
+        }
+
+        $campaigns = $campaignsQuery->paginate(12)->withQueryString();
+
+        $deliveriesQuery = CommunicationDelivery::query()
+            ->with(['campaign:id,codigo,title', 'segment:id,name'])
+            ->latest();
+
+        if ($request->filled('delivery_channel')) {
+            $deliveriesQuery->where('channel', $request->string('delivery_channel')->toString());
+        }
+
+        if ($request->filled('delivery_status')) {
+            $deliveriesQuery->where('status', $request->string('delivery_status')->toString());
+        }
+
+        if ($request->filled('delivery_campaign')) {
+            $deliveriesQuery->where('campaign_id', $request->string('delivery_campaign')->toString());
+        }
+
+        $deliveries = $deliveriesQuery->paginate(12, ['*'], 'deliveries_page')->withQueryString();
+
+        $templates = CommunicationTemplate::query()
+            ->latest()
+            ->paginate(12, ['*'], 'templates_page')
+            ->withQueryString();
+
+        $segments = CommunicationSegment::query()
+            ->latest()
+            ->paginate(12, ['*'], 'segments_page')
+            ->withQueryString();
+
+        $alertsSummary = [
+            'total' => InAppAlert::count(),
+            'unread' => InAppAlert::where('is_read', false)->count(),
+            'read' => InAppAlert::where('is_read', true)->count(),
+        ];
+
+        $stats = [
+            'scheduled_campaigns' => CommunicationCampaign::where('status', 'agendada')->count(),
+            'completed_deliveries' => CommunicationDelivery::where('status', 'completed')->count(),
+            'failed_deliveries' => CommunicationDelivery::whereIn('status', ['failed', 'partial'])->count(),
+            'active_templates' => CommunicationTemplate::where('status', 'ativo')->count(),
+            'total_sent' => CommunicationDelivery::sum('success_count'),
+            'total_failed' => CommunicationDelivery::sum('failed_count'),
+            'total_pending' => CommunicationDelivery::sum('pending_count'),
+            'alerts_unread' => $alertsSummary['unread'],
+        ];
+
+        $latestCampaigns = CommunicationCampaign::query()
+            ->select('id', 'codigo', 'title', 'status', 'created_at', 'sent_at')
+            ->latest()
+            ->take(6)
+            ->get();
+
+        $channelSummary = CommunicationDelivery::query()
+            ->selectRaw('channel, count(*) as total, sum(success_count) as success_count, sum(failed_count) as failed_count')
+            ->groupBy('channel')
+            ->get();
 
         return Inertia::render('Comunicacao/Index', [
-            'communications' => $communications,
-            'stats' => [
-                'totalCommunications' => $totalCommunications,
-                'scheduledCount' => $scheduledCount,
-                'sentToday' => $sentToday,
-                'totalSent' => $totalSent,
-                'successRate' => $successRate,
+            'stats' => $stats,
+            'campaigns' => $campaigns,
+            'deliveries' => $deliveries,
+            'templates' => $templates,
+            'segments' => $segments,
+            'latestCampaigns' => $latestCampaigns,
+            'channelSummary' => $channelSummary,
+            'alertsSummary' => $alertsSummary,
+            'filterOptions' => [
+                'authors' => User::select('id', 'name', 'nome_completo')->orderBy('name')->get(),
+                'segments' => CommunicationSegment::select('id', 'name')->where('is_active', true)->orderBy('name')->get(),
+                'templates' => CommunicationTemplate::select('id', 'name', 'channel')->where('status', 'ativo')->orderBy('name')->get(),
             ],
+            'filters' => $request->only([
+                'search',
+                'channel',
+                'status',
+                'period_start',
+                'period_end',
+                'author',
+                'delivery_channel',
+                'delivery_status',
+                'delivery_campaign',
+            ]),
         ]);
-    }
-
-    public function create(): Response
-    {
-        $users = User::where('status', 'ativo')
-            ->select('id', 'nome_completo', 'email')
-            ->get();
-
-        return Inertia::render('Comunicacao/Create', [
-            'users' => $users,
-        ]);
-    }
-
-    public function store(StoreCommunicationRequest $request): RedirectResponse
-    {
-        $data = $request->validated();
-        
-        // Set default estado if not provided
-        if (!isset($data['estado'])) {
-            $data['estado'] = isset($data['agendado_para']) ? 'agendada' : 'rascunho';
-        }
-
-        Communication::create($data);
-
-        return redirect()->route('communication.index')
-            ->with('success', 'Comunicação criada com sucesso!');
-    }
-
-    public function show(Communication $comunicacao): Response
-    {
-        return Inertia::render('Comunicacao/Show', [
-            'communication' => $comunicacao,
-        ]);
-    }
-
-    public function edit(Communication $comunicacao): Response
-    {
-        $users = User::where('status', 'ativo')
-            ->select('id', 'nome_completo', 'email')
-            ->get();
-
-        return Inertia::render('Comunicacao/Edit', [
-            'communication' => $comunicacao,
-            'users' => $users,
-        ]);
-    }
-
-    public function update(UpdateCommunicationRequest $request, Communication $comunicacao): RedirectResponse
-    {
-        $data = $request->validated();
-
-        $comunicacao->update($data);
-
-        return redirect()->route('communication.index')
-            ->with('success', 'Comunicação atualizada com sucesso!');
-    }
-
-    public function destroy(Communication $comunicacao): RedirectResponse
-    {
-        $comunicacao->delete();
-
-        return redirect()->route('communication.index')
-            ->with('success', 'Comunicação eliminada com sucesso!');
-    }
-
-    /**
-     * Send a communication immediately or schedule it
-     */
-    public function send(Request $request, Communication $comunicacao): RedirectResponse
-    {
-        // Validate the communication is in a sendable state
-        if (!in_array($comunicacao->estado, ['rascunho', 'agendada'])) {
-            return back()->with('error', 'Esta comunicação já foi enviada ou falhou.');
-        }
-
-        $sendNow = $request->boolean('send_now', true);
-
-        if ($sendNow) {
-            // TODO: Real implementation should dispatch a job to send emails asynchronously
-            // The job should track actual successful sends and update total_enviados accordingly,
-            // not just assume all sends succeed. Example:
-            // SendCommunicationJob::dispatch($comunicacao);
-            // The job will update: total_enviados (actual successful sends), total_falhados (actual failures)
-            
-            // Mock implementation for now - marks all as sent successfully
-            $comunicacao->update([
-                'estado' => 'enviada',
-                'enviado_em' => now(),
-                'total_enviados' => count($comunicacao->destinatarios),
-                'total_falhados' => 0,
-            ]);
-
-            return redirect()->route('communication.index')
-                ->with('success', 'Comunicação enviada com sucesso!');
-        } else {
-            // Schedule for later
-            $comunicacao->update([
-                'estado' => 'agendada',
-            ]);
-
-            return redirect()->route('communication.index')
-                ->with('success', 'Comunicação agendada com sucesso!');
-        }
     }
 }
-

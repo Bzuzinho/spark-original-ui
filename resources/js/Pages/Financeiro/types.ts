@@ -103,6 +103,7 @@ export interface ConciliacaoMapa {
   movimento_id?: string | null;
   estado_fatura_anterior?: string | null;
   estado_movimento_anterior?: string | null;
+  valor_conciliado?: number | null;
 }
 
 export interface Movimento {

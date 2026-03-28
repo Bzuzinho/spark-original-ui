@@ -1,0 +1,20 @@
+<?php
+
+namespace App\Http\Requests\Communication;
+
+use Illuminate\Foundation\Http\FormRequest;
+
+class ScheduleCommunicationCampaignRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    public function rules(): array
+    {
+        return [
+            'scheduled_at' => ['required', 'date', 'after_or_equal:now'],
+        ];
+    }
+}

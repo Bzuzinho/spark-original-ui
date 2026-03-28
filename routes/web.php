@@ -18,6 +18,11 @@ use App\Http\Controllers\StoreOrderController;
 use App\Http\Controllers\PatrocinosController;
 use App\Http\Controllers\ComunicacaoController;
 use App\Http\Controllers\CampanhasMarketingController;
+use App\Http\Controllers\Communication\CommunicationAlertController;
+use App\Http\Controllers\Communication\CommunicationCampaignController;
+use App\Http\Controllers\Communication\CommunicationDeliveryController;
+use App\Http\Controllers\Communication\CommunicationSegmentController;
+use App\Http\Controllers\Communication\CommunicationTemplateController;
 use App\Http\Controllers\ConfiguracoesController;
 use App\Http\Controllers\ConfiguracoesDesportivoController;
 use App\Http\Controllers\LogisticaController;
@@ -142,8 +147,31 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/{patrocinio}/cancelar', [PatrocinosController::class, 'cancel'])->name('patrocinios.cancel');
     });
     Route::resource('patrocinios', PatrocinosController::class);
-    Route::resource('comunicacao', ComunicacaoController::class);
-    Route::post('/comunicacao/{communication}/enviar', [ComunicacaoController::class, 'send'])->name('comunicacao.enviar');
+    Route::get('/comunicacao', [ComunicacaoController::class, 'index'])->name('comunicacao.index');
+
+    Route::post('/comunicacao/campaigns', [CommunicationCampaignController::class, 'store'])->name('comunicacao.campaigns.store');
+    Route::put('/comunicacao/campaigns/{campaign}', [CommunicationCampaignController::class, 'update'])->name('comunicacao.campaigns.update');
+    Route::post('/comunicacao/campaigns/{campaign}/duplicate', [CommunicationCampaignController::class, 'duplicate'])->name('comunicacao.campaigns.duplicate');
+    Route::post('/comunicacao/campaigns/{campaign}/send', [CommunicationCampaignController::class, 'send'])->name('comunicacao.campaigns.send');
+    Route::post('/comunicacao/campaigns/{campaign}/schedule', [CommunicationCampaignController::class, 'schedule'])->name('comunicacao.campaigns.schedule');
+    Route::post('/comunicacao/campaigns/{campaign}/cancel', [CommunicationCampaignController::class, 'cancel'])->name('comunicacao.campaigns.cancel');
+
+    Route::get('/comunicacao/deliveries', [CommunicationDeliveryController::class, 'index'])->name('comunicacao.deliveries.index');
+
+    Route::get('/comunicacao/templates', [CommunicationTemplateController::class, 'index'])->name('comunicacao.templates.index');
+    Route::post('/comunicacao/templates', [CommunicationTemplateController::class, 'store'])->name('comunicacao.templates.store');
+    Route::put('/comunicacao/templates/{template}', [CommunicationTemplateController::class, 'update'])->name('comunicacao.templates.update');
+    Route::post('/comunicacao/templates/{template}/duplicate', [CommunicationTemplateController::class, 'duplicate'])->name('comunicacao.templates.duplicate');
+    Route::post('/comunicacao/templates/{template}/toggle', [CommunicationTemplateController::class, 'toggle'])->name('comunicacao.templates.toggle');
+
+    Route::get('/comunicacao/segments', [CommunicationSegmentController::class, 'index'])->name('comunicacao.segments.index');
+    Route::post('/comunicacao/segments', [CommunicationSegmentController::class, 'store'])->name('comunicacao.segments.store');
+    Route::put('/comunicacao/segments/{segment}', [CommunicationSegmentController::class, 'update'])->name('comunicacao.segments.update');
+
+    Route::get('/comunicacao/alerts', [CommunicationAlertController::class, 'index'])->name('comunicacao.alerts.index');
+    Route::post('/comunicacao/alerts/mark-read', [CommunicationAlertController::class, 'markRead'])->name('comunicacao.alerts.markRead');
+    Route::post('/comunicacao/alerts/mark-all-read', [CommunicationAlertController::class, 'markAllRead'])->name('comunicacao.alerts.markAllRead');
+
     Route::resource('campanhas-marketing', CampanhasMarketingController::class);
     
     // Settings routes

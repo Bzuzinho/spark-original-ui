@@ -64,11 +64,23 @@ export default defineConfig({
         host: '0.0.0.0',
         port: 5173,
         strictPort: true,
+        // Warm up the finance route to reduce first-hit latency in forwarded dev environments.
+        warmup: {
+            clientFiles: [
+                './resources/js/Pages/Financeiro/Index.tsx',
+                './resources/js/Pages/Financeiro/DashboardTab.tsx',
+                './resources/js/Pages/Financeiro/RelatoriosTab.tsx',
+            ],
+        },
         cors: {
             origin: appOrigins,
             credentials: true,
         },
         hmr: hmrConfig,
+    },
+    optimizeDeps: {
+        // Avoid on-demand dependency pre-bundling timeouts (504) when opening /financeiro.
+        include: ['date-fns', 'recharts'],
     },
     resolve: {
         alias: {

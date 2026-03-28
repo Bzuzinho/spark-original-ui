@@ -289,6 +289,16 @@ class User extends Authenticatable
         return $this->hasMany(Communication::class, 'sender_id');
     }
 
+    public function communicationCampaigns(): HasMany
+    {
+        return $this->hasMany(CommunicationCampaign::class, 'author_id');
+    }
+
+    public function inAppAlerts(): HasMany
+    {
+        return $this->hasMany(InAppAlert::class, 'user_id');
+    }
+
     public function createdConvocationGroups(): HasMany
     {
         return $this->hasMany(ConvocationGroup::class, 'criado_por');

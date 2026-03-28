@@ -14,12 +14,21 @@ import {
     X,
     Gear,
     SignOut,
-    Envelope
+    Envelope,
+    Bell
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/Components/ui/button';
 import { Separator } from '@/Components/ui/separator';
 import { Avatar, AvatarFallback } from '@/Components/ui/avatar';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/Components/ui/dropdown-menu';
 
 interface User {
     id: number;
@@ -35,6 +44,18 @@ interface PageProps {
         nome_clube?: string | null;
         sigla?: string | null;
         logo_url?: string | null;
+    };
+    communicationAlerts?: {
+        unreadCount: number;
+        recent: Array<{
+            id: string;
+            title: string;
+            message: string;
+            type: 'info' | 'warning' | 'success' | 'error';
+            link?: string | null;
+            is_read: boolean;
+            created_at: string;
+        }>;
     };
 }
 
@@ -69,7 +90,7 @@ export default function AuthenticatedLayout({
     showSidebarPopupButton?: boolean;
     hideMobileHeader?: boolean;
 }>) {
-    const { auth, clubSettings } = usePage<PageProps>().props;
+    const { auth, clubSettings, communicationAlerts } = usePage<PageProps>().props;
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const currentRoute = route().current();
 
@@ -98,6 +119,20 @@ export default function AuthenticatedLayout({
 
     const handleLogout = () => {
         router.post(route('logout'));
+    };
+
+    const handleMarkRead = (alertId: string) => {
+        router.post(route('comunicacao.alerts.markRead'), {
+            alert_id: alertId,
+        }, {
+            preserveScroll: true,
+        });
+    };
+
+    const handleMarkAllRead = () => {
+        router.post(route('comunicacao.alerts.markAllRead'), {}, {
+            preserveScroll: true,
+        });
     };
 
     const isActive = (itemId: string) => {
@@ -271,7 +306,52 @@ export default function AuthenticatedLayout({
                                 fullWidth ? 'w-full px-[10px] pt-[10px] pb-4' : 'spark-container py-4'
                             )}
                         >
-                            {header}
+                            <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0 flex-1">{header}</div>
+                                {auth.user && (
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="outline" size="icon" className="relative h-8 w-8">
+                                                <Bell size={16} />
+                                                {(communicationAlerts?.unreadCount ?? 0) > 0 && (
+                                                    <span className="absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] text-white">
+                                                        {communicationAlerts?.unreadCount}
+                                                    </span>
+                                                )}
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end" className="w-[360px]">
+                                            <DropdownMenuLabel className="flex items-center justify-between">
+                                                <span>Notificações</span>
+                                                <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={handleMarkAllRead}>
+                                                    Marcar todas lidas
+                                                </Button>
+                                            </DropdownMenuLabel>
+                                            <DropdownMenuSeparator />
+                                            {(communicationAlerts?.recent ?? []).length === 0 && (
+                                                <DropdownMenuItem disabled>Sem notificações.</DropdownMenuItem>
+                                            )}
+                                            {(communicationAlerts?.recent ?? []).map((alert) => (
+                                                <DropdownMenuItem
+                                                    key={alert.id}
+                                                    className="cursor-pointer flex flex-col items-start gap-0.5 py-2"
+                                                    onClick={() => {
+                                                        handleMarkRead(alert.id);
+                                                        if (alert.link) {
+                                                            router.visit(alert.link);
+                                                        }
+                                                    }}
+                                                >
+                                                    <span className={cn('text-xs font-medium', !alert.is_read && 'text-primary')}>
+                                                        {alert.title}
+                                                    </span>
+                                                    <span className="text-xs text-muted-foreground line-clamp-2">{alert.message}</span>
+                                                </DropdownMenuItem>
+                                            ))}
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                )}
+                            </div>
                         </div>
                     </header>
                 )}

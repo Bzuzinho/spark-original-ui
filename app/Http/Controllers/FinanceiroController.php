@@ -28,27 +28,64 @@ class FinanceiroController extends Controller
 {
     public function index(): Response
     {
-        return Inertia::render('Financeiro/Index', [
-            'faturas' => Invoice::orderBy('data_emissao', 'desc')->get()->map(function ($fatura) {
+        try {
+            $faturas = Invoice::orderBy('data_emissao', 'desc')->get()->map(function ($fatura) {
                 $fatura->valor_total = (float) $fatura->valor_total;
                 return $fatura;
-            }),
-            'faturaItens' => InvoiceItem::orderBy('created_at', 'desc')->get(),
-            'movimentos' => Movement::orderBy('data_emissao', 'desc')->get()->map(function ($movimento) {
+            });
+        } catch (\Exception $e) {
+            \Log::error('FinanceiroController::index - Faturas query failed: ' . $e->getMessage());
+            $faturas = [];
+        }
+
+        try {
+            $faturaItens = InvoiceItem::orderBy('created_at', 'desc')->get();
+        } catch (\Exception $e) {
+            \Log::error('FinanceiroController::index - FaturaItens query failed: ' . $e->getMessage());
+            $faturaItens = [];
+        }
+
+        try {
+            $movimentos = Movement::orderBy('data_emissao', 'desc')->get()->map(function ($movimento) {
                 $movimento->valor_total = (float) $movimento->valor_total;
                 return $movimento;
-            }),
-            'movimentoItens' => MovementItem::orderBy('created_at', 'desc')->get(),
-            'lancamentos' => FinancialEntry::orderBy('data', 'desc')->get()->map(function ($lancamento) {
+            });
+        } catch (\Exception $e) {
+            \Log::error('FinanceiroController::index - Movimentos query failed: ' . $e->getMessage());
+            $movimentos = [];
+        }
+
+        try {
+            $movimentoItens = MovementItem::orderBy('created_at', 'desc')->get();
+        } catch (\Exception $e) {
+            \Log::error('FinanceiroController::index - MovimentoItens query failed: ' . $e->getMessage());
+            $movimentoItens = [];
+        }
+
+        try {
+            $lancamentos = FinancialEntry::orderBy('data', 'desc')->get()->map(function ($lancamento) {
                 $lancamento->valor = (float) $lancamento->valor;
                 return $lancamento;
-            }),
-            'extratos' => BankStatement::orderBy('data_movimento', 'desc')->get()->map(function ($extrato) {
+            });
+        } catch (\Exception $e) {
+            \Log::error('FinanceiroController::index - Lancamentos query failed: ' . $e->getMessage());
+            $lancamentos = [];
+        }
+
+        try {
+            $extratos = BankStatement::orderBy('data_movimento', 'desc')->get()->map(function ($extrato) {
                 $extrato->valor = (float) $extrato->valor;
                 $extrato->saldo = $extrato->saldo !== null ? (float) $extrato->saldo : null;
                 return $extrato;
-            }),
-            'conciliacoes' => MapaConciliacao::select(
+            });
+        } catch (\Exception $e) {
+            \Log::error('FinanceiroController::index - Extratos query failed: ' . $e->getMessage());
+            $extratos = [];
+        }
+
+        try {
+            // Try to select with all fields first, fallback if valor_conciliado doesn't exist
+            $conciliacoes = MapaConciliacao::select(
                 'id',
                 'extrato_id',
                 'lancamento_id',
@@ -57,69 +94,138 @@ class FinanceiroController extends Controller
                 'estado_fatura_anterior',
                 'estado_movimento_anterior',
                 'valor_conciliado'
-            )->get(),
-            'centrosCusto' => CostCenter::orderBy('nome')->get(),
-            'users' => User::select(
-                'id',
-                'nome_completo',
-                'numero_socio',
-                'data_inscricao',
-                'tipo_mensalidade',
-                'centro_custo',
-                'tipo_membro',
-                'escalao',
-                'nif',
-                'morada'
-            )
-                ->with(['dadosFinanceiros', 'centrosCusto'])
-                ->orderBy('nome_completo')
-                ->get()
-                ->map(function ($user) {
-                    $user->tipo_mensalidade = $user->dadosFinanceiros?->mensalidade_id ?? $user->tipo_mensalidade;
-                    $legacyCentros = collect($user->centro_custo ?? [])
-                        ->map(function ($center) {
-                            if (is_array($center) && isset($center['id'])) {
-                                return $center['id'];
-                            }
-                            return $center;
-                        })
-                        ->filter()
-                        ->values();
+            )->get();
+        } catch (\Exception $e) {
+            \Log::warning('FinanceiroController::index - Conciliacoes with valor_conciliado failed, fallback: ' . $e->getMessage());
+            // Fallback without valor_conciliado field
+            try {
+                $conciliacoes = MapaConciliacao::select(
+                    'id',
+                    'extrato_id',
+                    'lancamento_id',
+                    'fatura_id',
+                    'movimento_id',
+                    'estado_fatura_anterior',
+                    'estado_movimento_anterior'
+                )->get();
+            } catch (\Exception $fallbackError) {
+                \Log::error('FinanceiroController::index - Conciliacoes fallback also failed: ' . $fallbackError->getMessage());
+                $conciliacoes = [];
+            }
+        }
 
-                    if ($user->centrosCusto->isNotEmpty()) {
-                        $user->centro_custo = $user->centrosCusto->pluck('id')->values();
-                        $user->centro_custo_pesos = $user->centrosCusto->map(function ($center) {
-                            return [
-                                'id' => $center->id,
-                                'peso' => (float) ($center->pivot->peso ?? 1),
-                            ];
-                        })->values();
-                    } else {
-                        $user->centro_custo = $legacyCentros;
-                        $user->centro_custo_pesos = $legacyCentros->map(function ($id) {
-                            return [
-                                'id' => $id,
-                                'peso' => 1.0,
-                            ];
-                        })->values();
-                    }
-                    return $user;
-                }),
-            'products' => Product::select('id', 'nome', 'preco', 'stock', 'stock_minimo', 'ativo')
-                ->orderBy('nome')
-                ->get()
-                ->map(function ($product) {
-                    $product->preco = (float) $product->preco;
-                    return $product;
-                }),
-            'mensalidades' => MonthlyFee::select('id', 'designacao', 'valor', 'age_group_id')
-                ->get()
-                ->map(function ($mensalidade) {
-                    $mensalidade->valor = (float) $mensalidade->valor;
-                    return $mensalidade;
-                }),
-            'invoiceTypes' => InvoiceType::orderBy('nome')->get(),
-            'ageGroups' => AgeGroup::select('id', 'nome')->orderBy('nome')->get(),
+        return Inertia::render('Financeiro/Index', [
+            'faturas' => $faturas,
+            'faturaItens' => $faturaItens,
+            'movimentos' => $movimentos,
+            'movimentoItens' => $movimentoItens,
+            'lancamentos' => $lancamentos,
+            'extratos' => $extratos,
+            'conciliacoes' => $conciliacoes,
+            'centrosCusto' => (function() {
+                try {
+                    return CostCenter::orderBy('nome')->get();
+                } catch (\Exception $e) {
+                    \Log::error('FinanceiroController::index - CostCenter query failed: ' . $e->getMessage());
+                    return [];
+                }
+            })(),
+            'users' => (function() {
+                try {
+                    return User::select(
+                        'id',
+                        'nome_completo',
+                        'numero_socio',
+                        'data_inscricao',
+                        'tipo_mensalidade',
+                        'centro_custo',
+                        'tipo_membro',
+                        'escalao',
+                        'nif',
+                        'morada'
+                    )
+                        ->with(['dadosFinanceiros', 'centrosCusto'])
+                        ->orderBy('nome_completo')
+                        ->get()
+                        ->map(function ($user) {
+                            $user->tipo_mensalidade = $user->dadosFinanceiros?->mensalidade_id ?? $user->tipo_mensalidade;
+                            $legacyCentros = collect($user->centro_custo ?? [])
+                                ->map(function ($center) {
+                                    if (is_array($center) && isset($center['id'])) {
+                                        return $center['id'];
+                                    }
+                                    return $center;
+                                })
+                                ->filter()
+                                ->values();
+
+                            if ($user->centrosCusto->isNotEmpty()) {
+                                $user->centro_custo = $user->centrosCusto->pluck('id')->values();
+                                $user->centro_custo_pesos = $user->centrosCusto->map(function ($center) {
+                                    return [
+                                        'id' => $center->id,
+                                        'peso' => (float) ($center->pivot->peso ?? 1),
+                                    ];
+                                })->values();
+                            } else {
+                                $user->centro_custo = $legacyCentros;
+                                $user->centro_custo_pesos = $legacyCentros->map(function ($id) {
+                                    return [
+                                        'id' => $id,
+                                        'peso' => 1.0,
+                                    ];
+                                })->values();
+                            }
+                            return $user;
+                        });
+                } catch (\Exception $e) {
+                    \Log::error('FinanceiroController::index - Users query failed: ' . $e->getMessage());
+                    return [];
+                }
+            })(),
+            'products' => (function() {
+                try {
+                    return Product::select('id', 'nome', 'preco', 'stock', 'stock_minimo', 'ativo')
+                        ->orderBy('nome')
+                        ->get()
+                        ->map(function ($product) {
+                            $product->preco = (float) $product->preco;
+                            return $product;
+                        });
+                } catch (\Exception $e) {
+                    \Log::error('FinanceiroController::index - Products query failed: ' . $e->getMessage());
+                    return [];
+                }
+            })(),
+            'mensalidades' => (function() {
+                try {
+                    return MonthlyFee::select('id', 'designacao', 'valor', 'age_group_id')
+                        ->get()
+                        ->map(function ($mensalidade) {
+                            $mensalidade->valor = (float) $mensalidade->valor;
+                            return $mensalidade;
+                        });
+                } catch (\Exception $e) {
+                    \Log::error('FinanceiroController::index - MonthlyFee query failed: ' . $e->getMessage());
+                    return [];
+                }
+            })(),
+            'invoiceTypes' => (function() {
+                try {
+                    return InvoiceType::orderBy('nome')->get();
+                } catch (\Exception $e) {
+                    \Log::error('FinanceiroController::index - InvoiceType query failed: ' . $e->getMessage());
+                    return [];
+                }
+            })(),
+            'ageGroups' => (function() {
+                try {
+                    return AgeGroup::select('id', 'nome')->orderBy('nome')->get();
+                } catch (\Exception $e) {
+                    \Log::error('FinanceiroController::index - AgeGroup query failed: ' . $e->getMessage());
+                    return [];
+                }
+            })(),
         ]);
     }
 
