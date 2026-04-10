@@ -3,6 +3,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "serv": "vite",
     "build": "vite build",
     "deploy:vm": "bash bin/deploy-vm.sh"
   },

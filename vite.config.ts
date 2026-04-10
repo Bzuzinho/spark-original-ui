@@ -35,6 +35,25 @@ if (appOriginFromEnv && !appOrigins.includes(appOriginFromEnv)) {
     appOrigins.push(appOriginFromEnv);
 }
 
+const isAllowedDevOrigin = (origin: string): boolean => {
+    if (appOrigins.includes(origin)) {
+        return true;
+    }
+
+    try {
+        const parsed = new URL(origin);
+
+        // Codespaces forwarded URLs can change between sessions while keeping the same app.github.dev pattern.
+        if (parsed.protocol === 'https:' && parsed.hostname.endsWith('.app.github.dev')) {
+            return true;
+        }
+    } catch {
+        return false;
+    }
+
+    return false;
+};
+
 const hmrConfig = isCodespaces
     ? {
           protocol: 'wss' as const,
@@ -73,7 +92,14 @@ export default defineConfig({
             ],
         },
         cors: {
-            origin: appOrigins,
+            origin: (origin, callback) => {
+                if (!origin || isAllowedDevOrigin(origin)) {
+                    callback(null, true);
+                    return;
+                }
+
+                callback(new Error(`Origin not allowed by Vite CORS: ${origin}`), false);
+            },
             credentials: true,
         },
         hmr: hmrConfig,
