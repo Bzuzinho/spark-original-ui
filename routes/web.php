@@ -155,6 +155,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/comunicacao/campaigns/{campaign}/send', [CommunicationCampaignController::class, 'send'])->name('comunicacao.campaigns.send');
     Route::post('/comunicacao/campaigns/{campaign}/schedule', [CommunicationCampaignController::class, 'schedule'])->name('comunicacao.campaigns.schedule');
     Route::post('/comunicacao/campaigns/{campaign}/cancel', [CommunicationCampaignController::class, 'cancel'])->name('comunicacao.campaigns.cancel');
+    Route::delete('/comunicacao/campaigns/{campaign}', [CommunicationCampaignController::class, 'destroy'])->name('comunicacao.campaigns.destroy');
+    Route::post('/comunicacao/campaigns/send-individual', [CommunicationCampaignController::class, 'sendIndividual'])->name('comunicacao.campaigns.sendIndividual');
 
     Route::get('/comunicacao/deliveries', [CommunicationDeliveryController::class, 'index'])->name('comunicacao.deliveries.index');
 
@@ -163,10 +165,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('/comunicacao/templates/{template}', [CommunicationTemplateController::class, 'update'])->name('comunicacao.templates.update');
     Route::post('/comunicacao/templates/{template}/duplicate', [CommunicationTemplateController::class, 'duplicate'])->name('comunicacao.templates.duplicate');
     Route::post('/comunicacao/templates/{template}/toggle', [CommunicationTemplateController::class, 'toggle'])->name('comunicacao.templates.toggle');
+    Route::delete('/comunicacao/templates/{template}', [CommunicationTemplateController::class, 'destroy'])->name('comunicacao.templates.destroy');
 
     Route::get('/comunicacao/segments', [CommunicationSegmentController::class, 'index'])->name('comunicacao.segments.index');
     Route::post('/comunicacao/segments', [CommunicationSegmentController::class, 'store'])->name('comunicacao.segments.store');
     Route::put('/comunicacao/segments/{segment}', [CommunicationSegmentController::class, 'update'])->name('comunicacao.segments.update');
+    Route::delete('/comunicacao/segments/{segment}', [CommunicationSegmentController::class, 'destroy'])->name('comunicacao.segments.destroy');
 
     Route::get('/comunicacao/alerts', [CommunicationAlertController::class, 'index'])->name('comunicacao.alerts.index');
     Route::post('/comunicacao/alerts/mark-read', [CommunicationAlertController::class, 'markRead'])->name('comunicacao.alerts.markRead');
@@ -270,6 +274,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('/configuracoes/provas/{provaTipo}', [ConfiguracoesController::class, 'destroyProvaTipo'])->name('configuracoes.provas.destroy');
 
     Route::put('/configuracoes/notificacoes', [ConfiguracoesController::class, 'updateNotificationPreferences'])->name('configuracoes.notificacoes.update');
+    Route::post('/configuracoes/notificacoes/fontes-dinamicas', [ConfiguracoesController::class, 'storeCommunicationDynamicSource'])->name('configuracoes.notificacoes.fontes-dinamicas.store');
+    Route::put('/configuracoes/notificacoes/fontes-dinamicas/{dynamicSource}', [ConfiguracoesController::class, 'updateCommunicationDynamicSource'])->name('configuracoes.notificacoes.fontes-dinamicas.update');
+    Route::delete('/configuracoes/notificacoes/fontes-dinamicas/{dynamicSource}', [ConfiguracoesController::class, 'destroyCommunicationDynamicSource'])->name('configuracoes.notificacoes.fontes-dinamicas.destroy');
+    Route::post('/configuracoes/notificacoes/categorias-alerta', [ConfiguracoesController::class, 'storeCommunicationAlertCategory'])->name('configuracoes.notificacoes.categorias-alerta.store');
+    Route::put('/configuracoes/notificacoes/categorias-alerta/{alertCategory}', [ConfiguracoesController::class, 'updateCommunicationAlertCategory'])->name('configuracoes.notificacoes.categorias-alerta.update');
+    Route::delete('/configuracoes/notificacoes/categorias-alerta/{alertCategory}', [ConfiguracoesController::class, 'destroyCommunicationAlertCategory'])->name('configuracoes.notificacoes.categorias-alerta.destroy');
     // Sports module routes
     Route::resource('equipas', EquipasController::class);
     Route::resource('membros-equipa', MembrosEquipaController::class)->except(['index', 'create', 'show', 'edit']);

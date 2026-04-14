@@ -184,6 +184,33 @@ interface NotificationPrefs {
     email_notificacoes: boolean;
     alertas_pagamento: boolean;
     alertas_atividade: boolean;
+    automacoes_financeiro: boolean;
+    automacoes_eventos: boolean;
+    automacoes_logistica: boolean;
+    automacoes_faturas_financeiras: boolean;
+    automacoes_movimentos_financeiros: boolean;
+    automacoes_convocatorias_eventos: boolean;
+    automacoes_requisicoes_logistica: boolean;
+    automacoes_alertas_operacionais: boolean;
+}
+
+interface CommunicationDynamicSource {
+    id: string;
+    name: string;
+    description?: string | null;
+    strategy: string;
+    sort_order: number;
+    is_active: boolean;
+}
+
+interface CommunicationAlertCategory {
+    id: string;
+    code: string;
+    name: string;
+    description?: string | null;
+    channels: string[];
+    sort_order: number;
+    is_active: boolean;
 }
 
 interface DbUser {
@@ -445,6 +472,32 @@ const permissionCatalog = [
 
 const customValue = '__custom__';
 
+const dynamicSourceStrategies = [
+    { value: 'all_members', label: 'Todos os membros' },
+    { value: 'athletes', label: 'Atletas por escalão' },
+    { value: 'guardians', label: 'Pais/Encarregados' },
+    { value: 'coaches', label: 'Treinadores' },
+    { value: 'team_members', label: 'Membros por equipa' },
+    { value: 'age_group_members', label: 'Membros por escalão' },
+    { value: 'overdue_payments', label: 'Pagamentos em atraso' },
+    { value: 'event_participants', label: 'Participantes de evento' },
+    { value: 'users_with_unread_alerts', label: 'Utilizadores com alertas por ler' },
+] as const;
+
+const dynamicSourceStrategyLabel = (strategy: string) => (
+    dynamicSourceStrategies.find((item) => item.value === strategy)?.label || strategy
+);
+
+const alertCategoryChannels = [
+    { value: 'email', label: 'Email' },
+    { value: 'sms', label: 'SMS' },
+    { value: 'alert_app', label: 'Alerta na app' },
+] as const;
+
+const alertCategoryChannelLabel = (channel: string) => (
+    alertCategoryChannels.find((item) => item.value === channel)?.label || channel
+);
+
 const buildOptions = (values: Array<{ value: string; label: string }>) => [
     ...values,
     { value: customValue, label: 'Personalizado' },
@@ -470,6 +523,8 @@ interface Props {
     itemCategories: ItemCategory[];
     provaTipos: ProvaTipo[];
     notificationPrefs?: NotificationPrefs | null;
+    communicationDynamicSources: CommunicationDynamicSource[];
+    communicationAlertCategories: CommunicationAlertCategory[];
     users: DbUser[];
     clubSettings?: ClubSettings;
 }
@@ -494,6 +549,8 @@ export default function SettingsIndex({
     itemCategories,
     provaTipos,
     notificationPrefs: initialNotificationPrefs,
+    communicationDynamicSources,
+    communicationAlertCategories,
     users,
     clubSettings,
 }: Props) {
@@ -502,10 +559,37 @@ export default function SettingsIndex({
     const [editingItem, setEditingItem] = useState<any>(null);
     const [productImagePreview, setProductImagePreview] = useState<string | null>(null);
     const [sponsorLogoPreview, setSponsorLogoPreview] = useState<string | null>(null);
-    const [notificationPrefs, setNotificationPrefs] = useState<NotificationPrefs>({
+    const [dynamicSourceDialogOpen, setDynamicSourceDialogOpen] = useState(false);
+    const [editingDynamicSource, setEditingDynamicSource] = useState<CommunicationDynamicSource | null>(null);
+    const [alertCategoryDialogOpen, setAlertCategoryDialogOpen] = useState(false);
+    const [editingAlertCategory, setEditingAlertCategory] = useState<CommunicationAlertCategory | null>(null);
+    const dynamicSourceForm = useForm({
+        name: '',
+        description: '',
+        strategy: 'all_members',
+        sort_order: 0,
+        is_active: true,
+    });
+    const alertCategoryForm = useForm({
+        code: '',
+        name: '',
+        description: '',
+        channels: ['email', 'alert_app'] as string[],
+        sort_order: 0,
+        is_active: true,
+    });
+    const notificationPrefsForm = useForm<NotificationPrefs>({
         email_notificacoes: initialNotificationPrefs?.email_notificacoes ?? true,
         alertas_pagamento: initialNotificationPrefs?.alertas_pagamento ?? true,
         alertas_atividade: initialNotificationPrefs?.alertas_atividade ?? true,
+        automacoes_financeiro: initialNotificationPrefs?.automacoes_financeiro ?? true,
+        automacoes_eventos: initialNotificationPrefs?.automacoes_eventos ?? true,
+        automacoes_logistica: initialNotificationPrefs?.automacoes_logistica ?? true,
+        automacoes_faturas_financeiras: initialNotificationPrefs?.automacoes_faturas_financeiras ?? true,
+        automacoes_movimentos_financeiros: initialNotificationPrefs?.automacoes_movimentos_financeiros ?? true,
+        automacoes_convocatorias_eventos: initialNotificationPrefs?.automacoes_convocatorias_eventos ?? true,
+        automacoes_requisicoes_logistica: initialNotificationPrefs?.automacoes_requisicoes_logistica ?? true,
+        automacoes_alertas_operacionais: initialNotificationPrefs?.automacoes_alertas_operacionais ?? true,
     });
 
     // Generic form for CRUD operations
@@ -714,18 +798,151 @@ export default function SettingsIndex({
         });
     };
 
-    const handleNotificationToggle = (field: keyof NotificationPrefs) => {
-        const updated = {
-            ...notificationPrefs,
-            [field]: !notificationPrefs[field],
+    const openCreateDynamicSource = () => {
+        setEditingDynamicSource(null);
+        dynamicSourceForm.setData({
+            name: '',
+            description: '',
+            strategy: 'all_members',
+            sort_order: communicationDynamicSources.length + 1,
+            is_active: true,
+        });
+        dynamicSourceForm.clearErrors();
+        setDynamicSourceDialogOpen(true);
+    };
+
+    const openEditDynamicSource = (source: CommunicationDynamicSource) => {
+        setEditingDynamicSource(source);
+        dynamicSourceForm.setData({
+            name: source.name,
+            description: source.description || '',
+            strategy: source.strategy,
+            sort_order: source.sort_order,
+            is_active: source.is_active,
+        });
+        dynamicSourceForm.clearErrors();
+        setDynamicSourceDialogOpen(true);
+    };
+
+    const saveDynamicSource = () => {
+        const isEditing = !!editingDynamicSource;
+        const routeName = isEditing
+            ? route('configuracoes.notificacoes.fontes-dinamicas.update', editingDynamicSource.id)
+            : route('configuracoes.notificacoes.fontes-dinamicas.store');
+
+        const options = {
+            preserveScroll: true,
+            onSuccess: () => {
+                setDynamicSourceDialogOpen(false);
+                setEditingDynamicSource(null);
+                dynamicSourceForm.reset();
+                toast.success(isEditing ? 'Fonte dinâmica atualizada' : 'Fonte dinâmica criada');
+            },
+            onError: () => toast.error('Erro ao guardar fonte dinâmica.'),
         };
 
-        setNotificationPrefs(updated);
+        if (isEditing) {
+            dynamicSourceForm.put(routeName, options);
+            return;
+        }
 
-        router.put(route('configuracoes.notificacoes.update'), updated, {
+        dynamicSourceForm.post(routeName, options);
+    };
+
+    const deleteDynamicSource = (sourceId: string) => {
+        if (!confirm('Tem certeza que deseja eliminar esta fonte dinâmica?')) return;
+
+        router.delete(route('configuracoes.notificacoes.fontes-dinamicas.destroy', sourceId), {
             preserveScroll: true,
-            onSuccess: () => toast.success('Preferência atualizada'),
-            onError: () => toast.error('Erro ao atualizar preferências'),
+            onSuccess: () => toast.success('Fonte dinâmica eliminada'),
+            onError: () => toast.error('Erro ao eliminar fonte dinâmica.'),
+        });
+    };
+
+    const openCreateAlertCategory = () => {
+        setEditingAlertCategory(null);
+        alertCategoryForm.setData({
+            code: '',
+            name: '',
+            description: '',
+            channels: ['email', 'alert_app'],
+            sort_order: communicationAlertCategories.length + 1,
+            is_active: true,
+        });
+        alertCategoryForm.clearErrors();
+        setAlertCategoryDialogOpen(true);
+    };
+
+    const openEditAlertCategory = (category: CommunicationAlertCategory) => {
+        setEditingAlertCategory(category);
+        alertCategoryForm.setData({
+            code: category.code,
+            name: category.name,
+            description: category.description || '',
+            channels: category.channels || [],
+            sort_order: category.sort_order,
+            is_active: category.is_active,
+        });
+        alertCategoryForm.clearErrors();
+        setAlertCategoryDialogOpen(true);
+    };
+
+    const toggleAlertCategoryChannel = (channel: string, enabled: boolean) => {
+        const current = new Set(alertCategoryForm.data.channels);
+
+        if (enabled) {
+            current.add(channel);
+        } else {
+            current.delete(channel);
+        }
+
+        alertCategoryForm.setData('channels', Array.from(current));
+    };
+
+    const saveAlertCategory = () => {
+        const isEditing = !!editingAlertCategory;
+        const routeName = isEditing
+            ? route('configuracoes.notificacoes.categorias-alerta.update', editingAlertCategory.id)
+            : route('configuracoes.notificacoes.categorias-alerta.store');
+
+        const options = {
+            preserveScroll: true,
+            onSuccess: () => {
+                setAlertCategoryDialogOpen(false);
+                setEditingAlertCategory(null);
+                alertCategoryForm.reset();
+                toast.success(isEditing ? 'Categoria do alerta atualizada' : 'Categoria do alerta criada');
+            },
+            onError: () => toast.error('Erro ao guardar categoria do alerta.'),
+        };
+
+        if (isEditing) {
+            alertCategoryForm.put(routeName, options);
+            return;
+        }
+
+        alertCategoryForm.post(routeName, options);
+    };
+
+    const deleteAlertCategory = (categoryId: string) => {
+        if (!confirm('Tem certeza que deseja eliminar esta categoria do alerta?')) return;
+
+        router.delete(route('configuracoes.notificacoes.categorias-alerta.destroy', categoryId), {
+            preserveScroll: true,
+            onSuccess: () => toast.success('Categoria do alerta eliminada'),
+            onError: () => toast.error('Erro ao eliminar categoria do alerta.'),
+        });
+    };
+
+    const toggleNotificationPreference = (field: keyof NotificationPrefs, checked: boolean) => {
+        notificationPrefsForm.setData(field, checked);
+    };
+
+    const saveNotificationPreferences = () => {
+        notificationPrefsForm.put(route('configuracoes.notificacoes.update'), {
+            preserveScroll: true,
+            onSuccess: () => toast.success('Preferências de automação atualizadas'),
+            onError: () => toast.error('Erro ao guardar preferências de automação.'),
         });
     };
 
@@ -1843,57 +2060,197 @@ export default function SettingsIndex({
 
                     {/* Tab: Notificações */}
                     <TabsContent value="notificacoes" className="mt-4">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Preferências de Notificações</CardTitle>
-                                <CardDescription>
-                                    Configure as preferências de notificações do sistema
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                <div className="flex items-center justify-between">
-                                    <div className="space-y-0.5">
-                                        <Label htmlFor="email-notifications">Notificações por Email</Label>
-                                        <p className="text-sm text-muted-foreground">
-                                            Receber notificações gerais por email
-                                        </p>
-                                    </div>
-                                    <Switch
-                                        id="email-notifications"
-                                        checked={notificationPrefs.email_notificacoes}
-                                        onCheckedChange={() => handleNotificationToggle('email_notificacoes')}
-                                    />
-                                </div>
-                                <Separator />
-                                <div className="flex items-center justify-between">
-                                    <div className="space-y-0.5">
-                                        <Label htmlFor="payment-alerts">Alertas de Pagamento</Label>
-                                        <p className="text-sm text-muted-foreground">
-                                            Receber alertas sobre pagamentos pendentes
-                                        </p>
-                                    </div>
-                                    <Switch
-                                        id="payment-alerts"
-                                        checked={notificationPrefs.alertas_pagamento}
-                                        onCheckedChange={() => handleNotificationToggle('alertas_pagamento')}
-                                    />
-                                </div>
-                                <Separator />
-                                <div className="flex items-center justify-between">
-                                    <div className="space-y-0.5">
-                                        <Label htmlFor="activity-alerts">Alertas de Atividade</Label>
-                                        <p className="text-sm text-muted-foreground">
-                                            Receber alertas sobre eventos e atividades
-                                        </p>
-                                    </div>
-                                    <Switch
-                                        id="activity-alerts"
-                                        checked={notificationPrefs.alertas_atividade}
-                                        onCheckedChange={() => handleNotificationToggle('alertas_atividade')}
-                                    />
-                                </div>
-                            </CardContent>
-                        </Card>
+                        <Tabs defaultValue="fontes-dinamicas" className="space-y-4">
+                            <TabsList className="w-full flex flex-wrap h-auto gap-1 justify-start">
+                                <TabsTrigger value="automacoes">Automações</TabsTrigger>
+                                <TabsTrigger value="fontes-dinamicas">Fontes Dinâmicas</TabsTrigger>
+                                <TabsTrigger value="categorias-alerta">Categoria do Alerta</TabsTrigger>
+                            </TabsList>
+
+                            <TabsContent value="automacoes" className="space-y-4">
+                                <Card>
+                                    <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                        <div>
+                                            <CardTitle>Automações da Comunicação</CardTitle>
+                                            <CardDescription>
+                                                Ativa ou desativa as comunicações automáticas por origem e por fluxo específico.
+                                            </CardDescription>
+                                        </div>
+                                        <Button size="sm" onClick={saveNotificationPreferences} disabled={notificationPrefsForm.processing}>
+                                            {notificationPrefsForm.processing ? 'A guardar...' : 'Guardar preferências'}
+                                        </Button>
+                                    </CardHeader>
+                                    <CardContent className="space-y-4">
+                                        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                                            {[
+                                                ['email_notificacoes', 'Email automático', 'Permite envios automáticos por email.'],
+                                                ['alertas_pagamento', 'Categoria Financeiro', 'Ativa alertas automáticos ligados a pagamentos e cobranças.'],
+                                                ['alertas_atividade', 'Categoria Atividade', 'Ativa alertas automáticos ligados a eventos e atividade.'],
+                                                ['automacoes_financeiro', 'Origem Financeiro', 'Ativa a origem automática do módulo Financeiro.'],
+                                                ['automacoes_eventos', 'Origem Eventos', 'Ativa a origem automática do módulo Eventos.'],
+                                                ['automacoes_logistica', 'Origem Logística', 'Ativa a origem automática do módulo Logística.'],
+                                                ['automacoes_faturas_financeiras', 'Faturas', 'Notifica emissão automática de novas faturas.'],
+                                                ['automacoes_movimentos_financeiros', 'Movimentos', 'Notifica criação automática de novos movimentos financeiros.'],
+                                                ['automacoes_convocatorias_eventos', 'Convocatórias', 'Notifica convocatórias criadas para eventos.'],
+                                                ['automacoes_requisicoes_logistica', 'Requisições logística', 'Notifica criação e alteração de estado de requisições logísticas.'],
+                                                ['automacoes_alertas_operacionais', 'Alertas operacionais', 'Cria alertas internos para compras de fornecedor e fluxos operacionais.'],
+                                            ].map(([field, label, description]) => (
+                                                <div key={field} className="flex items-center justify-between rounded-md border px-3 py-3">
+                                                    <div>
+                                                        <Label>{label}</Label>
+                                                        <p className="text-xs text-muted-foreground">{description}</p>
+                                                    </div>
+                                                    <Switch
+                                                        checked={notificationPrefsForm.data[field as keyof NotificationPrefs] as boolean}
+                                                        onCheckedChange={(checked) => toggleNotificationPreference(field as keyof NotificationPrefs, checked)}
+                                                    />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </TabsContent>
+
+                            <TabsContent value="fontes-dinamicas" className="space-y-4">
+                                <Card>
+                                    <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                        <div>
+                                            <CardTitle>Fontes Dinâmicas</CardTitle>
+                                            <CardDescription>
+                                                Gere as fontes dinâmicas usadas na criação de segmentos do módulo Comunicação.
+                                            </CardDescription>
+                                        </div>
+                                        <Button size="sm" onClick={openCreateDynamicSource}>
+                                            <Plus className="mr-2" size={16} />
+                                            Nova fonte
+                                        </Button>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow>
+                                                    <TableHead>Nome</TableHead>
+                                                    <TableHead>Estratégia</TableHead>
+                                                    <TableHead>Ordem</TableHead>
+                                                    <TableHead>Estado</TableHead>
+                                                    <TableHead>Descrição</TableHead>
+                                                    <TableHead className="text-right">Ações</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {communicationDynamicSources.length === 0 ? (
+                                                    <TableRow>
+                                                        <TableCell colSpan={6} className="text-center text-muted-foreground">
+                                                            Nenhuma fonte dinâmica configurada.
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ) : (
+                                                    communicationDynamicSources.map((source) => (
+                                                        <TableRow key={source.id}>
+                                                            <TableCell className="font-medium">{source.name}</TableCell>
+                                                            <TableCell>{dynamicSourceStrategyLabel(source.strategy)}</TableCell>
+                                                            <TableCell>{source.sort_order}</TableCell>
+                                                            <TableCell>
+                                                                <Badge variant={source.is_active ? 'secondary' : 'destructive'}>
+                                                                    {source.is_active ? 'Ativa' : 'Inativa'}
+                                                                </Badge>
+                                                            </TableCell>
+                                                            <TableCell className="max-w-[320px] text-xs text-muted-foreground">
+                                                                {source.description || '-'}
+                                                            </TableCell>
+                                                            <TableCell className="text-right">
+                                                                <div className="flex justify-end gap-2">
+                                                                    <Button variant="ghost" size="sm" onClick={() => openEditDynamicSource(source)}>
+                                                                        <PencilSimple size={16} />
+                                                                    </Button>
+                                                                    <Button variant="ghost" size="sm" onClick={() => deleteDynamicSource(source.id)}>
+                                                                        <Trash size={16} />
+                                                                    </Button>
+                                                                </div>
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    ))
+                                                )}
+                                            </TableBody>
+                                        </Table>
+                                    </CardContent>
+                                </Card>
+                            </TabsContent>
+
+                            <TabsContent value="categorias-alerta" className="space-y-4">
+                                <Card>
+                                    <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                        <div>
+                                            <CardTitle>Categoria do Alerta</CardTitle>
+                                            <CardDescription>
+                                                Defina as categorias disponíveis e os canais de comunicação permitidos para cada uma.
+                                            </CardDescription>
+                                        </div>
+                                        <Button size="sm" onClick={openCreateAlertCategory}>
+                                            <Plus className="mr-2" size={16} />
+                                            Nova categoria
+                                        </Button>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow>
+                                                    <TableHead>Nome</TableHead>
+                                                    <TableHead>Código</TableHead>
+                                                    <TableHead>Canais</TableHead>
+                                                    <TableHead>Ordem</TableHead>
+                                                    <TableHead>Estado</TableHead>
+                                                    <TableHead>Descrição</TableHead>
+                                                    <TableHead className="text-right">Ações</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {communicationAlertCategories.length === 0 ? (
+                                                    <TableRow>
+                                                        <TableCell colSpan={7} className="text-center text-muted-foreground">
+                                                            Nenhuma categoria do alerta configurada.
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ) : (
+                                                    communicationAlertCategories.map((category) => (
+                                                        <TableRow key={category.id}>
+                                                            <TableCell className="font-medium">{category.name}</TableCell>
+                                                            <TableCell>{category.code}</TableCell>
+                                                            <TableCell>
+                                                                <div className="flex flex-wrap gap-1">
+                                                                    {category.channels.map((channel) => (
+                                                                        <Badge key={channel} variant="outline">{alertCategoryChannelLabel(channel)}</Badge>
+                                                                    ))}
+                                                                </div>
+                                                            </TableCell>
+                                                            <TableCell>{category.sort_order}</TableCell>
+                                                            <TableCell>
+                                                                <Badge variant={category.is_active ? 'secondary' : 'destructive'}>
+                                                                    {category.is_active ? 'Ativa' : 'Inativa'}
+                                                                </Badge>
+                                                            </TableCell>
+                                                            <TableCell className="max-w-[280px] text-xs text-muted-foreground">
+                                                                {category.description || '-'}
+                                                            </TableCell>
+                                                            <TableCell className="text-right">
+                                                                <div className="flex justify-end gap-2">
+                                                                    <Button variant="ghost" size="sm" onClick={() => openEditAlertCategory(category)}>
+                                                                        <PencilSimple size={16} />
+                                                                    </Button>
+                                                                    <Button variant="ghost" size="sm" onClick={() => deleteAlertCategory(category.id)}>
+                                                                        <Trash size={16} />
+                                                                    </Button>
+                                                                </div>
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    ))
+                                                )}
+                                            </TableBody>
+                                        </Table>
+                                    </CardContent>
+                                </Card>
+                            </TabsContent>
+                        </Tabs>
                     </TabsContent>
 
                     {/* Tab: Base de Dados */}
@@ -1971,6 +2328,174 @@ export default function SettingsIndex({
                     </TabsContent>
                 </Tabs>
             </div>
+
+            <Dialog open={dynamicSourceDialogOpen} onOpenChange={setDynamicSourceDialogOpen}>
+                <DialogContent className="sm:max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle>{editingDynamicSource ? 'Editar fonte dinâmica' : 'Nova fonte dinâmica'}</DialogTitle>
+                        <DialogDescription>
+                            Define o nome apresentado em Comunicação e a estratégia técnica usada para resolver os destinatários.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-3">
+                        <div className="space-y-1">
+                            <Label htmlFor="dynamic-source-name">Nome</Label>
+                            <Input
+                                id="dynamic-source-name"
+                                value={dynamicSourceForm.data.name}
+                                onChange={(e) => dynamicSourceForm.setData('name', e.target.value)}
+                            />
+                        </div>
+                        <div className="space-y-1">
+                            <Label htmlFor="dynamic-source-strategy">Estratégia</Label>
+                            <Select
+                                value={dynamicSourceForm.data.strategy}
+                                onValueChange={(value) => dynamicSourceForm.setData('strategy', value)}
+                            >
+                                <SelectTrigger id="dynamic-source-strategy">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {dynamicSourceStrategies.map((strategy) => (
+                                        <SelectItem key={strategy.value} value={strategy.value}>
+                                            {strategy.label}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                            <div className="space-y-1">
+                                <Label htmlFor="dynamic-source-order">Ordem</Label>
+                                <Input
+                                    id="dynamic-source-order"
+                                    type="number"
+                                    min={0}
+                                    value={String(dynamicSourceForm.data.sort_order)}
+                                    onChange={(e) => dynamicSourceForm.setData('sort_order', Number(e.target.value || 0))}
+                                />
+                            </div>
+                            <div className="flex items-center justify-between rounded-md border px-3 py-2">
+                                <div>
+                                    <Label htmlFor="dynamic-source-active">Ativa</Label>
+                                    <p className="text-xs text-muted-foreground">Disponível no módulo Comunicação</p>
+                                </div>
+                                <Switch
+                                    id="dynamic-source-active"
+                                    checked={dynamicSourceForm.data.is_active}
+                                    onCheckedChange={(checked) => dynamicSourceForm.setData('is_active', checked)}
+                                />
+                            </div>
+                        </div>
+                        <div className="space-y-1">
+                            <Label htmlFor="dynamic-source-description">Descrição</Label>
+                            <Textarea
+                                id="dynamic-source-description"
+                                rows={3}
+                                value={dynamicSourceForm.data.description}
+                                onChange={(e) => dynamicSourceForm.setData('description', e.target.value)}
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setDynamicSourceDialogOpen(false)} disabled={dynamicSourceForm.processing}>
+                            Cancelar
+                        </Button>
+                        <Button onClick={saveDynamicSource} disabled={dynamicSourceForm.processing}>
+                            {dynamicSourceForm.processing ? 'A guardar...' : 'Guardar fonte'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={alertCategoryDialogOpen} onOpenChange={setAlertCategoryDialogOpen}>
+                <DialogContent className="sm:max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle>{editingAlertCategory ? 'Editar categoria do alerta' : 'Nova categoria do alerta'}</DialogTitle>
+                        <DialogDescription>
+                            Define a categoria e escolhe logo os canais de comunicação disponíveis para essa categoria.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-3">
+                        <div className="grid gap-3 sm:grid-cols-2">
+                            <div className="space-y-1">
+                                <Label htmlFor="alert-category-name">Nome</Label>
+                                <Input
+                                    id="alert-category-name"
+                                    value={alertCategoryForm.data.name}
+                                    onChange={(e) => alertCategoryForm.setData('name', e.target.value)}
+                                />
+                            </div>
+                            <div className="space-y-1">
+                                <Label htmlFor="alert-category-code">Código</Label>
+                                <Input
+                                    id="alert-category-code"
+                                    value={alertCategoryForm.data.code}
+                                    onChange={(e) => alertCategoryForm.setData('code', e.target.value)}
+                                />
+                            </div>
+                        </div>
+                        <div className="space-y-1">
+                            <Label>Canais permitidos</Label>
+                            <div className="grid gap-2 sm:grid-cols-3">
+                                {alertCategoryChannels.map((channel) => {
+                                    const checked = alertCategoryForm.data.channels.includes(channel.value);
+
+                                    return (
+                                        <label key={channel.value} className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
+                                            <Checkbox
+                                                checked={checked}
+                                                onCheckedChange={(value) => toggleAlertCategoryChannel(channel.value, value === true)}
+                                            />
+                                            <span>{channel.label}</span>
+                                        </label>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                            <div className="space-y-1">
+                                <Label htmlFor="alert-category-order">Ordem</Label>
+                                <Input
+                                    id="alert-category-order"
+                                    type="number"
+                                    min={0}
+                                    value={String(alertCategoryForm.data.sort_order)}
+                                    onChange={(e) => alertCategoryForm.setData('sort_order', Number(e.target.value || 0))}
+                                />
+                            </div>
+                            <div className="flex items-center justify-between rounded-md border px-3 py-2">
+                                <div>
+                                    <Label htmlFor="alert-category-active">Ativa</Label>
+                                    <p className="text-xs text-muted-foreground">Disponível para seleção</p>
+                                </div>
+                                <Switch
+                                    id="alert-category-active"
+                                    checked={alertCategoryForm.data.is_active}
+                                    onCheckedChange={(checked) => alertCategoryForm.setData('is_active', checked)}
+                                />
+                            </div>
+                        </div>
+                        <div className="space-y-1">
+                            <Label htmlFor="alert-category-description">Descrição</Label>
+                            <Textarea
+                                id="alert-category-description"
+                                rows={3}
+                                value={alertCategoryForm.data.description}
+                                onChange={(e) => alertCategoryForm.setData('description', e.target.value)}
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setAlertCategoryDialogOpen(false)} disabled={alertCategoryForm.processing}>
+                            Cancelar
+                        </Button>
+                        <Button onClick={saveAlertCategory} disabled={alertCategoryForm.processing}>
+                            {alertCategoryForm.processing ? 'A guardar...' : 'Guardar categoria'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             {/* Edit/Add Dialog */}
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

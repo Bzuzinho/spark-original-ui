@@ -4,11 +4,15 @@ namespace App\Services\Communication;
 
 use App\Jobs\ProcessCommunicationCampaignJob;
 use App\Models\CommunicationCampaign;
+use App\Models\CommunicationSegment;
+use App\Support\Communication\AlertCategoryRegistry;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class CommunicationCampaignService
 {
+    private const TECHNICAL_INDIVIDUAL_SEGMENT_DESCRIPTION = 'Segmento tecnico criado automaticamente para envio individual.';
+
     public function __construct(private readonly CommunicationDeliveryService $deliveryService)
     {
     }
@@ -49,6 +53,8 @@ class CommunicationCampaignService
     public function updateCampaign(CommunicationCampaign $campaign, array $payload): CommunicationCampaign
     {
         return DB::transaction(function () use ($campaign, $payload) {
+            $campaign->loadMissing('segment');
+
             $campaign->update([
                 'title' => $payload['title'],
                 'description' => $payload['description'] ?? null,
@@ -60,8 +66,27 @@ class CommunicationCampaignService
                 'alert_message' => $payload['alert_message'] ?? null,
                 'alert_link' => $payload['alert_link'] ?? null,
                 'alert_type' => $payload['alert_type'] ?? 'info',
-                'notes' => $payload['notes'] ?? null,
+                'notes' => $payload['notes'] ?? $campaign->notes,
             ]);
+
+            if ($campaign->segment && (
+                array_key_exists('recipient_user_ids', $payload)
+                || array_key_exists('recipient_age_group_ids', $payload)
+                || array_key_exists('recipient_user_types', $payload)
+            )) {
+                $existingRules = $campaign->segment->rules_json ?? [];
+
+                $campaign->segment->update([
+                    'rules_json' => [
+                        ...$existingRules,
+                        'source' => $existingRules['source'] ?? 'manual',
+                        'user_ids' => $payload['recipient_user_ids'] ?? ($existingRules['user_ids'] ?? []),
+                        'age_group_ids' => $payload['recipient_age_group_ids'] ?? ($existingRules['age_group_ids'] ?? []),
+                        'user_types' => $payload['recipient_user_types'] ?? ($existingRules['user_types'] ?? []),
+                    ],
+                    'is_active' => filled($payload['scheduled_at'] ?? $campaign->scheduled_at),
+                ]);
+            }
 
             if (isset($payload['channels']) && is_array($payload['channels'])) {
                 $campaign->channels()->delete();
@@ -157,6 +182,58 @@ class CommunicationCampaignService
         ]);
 
         return $campaign->refresh();
+    }
+
+    public function sendIndividualCommunication(array $payload, ?string $authorId = null): CommunicationCampaign
+    {
+        $campaign = DB::transaction(function () use ($payload, $authorId) {
+            $scheduledAt = $payload['scheduled_at'] ?? null;
+            $isScheduled = filled($scheduledAt);
+
+            $segment = CommunicationSegment::create([
+                'name' => sprintf('Envio individual %s', now()->format('d/m/Y H:i')),
+                'slug' => null,
+                'type' => 'system',
+                'description' => self::TECHNICAL_INDIVIDUAL_SEGMENT_DESCRIPTION,
+                'rules_json' => [
+                    'source' => 'manual',
+                    'user_ids' => $payload['recipient_user_ids'],
+                    'age_group_ids' => $payload['recipient_age_group_ids'] ?? [],
+                    'user_types' => $payload['recipient_user_types'] ?? [],
+                    'event_id' => $payload['context_event_id'] ?? null,
+                ],
+                'is_active' => $isScheduled,
+                'created_by' => $authorId,
+            ]);
+
+            $enabledChannels = collect($payload['channels'])
+                ->filter(fn (array $channel) => (bool) ($channel['is_enabled'] ?? true))
+                ->values();
+
+            $categoryLabel = AlertCategoryRegistry::find($payload['alert_category'] ?? null, false)['name'] ?? 'Geral';
+
+            return $this->createCampaign([
+                'title' => filled($payload['title'] ?? null)
+                    ? trim((string) $payload['title'])
+                    : sprintf('Alerta Individual - %s', $categoryLabel),
+                'description' => $payload['alert_message'] ?? null,
+                'segment_id' => $segment->id,
+                'status' => $isScheduled ? 'agendada' : 'rascunho',
+                'scheduled_at' => $scheduledAt,
+                'create_in_app_alert' => $enabledChannels->contains(fn (array $channel) => ($channel['channel'] ?? null) === 'alert_app'),
+                'alert_title' => $payload['alert_title'] ?? null,
+                'alert_message' => $payload['alert_message'] ?? null,
+                'alert_type' => $payload['alert_type'] ?? 'info',
+                'notes' => sprintf('Envio individual | categoria: %s | modo: %s', $payload['alert_category'], $isScheduled ? 'agendado' : 'imediato'),
+                'channels' => $enabledChannels->all(),
+            ], $authorId);
+        });
+
+        if ($campaign->status === 'agendada') {
+            return $campaign->fresh(['channels', 'segment']);
+        }
+
+        return $this->sendCampaign($campaign->load(['channels', 'segment']), $authorId, false);
     }
 
     public function consolidateStatus(CommunicationCampaign $campaign): CommunicationCampaign

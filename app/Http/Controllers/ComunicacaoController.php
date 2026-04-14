@@ -3,26 +3,41 @@
 namespace App\Http\Controllers;
 
 use App\Models\CommunicationCampaign;
+use App\Models\CommunicationAlertCategory;
+use App\Models\CommunicationDynamicSource;
 use App\Models\CommunicationDelivery;
 use App\Models\CommunicationSegment;
 use App\Models\CommunicationTemplate;
 use App\Models\InAppAlert;
+use App\Models\AgeGroup;
 use App\Models\User;
 use App\Services\Communication\SegmentResolverService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Inertia\Inertia;
 use Inertia\Response;
+use App\Support\Communication\AlertCategoryRegistry;
+use App\Support\Communication\TemplateVariableCatalog;
 
 class ComunicacaoController extends Controller
 {
+    private const TECHNICAL_INDIVIDUAL_SEGMENT_DESCRIPTION = 'Segmento tecnico criado automaticamente para envio individual.';
+
     public function __construct(private readonly SegmentResolverService $segmentResolverService)
     {
     }
 
+    private ?bool $usersHaveAgeGroupColumn = null;
+
     public function index(Request $request): Response
     {
         $campaignsQuery = CommunicationCampaign::query()
-            ->with(['segment:id,name', 'author:id,name,nome_completo', 'channels:id,campaign_id,channel,is_enabled'])
+            ->with([
+                'segment:id,name,rules_json',
+                'author:id,name,nome_completo',
+                'channels:id,campaign_id,channel,is_enabled,template_id,subject,message_body',
+                'deliveries:id,campaign_id,channel,status,success_count,failed_count,error_message,sent_at,created_at',
+            ])
             ->latest();
 
         if ($request->filled('search')) {
@@ -80,9 +95,29 @@ class ComunicacaoController extends Controller
             ->withQueryString();
 
         $segments = CommunicationSegment::query()
+            ->where(function ($query) {
+                $query->where('type', '!=', 'system')
+                    ->orWhereNull('type');
+            })
+            ->where(function ($query) {
+                $query->where('description', '!=', self::TECHNICAL_INDIVIDUAL_SEGMENT_DESCRIPTION)
+                    ->orWhereNull('description');
+            })
             ->latest()
             ->paginate(12, ['*'], 'segments_page')
             ->withQueryString();
+
+        $segments->getCollection()->transform(function (CommunicationSegment $segment) {
+            $rules = $segment->rules_json ?? [];
+
+            return [
+                ...$segment->toArray(),
+                'estimated_recipients' => $this->segmentResolverService->estimateRecipients($segment),
+                'resolved_age_group_labels' => $this->segmentResolverService->resolveAgeGroupLabels($rules['age_group_ids'] ?? []),
+                'resolved_user_types' => array_values(array_filter($rules['user_types'] ?? [])),
+                'resolved_user_ids' => array_values(array_filter($rules['user_ids'] ?? [])),
+            ];
+        });
 
         $alertsSummary = [
             'total' => InAppAlert::count(),
@@ -123,8 +158,31 @@ class ComunicacaoController extends Controller
             'alertsSummary' => $alertsSummary,
             'filterOptions' => [
                 'authors' => User::select('id', 'name', 'nome_completo')->orderBy('name')->get(),
-                'segments' => CommunicationSegment::select('id', 'name')->where('is_active', true)->orderBy('name')->get(),
-                'templates' => CommunicationTemplate::select('id', 'name', 'channel')->where('status', 'ativo')->orderBy('name')->get(),
+                'segments' => CommunicationSegment::select('id', 'name')
+                    ->where('is_active', true)
+                    ->where(function ($query) {
+                        $query->where('type', '!=', 'system')
+                            ->orWhereNull('type');
+                    })
+                    ->where(function ($query) {
+                        $query->where('description', '!=', self::TECHNICAL_INDIVIDUAL_SEGMENT_DESCRIPTION)
+                            ->orWhereNull('description');
+                    })
+                    ->orderBy('name')
+                    ->get(),
+                'dynamicSources' => $this->dynamicSourcesForCommunication(),
+                'alertCategories' => AlertCategoryRegistry::all(true)->values()->all(),
+                'templates' => CommunicationTemplate::select('id', 'name', 'channel', 'category')->where('status', 'ativo')->orderBy('name')->get(),
+                'ageGroups' => AgeGroup::select('id', 'nome')->where('ativo', true)->orderBy('nome')->get(),
+                'userTypes' => $this->communicationUserTypes(),
+                'templateVariables' => TemplateVariableCatalog::definitions(),
+                'recipients' => User::query()
+                    ->select($this->recipientSelectColumns())
+                    ->where(function ($query) {
+                        $query->where('estado', 'ativo')->orWhereNull('estado');
+                    })
+                    ->orderByRaw('COALESCE(nome_completo, name) asc')
+                    ->get(),
             ],
             'filters' => $request->only([
                 'search',
@@ -138,5 +196,70 @@ class ComunicacaoController extends Controller
                 'delivery_campaign',
             ]),
         ]);
+    }
+
+    private function dynamicSourcesForCommunication(): array
+    {
+        if (Schema::hasTable('communication_dynamic_sources')) {
+            return CommunicationDynamicSource::query()
+                ->select('id', 'name', 'description', 'strategy', 'sort_order', 'is_active')
+                ->where('is_active', true)
+                ->orderBy('sort_order')
+                ->orderBy('name')
+                ->get()
+                ->toArray();
+        }
+
+        return [
+            ['id' => '', 'name' => 'Todos os membros', 'description' => 'Inclui todos os membros ativos do sistema.', 'strategy' => 'all_members', 'sort_order' => 1, 'is_active' => true],
+            ['id' => '', 'name' => 'Atletas por escalão', 'description' => 'Seleciona utilizadores com perfil de atleta.', 'strategy' => 'athletes', 'sort_order' => 2, 'is_active' => true],
+            ['id' => '', 'name' => 'Pais/Encarregados', 'description' => 'Seleciona encarregados de educação ativos.', 'strategy' => 'guardians', 'sort_order' => 3, 'is_active' => true],
+            ['id' => '', 'name' => 'Treinadores', 'description' => 'Seleciona utilizadores com perfil de treinador.', 'strategy' => 'coaches', 'sort_order' => 4, 'is_active' => true],
+            ['id' => '', 'name' => 'Pagamentos em atraso', 'description' => 'Membros com faturas vencidas por regularizar.', 'strategy' => 'overdue_payments', 'sort_order' => 5, 'is_active' => true],
+            ['id' => '', 'name' => 'Participantes de evento', 'description' => 'Membros ligados a participações em eventos.', 'strategy' => 'event_participants', 'sort_order' => 6, 'is_active' => true],
+            ['id' => '', 'name' => 'Utilizadores com alertas por ler', 'description' => 'Utilizadores com alertas internos pendentes de leitura.', 'strategy' => 'users_with_unread_alerts', 'sort_order' => 7, 'is_active' => true],
+        ];
+    }
+
+    private function communicationUserTypes(): array
+    {
+        return User::query()
+            ->pluck('tipo_membro')
+            ->filter(fn ($value) => is_array($value) && $value !== [])
+            ->flatten()
+            ->filter()
+            ->unique()
+            ->sort()
+            ->values()
+            ->map(fn (string $value) => ['value' => $value, 'label' => str_replace('_', ' ', ucfirst($value))])
+            ->all();
+    }
+
+    private function recipientSelectColumns(): array
+    {
+        $columns = [
+            'id',
+            'name',
+            'nome_completo',
+            'email',
+            'telemovel',
+            'contacto_telefonico',
+            'contacto',
+            'tipo_membro',
+            'escalao',
+            'estado',
+            'numero_socio',
+        ];
+
+        if ($this->usersHaveAgeGroupColumn()) {
+            $columns[] = 'age_group_id';
+        }
+
+        return $columns;
+    }
+
+    private function usersHaveAgeGroupColumn(): bool
+    {
+        return $this->usersHaveAgeGroupColumn ??= Schema::hasColumn('users', 'age_group_id');
     }
 }

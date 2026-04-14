@@ -65,4 +65,11 @@ class CommunicationTemplateController extends Controller
 
         return back()->with('success', 'Estado do template atualizado.');
     }
+
+    public function destroy(CommunicationTemplate $template): RedirectResponse
+    {
+        $template->delete();
+
+        return back()->with('success', 'Template apagado com sucesso.');
+    }
 }

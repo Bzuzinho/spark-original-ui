@@ -4,7 +4,17 @@ namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
 use App\Models\Event;
+use App\Models\EventConvocation;
+use App\Models\Invoice;
+use App\Models\LogisticsRequest;
+use App\Models\Movement;
+use App\Models\SupplierPurchase;
 use App\Observers\EventObserver;
+use App\Observers\EventConvocationObserver;
+use App\Observers\InvoiceObserver;
+use App\Observers\LogisticsRequestObserver;
+use App\Observers\MovementObserver;
+use App\Observers\SupplierPurchaseObserver;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -21,7 +31,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // Register Event Observer
         Event::observe(EventObserver::class);
+        EventConvocation::observe(EventConvocationObserver::class);
+        Invoice::observe(InvoiceObserver::class);
+        LogisticsRequest::observe(LogisticsRequestObserver::class);
+        Movement::observe(MovementObserver::class);
+        SupplierPurchase::observe(SupplierPurchaseObserver::class);
     }
 }

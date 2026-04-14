@@ -56,4 +56,11 @@ class CommunicationSegmentController extends Controller
 
         return back()->with('success', 'Segmento atualizado com sucesso.');
     }
+
+    public function destroy(CommunicationSegment $segment): RedirectResponse
+    {
+        $segment->delete();
+
+        return back()->with('success', 'Segmento apagado com sucesso.');
+    }
 }

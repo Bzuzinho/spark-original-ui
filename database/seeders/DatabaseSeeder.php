@@ -71,5 +71,8 @@ class DatabaseSeeder extends Seeder
 
         // Create swimming race types for configs (prova tipos)
         $this->call(ProvaTipoSeeder::class);
+
+        // Create default communication templates (mensalidade, presencas, comportamento)
+        $this->call(CommunicationTemplateSeeder::class);
     }
 }

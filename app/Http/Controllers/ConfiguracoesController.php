@@ -14,6 +14,8 @@ use App\Models\AbsenceReasonConfig;
 use App\Models\InjuryReasonConfig;
 use App\Models\PoolTypeConfig;
 use App\Models\ClubSetting;
+use App\Models\CommunicationAlertCategory;
+use App\Models\CommunicationDynamicSource;
 use App\Models\CostCenter;
 use App\Models\InvoiceType;
 use App\Models\MonthlyFee;
@@ -29,8 +31,10 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use App\Support\Communication\AlertCategoryRegistry;
 
 class ConfiguracoesController extends Controller
 {
@@ -57,6 +61,8 @@ class ConfiguracoesController extends Controller
             'itemCategories' => ItemCategory::orderBy('nome')->get(),
             'provaTipos' => ProvaTipo::all(),
             'notificationPrefs' => NotificationPreference::first(),
+            'communicationDynamicSources' => $this->communicationDynamicSources(),
+            'communicationAlertCategories' => AlertCategoryRegistry::all(false)->values()->all(),
             'users' => User::select('id', 'numero_socio', 'nome_completo', 'email_utilizador', 'perfil', 'estado')->get(),
         ]);
     }
@@ -628,6 +634,14 @@ class ConfiguracoesController extends Controller
             'email_notificacoes' => 'boolean',
             'alertas_pagamento' => 'boolean',
             'alertas_atividade' => 'boolean',
+            'automacoes_financeiro' => 'boolean',
+            'automacoes_eventos' => 'boolean',
+            'automacoes_logistica' => 'boolean',
+            'automacoes_faturas_financeiras' => 'boolean',
+            'automacoes_movimentos_financeiros' => 'boolean',
+            'automacoes_convocatorias_eventos' => 'boolean',
+            'automacoes_requisicoes_logistica' => 'boolean',
+            'automacoes_alertas_operacionais' => 'boolean',
         ]);
 
         $prefs = NotificationPreference::first();
@@ -640,5 +654,135 @@ class ConfiguracoesController extends Controller
 
         return redirect()->route('configuracoes')
             ->with('success', 'Preferências atualizadas com sucesso!');
+    }
+
+    public function storeCommunicationDynamicSource(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'strategy' => 'required|string|in:' . implode(',', $this->communicationDynamicSourceStrategies()),
+            'sort_order' => 'nullable|integer|min:0|max:999',
+            'is_active' => 'boolean',
+        ]);
+
+        CommunicationDynamicSource::create([
+            ...$data,
+            'sort_order' => $data['sort_order'] ?? 0,
+            'is_active' => (bool) ($data['is_active'] ?? true),
+        ]);
+
+        return redirect()->route('configuracoes')
+            ->with('success', 'Fonte dinâmica criada com sucesso!');
+    }
+
+    public function updateCommunicationDynamicSource(Request $request, CommunicationDynamicSource $dynamicSource): RedirectResponse
+    {
+        $data = $request->validate([
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'strategy' => 'required|string|in:' . implode(',', $this->communicationDynamicSourceStrategies()),
+            'sort_order' => 'nullable|integer|min:0|max:999',
+            'is_active' => 'boolean',
+        ]);
+
+        $dynamicSource->update([
+            ...$data,
+            'sort_order' => $data['sort_order'] ?? 0,
+            'is_active' => (bool) ($data['is_active'] ?? true),
+        ]);
+
+        return redirect()->route('configuracoes')
+            ->with('success', 'Fonte dinâmica atualizada com sucesso!');
+    }
+
+    public function destroyCommunicationDynamicSource(CommunicationDynamicSource $dynamicSource): RedirectResponse
+    {
+        $dynamicSource->delete();
+
+        return redirect()->route('configuracoes')
+            ->with('success', 'Fonte dinâmica eliminada com sucesso!');
+    }
+
+    public function storeCommunicationAlertCategory(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'code' => 'required|string|max:80|alpha_dash|unique:communication_alert_categories,code',
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'channels' => 'required|array|min:1',
+            'channels.*' => 'required|string|in:email,sms,alert_app',
+            'sort_order' => 'nullable|integer|min:0|max:999',
+            'is_active' => 'boolean',
+        ]);
+
+        CommunicationAlertCategory::create([
+            ...$data,
+            'channels' => array_values(array_unique($data['channels'])),
+            'sort_order' => $data['sort_order'] ?? 0,
+            'is_active' => (bool) ($data['is_active'] ?? true),
+        ]);
+
+        return redirect()->route('configuracoes')
+            ->with('success', 'Categoria do alerta criada com sucesso!');
+    }
+
+    public function updateCommunicationAlertCategory(Request $request, CommunicationAlertCategory $alertCategory): RedirectResponse
+    {
+        $data = $request->validate([
+            'code' => 'required|string|max:80|alpha_dash|unique:communication_alert_categories,code,' . $alertCategory->id,
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'channels' => 'required|array|min:1',
+            'channels.*' => 'required|string|in:email,sms,alert_app',
+            'sort_order' => 'nullable|integer|min:0|max:999',
+            'is_active' => 'boolean',
+        ]);
+
+        $alertCategory->update([
+            ...$data,
+            'channels' => array_values(array_unique($data['channels'])),
+            'sort_order' => $data['sort_order'] ?? 0,
+            'is_active' => (bool) ($data['is_active'] ?? true),
+        ]);
+
+        return redirect()->route('configuracoes')
+            ->with('success', 'Categoria do alerta atualizada com sucesso!');
+    }
+
+    public function destroyCommunicationAlertCategory(CommunicationAlertCategory $alertCategory): RedirectResponse
+    {
+        $alertCategory->delete();
+
+        return redirect()->route('configuracoes')
+            ->with('success', 'Categoria do alerta eliminada com sucesso!');
+    }
+
+    private function communicationDynamicSourceStrategies(): array
+    {
+        return [
+            'all_members',
+            'athletes',
+            'guardians',
+            'coaches',
+            'team_members',
+            'age_group_members',
+            'overdue_payments',
+            'event_participants',
+            'users_with_unread_alerts',
+        ];
+    }
+
+    private function communicationDynamicSources(): array
+    {
+        if (Schema::hasTable('communication_dynamic_sources')) {
+            return CommunicationDynamicSource::query()
+                ->orderBy('sort_order')
+                ->orderBy('name')
+                ->get()
+                ->toArray();
+        }
+
+        return [];
     }
 }
