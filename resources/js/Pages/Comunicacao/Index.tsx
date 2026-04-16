@@ -1447,49 +1447,49 @@ export default function ComunicacaoIndex({
             <Card>
               <CardHeader className="pb-2"><CardTitle className="text-sm">Histórico operacional de execução</CardTitle></CardHeader>
               <CardContent>
-                <div className="space-y-2 lg:hidden">
+                <div className="space-y-2 xl:hidden">
                   {deliveries.data.map((delivery) => (
                     <div key={delivery.id} className="rounded-md border p-3">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <p className="truncate text-sm font-medium">{delivery.campaign?.codigo} - {delivery.campaign?.title}</p>
-                          <p className="text-xs text-muted-foreground">{delivery.segment?.name || '-'}</p>
+                          <p className="text-sm font-medium break-words">{delivery.campaign?.codigo} - {delivery.campaign?.title}</p>
+                          <p className="text-xs text-muted-foreground break-words">{delivery.segment?.name || '-'}</p>
                         </div>
-                        <Badge variant={delivery.status === 'failed' ? 'destructive' : 'secondary'}>{delivery.status}</Badge>
+                        <Badge variant={delivery.status === 'failed' ? 'destructive' : 'secondary'} className="max-w-full whitespace-normal text-left">{delivery.status}</Badge>
                       </div>
                       <div className="mt-2 space-y-1 text-xs text-muted-foreground">
                         <p>Canal: <span className="uppercase">{delivery.channel}</span></p>
                         <p>Data/Hora: {delivery.sent_at ? new Date(delivery.sent_at).toLocaleString('pt-PT') : '-'}</p>
                         <p>Resultado: S:{delivery.success_count} F:{delivery.failed_count} P:{delivery.pending_count}</p>
-                        <p>Erro/Log: {delivery.error_message || delivery.result_summary || '-'}</p>
+                        <p className="break-words">Erro/Log: {delivery.error_message || delivery.result_summary || '-'}</p>
                       </div>
                     </div>
                   ))}
                 </div>
 
-                <div className="hidden lg:block">
-                  <Table>
+                <div className="hidden xl:block">
+                  <Table className="table-fixed">
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Campanha</TableHead>
-                        <TableHead>Canal</TableHead>
-                        <TableHead>Audiência</TableHead>
-                        <TableHead>Data/Hora</TableHead>
-                        <TableHead>Estado</TableHead>
-                        <TableHead>Resultado</TableHead>
-                        <TableHead>Logs/Erro</TableHead>
+                        <TableHead className="h-9 w-[22%] px-2 py-2 whitespace-normal">Campanha</TableHead>
+                        <TableHead className="h-9 w-[8%] px-2 py-2 whitespace-normal">Canal</TableHead>
+                        <TableHead className="h-9 w-[14%] px-2 py-2 whitespace-normal">Audiência</TableHead>
+                        <TableHead className="h-9 w-[14%] px-2 py-2 whitespace-normal">Data/Hora</TableHead>
+                        <TableHead className="h-9 w-[10%] px-2 py-2 whitespace-normal">Estado</TableHead>
+                        <TableHead className="h-9 w-[12%] px-2 py-2 whitespace-normal">Resultado</TableHead>
+                        <TableHead className="h-9 w-[20%] px-2 py-2 whitespace-normal">Logs/Erro</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {deliveries.data.map((delivery) => (
                         <TableRow key={delivery.id}>
-                          <TableCell>{delivery.campaign?.codigo} - {delivery.campaign?.title}</TableCell>
-                          <TableCell className="uppercase">{delivery.channel}</TableCell>
-                          <TableCell>{delivery.segment?.name || '-'}</TableCell>
-                          <TableCell className="text-xs">{delivery.sent_at ? new Date(delivery.sent_at).toLocaleString('pt-PT') : '-'}</TableCell>
-                          <TableCell><Badge variant={delivery.status === 'failed' ? 'destructive' : 'secondary'}>{delivery.status}</Badge></TableCell>
-                          <TableCell className="text-xs">S:{delivery.success_count} F:{delivery.failed_count} P:{delivery.pending_count}</TableCell>
-                          <TableCell className="text-xs text-muted-foreground">{delivery.error_message || delivery.result_summary || '-'}</TableCell>
+                          <TableCell className="px-2 py-2 align-top text-sm whitespace-normal break-words">{delivery.campaign?.codigo} - {delivery.campaign?.title}</TableCell>
+                          <TableCell className="px-2 py-2 align-top text-xs uppercase whitespace-normal break-words">{delivery.channel}</TableCell>
+                          <TableCell className="px-2 py-2 align-top text-sm whitespace-normal break-words">{delivery.segment?.name || '-'}</TableCell>
+                          <TableCell className="px-2 py-2 align-top text-xs whitespace-normal break-words">{delivery.sent_at ? new Date(delivery.sent_at).toLocaleString('pt-PT') : '-'}</TableCell>
+                          <TableCell className="px-2 py-2 align-top whitespace-normal"><Badge variant={delivery.status === 'failed' ? 'destructive' : 'secondary'} className="max-w-full whitespace-normal text-left">{delivery.status}</Badge></TableCell>
+                          <TableCell className="px-2 py-2 align-top text-xs whitespace-normal break-words">S:{delivery.success_count} F:{delivery.failed_count} P:{delivery.pending_count}</TableCell>
+                          <TableCell className="px-2 py-2 align-top text-xs text-muted-foreground whitespace-normal break-words">{delivery.error_message || delivery.result_summary || '-'}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -1533,8 +1533,8 @@ export default function ComunicacaoIndex({
                         <p>Assunto: {template.subject || '-'}</p>
                         <p>Variáveis: {Array.isArray(template.variables_json) ? template.variables_json.join(', ') : Object.keys(template.variables_json || {}).join(', ') || '-'}</p>
                       </div>
-                      <div className="mt-3 grid grid-cols-2 gap-1 sm:flex sm:flex-wrap">
-                        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => {
+                      <div className="mt-3 flex justify-end gap-2">
+                        <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => {
                           templateForm.setData({
                             name: template.name,
                             channel: template.channel,
@@ -1546,10 +1546,15 @@ export default function ComunicacaoIndex({
                           });
                           setEditingTemplate(template);
                           setShowTemplateModal(true);
-                        }}>Editar</Button>
-                        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => router.post(route('comunicacao.templates.duplicate', template.id), {}, { preserveScroll: true })}>Duplicar</Button>
-                        <Button variant="outline" size="sm" className="h-7 text-xs col-span-2 sm:col-span-1" onClick={() => router.post(route('comunicacao.templates.toggle', template.id), {}, { preserveScroll: true })}>Estado</Button>
-                        <Button variant="outline" size="sm" className="h-7 text-xs col-span-2 sm:col-span-1" onClick={() => deleteTemplate(template.id)}>Apagar</Button>
+                        }} title="Editar template" aria-label="Editar template">
+                          <PencilSimple size={15} />
+                        </Button>
+                        <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => router.post(route('comunicacao.templates.duplicate', template.id), {}, { preserveScroll: true })} title="Duplicar template" aria-label="Duplicar template">
+                          <Files size={15} />
+                        </Button>
+                        <Button variant="outline" size="icon" className="h-8 w-8 text-red-700 hover:text-red-700" onClick={() => deleteTemplate(template.id)} title="Apagar template" aria-label="Apagar template">
+                          <Trash size={15} />
+                        </Button>
                       </div>
                     </div>
                   ))}
@@ -1580,8 +1585,8 @@ export default function ComunicacaoIndex({
                             <Badge variant={template.status === 'inativo' ? 'destructive' : 'secondary'} className="max-w-full whitespace-normal text-left">{template.status}</Badge>
                           </TableCell>
                           <TableCell className="px-2 py-2 align-top text-right whitespace-normal">
-                            <div className="grid grid-cols-2 gap-1 justify-end">
-                              <Button variant="outline" size="sm" className="h-7 w-full px-2 text-xs whitespace-normal" onClick={() => {
+                            <div className="flex justify-end gap-1">
+                              <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => {
                                 templateForm.setData({
                                   name: template.name,
                                   channel: template.channel,
@@ -1593,10 +1598,15 @@ export default function ComunicacaoIndex({
                                 });
                                 setEditingTemplate(template);
                                 setShowTemplateModal(true);
-                              }}>Editar</Button>
-                              <Button variant="outline" size="sm" className="h-7 w-full px-2 text-xs whitespace-normal" onClick={() => router.post(route('comunicacao.templates.duplicate', template.id), {}, { preserveScroll: true })}>Duplicar</Button>
-                              <Button variant="outline" size="sm" className="h-7 w-full px-2 text-xs whitespace-normal" onClick={() => router.post(route('comunicacao.templates.toggle', template.id), {}, { preserveScroll: true })}>Estado</Button>
-                              <Button variant="outline" size="sm" className="h-7 w-full px-2 text-xs whitespace-normal" onClick={() => deleteTemplate(template.id)}>Apagar</Button>
+                              }} title="Editar template" aria-label="Editar template">
+                                <PencilSimple size={13} />
+                              </Button>
+                              <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => router.post(route('comunicacao.templates.duplicate', template.id), {}, { preserveScroll: true })} title="Duplicar template" aria-label="Duplicar template">
+                                <Files size={13} />
+                              </Button>
+                              <Button variant="outline" size="icon" className="h-7 w-7 text-red-700 hover:text-red-700" onClick={() => deleteTemplate(template.id)} title="Apagar template" aria-label="Apagar template">
+                                <Trash size={13} />
+                              </Button>
                             </div>
                           </TableCell>
                         </TableRow>
@@ -1633,13 +1643,17 @@ export default function ComunicacaoIndex({
                         <p>Tipos: {segment.resolved_user_types?.map(userTypeLabel).join(', ') || '-'}</p>
                         <p className="break-all">Regras: {segment.rules_json ? JSON.stringify(segment.rules_json) : '-'}</p>
                       </div>
-                      <div className="mt-3 grid grid-cols-2 gap-1 sm:flex sm:flex-wrap">
-                        <Button variant="outline" size="sm" className="h-7 text-xs col-span-2 sm:col-span-1" onClick={() => {
+                      <div className="mt-3 flex justify-end gap-2">
+                        <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => {
                           populateSegmentForm(segment);
                           setEditingSegment(segment);
                           setShowSegmentModal(true);
-                        }}>Editar</Button>
-                        <Button variant="outline" size="sm" className="h-7 text-xs col-span-2 sm:col-span-1" onClick={() => deleteSegment(segment.id)}>Apagar</Button>
+                        }} title="Editar segmento" aria-label="Editar segmento">
+                          <PencilSimple size={15} />
+                        </Button>
+                        <Button variant="outline" size="icon" className="h-8 w-8 text-red-700 hover:text-red-700" onClick={() => deleteSegment(segment.id)} title="Apagar segmento" aria-label="Apagar segmento">
+                          <Trash size={15} />
+                        </Button>
                       </div>
                     </div>
                   ))}
@@ -1669,12 +1683,16 @@ export default function ComunicacaoIndex({
                           <TableCell className="text-xs">{segment.rules_json ? JSON.stringify(segment.rules_json) : '-'}</TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-1">
-                              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => {
+                              <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => {
                                 populateSegmentForm(segment);
                                 setEditingSegment(segment);
                                 setShowSegmentModal(true);
-                              }}>Editar</Button>
-                              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => deleteSegment(segment.id)}>Apagar</Button>
+                              }} title="Editar segmento" aria-label="Editar segmento">
+                                <PencilSimple size={13} />
+                              </Button>
+                              <Button variant="outline" size="icon" className="h-7 w-7 text-red-700 hover:text-red-700" onClick={() => deleteSegment(segment.id)} title="Apagar segmento" aria-label="Apagar segmento">
+                                <Trash size={13} />
+                              </Button>
                             </div>
                           </TableCell>
                         </TableRow>
@@ -1977,6 +1995,15 @@ export default function ComunicacaoIndex({
                 {alertCategories.map((category) => (
                   <SelectItem key={category.value} value={category.value}>{category.label}</SelectItem>
                 ))}
+              </SelectContent>
+            </Select>
+            <Label>Estado</Label>
+            <Select value={templateForm.data.status} onValueChange={(value: 'ativo' | 'em_revisao' | 'inativo') => templateForm.setData('status', value)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ativo">Ativo</SelectItem>
+                <SelectItem value="em_revisao">Em revisão</SelectItem>
+                <SelectItem value="inativo">Inativo</SelectItem>
               </SelectContent>
             </Select>
             <Label>Assunto</Label>

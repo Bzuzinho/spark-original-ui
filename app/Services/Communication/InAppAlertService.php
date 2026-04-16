@@ -44,6 +44,16 @@ class InAppAlertService
             ]);
     }
 
+    public function markAsUnread(string $alertId, string $userId): void
+    {
+        InAppAlert::where('id', $alertId)
+            ->where('user_id', $userId)
+            ->update([
+                'is_read' => false,
+                'read_at' => null,
+            ]);
+    }
+
     public function markAllAsRead(string $userId): void
     {
         InAppAlert::where('user_id', $userId)
@@ -79,5 +89,12 @@ class InAppAlertService
             ->latest()
             ->limit($limit)
             ->get();
+    }
+
+    public function deleteForUser(string $alertId, string $userId): void
+    {
+        InAppAlert::where('id', $alertId)
+            ->where('user_id', $userId)
+            ->delete();
     }
 }

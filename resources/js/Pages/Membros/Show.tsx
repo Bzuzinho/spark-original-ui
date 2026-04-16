@@ -1,15 +1,17 @@
 import { useState, FormEventHandler } from 'react';
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Button } from '@/Components/ui/button';
 import { Card } from '@/Components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs';
+import { EnvelopeSimple } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import { DashboardTab } from '@/Components/Members/Tabs/DashboardTab';
 import { PersonalTab } from '@/Components/Members/Tabs/PersonalTab';
 import { FinancialTab } from '@/Components/Members/Tabs/FinancialTab';
 import { SportsTab } from '@/Components/Members/Tabs/SportsTab';
 import { ConfigurationTab } from '@/Components/Members/Tabs/ConfigurationTab';
+import CommunicationsTab from './CommunicationsTab';
 
 interface User {
     id: string;
@@ -28,12 +30,26 @@ interface User {
 interface Props {
     member: User;
     allUsers: User[];
+    internalCommunications: {
+        received: any[];
+        sent: any[];
+    };
     userTypes: any[];
     ageGroups: any[];
     faturas: any[];
     movimentos: any[];
     monthlyFees: any[];
     costCenters: any[];
+}
+
+interface PageProps {
+    ziggy?: {
+        query?: {
+            tab?: string;
+            folder?: 'received' | 'sent';
+            message?: string;
+        };
+    };
 }
 
 const extractDateString = (value: any): string => {
@@ -75,9 +91,12 @@ const normalizeMember = (member: User): User => {
     };
 };
 
-export default function Show({ member, allUsers, userTypes, ageGroups, faturas, movimentos, monthlyFees, costCenters }: Props) {
+export default function Show({ member, allUsers, internalCommunications, userTypes, ageGroups, faturas, movimentos, monthlyFees, costCenters }: Props) {
+    const page = usePage<PageProps>();
     const [user, setUser] = useState<User>(() => normalizeMember(member));
     const [hasChanges, setHasChanges] = useState(false);
+    const query = page.props.ziggy?.query;
+    const initialTab = query?.tab === 'communications' ? 'communications' : 'dashboard';
 
     const handleChange = (field: keyof User, value: any) => {
         setUser(prev => ({ ...prev, [field]: value }));
@@ -149,8 +168,8 @@ export default function Show({ member, allUsers, userTypes, ageGroups, faturas, 
             <Head title={`Membro - ${user.nome_completo || 'Novo Membro'}`} />
 
             <Card className="p-2 sm:p-3 bg-white border-0">
-                <Tabs defaultValue="dashboard" className="space-y-2">
-                    <TabsList className={`grid w-full h-auto gap-1 p-1 ${showSportsTab ? 'grid-cols-2 sm:grid-cols-5' : 'grid-cols-2 sm:grid-cols-4'}`}>
+                <Tabs defaultValue={initialTab} className="space-y-2">
+                    <TabsList className={`grid w-full h-auto gap-1 p-1 ${showSportsTab ? 'grid-cols-2 sm:grid-cols-6' : 'grid-cols-2 sm:grid-cols-5'}`}>
                             <TabsTrigger value="dashboard" className="text-xs px-2 py-1.5 whitespace-normal leading-tight text-center min-h-8">
                                 Dashboard
                             </TabsTrigger>
@@ -167,6 +186,10 @@ export default function Show({ member, allUsers, userTypes, ageGroups, faturas, 
                             )}
                             <TabsTrigger value="configuration" className="text-xs px-2 py-1.5 whitespace-normal leading-tight text-center min-h-8">
                                 Configuração
+                            </TabsTrigger>
+                            <TabsTrigger value="communications" className="text-xs px-2 py-1.5 whitespace-normal leading-tight text-center min-h-8 inline-flex items-center justify-center gap-1">
+                                <EnvelopeSimple size={14} weight="duotone" />
+                                Comunicações
                             </TabsTrigger>
                         </TabsList>
 
@@ -212,6 +235,16 @@ export default function Show({ member, allUsers, userTypes, ageGroups, faturas, 
                             user={user}
                             onChange={handleChange}
                             isAdmin={true}
+                        />
+                    </TabsContent>
+
+                    <TabsContent value="communications" className="space-y-2 mt-2 bg-white p-0 rounded-lg">
+                        <CommunicationsTab
+                            members={allUsers}
+                            communications={internalCommunications}
+                            initialFolder={query?.folder || 'received'}
+                            initialMessageId={query?.message || null}
+                            ownerLabel={user.nome_completo || 'este membro'}
                         />
                     </TabsContent>
                 </Tabs>

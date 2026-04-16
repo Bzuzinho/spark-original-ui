@@ -289,6 +289,16 @@ class User extends Authenticatable
         return $this->hasMany(Communication::class, 'sender_id');
     }
 
+    public function internalMessagesSent(): HasMany
+    {
+        return $this->hasMany(InternalMessage::class, 'sender_id');
+    }
+
+    public function internalMessageRecipients(): HasMany
+    {
+        return $this->hasMany(InternalMessageRecipient::class, 'recipient_id');
+    }
+
     public function communicationCampaigns(): HasMany
     {
         return $this->hasMany(CommunicationCampaign::class, 'author_id');

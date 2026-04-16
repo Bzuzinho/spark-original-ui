@@ -8,7 +8,6 @@ import {
     ShoppingCart,
     CurrencyCircleDollar,
     Handshake,
-    MegaphoneSimple,
     House,
     List,
     X,
@@ -18,7 +17,15 @@ import {
     Bell
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
+import { Badge } from '@/Components/ui/badge';
 import { Button } from '@/Components/ui/button';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from '@/Components/ui/dialog';
 import { Separator } from '@/Components/ui/separator';
 import { Avatar, AvatarFallback } from '@/Components/ui/avatar';
 import {
@@ -36,6 +43,16 @@ interface User {
     email: string;
 }
 
+interface AlertItem {
+    id: string;
+    title: string;
+    message: string;
+    type: 'info' | 'warning' | 'success' | 'error';
+    link?: string | null;
+    is_read: boolean;
+    created_at: string;
+}
+
 interface PageProps {
     auth: {
         user: User;
@@ -47,15 +64,7 @@ interface PageProps {
     };
     communicationAlerts?: {
         unreadCount: number;
-        recent: Array<{
-            id: string;
-            title: string;
-            message: string;
-            type: 'info' | 'warning' | 'success' | 'error';
-            link?: string | null;
-            is_read: boolean;
-            created_at: string;
-        }>;
+        recent: AlertItem[];
     };
 }
 
@@ -69,7 +78,6 @@ const mainMenuItems = [
     { id: 'loja', label: 'Loja', icon: ShoppingCart, route: '/loja' },
     { id: 'patrocinios', label: 'Patrocínios', icon: Handshake, route: '/patrocinios' },
     { id: 'comunicacao', label: 'Comunicação', icon: Envelope, route: '/comunicacao' },
-    { id: 'marketing', label: 'Marketing', icon: MegaphoneSimple, route: '/campanhas-marketing' },
 ];
 
 const settingsMenuItems = [
@@ -92,7 +100,13 @@ export default function AuthenticatedLayout({
 }>) {
     const { auth, clubSettings, communicationAlerts } = usePage<PageProps>().props;
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [selectedAlertId, setSelectedAlertId] = useState<string | null>(null);
+    const [isAlertDialogOpen, setIsAlertDialogOpen] = useState(false);
+    const [alertAction, setAlertAction] = useState<'read' | 'unread' | 'delete' | null>(null);
     const currentRoute = route().current();
+    const alerts = communicationAlerts?.recent ?? [];
+    const unreadAlerts = alerts.filter((alert) => !alert.is_read);
+    const selectedAlert = alerts.find((alert) => alert.id === selectedAlertId) ?? null;
 
     useEffect(() => {
         const handleOpenSidebar = () => setMobileMenuOpen(true);
@@ -102,6 +116,15 @@ export default function AuthenticatedLayout({
             window.removeEventListener('spark:open-sidebar', handleOpenSidebar);
         };
     }, []);
+
+    useEffect(() => {
+        if (!isAlertDialogOpen || selectedAlertId === null || selectedAlert !== null) {
+            return;
+        }
+
+        setIsAlertDialogOpen(false);
+        setSelectedAlertId(null);
+    }, [isAlertDialogOpen, selectedAlert, selectedAlertId]);
 
     const getUserInitials = () => {
         if (!auth.user) return 'U';
@@ -121,18 +144,116 @@ export default function AuthenticatedLayout({
         router.post(route('logout'));
     };
 
-    const handleMarkRead = (alertId: string) => {
+    const handleMarkRead = (alertId: string, onSuccess?: () => void) => {
+        setAlertAction('read');
+
         router.post(route('comunicacao.alerts.markRead'), {
             alert_id: alertId,
         }, {
             preserveScroll: true,
+            preserveState: true,
+            only: ['communicationAlerts', 'flash'],
+            onSuccess: () => {
+                onSuccess?.();
+            },
+            onFinish: () => {
+                setAlertAction(null);
+            },
+        });
+    };
+
+    const handleMarkUnread = (alertId: string) => {
+        setAlertAction('unread');
+
+        router.post(route('comunicacao.alerts.markUnread'), {
+            alert_id: alertId,
+        }, {
+            preserveScroll: true,
+            preserveState: true,
+            only: ['communicationAlerts', 'flash'],
+            onFinish: () => {
+                setAlertAction(null);
+            },
         });
     };
 
     const handleMarkAllRead = () => {
         router.post(route('comunicacao.alerts.markAllRead'), {}, {
             preserveScroll: true,
+            preserveState: true,
+            only: ['communicationAlerts', 'flash'],
         });
+    };
+
+    const handleDeleteAlert = (alertId: string) => {
+        setAlertAction('delete');
+
+        router.delete(route('comunicacao.alerts.destroy', alertId), {
+            preserveScroll: true,
+            preserveState: true,
+            only: ['communicationAlerts', 'flash'],
+            onSuccess: () => {
+                setIsAlertDialogOpen(false);
+                setSelectedAlertId(null);
+            },
+            onFinish: () => {
+                setAlertAction(null);
+            },
+        });
+    };
+
+    const handleOpenAlert = (alert: AlertItem) => {
+        if (alert.link) {
+            if (!alert.is_read) {
+                handleMarkRead(alert.id, () => router.visit(alert.link as string));
+                return;
+            }
+
+            router.visit(alert.link as string);
+            return;
+        }
+
+        setSelectedAlertId(alert.id);
+        setIsAlertDialogOpen(true);
+
+        if (!alert.is_read) {
+            handleMarkRead(alert.id);
+        }
+    };
+
+    const handleAlertDialogChange = (open: boolean) => {
+        setIsAlertDialogOpen(open);
+
+        if (!open) {
+            setSelectedAlertId(null);
+        }
+    };
+
+    const formatAlertDate = (value: string) => {
+        const date = new Date(value);
+
+        if (Number.isNaN(date.getTime())) {
+            return value;
+        }
+
+        return new Intl.DateTimeFormat('pt-PT', {
+            dateStyle: 'short',
+            timeStyle: 'short',
+        }).format(date);
+    };
+
+    const alertTypeLabel: Record<AlertItem['type'], string> = {
+        info: 'Informação',
+        warning: 'Aviso',
+        success: 'Sucesso',
+        error: 'Erro',
+    };
+
+    const alertTypeClassName: Record<AlertItem['type'], string> = {
+        info: 'bg-sky-100 text-sky-800 border-sky-200',
+        warning: 'bg-amber-100 text-amber-800 border-amber-200',
+        success: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+        error: 'bg-rose-100 text-rose-800 border-rose-200',
     };
 
     const isActive = (itemId: string) => {
@@ -328,24 +449,22 @@ export default function AuthenticatedLayout({
                                                 </Button>
                                             </DropdownMenuLabel>
                                             <DropdownMenuSeparator />
-                                            {(communicationAlerts?.recent ?? []).length === 0 && (
+                                            {unreadAlerts.length === 0 && (
                                                 <DropdownMenuItem disabled>Sem notificações.</DropdownMenuItem>
                                             )}
-                                            {(communicationAlerts?.recent ?? []).map((alert) => (
+                                            {unreadAlerts.map((alert) => (
                                                 <DropdownMenuItem
                                                     key={alert.id}
                                                     className="cursor-pointer flex flex-col items-start gap-0.5 py-2"
-                                                    onClick={() => {
-                                                        handleMarkRead(alert.id);
-                                                        if (alert.link) {
-                                                            router.visit(alert.link);
-                                                        }
-                                                    }}
+                                                    onSelect={() => handleOpenAlert(alert)}
                                                 >
-                                                    <span className={cn('text-xs font-medium', !alert.is_read && 'text-primary')}>
+                                                    <span className="text-xs font-medium text-primary">
                                                         {alert.title}
                                                     </span>
                                                     <span className="text-xs text-muted-foreground line-clamp-2">{alert.message}</span>
+                                                    <span className="text-[11px] text-muted-foreground/80">
+                                                        {formatAlertDate(alert.created_at)}
+                                                    </span>
                                                 </DropdownMenuItem>
                                             ))}
                                         </DropdownMenuContent>
@@ -367,6 +486,73 @@ export default function AuthenticatedLayout({
                     </div>
                 </main>
             </div>
+
+            <Dialog open={isAlertDialogOpen} onOpenChange={handleAlertDialogChange}>
+                <DialogContent className="sm:max-w-lg">
+                    {selectedAlert && (
+                        <>
+                            <DialogHeader className="space-y-3 text-left">
+                                <div className="flex flex-wrap items-center gap-2 pr-8">
+                                    <Badge className={alertTypeClassName[selectedAlert.type]} variant="outline">
+                                        {alertTypeLabel[selectedAlert.type]}
+                                    </Badge>
+                                    <Badge variant={selectedAlert.is_read ? 'secondary' : 'default'}>
+                                        {selectedAlert.is_read ? 'Lida' : 'Não lida'}
+                                    </Badge>
+                                </div>
+                                <DialogTitle className="pr-8 leading-snug">{selectedAlert.title}</DialogTitle>
+                                <DialogDescription>
+                                    Recebida em {formatAlertDate(selectedAlert.created_at)}
+                                </DialogDescription>
+                            </DialogHeader>
+
+                            <div className="space-y-4">
+                                <div className="rounded-lg border bg-muted/30 p-4">
+                                    <p className="whitespace-pre-wrap text-sm leading-6 text-foreground">
+                                        {selectedAlert.message}
+                                    </p>
+                                </div>
+
+                                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                    <Button
+                                        variant="destructive"
+                                        onClick={() => handleDeleteAlert(selectedAlert.id)}
+                                        disabled={alertAction !== null}
+                                    >
+                                        Apagar comunicação
+                                    </Button>
+
+                                    <div className="flex flex-col gap-2 sm:flex-row">
+                                        {selectedAlert.link && (
+                                            <Button
+                                                variant="outline"
+                                                onClick={() => router.visit(selectedAlert.link as string)}
+                                                disabled={alertAction !== null}
+                                            >
+                                                Abrir ligação
+                                            </Button>
+                                        )}
+                                        <Button
+                                            variant="secondary"
+                                            onClick={() => {
+                                                if (selectedAlert.is_read) {
+                                                    handleMarkUnread(selectedAlert.id);
+                                                    return;
+                                                }
+
+                                                handleMarkRead(selectedAlert.id);
+                                            }}
+                                            disabled={alertAction !== null}
+                                        >
+                                            {selectedAlert.is_read ? 'Marcar como não lida' : 'Marcar como lida'}
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+                        </>
+                    )}
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

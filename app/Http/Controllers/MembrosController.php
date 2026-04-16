@@ -12,6 +12,8 @@ use App\Models\MonthlyFee;
 use App\Models\DadosFinanceiros;
 use App\Models\Invoice;
 use App\Models\Movement;
+use App\Services\Communication\InternalCommunicationService;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Http\RedirectResponse;
@@ -22,11 +24,16 @@ use Carbon\Carbon;
 
 class MembrosController extends Controller
 {
-    public function index(): Response
+    public function __construct(private readonly InternalCommunicationService $internalCommunicationService)
+    {
+    }
+
+    public function index(Request $request): Response
     {
         $users = User::with(['userTypes', 'ageGroup', 'encarregados', 'educandos'])->get();
         $userTypes = UserType::where('ativo', true)->get();
         $ageGroups = AgeGroup::all();
+        $currentUser = $request->user();
 
         // Calculate statistics
         $totalMembros = $users->count();
@@ -91,6 +98,18 @@ class MembrosController extends Controller
             'members' => $users->values(),
             'userTypes' => $userTypes,
             'ageGroups' => $ageGroups,
+            'internalCommunications' => $currentUser ? [
+                'received' => $this->internalCommunicationService->receivedFeed($currentUser->id),
+                'sent' => $this->internalCommunicationService->sentFeed($currentUser->id),
+            ] : [
+                'received' => [],
+                'sent' => [],
+            ],
+            'communicationState' => [
+                'initialTab' => $request->string('tab')->value() ?: 'dashboard',
+                'initialFolder' => $request->string('folder')->value() ?: 'received',
+                'initialMessageId' => $request->string('message')->value() ?: null,
+            ],
             'stats' => [
                 'totalMembros' => $totalMembros,
                 'membrosAtivos' => $membrosAtivos,
@@ -353,6 +372,10 @@ class MembrosController extends Controller
         return Inertia::render('Membros/Show', [
             'member' => $memberData,
             'allUsers' => $allUsers,
+            'internalCommunications' => [
+                'received' => $this->internalCommunicationService->receivedFeed($member->id),
+                'sent' => $this->internalCommunicationService->sentFeed($member->id),
+            ],
             'userTypes' => UserType::where('ativo', true)->get(),
             'ageGroups' => AgeGroup::all(),
             'faturas' => $faturas,

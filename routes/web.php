@@ -21,6 +21,7 @@ use App\Http\Controllers\CampanhasMarketingController;
 use App\Http\Controllers\Communication\CommunicationAlertController;
 use App\Http\Controllers\Communication\CommunicationCampaignController;
 use App\Http\Controllers\Communication\CommunicationDeliveryController;
+use App\Http\Controllers\Communication\InternalMemberCommunicationController;
 use App\Http\Controllers\Communication\CommunicationSegmentController;
 use App\Http\Controllers\Communication\CommunicationTemplateController;
 use App\Http\Controllers\ConfiguracoesController;
@@ -45,6 +46,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Resource routes
     Route::resource('membros', MembrosController::class)
         ->parameters(['membros' => 'member']);
+    Route::post('membros/comunicacoes', [InternalMemberCommunicationController::class, 'store'])->name('membros.comunicacoes.store');
+    Route::post('membros/comunicacoes/recebidas/{recipient}/lida', [InternalMemberCommunicationController::class, 'markRead'])->name('membros.comunicacoes.recebidas.read');
+    Route::post('membros/comunicacoes/recebidas/{recipient}/nao-lida', [InternalMemberCommunicationController::class, 'markUnread'])->name('membros.comunicacoes.recebidas.unread');
+    Route::delete('membros/comunicacoes/recebidas/{recipient}', [InternalMemberCommunicationController::class, 'destroyReceived'])->name('membros.comunicacoes.recebidas.destroy');
+    Route::delete('membros/comunicacoes/enviadas/{message}', [InternalMemberCommunicationController::class, 'destroySent'])->name('membros.comunicacoes.enviadas.destroy');
     
     // Member documents and relationships
     Route::prefix('membros/{member}')->group(function() {
@@ -174,7 +180,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/comunicacao/alerts', [CommunicationAlertController::class, 'index'])->name('comunicacao.alerts.index');
     Route::post('/comunicacao/alerts/mark-read', [CommunicationAlertController::class, 'markRead'])->name('comunicacao.alerts.markRead');
+    Route::post('/comunicacao/alerts/mark-unread', [CommunicationAlertController::class, 'markUnread'])->name('comunicacao.alerts.markUnread');
     Route::post('/comunicacao/alerts/mark-all-read', [CommunicationAlertController::class, 'markAllRead'])->name('comunicacao.alerts.markAllRead');
+    Route::delete('/comunicacao/alerts/{alert}', [CommunicationAlertController::class, 'destroy'])->name('comunicacao.alerts.destroy');
 
     Route::resource('campanhas-marketing', CampanhasMarketingController::class);
     
