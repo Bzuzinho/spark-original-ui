@@ -76,7 +76,7 @@ class MembrosController extends Controller
                 $query->whereJsonContains('tipo_membro', $tipo);
             }
 
-            $perPage = min((int) $request->integer('perPage', 25), 100);
+            $perPage = max(1, min((int) $request->integer('perPage', 25), 100));
             $members = $query->orderBy('nome_completo')->paginate($perPage)->withQueryString();
 
             $userTypes = UserType::where('ativo', true)->select('id', 'nome', 'codigo')->get();

@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
+
+const SEARCH_DEBOUNCE_MS = 400;
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { moduleTabbedContentClass, moduleTabsClass, moduleViewportClass } from '@/lib/module-layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs';
@@ -107,7 +109,7 @@ export default function MembrosIndex({ members, userTypes, ageGroups, stats, tip
                 },
                 { preserveState: true, replace: true }
             );
-        }, 400);
+        }, SEARCH_DEBOUNCE_MS);
         return () => clearTimeout(timer);
     }, [searchTerm, statusFilter, typeFilter]);
 
@@ -424,23 +426,33 @@ export default function MembrosIndex({ members, userTypes, ageGroups, stats, tip
                     {/* Pagination */}
                     {members && members.last_page > 1 && (
                         <div className="flex items-center justify-center gap-1 pt-1">
-                            {members.links.map((link, idx) => (
-                                <Button
-                                    key={idx}
-                                    variant={link.active ? 'default' : 'outline'}
-                                    size="sm"
-                                    className="h-7 min-w-[28px] px-2 text-xs"
-                                    disabled={!link.url}
-                                    onClick={() => {
-                                        if (link.url) {
-                                            const url = new URL(link.url);
-                                            const params = Object.fromEntries(url.searchParams.entries());
-                                            router.get(route('membros.index'), params, { preserveState: true, replace: true });
-                                        }
-                                    }}
-                                    dangerouslySetInnerHTML={{ __html: link.label }}
-                                />
-                            ))}
+                            {members.links.map((link, idx) => {
+                                // Convert HTML entities in Laravel pagination labels to readable text
+                                const label = link.label
+                                    .replace(/&laquo;/g, '«')
+                                    .replace(/&raquo;/g, '»')
+                                    .replace(/&amp;/g, '&')
+                                    .replace(/&lt;/g, '<')
+                                    .replace(/&gt;/g, '>');
+                                return (
+                                    <Button
+                                        key={idx}
+                                        variant={link.active ? 'default' : 'outline'}
+                                        size="sm"
+                                        className="h-7 min-w-[28px] px-2 text-xs"
+                                        disabled={!link.url}
+                                        onClick={() => {
+                                            if (link.url) {
+                                                const url = new URL(link.url);
+                                                const params = Object.fromEntries(url.searchParams.entries());
+                                                router.get(route('membros.index'), params, { preserveState: true, replace: true });
+                                            }
+                                        }}
+                                    >
+                                        {label}
+                                    </Button>
+                                );
+                            })}
                         </div>
                     )}
                 </TabsContent>
