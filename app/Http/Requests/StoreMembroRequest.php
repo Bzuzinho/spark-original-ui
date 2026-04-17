@@ -17,7 +17,7 @@ class StoreMembroRequest extends FormRequest
         return [
             // Dados pessoais
             'nome_completo' => ['required', 'string', 'max:255'],
-            'email_utilizador' => ['nullable', 'string', 'email', 'max:255', 'unique:users,email_utilizador'],
+            'email_utilizador' => ['nullable', 'string', 'email', 'max:255', 'unique:users,email_utilizador', 'unique:users,email'],
             'password' => ['nullable', 'string', 'min:8'],
             'numero_socio' => ['nullable', 'string', 'max:50', 'unique:users,numero_socio'],
             'nif' => ['nullable', 'string', 'max:50'],

@@ -1,5 +1,6 @@
 import { Head, usePage } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { moduleScrollableContentClass, moduleViewportClass } from '@/lib/module-layout';
 import { Users, Trophy, CalendarBlank, CurrencyCircleDollar, Heartbeat, UserCircle } from '@phosphor-icons/react';
 import { Card } from '@/Components/ui/card';
 import { Button } from '@/Components/ui/button';
@@ -133,7 +134,8 @@ export default function Dashboard({ stats, recentEvents = [], recentActivity = [
         >
             <Head title="Dashboard" />
 
-            <div className="space-y-2 sm:space-y-3">
+            <div className={moduleViewportClass}>
+                <div className={`${moduleScrollableContentClass} space-y-2 sm:space-y-3`}>
                 {/* Stats Cards - 5 cards */}
                 <div className="grid gap-2 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
                     {statsConfig.map((stat) => {
@@ -256,6 +258,7 @@ export default function Dashboard({ stats, recentEvents = [], recentActivity = [
                         </Button>
                     </div>
                 </Card>
+                </div>
             </div>
         </AuthenticatedLayout>
     );

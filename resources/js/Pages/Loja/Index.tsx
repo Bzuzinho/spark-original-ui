@@ -2,6 +2,7 @@ import { FormEvent, useMemo, useState } from 'react';
 import { Head, router } from '@inertiajs/react';
 import { Pencil, Plus, ShoppingCart, Trash2 } from 'lucide-react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { moduleTabbedContentClass, moduleTabsClass, moduleViewportClass } from '@/lib/module-layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/Components/ui/dialog';
@@ -267,15 +268,15 @@ export default function LojaIndex({
     >
       <Head title="Loja do Clube" />
 
-      <div className="flex flex-col gap-3">
-        <section>
-        <Tabs value={activeTab} onValueChange={goToTab} className="space-y-3">
-          <TabsList className="grid w-full grid-cols-2 h-auto gap-1">
+      <div className={moduleViewportClass}>
+        <section className="min-h-0 flex-1">
+        <Tabs value={activeTab} onValueChange={goToTab} className={moduleTabsClass}>
+          <TabsList className="grid w-full shrink-0 grid-cols-2 h-auto gap-1">
             <TabsTrigger value="loja">Loja</TabsTrigger>
             <TabsTrigger value="pedidos">Pedidos</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="loja" className="space-y-3">
+          <TabsContent value="loja" className={`${moduleTabbedContentClass} space-y-3`}>
             <Card className="w-full gap-0 py-0">
               <CardContent className="p-1.5 sm:p-2">
                 <div className="grid gap-1 md:grid-cols-[minmax(0,1fr)_190px] lg:grid-cols-[minmax(0,1fr)_210px]">
@@ -462,7 +463,7 @@ export default function LojaIndex({
             )}
           </TabsContent>
 
-          <TabsContent value="pedidos" className="space-y-3">
+          <TabsContent value="pedidos" className={`${moduleTabbedContentClass} space-y-3`}>
             {orders.map((order) => (
               <Card key={order.id}>
                 <CardHeader>

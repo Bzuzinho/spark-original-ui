@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Head, router } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { moduleScrollableContentClass, moduleViewportClass } from '@/lib/module-layout';
 import { Card } from '@/Components/ui/card';
 import { Button } from '@/Components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/Components/ui/dialog';
@@ -155,7 +156,8 @@ export default function MarketingIndex({ campaigns, stats, filters }: Props) {
         >
             <Head title="Marketing" />
 
-            <div className="container mx-auto px-2 sm:px-4 py-3 sm:py-4 max-w-7xl space-y-2 sm:space-y-3">
+            <div className={moduleViewportClass}>
+                <div className={`${moduleScrollableContentClass} container mx-auto max-w-7xl space-y-2 px-2 py-3 sm:space-y-3 sm:px-4 sm:py-4`}>
                 {/* Stats Cards */}
                 <div className="grid gap-2 grid-cols-2 lg:grid-cols-4">
                     <Card className="p-2.5 sm:p-3">
@@ -399,6 +401,7 @@ export default function MarketingIndex({ campaigns, stats, filters }: Props) {
                         </form>
                     </DialogContent>
                 </Dialog>
+                </div>
             </div>
         </AuthenticatedLayout>
     );

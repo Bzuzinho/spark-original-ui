@@ -1,6 +1,7 @@
 import { Head } from '@inertiajs/react';
 import { useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { moduleTabbedContentClass, moduleTabsClass, moduleViewportClass } from '@/lib/module-layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs';
 import { ChartLineUp, Receipt, ArrowsDownUp, Bank, ChartBar } from '@phosphor-icons/react';
 import { DashboardTab } from './DashboardTab';
@@ -77,10 +78,10 @@ export default function FinanceiroIndex({
     >
       <Head title="Gestao Financeira" />
 
-      <div className="w-full">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-2 sm:space-y-3">
+      <div className={moduleViewportClass}>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className={moduleTabsClass}>
           <div className="w-full">
-            <TabsList className="grid h-auto w-full grid-cols-2 gap-1 p-1 text-[11px] sm:h-9 sm:grid-cols-5 sm:text-xs">
+            <TabsList className="grid h-auto w-full shrink-0 grid-cols-2 gap-1 p-1 text-[11px] sm:h-9 sm:grid-cols-5 sm:text-xs">
               <TabsTrigger value="dashboard" className="flex h-8 items-center justify-center gap-1 px-2 py-1 text-[11px] leading-none sm:h-7 sm:text-xs">
                 <ChartLineUp size={14} />
                 <span>Dashboard</span>
@@ -104,7 +105,7 @@ export default function FinanceiroIndex({
             </TabsList>
           </div>
 
-          <TabsContent value="dashboard">
+          <TabsContent value="dashboard" className={moduleTabbedContentClass}>
             {activeTab === 'dashboard' ? (
               <DashboardTab
                 faturas={faturasState}
@@ -116,7 +117,7 @@ export default function FinanceiroIndex({
             ) : null}
           </TabsContent>
 
-          <TabsContent value="faturas">
+          <TabsContent value="faturas" className={moduleTabbedContentClass}>
             <FaturasTab
               faturas={faturasState}
               setFaturas={setFaturas}
@@ -136,7 +137,7 @@ export default function FinanceiroIndex({
             />
           </TabsContent>
 
-          <TabsContent value="movimentos">
+          <TabsContent value="movimentos" className={moduleTabbedContentClass}>
             <MovimentosTab
               movimentos={movimentosState}
               setMovimentos={setMovimentos}
@@ -152,7 +153,7 @@ export default function FinanceiroIndex({
             />
           </TabsContent>
 
-          <TabsContent value="banco">
+          <TabsContent value="banco" className={moduleTabbedContentClass}>
             <BancoTab
               extratos={extratosState}
               setExtratos={setExtratos}
@@ -168,7 +169,7 @@ export default function FinanceiroIndex({
             />
           </TabsContent>
 
-          <TabsContent value="relatorios">
+          <TabsContent value="relatorios" className={moduleTabbedContentClass}>
             {activeTab === 'relatorios' ? (
               <RelatoriosTab
                 faturas={faturasState}

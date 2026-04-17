@@ -16,8 +16,10 @@ import { Badge } from '@/Components/ui/badge';
 import { Checkbox } from '@/Components/ui/checkbox';
 import { Plus, PencilSimple, Trash, FloppyDisk } from '@phosphor-icons/react';
 import { FileUpload } from '@/Components/FileUpload';
+import { UserTypePermissionSettings } from '@/Components/Configuracoes/Permissions/UserTypePermissionSettings';
 import ConfiguracoesDesportivoIndex from '@/Pages/Configuracoes/Desportivo/Index';
 import { toast } from 'sonner';
+import { AccessControlBootstrap } from '@/types/access-control';
 
 interface AgeGroup {
     id: string;
@@ -527,6 +529,7 @@ interface Props {
     communicationAlertCategories: CommunicationAlertCategory[];
     users: DbUser[];
     clubSettings?: ClubSettings;
+    accessControlBootstrap: AccessControlBootstrap;
 }
 
 export default function SettingsIndex({
@@ -553,8 +556,22 @@ export default function SettingsIndex({
     communicationAlertCategories,
     users,
     clubSettings,
+    accessControlBootstrap,
 }: Props) {
-    const [currentTab, setCurrentTab] = useState('geral');
+    const [currentTab, setCurrentTab] = useState(() => {
+        if (typeof window !== 'undefined') {
+            return new URLSearchParams(window.location.search).get('tab') || 'geral';
+        }
+
+        return 'geral';
+    });
+    const [currentGeneralTab, setCurrentGeneralTab] = useState(() => {
+        if (typeof window !== 'undefined') {
+            return new URLSearchParams(window.location.search).get('subtab') || 'geral-tipos-utilizador';
+        }
+
+        return 'geral-tipos-utilizador';
+    });
     const [dialogOpen, setDialogOpen] = useState(false);
     const [editingItem, setEditingItem] = useState<any>(null);
     const [productImagePreview, setProductImagePreview] = useState<string | null>(null);
@@ -636,6 +653,11 @@ export default function SettingsIndex({
     });
 
     const [logoPreview, setLogoPreview] = useState<string | null>(clubSettings?.logo_url || null);
+    const settingsViewportClass = 'flex h-[calc(100dvh-10rem)] min-h-0 w-full flex-col sm:h-[calc(100dvh-11rem)]';
+    const rootTabsClass = 'flex h-full min-h-0 flex-col space-y-3';
+    const sectionTabsClass = 'flex h-full min-h-0 flex-col space-y-4';
+    const scrollableTabContentClass = 'mt-0 min-h-0 flex-1 overflow-auto pr-1';
+    const nestedScrollableTabContentClass = 'min-h-0 flex-1 overflow-auto pr-1';
 
     useEffect(() => {
         if (clubSettings?.logo_url) {
@@ -980,9 +1002,9 @@ export default function SettingsIndex({
         >
             <Head title="Configurações" />
 
-            <div className="w-full space-y-2 sm:space-y-3">
-                <Tabs value={currentTab} onValueChange={setCurrentTab} className="space-y-3">
-                    <div className="w-full overflow-x-auto -mx-2 px-2 sm:mx-0 sm:px-0">
+            <div className={settingsViewportClass}>
+                <Tabs value={currentTab} onValueChange={setCurrentTab} className={rootTabsClass}>
+                    <div className="w-full shrink-0 overflow-x-auto -mx-2 px-2 sm:mx-0 sm:px-0">
                         <TabsList className="inline-flex w-auto sm:grid sm:w-full sm:grid-cols-7 h-9 text-sm min-w-full sm:min-w-0">
                             <TabsTrigger value="geral" className="text-sm whitespace-nowrap px-3 sm:px-2">
                                 Geral
@@ -1009,9 +1031,9 @@ export default function SettingsIndex({
                     </div>
 
                     {/* Tab: Geral */}
-                    <TabsContent value="geral" className="mt-4 space-y-4">
-                        <Tabs defaultValue="geral-tipos-utilizador" className="space-y-4">
-                            <TabsList className="w-full flex flex-wrap h-auto gap-1 justify-start">
+                    <TabsContent value="geral" className="mt-0 min-h-0 flex-1 overflow-hidden">
+                        <Tabs value={currentGeneralTab} onValueChange={setCurrentGeneralTab} className={sectionTabsClass}>
+                            <TabsList className="w-full shrink-0 flex flex-wrap h-auto gap-1 justify-start">
                                 <TabsTrigger value="geral-tipos-utilizador">Tipos de Utilizador</TabsTrigger>
                                 <TabsTrigger value="geral-tipos-evento">Tipos de Evento</TabsTrigger>
                                 <TabsTrigger value="geral-permissoes">Permissões</TabsTrigger>
@@ -1020,7 +1042,7 @@ export default function SettingsIndex({
                             </TabsList>
 
 
-                        <TabsContent value="geral-tipos-utilizador" className="space-y-4">
+                        <TabsContent value="geral-tipos-utilizador" className={nestedScrollableTabContentClass}>
                         <Card>
                             <CardHeader className="pb-3">
                                 <CardTitle className="text-lg">Tipos de Utilizador</CardTitle>
@@ -1082,7 +1104,7 @@ export default function SettingsIndex({
                         </Card>
                         </TabsContent>
 
-                        <TabsContent value="geral-tipos-evento" className="space-y-4">
+                        <TabsContent value="geral-tipos-evento" className={nestedScrollableTabContentClass}>
                         <Card>
                             <CardHeader className="pb-3">
                                 <CardTitle className="text-lg">Tipos de Evento</CardTitle>
@@ -1177,86 +1199,14 @@ export default function SettingsIndex({
                         </Card>
                         </TabsContent>
 
-                        <TabsContent value="geral-permissoes" className="space-y-4">
-                        <Card>
-                            <CardHeader className="pb-3">
-                                <CardTitle className="text-lg">Permissões por Tipo de Utilizador</CardTitle>
-                                <CardDescription className="text-sm">
-                                    Definir permissões de acesso para cada tipo de utilizador
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="flex justify-end mb-3">
-                                    <Button onClick={() => openAddDialog('permission')} size="sm">
-                                        <Plus className="mr-2" size={16} />
-                                        Adicionar Permissão
-                                    </Button>
-                                </div>
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Tipo de Utilizador</TableHead>
-                                            <TableHead>Módulo</TableHead>
-                                            <TableHead>Submódulo</TableHead>
-                                            <TableHead>Separador</TableHead>
-                                            <TableHead>Campo</TableHead>
-                                            <TableHead>Ver</TableHead>
-                                            <TableHead>Criar</TableHead>
-                                            <TableHead>Editar</TableHead>
-                                            <TableHead>Eliminar</TableHead>
-                                            <TableHead className="text-right">Ações</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {permissions.length === 0 ? (
-                                            <TableRow>
-                                                <TableCell colSpan={10} className="text-center text-muted-foreground">
-                                                    Nenhuma permissão cadastrada
-                                                </TableCell>
-                                            </TableRow>
-                                        ) : (
-                                            permissions.map((permission) => {
-                                                const userType = userTypes.find((type) => type.id === permission.user_type_id);
-                                                return (
-                                                    <TableRow key={permission.id}>
-                                                        <TableCell className="font-medium">{userType?.nome || '-'}</TableCell>
-                                                        <TableCell>{permission.modulo}</TableCell>
-                                                        <TableCell>{permission.submodulo || '-'}</TableCell>
-                                                        <TableCell>{permission.separador || '-'}</TableCell>
-                                                        <TableCell>{permission.campo || '-'}</TableCell>
-                                                        <TableCell>{permission.pode_ver ? '✓' : '✗'}</TableCell>
-                                                        <TableCell>{permission.pode_criar ? '✓' : '✗'}</TableCell>
-                                                        <TableCell>{permission.pode_editar ? '✓' : '✗'}</TableCell>
-                                                        <TableCell>{permission.pode_eliminar ? '✓' : '✗'}</TableCell>
-                                                        <TableCell className="text-right">
-                                                            <div className="flex justify-end gap-2">
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="sm"
-                                                                    onClick={() => openEditDialog(permission, 'permission')}
-                                                                >
-                                                                    <PencilSimple size={16} />
-                                                                </Button>
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="sm"
-                                                                    onClick={() => handleDelete(permission.id, 'permission')}
-                                                                >
-                                                                    <Trash size={16} />
-                                                                </Button>
-                                                            </div>
-                                                        </TableCell>
-                                                    </TableRow>
-                                                );
-                                            })
-                                        )}
-                                    </TableBody>
-                                </Table>
-                            </CardContent>
-                        </Card>
+                        <TabsContent value="geral-permissoes" className={nestedScrollableTabContentClass}>
+                        <UserTypePermissionSettings
+                            userTypes={userTypes}
+                            bootstrap={accessControlBootstrap}
+                        />
                         </TabsContent>
 
-                        <TabsContent value="geral-estados" className="space-y-4">
+                        <TabsContent value="geral-estados" className={nestedScrollableTabContentClass}>
                         <Card>
                             <CardHeader className="pb-3">
                                 <CardTitle className="text-lg">Estados</CardTitle>
@@ -1329,7 +1279,7 @@ export default function SettingsIndex({
                         </Card>
                         </TabsContent>
 
-                        <TabsContent value="geral-motivos-ausencia" className="space-y-4">
+                        <TabsContent value="geral-motivos-ausencia" className={nestedScrollableTabContentClass}>
                         <Card>
                             <CardHeader className="pb-3">
                                 <CardTitle className="text-lg">Motivos de Ausência</CardTitle>
@@ -1398,7 +1348,7 @@ export default function SettingsIndex({
                     </TabsContent>
 
                     {/* Tab: Clube */}
-                    <TabsContent value="clube" className="mt-4">
+                    <TabsContent value="clube" className={scrollableTabContentClass}>
                         <Card>
                             <CardHeader>
                                 <CardTitle>Informações do Clube</CardTitle>
@@ -1521,15 +1471,15 @@ export default function SettingsIndex({
                     </TabsContent>
 
                     {/* Tab: Financeiro */}
-                    <TabsContent value="financeiro" className="mt-4 space-y-4">
-                        <Tabs defaultValue="financeiro-mensalidades" className="space-y-4">
-                            <TabsList className="w-full flex flex-wrap h-auto gap-1 justify-start">
+                    <TabsContent value="financeiro" className="mt-0 min-h-0 flex-1 overflow-hidden">
+                        <Tabs defaultValue="financeiro-mensalidades" className={sectionTabsClass}>
+                            <TabsList className="w-full shrink-0 flex flex-wrap h-auto gap-1 justify-start">
                                 <TabsTrigger value="financeiro-mensalidades">Mensalidades</TabsTrigger>
                                 <TabsTrigger value="financeiro-tipos-fatura">Tipos de Fatura</TabsTrigger>
                                 <TabsTrigger value="financeiro-centros-custos">Centros de Custos</TabsTrigger>
                             </TabsList>
 
-                        <TabsContent value="financeiro-mensalidades" className="space-y-4">
+                        <TabsContent value="financeiro-mensalidades" className={nestedScrollableTabContentClass}>
                         <Card>
                             <CardHeader className="pb-3">
                                 <CardTitle className="text-lg">Mensalidades</CardTitle>
@@ -1596,7 +1546,7 @@ export default function SettingsIndex({
                         </Card>
                         </TabsContent>
 
-                        <TabsContent value="financeiro-tipos-fatura" className="space-y-4">
+                        <TabsContent value="financeiro-tipos-fatura" className={nestedScrollableTabContentClass}>
                         <Card>
                             <CardHeader className="pb-3">
                                 <CardTitle className="text-lg">Tipos de Fatura</CardTitle>
@@ -1660,7 +1610,7 @@ export default function SettingsIndex({
                         </Card>
                         </TabsContent>
 
-                        <TabsContent value="financeiro-centros-custos" className="space-y-4">
+                        <TabsContent value="financeiro-centros-custos" className={nestedScrollableTabContentClass}>
                         <Card>
                             <CardHeader className="pb-3">
                                 <CardTitle className="text-lg">Centros de Custos</CardTitle>
@@ -1727,16 +1677,16 @@ export default function SettingsIndex({
                     </TabsContent>
 
                     {/* Tab: Logistica */}
-                    <TabsContent value="logistica" className="mt-4 space-y-4">
-                        <Tabs defaultValue="logistica-artigos" className="space-y-4">
-                            <TabsList className="w-full flex flex-wrap h-auto gap-1 justify-start">
+                    <TabsContent value="logistica" className="mt-0 min-h-0 flex-1 overflow-hidden">
+                        <Tabs defaultValue="logistica-artigos" className={sectionTabsClass}>
+                            <TabsList className="w-full shrink-0 flex flex-wrap h-auto gap-1 justify-start">
                                 <TabsTrigger value="logistica-artigos">Artigos</TabsTrigger>
                                 <TabsTrigger value="logistica-categorias">Categorias de Itens</TabsTrigger>
                                 <TabsTrigger value="logistica-patrocinadores">Patrocinadores</TabsTrigger>
                                 <TabsTrigger value="logistica-fornecedores">Fornecedores</TabsTrigger>
                             </TabsList>
 
-                        <TabsContent value="logistica-artigos" className="space-y-4">
+                        <TabsContent value="logistica-artigos" className={nestedScrollableTabContentClass}>
                         <Card>
                             <CardHeader className="pb-3">
                                 <CardTitle className="text-lg">Artigos</CardTitle>
@@ -1826,7 +1776,7 @@ export default function SettingsIndex({
                         </Card>
                         </TabsContent>
 
-                        <TabsContent value="logistica-categorias" className="space-y-4">
+                        <TabsContent value="logistica-categorias" className={nestedScrollableTabContentClass}>
                         <Card>
                             <CardHeader className="pb-3">
                                 <CardTitle className="text-lg">Categorias de Itens</CardTitle>
@@ -1894,7 +1844,7 @@ export default function SettingsIndex({
                         </Card>
                         </TabsContent>
 
-                        <TabsContent value="logistica-patrocinadores" className="space-y-4">
+                        <TabsContent value="logistica-patrocinadores" className={nestedScrollableTabContentClass}>
                         <Card>
                             <CardHeader className="pb-3">
                                 <CardTitle className="text-lg">Patrocinadores</CardTitle>
@@ -1988,7 +1938,7 @@ export default function SettingsIndex({
                         </Card>
                         </TabsContent>
 
-                        <TabsContent value="logistica-fornecedores" className="space-y-4">
+                        <TabsContent value="logistica-fornecedores" className={nestedScrollableTabContentClass}>
                         <Card>
                             <CardHeader className="pb-3">
                                 <CardTitle className="text-lg">Fornecedores</CardTitle>
@@ -2059,15 +2009,15 @@ export default function SettingsIndex({
                     </TabsContent>
 
                     {/* Tab: Notificações */}
-                    <TabsContent value="notificacoes" className="mt-4">
-                        <Tabs defaultValue="fontes-dinamicas" className="space-y-4">
-                            <TabsList className="w-full flex flex-wrap h-auto gap-1 justify-start">
+                    <TabsContent value="notificacoes" className="mt-0 min-h-0 flex-1 overflow-hidden">
+                        <Tabs defaultValue="fontes-dinamicas" className={sectionTabsClass}>
+                            <TabsList className="w-full shrink-0 flex flex-wrap h-auto gap-1 justify-start">
                                 <TabsTrigger value="automacoes">Automações</TabsTrigger>
                                 <TabsTrigger value="fontes-dinamicas">Fontes Dinâmicas</TabsTrigger>
                                 <TabsTrigger value="categorias-alerta">Categoria do Alerta</TabsTrigger>
                             </TabsList>
 
-                            <TabsContent value="automacoes" className="space-y-4">
+                            <TabsContent value="automacoes" className={nestedScrollableTabContentClass}>
                                 <Card>
                                     <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                         <div>
@@ -2111,7 +2061,7 @@ export default function SettingsIndex({
                                 </Card>
                             </TabsContent>
 
-                            <TabsContent value="fontes-dinamicas" className="space-y-4">
+                            <TabsContent value="fontes-dinamicas" className={nestedScrollableTabContentClass}>
                                 <Card>
                                     <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                         <div>
@@ -2177,7 +2127,7 @@ export default function SettingsIndex({
                                 </Card>
                             </TabsContent>
 
-                            <TabsContent value="categorias-alerta" className="space-y-4">
+                            <TabsContent value="categorias-alerta" className={nestedScrollableTabContentClass}>
                                 <Card>
                                     <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                         <div>
@@ -2254,7 +2204,7 @@ export default function SettingsIndex({
                     </TabsContent>
 
                     {/* Tab: Base de Dados */}
-                    <TabsContent value="base-dados" className="mt-4">
+                    <TabsContent value="base-dados" className={scrollableTabContentClass}>
                         <Card>
                             <CardHeader>
                                 <CardTitle>Utilizadores na Base de Dados</CardTitle>
@@ -2312,7 +2262,7 @@ export default function SettingsIndex({
                         </Card>
                     </TabsContent>
 
-                    <TabsContent value="desportivo" className="mt-4 space-y-4">
+                    <TabsContent value="desportivo" className={scrollableTabContentClass}>
                         <ConfiguracoesDesportivoIndex
                             athleteStatuses={athleteStatuses}
                             trainingTypes={trainingTypes}

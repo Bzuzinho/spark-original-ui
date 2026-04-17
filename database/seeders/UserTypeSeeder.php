@@ -14,26 +14,43 @@ class UserTypeSeeder extends Seeder
     {
         $types = [
             [
+                'codigo' => 'administrador',
+                'nome' => 'Administrador',
+                'descricao' => 'Administrador',
+                'ativo' => true,
+            ],
+            [
+                'codigo' => 'direcao',
+                'nome' => 'Direção',
+                'descricao' => 'Direção',
+                'ativo' => true,
+            ],
+            [
+                'codigo' => 'tesouraria',
+                'nome' => 'Tesouraria',
+                'descricao' => 'Tesouraria',
+                'ativo' => true,
+            ],
+            [
+                'codigo' => 'atleta',
                 'nome' => 'Atleta',
                 'descricao' => 'Atleta',
                 'ativo' => true,
             ],
             [
+                'codigo' => 'treinador',
                 'nome' => 'Treinador',
                 'descricao' => 'Treinador',
                 'ativo' => true,
             ],
             [
+                'codigo' => 'encarregado_educacao',
                 'nome' => 'Encarregado de Educação',
                 'descricao' => 'Encarregado de Educação',
                 'ativo' => true,
             ],
             [
-                'nome' => 'Dirigente',
-                'descricao' => 'Dirigente',
-                'ativo' => true,
-            ],
-            [
+                'codigo' => 'socio',
                 'nome' => 'Sócio',
                 'descricao' => 'Sócio',
                 'ativo' => true,
@@ -41,10 +58,17 @@ class UserTypeSeeder extends Seeder
         ];
 
         foreach ($types as $type) {
-            UserType::updateOrCreate(
-                ['nome' => $type['nome']],
-                $type
-            );
+            $existing = UserType::query()
+                ->where('codigo', $type['codigo'])
+                ->orWhere('nome', $type['nome'])
+                ->first();
+
+            if ($existing) {
+                $existing->update($type);
+                continue;
+            }
+
+            UserType::create($type);
         }
     }
 }

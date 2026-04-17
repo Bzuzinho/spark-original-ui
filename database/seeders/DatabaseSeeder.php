@@ -41,6 +41,9 @@ class DatabaseSeeder extends Seeder
         // Create user types
         $this->call(UserTypeSeeder::class);
 
+        // Seed permission tree for access control
+        $this->call(PermissionNodeSeeder::class);
+
         // Create age groups (escalões)
         $this->call(AgeGroupSeeder::class);
 

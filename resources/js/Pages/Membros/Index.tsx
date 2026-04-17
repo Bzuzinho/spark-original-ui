@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { moduleTabbedContentClass, moduleTabsClass, moduleViewportClass } from '@/lib/module-layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs';
 import { ChartLineUp, Users as UsersIcon, Plus, SquaresFour, ListBullets, Trash } from '@phosphor-icons/react';
 import { Button } from '@/Components/ui/button';
@@ -57,10 +58,22 @@ interface Props {
     stats: Stats;
     tipoMembrosStats: TipoStat[];
     escaloesStats: EscalaoStat[];
+    communicationState?: {
+        initialTab?: string;
+    };
 }
 
-export default function MembrosIndex({ members, userTypes, ageGroups, stats, tipoMembrosStats, escaloesStats }: Props) {
-    const [activeTab, setActiveTab] = useState('dashboard');
+export default function MembrosIndex({ members, userTypes, ageGroups, stats, tipoMembrosStats, escaloesStats, communicationState }: Props) {
+    const [activeTab, setActiveTab] = useState(() => {
+        if (typeof window !== 'undefined') {
+            const queryTab = new URLSearchParams(window.location.search).get('tab');
+            if (queryTab) {
+                return queryTab;
+            }
+        }
+
+        return communicationState?.initialTab || 'dashboard';
+    });
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<string>('all');
     const [typeFilter, setTypeFilter] = useState<string>('all');
@@ -125,9 +138,9 @@ export default function MembrosIndex({ members, userTypes, ageGroups, stats, tip
         >
             <Head title="Membros" />
 
-            <div className="space-y-2 sm:space-y-3">
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="grid w-full grid-cols-2 h-auto mb-3">
+            <div className={moduleViewportClass}>
+            <Tabs value={activeTab} onValueChange={setActiveTab} className={moduleTabsClass}>
+                <TabsList className="grid w-full shrink-0 grid-cols-2 h-auto">
                     <TabsTrigger value="dashboard" className="flex items-center gap-1.5 py-1.5 text-xs">
                         <ChartLineUp size={14} weight="duotone" />
                         <span>Dashboard</span>
@@ -138,7 +151,7 @@ export default function MembrosIndex({ members, userTypes, ageGroups, stats, tip
                     </TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="dashboard" className="mt-0">
+                <TabsContent value="dashboard" className={moduleTabbedContentClass}>
                     <MembrosDashboard 
                         stats={stats} 
                         tipoMembrosStats={tipoMembrosStats} 
@@ -146,7 +159,7 @@ export default function MembrosIndex({ members, userTypes, ageGroups, stats, tip
                     />
                 </TabsContent>
 
-                <TabsContent value="list" className="mt-0 space-y-2.5">
+                <TabsContent value="list" className={`${moduleTabbedContentClass} space-y-2.5`}>
                     {/* Header */}
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         <p className="text-xs text-muted-foreground">

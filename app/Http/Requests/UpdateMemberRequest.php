@@ -23,6 +23,7 @@ class UpdateMemberRequest extends FormRequest
                 'email',
                 'max:255',
                 Rule::unique('users', 'email_utilizador')->ignore($this->member),
+                Rule::unique('users', 'email')->ignore($this->member),
             ],
             'password' => ['nullable', 'string', 'min:8'],
             'numero_socio' => [

@@ -25,6 +25,7 @@
 import { useEffect, useState } from 'react';
 import { Head, router } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { moduleScrollableContentClass, moduleTabbedContentClass, moduleTabsClass, moduleViewportClass } from '@/lib/module-layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs';
 import {
   ChartBar,
@@ -295,15 +296,17 @@ export default function DesportivoIndex({
     >
       <Head title="Desportivo" />
 
-      <div className="space-y-2 sm:space-y-3">
+      <div className={moduleViewportClass}>
         {isNavigatingToCais ? (
-          <div className="min-h-[240px] rounded-lg border border-dashed border-border bg-background" />
+          <div className={moduleScrollableContentClass}>
+            <div className="min-h-[240px] rounded-lg border border-dashed border-border bg-background" />
+          </div>
         ) : (
           <>
         {/* ── Tabs ───────────────────────────────────────────────────── */}
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className={moduleTabsClass}>
 
-          <TabsList className="grid w-full grid-cols-4 sm:grid-cols-7 h-auto mb-3">
+          <TabsList className="grid w-full shrink-0 grid-cols-4 sm:grid-cols-7 h-auto">
             {TABS.map(({ value, label, Icon }) => (
               <TabsTrigger
                 key={value}
@@ -316,7 +319,7 @@ export default function DesportivoIndex({
             ))}
           </TabsList>
 
-          <TabsContent value="dashboard" className="mt-0">
+          <TabsContent value="dashboard" className={moduleTabbedContentClass}>
             <DashboardTab
               stats={stats}
               alerts={alerts}
@@ -330,7 +333,7 @@ export default function DesportivoIndex({
             />
           </TabsContent>
 
-          <TabsContent value="atletas" className="mt-0">
+          <TabsContent value="atletas" className={moduleTabbedContentClass}>
             <AthletesTab
               users={resolvedUsers}
               volumeByAthlete={resolvedVolumeByAthlete}
@@ -339,7 +342,7 @@ export default function DesportivoIndex({
             />
           </TabsContent>
 
-          <TabsContent value="treinos" className="mt-0">
+          <TabsContent value="treinos" className={moduleTabbedContentClass}>
             <TrainingsTab
               trainings={resolvedTrainings}
               seasons={seasons}
@@ -358,7 +361,7 @@ export default function DesportivoIndex({
             />
           </TabsContent>
 
-          <TabsContent value="cais" className="mt-0">
+          <TabsContent value="cais" className={moduleTabbedContentClass}>
             <PoolDeckTab
               trainings={resolvedTrainings}
               trainingOptions={resolvedTrainingOptions}
@@ -368,7 +371,7 @@ export default function DesportivoIndex({
             />
           </TabsContent>
 
-          <TabsContent value="planeamento" className="mt-0">
+          <TabsContent value="planeamento" className={moduleTabbedContentClass}>
             <PlanningTab
               seasons={seasons}
               macrocycles={macrocycles}
@@ -377,7 +380,7 @@ export default function DesportivoIndex({
             />
           </TabsContent>
 
-          <TabsContent value="competicoes" className="mt-0">
+          <TabsContent value="competicoes" className={moduleTabbedContentClass}>
             <CompetitionsTab
               competitions={resolvedCompetitions}
               results={resolvedResults}
@@ -393,7 +396,7 @@ export default function DesportivoIndex({
             />
           </TabsContent>
 
-          <TabsContent value="performance" className="mt-0">
+          <TabsContent value="performance" className={moduleTabbedContentClass}>
             <PerformanceTab
               users={resolvedUsers}
               volumeByAthlete={resolvedVolumeByAthlete}

@@ -1,6 +1,7 @@
 import { useState, FormEventHandler } from 'react';
 import { Head, router } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { moduleTabbedContentClass, moduleTabsClass, moduleViewportClass } from '@/lib/module-layout';
 import { Button } from '@/Components/ui/button';
 import { Card } from '@/Components/ui/card';
 import { Input } from '@/Components/ui/input';
@@ -127,9 +128,10 @@ export default function Create({ allUsers, userTypes, ageGroups, guardians, mont
         >
             <Head title="Novo Membro" />
 
-            <Card className="p-2 sm:p-3">
-                <Tabs defaultValue="personal" className="space-y-2">
-                    <TabsList className={`grid w-full h-auto gap-1 p-1 ${showSportsTab ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-2 sm:grid-cols-3'}`}>
+            <div className={moduleViewportClass}>
+            <Card className="flex min-h-0 flex-1 flex-col p-2 sm:p-3">
+                <Tabs defaultValue="personal" className={moduleTabsClass}>
+                    <TabsList className={`grid w-full shrink-0 h-auto gap-1 p-1 ${showSportsTab ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-2 sm:grid-cols-3'}`}>
                             <TabsTrigger value="personal" className="text-xs px-2 py-1.5 whitespace-normal leading-tight text-center min-h-8">
                                 Pessoal
                             </TabsTrigger>
@@ -146,7 +148,7 @@ export default function Create({ allUsers, userTypes, ageGroups, guardians, mont
                             </TabsTrigger>
                         </TabsList>
 
-                    <TabsContent value="personal" className="space-y-2 mt-2 bg-white p-0 rounded-lg">
+                    <TabsContent value="personal" className={`${moduleTabbedContentClass} space-y-2 bg-white p-0 rounded-lg`}>
                         <PersonalTab 
                             user={user}
                             onChange={handleChange}
@@ -155,7 +157,7 @@ export default function Create({ allUsers, userTypes, ageGroups, guardians, mont
                         />
                     </TabsContent>
 
-                    <TabsContent value="financial" className="space-y-2 mt-2 bg-white p-0 rounded-lg">
+                    <TabsContent value="financial" className={`${moduleTabbedContentClass} space-y-2 bg-white p-0 rounded-lg`}>
                         <FinancialTab 
                             user={user}
                             onChange={handleChange}
@@ -166,7 +168,7 @@ export default function Create({ allUsers, userTypes, ageGroups, guardians, mont
                     </TabsContent>
 
                     {showSportsTab && (
-                        <TabsContent value="sports" className="space-y-2 mt-2 bg-white p-0 rounded-lg">
+                        <TabsContent value="sports" className={`${moduleTabbedContentClass} space-y-2 bg-white p-0 rounded-lg`}>
                             <SportsTab 
                                 user={user as any}
                                 onChange={handleChange}
@@ -175,7 +177,7 @@ export default function Create({ allUsers, userTypes, ageGroups, guardians, mont
                         </TabsContent>
                     )}
 
-                    <TabsContent value="configuration" className="space-y-2 mt-2 bg-white p-0 rounded-lg">
+                    <TabsContent value="configuration" className={`${moduleTabbedContentClass} space-y-2 bg-white p-0 rounded-lg`}>
                         <ConfigurationTab 
                             user={user}
                             onChange={handleChange}
@@ -185,6 +187,7 @@ export default function Create({ allUsers, userTypes, ageGroups, guardians, mont
                     </TabsContent>
                 </Tabs>
             </Card>
+            </div>
 
             {hasChanges && (
                 <div className="fixed bottom-2 right-2 sm:bottom-4 sm:right-4 bg-accent text-accent-foreground p-2 rounded-lg shadow-lg border">

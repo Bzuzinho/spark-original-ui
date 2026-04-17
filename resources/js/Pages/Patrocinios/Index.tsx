@@ -1,6 +1,7 @@
 import { Head, router } from '@inertiajs/react';
 import { useEffect, useMemo, useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { moduleTabbedContentClass, moduleTabsClass, moduleViewportClass } from '@/lib/module-layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/Components/ui/table';
@@ -748,9 +749,9 @@ export default function SponsorshipsIndex({
     >
       <Head title="Patrocínios" />
 
-      <div className="space-y-3">
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-3">
-          <TabsList className="grid h-auto w-full grid-cols-3 gap-1 p-1 text-[11px] sm:h-9 sm:text-xs">
+      <div className={moduleViewportClass}>
+        <Tabs value={activeTab} onValueChange={handleTabChange} className={moduleTabsClass}>
+          <TabsList className="grid h-auto w-full shrink-0 grid-cols-3 gap-1 p-1 text-[11px] sm:h-9 sm:text-xs">
             <TabsTrigger value="dashboard" className="flex h-8 items-center justify-center gap-1 px-2 py-1 text-[11px] sm:h-7 sm:text-xs">
               <Handshake size={14} />
               <span>Dashboard</span>
@@ -765,7 +766,7 @@ export default function SponsorshipsIndex({
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="dashboard" className="space-y-3">
+          <TabsContent value="dashboard" className={`${moduleTabbedContentClass} space-y-3`}>
             <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-5">
               <Card className="gap-0 py-0">
                 <CardContent className="flex items-start justify-between p-3">
@@ -971,7 +972,7 @@ export default function SponsorshipsIndex({
             </Card>
           </TabsContent>
 
-          <TabsContent value="patrocinios" className="space-y-3">
+          <TabsContent value="patrocinios" className={`${moduleTabbedContentClass} space-y-3`}>
             <Card className="gap-0 py-0">
               <CardContent className="grid gap-2 p-3 lg:grid-cols-[minmax(0,1.4fr)_180px_180px_220px_170px_170px_auto] lg:items-end">
                 <div>
@@ -1251,7 +1252,7 @@ export default function SponsorshipsIndex({
             </Card>
           </TabsContent>
 
-          <TabsContent value="integracoes" className="space-y-3">
+          <TabsContent value="integracoes" className={`${moduleTabbedContentClass} space-y-3`}>
             {selectedIntegrationSponsorship && (
               <Card className="gap-0 py-0">
                 <CardContent className="flex flex-col gap-3 p-4 lg:flex-row lg:items-center lg:justify-between">

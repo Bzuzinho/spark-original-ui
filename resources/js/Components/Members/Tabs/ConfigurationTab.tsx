@@ -1,3 +1,4 @@
+import { router } from '@inertiajs/react';
 import { Label } from '@/Components/ui/label';
 import { Input } from '@/Components/ui/input';
 import { Button } from '@/Components/ui/button';
@@ -11,6 +12,7 @@ import { pt } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { FileUpload } from '@/Components/FileUpload';
 import { Lock, ShieldCheck, FileCheck } from 'lucide-react';
+import { useState } from 'react';
 
 interface ConfigurationTabProps {
   user: any;
@@ -20,9 +22,34 @@ interface ConfigurationTabProps {
 }
 
 export function ConfigurationTab({ user, onChange, isAdmin, isCreating = false }: ConfigurationTabProps) {
+  const [isSendingAccess, setIsSendingAccess] = useState(false);
+
   const handlePasswordReset = () => {
-    toast.success('Email de recuperação enviado com sucesso!', {
-      description: `Email enviado para ${user.email_utilizador}`
+    if (!user?.id) {
+      toast.error('Guarde primeiro o membro antes de enviar o acesso.');
+      return;
+    }
+
+    if (!user?.email_utilizador) {
+      toast.error('Preencha o email de autenticação antes de enviar o acesso.');
+      return;
+    }
+
+    setIsSendingAccess(true);
+
+    router.post(route('membros.send-access-email', user.id), {
+      email_utilizador: user.email_utilizador,
+    }, {
+      preserveScroll: true,
+      onSuccess: () => {
+        toast.success('Email de acesso enviado com sucesso!', {
+          description: `Foi enviado um link para definir a palavra-passe para ${user.email_utilizador}`,
+        });
+      },
+      onError: (errors) => {
+        toast.error((errors.email_utilizador as string) || 'Não foi possível enviar o email de acesso.');
+      },
+      onFinish: () => setIsSendingAccess(false),
     });
   };
 
@@ -85,11 +112,11 @@ export function ConfigurationTab({ user, onChange, isAdmin, isCreating = false }
           )}
 
           {isAdmin && !isCreating && (
-            <Button variant="outline" size="sm" onClick={handlePasswordReset} className="w-full h-7 text-xs">
+            <Button variant="outline" size="sm" onClick={handlePasswordReset} className="w-full h-7 text-xs" disabled={isSendingAccess || !user?.email_utilizador}>
               <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
               </svg>
-              Recuperar Password
+              {isSendingAccess ? 'A enviar...' : 'Enviar link de acesso'}
             </Button>
           )}
         </div>

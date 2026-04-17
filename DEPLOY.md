@@ -163,6 +163,22 @@ MAIL_FROM_ADDRESS=noreply@yourdomain.com
 MAIL_FROM_NAME="${APP_NAME}"
 ```
 
+Para sincronizar estas variáveis para a VM usando o deploy automatizado:
+
+```bash
+SYNC_MAIL_ENV=1 \
+MAIL_MAILER=smtp \
+MAIL_HOST=smtp.seuprovider.com \
+MAIL_PORT=587 \
+MAIL_USERNAME=utilizador_smtp \
+MAIL_PASSWORD='password_smtp' \
+MAIL_ENCRYPTION=tls \
+MAIL_FROM_ADDRESS=noreply@seudominio.com \
+MAIL_FROM_NAME='ClubOS' \
+APP_URL='https://www.bscn.pt' \
+npm run deploy:vm
+```
+
 ### 3.5 Gerar Application Key
 ```bash
 php artisan key:generate

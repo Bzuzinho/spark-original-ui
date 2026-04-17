@@ -14,6 +14,16 @@ KNOWN_HOSTS="${HOME}/.ssh/known_hosts"
 REMOTE_BACKEND_SCRIPT="/usr/local/bin/clubmanager-deploy-backend.sh"
 REMOTE_FRONTEND_SCRIPT="/usr/local/bin/clubmanager-frontend-reload.sh"
 REMOTE_HEALTHCHECK_SCRIPT="/usr/local/bin/clubmanager-healthcheck.sh"
+SYNC_MAIL_ENV="${SYNC_MAIL_ENV:-0}"
+MAIL_MAILER="${MAIL_MAILER:-}"
+MAIL_HOST="${MAIL_HOST:-}"
+MAIL_PORT="${MAIL_PORT:-}"
+MAIL_USERNAME="${MAIL_USERNAME:-}"
+MAIL_PASSWORD="${MAIL_PASSWORD:-}"
+MAIL_ENCRYPTION="${MAIL_ENCRYPTION:-}"
+MAIL_FROM_ADDRESS="${MAIL_FROM_ADDRESS:-}"
+MAIL_FROM_NAME="${MAIL_FROM_NAME:-}"
+APP_URL="${APP_URL:-}"
 
 echo "==> Repo: $(pwd)"
 echo "==> VM:   ${VM_USER}@${VM_HOST}:${VM_APP_DIR}"
@@ -21,6 +31,87 @@ echo "==> VM:   ${VM_USER}@${VM_HOST}:${VM_APP_DIR}"
 # ===== Helper: run ssh via alias (BatchMode, 15s timeout) =====
 vm_ssh() {
   ssh -o BatchMode=yes -o ConnectTimeout=15 "${SSH_ALIAS}" "$@"
+}
+
+quote_env_value() {
+  local value="${1:-}"
+  value="${value//\\/\\\\}"
+  value="${value//\"/\\\"}"
+  printf '"%s"' "${value}"
+}
+
+configure_vm_mail_env() {
+  local remote_env_file="${VM_APP_DIR}/.env"
+
+  if [[ "${SYNC_MAIL_ENV}" != "1" ]]; then
+    echo "    SMTP sync desligado (usa SYNC_MAIL_ENV=1 para actualizar MAIL_* na VM)"
+    return 0
+  fi
+
+  if [[ -z "${MAIL_MAILER}" ]]; then
+    echo "❌ SYNC_MAIL_ENV=1 mas MAIL_MAILER não foi definido."
+    exit 1
+  fi
+
+  if [[ "${MAIL_MAILER}" == "smtp" ]]; then
+    local required_vars=(MAIL_HOST MAIL_PORT MAIL_USERNAME MAIL_PASSWORD MAIL_ENCRYPTION MAIL_FROM_ADDRESS MAIL_FROM_NAME)
+    local missing=()
+    local var_name
+
+    for var_name in "${required_vars[@]}"; do
+      if [[ -z "${!var_name:-}" ]]; then
+        missing+=("${var_name}")
+      fi
+    done
+
+    if (( ${#missing[@]} > 0 )); then
+      echo "❌ Faltam variáveis SMTP obrigatórias: ${missing[*]}"
+      exit 1
+    fi
+  fi
+
+  echo ""
+  echo "==> [3.5/6] Atualizar configuração de mail na VM"
+
+  vm_ssh "bash -s" <<EOF
+set -euo pipefail
+ENV_FILE="${remote_env_file}"
+
+if [[ ! -f "\${ENV_FILE}" ]]; then
+  echo "[mail] ficheiro .env não encontrado: \${ENV_FILE}"
+  exit 1
+fi
+
+upsert_env() {
+  local key="\$1"
+  local value="\$2"
+  if grep -q "^\${key}=" "\${ENV_FILE}"; then
+    local escaped_value="\${value//\\/\\\\}"
+    escaped_value="\${escaped_value//&/\\&}"
+    escaped_value="\${escaped_value//|/\\|}"
+    sed -i "s|^\${key}=.*|\${key}=\${escaped_value}|" "\${ENV_FILE}"
+  else
+    printf '\n%s=%s\n' "\${key}" "\${value}" >> "\${ENV_FILE}"
+  fi
+}
+
+upsert_env MAIL_MAILER $(quote_env_value "${MAIL_MAILER}")
+upsert_env MAIL_HOST $(quote_env_value "${MAIL_HOST}")
+upsert_env MAIL_PORT $(quote_env_value "${MAIL_PORT}")
+upsert_env MAIL_USERNAME $(quote_env_value "${MAIL_USERNAME}")
+upsert_env MAIL_PASSWORD $(quote_env_value "${MAIL_PASSWORD}")
+upsert_env MAIL_ENCRYPTION $(quote_env_value "${MAIL_ENCRYPTION}")
+upsert_env MAIL_FROM_ADDRESS $(quote_env_value "${MAIL_FROM_ADDRESS}")
+upsert_env MAIL_FROM_NAME $(quote_env_value "${MAIL_FROM_NAME}")
+
+if [[ -n "${APP_URL}" ]]; then
+  upsert_env APP_URL $(quote_env_value "${APP_URL}")
+fi
+
+echo "[mail] configuração MAIL_* actualizada"
+EOF
+
+  echo "   ✔ Configuração MAIL_* sincronizada para a VM"
 }
 
 # ===== Helper: show failure logs from VM =====
@@ -168,6 +259,8 @@ SSH_TEST="$(vm_ssh 'echo SSH_OK && hostname' 2>&1)" || {
   exit 1
 }
 echo "   ✔ SSH OK — ${SSH_TEST}"
+
+configure_vm_mail_env
 
 # ===== [4/6] Deploy backend na VM =====
 echo ""

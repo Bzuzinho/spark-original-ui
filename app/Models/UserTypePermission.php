@@ -12,6 +12,10 @@ class UserTypePermission extends Model
 
     protected $fillable = [
         'user_type_id',
+        'permission_node_id',
+        'can_view',
+        'can_edit',
+        'can_delete',
         'modulo',
         'submodulo',
         'separador',
@@ -23,6 +27,9 @@ class UserTypePermission extends Model
     ];
 
     protected $casts = [
+        'can_view' => 'boolean',
+        'can_edit' => 'boolean',
+        'can_delete' => 'boolean',
         'pode_ver' => 'boolean',
         'pode_criar' => 'boolean',
         'pode_editar' => 'boolean',
@@ -32,5 +39,10 @@ class UserTypePermission extends Model
     public function userType(): BelongsTo
     {
         return $this->belongsTo(UserType::class, 'user_type_id');
+    }
+
+    public function permissionNode(): BelongsTo
+    {
+        return $this->belongsTo(PermissionNode::class, 'permission_node_id');
     }
 }

@@ -1,5 +1,6 @@
 import { Head } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { moduleScrollableContentClass, moduleViewportClass } from '@/lib/module-layout';
 
 export default function EventosEditPage() {
     return (
@@ -13,9 +14,11 @@ export default function EventosEditPage() {
         >
             <Head title="Eventos - Edit" />
 
-            <div className="p-4 sm:p-6">
-                <div className="rounded-lg border bg-card p-4 text-sm text-muted-foreground">
-                    Pagina Eventos (Edit) em desenvolvimento.
+            <div className={moduleViewportClass}>
+                <div className={moduleScrollableContentClass}>
+                    <div className="rounded-lg border bg-card p-4 text-sm text-muted-foreground sm:p-6">
+                        Pagina Eventos (Edit) em desenvolvimento.
+                    </div>
                 </div>
             </div>
         </AuthenticatedLayout>

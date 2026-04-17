@@ -24,6 +24,11 @@ return Application::configure(basePath: dirname(__DIR__))
         // Trust all proxies for Codespaces
         $middleware->trustProxies(at: '*');
 
+        $middleware->alias([
+            'module.access' => \App\Http\Middleware\EnsureModuleAccess::class,
+            'permission.access' => \App\Http\Middleware\EnsurePermissionAccess::class,
+        ]);
+
         $middleware->validateCsrfTokens(except: [
             'financeiro/*/apagar',
         ]);

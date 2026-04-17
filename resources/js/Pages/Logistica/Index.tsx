@@ -1,6 +1,7 @@
 import { FormEvent, useMemo, useState } from 'react';
 import { Head, router, useForm } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { moduleTabbedContentClass, moduleTabsClass, moduleViewportClass } from '@/lib/module-layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/Components/ui/table';
@@ -481,17 +482,18 @@ export default function LogisticaIndex({
     >
       <Head title="Logística" />
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-3">
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-5 h-auto gap-1">
-          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-          <TabsTrigger value="requisicoes">Requisições</TabsTrigger>
-          <TabsTrigger value="stock">Stock</TabsTrigger>
-          <TabsTrigger value="emprestimos">Empréstimos</TabsTrigger>
-          <TabsTrigger value="fornecedores">Fornecedores</TabsTrigger>
-        </TabsList>
+      <div className={moduleViewportClass}>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className={moduleTabsClass}>
+          <TabsList className="grid w-full shrink-0 grid-cols-2 sm:grid-cols-5 h-auto gap-1">
+            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+            <TabsTrigger value="requisicoes">Requisições</TabsTrigger>
+            <TabsTrigger value="stock">Stock</TabsTrigger>
+            <TabsTrigger value="emprestimos">Empréstimos</TabsTrigger>
+            <TabsTrigger value="fornecedores">Fornecedores</TabsTrigger>
+          </TabsList>
 
         {/* ── Dashboard ──────────────────────────────────────────────────── */}
-        <TabsContent value="dashboard" className="space-y-3">
+        <TabsContent value="dashboard" className={`${moduleTabbedContentClass} space-y-3`}>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <Card><CardHeader><CardTitle className="text-sm">Valorização de Stock</CardTitle></CardHeader><CardContent className="text-xl font-semibold">{euro(dashboard.stock_valuation)}</CardContent></Card>
             <Card><CardHeader><CardTitle className="text-sm">Alertas de Stock</CardTitle></CardHeader><CardContent className="text-xl font-semibold">{dashboard.low_stock_alerts}</CardContent></Card>
@@ -529,7 +531,7 @@ export default function LogisticaIndex({
         </TabsContent>
 
         {/* ── Requisições ────────────────────────────────────────────────── */}
-        <TabsContent value="requisicoes" className="space-y-3">
+        <TabsContent value="requisicoes" className={`${moduleTabbedContentClass} space-y-3`}>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-sm">Lista de Requisições</CardTitle>
@@ -765,7 +767,7 @@ export default function LogisticaIndex({
         </TabsContent>
 
         {/* ── Stock ──────────────────────────────────────────────────────── */}
-        <TabsContent value="stock" className="space-y-3">
+        <TabsContent value="stock" className={`${moduleTabbedContentClass} space-y-3`}>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-sm">Mapa de Stock</CardTitle>
@@ -973,7 +975,7 @@ export default function LogisticaIndex({
         </TabsContent>
 
         {/* ── Empréstimos ────────────────────────────────────────────────── */}
-        <TabsContent value="emprestimos" className="space-y-3">
+        <TabsContent value="emprestimos" className={`${moduleTabbedContentClass} space-y-3`}>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-sm">Empréstimos</CardTitle>
@@ -1157,7 +1159,7 @@ export default function LogisticaIndex({
         </TabsContent>
 
         {/* ── Fornecedores ───────────────────────────────────────────────── */}
-        <TabsContent value="fornecedores" className="space-y-3">
+        <TabsContent value="fornecedores" className={`${moduleTabbedContentClass} space-y-3`}>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-sm">Compras Registadas e Referência Financeira</CardTitle>
@@ -1324,7 +1326,8 @@ export default function LogisticaIndex({
             </CardContent>
           </Card>
         </TabsContent>
-      </Tabs>
+        </Tabs>
+      </div>
     </AuthenticatedLayout>
   );
 }

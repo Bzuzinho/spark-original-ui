@@ -1,6 +1,7 @@
 import { Head, router, useForm } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { moduleTabbedContentClass, moduleTabsClass, moduleViewportClass } from '@/lib/module-layout';
 import InputError from '@/Components/InputError';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs';
@@ -1206,10 +1207,10 @@ export default function ComunicacaoIndex({
     >
       <Head title="Comunicação" />
 
-      <div className="space-y-3">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-3">
+      <div className={moduleViewportClass}>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className={moduleTabsClass}>
           <div className="w-full">
-            <TabsList className="grid h-auto w-full grid-cols-2 gap-1 p-1 text-[11px] sm:h-9 sm:grid-cols-5 sm:text-xs">
+            <TabsList className="grid h-auto w-full shrink-0 grid-cols-2 gap-1 p-1 text-[11px] sm:h-9 sm:grid-cols-5 sm:text-xs">
               <TabsTrigger value="dashboard" className="flex h-8 min-w-0 items-center justify-center gap-1 whitespace-nowrap px-2 py-1 text-[11px] leading-none sm:h-7 sm:text-xs">
                 <ChartLineUp size={14} />
                 <span>Dashboard</span>
@@ -1233,7 +1234,7 @@ export default function ComunicacaoIndex({
             </TabsList>
           </div>
 
-          <TabsContent value="dashboard" className="space-y-3">
+          <TabsContent value="dashboard" className={`${moduleTabbedContentClass} space-y-3`}>
             <div className="grid gap-2 grid-cols-2 lg:grid-cols-4">
               <Card className="p-3"><div className="text-xs text-muted-foreground">Campanhas agendadas</div><div className="text-xl font-semibold">{stats.scheduled_campaigns}</div></Card>
               <Card className="p-3"><div className="text-xs text-muted-foreground">Envios concluídos</div><div className="text-xl font-semibold">{stats.completed_deliveries}</div></Card>
@@ -1281,7 +1282,7 @@ export default function ComunicacaoIndex({
             </div>
           </TabsContent>
 
-          <TabsContent value="envios" className="space-y-3">
+          <TabsContent value="envios" className={`${moduleTabbedContentClass} space-y-3`}>
             <Card>
               <CardContent className="pt-3 pb-3">
                 <div className="space-y-1.5">
@@ -1443,7 +1444,7 @@ export default function ComunicacaoIndex({
             ))}
           </TabsContent>
 
-          <TabsContent value="execucao" className="space-y-3">
+          <TabsContent value="execucao" className={`${moduleTabbedContentClass} space-y-3`}>
             <Card>
               <CardHeader className="pb-2"><CardTitle className="text-sm">Histórico operacional de execução</CardTitle></CardHeader>
               <CardContent>
@@ -1499,7 +1500,7 @@ export default function ComunicacaoIndex({
             </Card>
           </TabsContent>
 
-          <TabsContent value="templates" className="space-y-3">
+          <TabsContent value="templates" className={`${moduleTabbedContentClass} space-y-3`}>
             <div className="flex justify-end">
               <Button size="sm" className="h-8 text-xs" onClick={() => {
                 setEditingTemplate(null);
@@ -1618,7 +1619,7 @@ export default function ComunicacaoIndex({
             </Card>
           </TabsContent>
 
-          <TabsContent value="segmentos" className="space-y-3">
+          <TabsContent value="segmentos" className={`${moduleTabbedContentClass} space-y-3`}>
             <div className="flex justify-end">
               <Button size="sm" className="h-8 text-xs" onClick={() => { setEditingSegment(null); resetSegmentFormForCreate(); setShowSegmentModal(true); }}>
                 <Plus size={14} className="mr-1" />Novo segmento

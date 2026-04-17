@@ -27,6 +27,7 @@ use App\Models\UserTypePermission;
 use App\Models\NotificationPreference;
 use App\Models\ProvaTipo;
 use App\Models\User;
+use App\Services\AccessControl\UserTypeAccessControlService;
 use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Http\RedirectResponse;
@@ -40,8 +41,10 @@ class ConfiguracoesController extends Controller
 {
     public function index(): Response
     {
+        $userTypes = UserType::query()->orderBy('nome')->get();
+
         return Inertia::render('Configuracoes/Index', [
-            'userTypes' => UserType::all(),
+            'userTypes' => $userTypes,
             'ageGroups' => AgeGroup::all(),
             'eventTypes' => EventType::all(),
             'athleteStatuses' => AthleteStatusConfig::query()->ordenado()->get(),
@@ -64,6 +67,7 @@ class ConfiguracoesController extends Controller
             'communicationDynamicSources' => $this->communicationDynamicSources(),
             'communicationAlertCategories' => AlertCategoryRegistry::all(false)->values()->all(),
             'users' => User::select('id', 'numero_socio', 'nome_completo', 'email_utilizador', 'perfil', 'estado')->get(),
+            'accessControlBootstrap' => app(UserTypeAccessControlService::class)->getBootstrap($userTypes->first()),
         ]);
     }
 

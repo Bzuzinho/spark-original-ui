@@ -21,7 +21,6 @@ use App\Http\Controllers\CampanhasMarketingController;
 use App\Http\Controllers\Communication\CommunicationAlertController;
 use App\Http\Controllers\Communication\CommunicationCampaignController;
 use App\Http\Controllers\Communication\CommunicationDeliveryController;
-use App\Http\Controllers\Communication\InternalMemberCommunicationController;
 use App\Http\Controllers\Communication\CommunicationSegmentController;
 use App\Http\Controllers\Communication\CommunicationTemplateController;
 use App\Http\Controllers\ConfiguracoesController;
@@ -41,79 +40,114 @@ Route::get('/', function () {
 
 Route::middleware(['auth', 'verified'])->group(function () {
     // Dashboard
-    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard', [DashboardController::class, 'index'])
+        ->middleware('module.access:inicio')
+        ->name('dashboard');
     
     // Resource routes
     Route::resource('membros', MembrosController::class)
+        ->middleware('module.access:membros')
+        ->middlewareFor(['index'], 'permission.access:membros.lista,view')
+        ->middlewareFor(['show'], 'permission.access:membros.ficha,view')
+        ->middlewareFor(['create', 'store', 'edit', 'update'], 'permission.access:membros.ficha,edit')
+        ->middlewareFor(['destroy'], 'permission.access:membros.ficha,delete')
         ->parameters(['membros' => 'member']);
-    Route::post('membros/comunicacoes', [InternalMemberCommunicationController::class, 'store'])->name('membros.comunicacoes.store');
-    Route::post('membros/comunicacoes/recebidas/{recipient}/lida', [InternalMemberCommunicationController::class, 'markRead'])->name('membros.comunicacoes.recebidas.read');
-    Route::post('membros/comunicacoes/recebidas/{recipient}/nao-lida', [InternalMemberCommunicationController::class, 'markUnread'])->name('membros.comunicacoes.recebidas.unread');
-    Route::delete('membros/comunicacoes/recebidas/{recipient}', [InternalMemberCommunicationController::class, 'destroyReceived'])->name('membros.comunicacoes.recebidas.destroy');
-    Route::delete('membros/comunicacoes/enviadas/{message}', [InternalMemberCommunicationController::class, 'destroySent'])->name('membros.comunicacoes.enviadas.destroy');
     
     // Member documents and relationships
-    Route::prefix('membros/{member}')->group(function() {
-        Route::get('documentos', [DocumentosMembrosController::class, 'index'])->name('membros.documentos.index');
-        Route::post('documentos', [DocumentosMembrosController::class, 'store'])->name('membros.documentos.store');
-        Route::delete('documentos/{document}', [DocumentosMembrosController::class, 'destroy'])->name('membros.documentos.destroy');
+    Route::prefix('membros/{member}')->middleware('module.access:membros')->group(function() {
+        Route::get('documentos', [DocumentosMembrosController::class, 'index'])
+            ->middleware('permission.access:membros.ficha,view')
+            ->name('membros.documentos.index');
+        Route::post('documentos', [DocumentosMembrosController::class, 'store'])
+            ->middleware('permission.access:membros.ficha,edit')
+            ->name('membros.documentos.store');
+        Route::delete('documentos/{document}', [DocumentosMembrosController::class, 'destroy'])
+            ->middleware('permission.access:membros.ficha,delete')
+            ->name('membros.documentos.destroy');
         
-        Route::get('relacoes', [RelacoesMembroController::class, 'index'])->name('membros.relacoes.index');
-        Route::post('relacoes', [RelacoesMembroController::class, 'store'])->name('membros.relacoes.store');
-        Route::delete('relacoes/{relationship}', [RelacoesMembroController::class, 'destroy'])->name('membros.relacoes.destroy');
+        Route::get('relacoes', [RelacoesMembroController::class, 'index'])
+            ->middleware('permission.access:membros.ficha,view')
+            ->name('membros.relacoes.index');
+        Route::post('relacoes', [RelacoesMembroController::class, 'store'])
+            ->middleware('permission.access:membros.ficha,edit')
+            ->name('membros.relacoes.store');
+        Route::delete('relacoes/{relationship}', [RelacoesMembroController::class, 'destroy'])
+            ->middleware('permission.access:membros.ficha,delete')
+            ->name('membros.relacoes.destroy');
+        Route::post('send-access-email', [MembrosController::class, 'sendAccessEmail'])
+            ->middleware('permission.access:membros.ficha,edit')
+            ->name('membros.send-access-email');
     });
     
-    Route::resource('eventos', EventosController::class)->except(['create']);
+    Route::resource('eventos', EventosController::class)
+        ->middleware('module.access:eventos')
+        ->middlewareFor(['index', 'show'], 'permission.access:eventos.calendario,view')
+        ->middlewareFor(['store', 'edit', 'update'], 'permission.access:eventos.calendario,edit')
+        ->middlewareFor(['destroy'], 'permission.access:eventos.calendario,delete')
+        ->except(['create']);
     
     // Event participant management routes
-    Route::post('eventos/{event}/participantes', [EventosController::class, 'addParticipant'])->name('eventos.participantes.add');
-    Route::delete('eventos/{event}/participantes/{user}', [EventosController::class, 'removeParticipant'])->name('eventos.participantes.remove');
-    Route::put('eventos/{event}/participantes/{user}', [EventosController::class, 'updateParticipantStatus'])->name('eventos.participantes.update');
-    Route::get('eventos-stats', [EventosController::class, 'stats'])->name('eventos.stats');
+    Route::post('eventos/{event}/participantes', [EventosController::class, 'addParticipant'])
+        ->middleware(['module.access:eventos', 'permission.access:eventos.convocatorias,edit'])
+        ->name('eventos.participantes.add');
+    Route::delete('eventos/{event}/participantes/{user}', [EventosController::class, 'removeParticipant'])
+        ->middleware(['module.access:eventos', 'permission.access:eventos.convocatorias,delete'])
+        ->name('eventos.participantes.remove');
+    Route::put('eventos/{event}/participantes/{user}', [EventosController::class, 'updateParticipantStatus'])
+        ->middleware(['module.access:eventos', 'permission.access:eventos.convocatorias,edit'])
+        ->name('eventos.participantes.update');
+    Route::get('eventos-stats', [EventosController::class, 'stats'])
+        ->middleware(['module.access:eventos', 'permission.access:eventos.resultados,view'])
+        ->name('eventos.stats');
     
     // Desportivo routes with tabs
-    Route::prefix('desportivo')->group(function () {
-        Route::get('/', [DesportivoController::class, 'index'])->name('desportivo.index');
-        Route::get('planeamento', [DesportivoController::class, 'planeamento'])->name('desportivo.planeamento');
-        Route::get('treinos', [DesportivoController::class, 'treinos'])->name('desportivo.treinos');
-        Route::get('presencas', [DesportivoController::class, 'presencas'])->name('desportivo.presencas');
-        Route::get('cais', [DesportivoController::class, 'cais'])->name('desportivo.cais');
-        Route::get('competicoes', [DesportivoController::class, 'competicoes'])->name('desportivo.competicoes');
-        Route::get('relatorios', [DesportivoController::class, 'relatorios'])->name('desportivo.relatorios');
+    Route::prefix('desportivo')->middleware('module.access:desportivo')->group(function () {
+        Route::get('/', [DesportivoController::class, 'index'])->middleware('permission.access:desportivo.dashboard,view')->name('desportivo.index');
+        Route::get('planeamento', [DesportivoController::class, 'planeamento'])->middleware('permission.access:desportivo.planeamento,view')->name('desportivo.planeamento');
+        Route::get('treinos', [DesportivoController::class, 'treinos'])->middleware('permission.access:desportivo.treinos,view')->name('desportivo.treinos');
+        Route::get('presencas', [DesportivoController::class, 'presencas'])->middleware('permission.access:desportivo.presencas,view')->name('desportivo.presencas');
+        Route::get('cais', [DesportivoController::class, 'cais'])->middleware('permission.access:desportivo.treinos.cais,view')->name('desportivo.cais');
+        Route::get('competicoes', [DesportivoController::class, 'competicoes'])->middleware('permission.access:desportivo.competicoes,view')->name('desportivo.competicoes');
+        Route::get('relatorios', [DesportivoController::class, 'relatorios'])->middleware('permission.access:desportivo.resultados,view')->name('desportivo.relatorios');
         
         // Season (Época) operations
-        Route::post('epocas', [DesportivoController::class, 'storeSeason'])->name('desportivo.epoca.store');
-        Route::put('epocas/{season}', [DesportivoController::class, 'updateSeason'])->name('desportivo.epoca.update');
-        Route::delete('epocas/{season}', [DesportivoController::class, 'deleteSeason'])->name('desportivo.epoca.delete');
-        Route::post('macrociclos', [DesportivoController::class, 'storeMacrocycle'])->name('desportivo.macrociclo.store');
-        Route::put('macrociclos/{macrocycle}', [DesportivoController::class, 'updateMacrocycle'])->name('desportivo.macrociclo.update');
-        Route::delete('macrociclos/{macrocycle}', [DesportivoController::class, 'deleteMacrocycle'])->name('desportivo.macrociclo.delete');
-        Route::post('mesociclos', [DesportivoController::class, 'storeMesocycle'])->name('desportivo.mesociclo.store');
-        Route::put('mesociclos/{mesocycle}', [DesportivoController::class, 'updateMesocycle'])->name('desportivo.mesociclo.update');
-        Route::delete('mesociclos/{mesocycle}', [DesportivoController::class, 'deleteMesocycle'])->name('desportivo.mesociclo.delete');
+        Route::post('epocas', [DesportivoController::class, 'storeSeason'])->middleware('permission.access:desportivo.planeamento,edit')->name('desportivo.epoca.store');
+        Route::put('epocas/{season}', [DesportivoController::class, 'updateSeason'])->middleware('permission.access:desportivo.planeamento,edit')->name('desportivo.epoca.update');
+        Route::delete('epocas/{season}', [DesportivoController::class, 'deleteSeason'])->middleware('permission.access:desportivo.planeamento,delete')->name('desportivo.epoca.delete');
+        Route::post('macrociclos', [DesportivoController::class, 'storeMacrocycle'])->middleware('permission.access:desportivo.planeamento,edit')->name('desportivo.macrociclo.store');
+        Route::put('macrociclos/{macrocycle}', [DesportivoController::class, 'updateMacrocycle'])->middleware('permission.access:desportivo.planeamento,edit')->name('desportivo.macrociclo.update');
+        Route::delete('macrociclos/{macrocycle}', [DesportivoController::class, 'deleteMacrocycle'])->middleware('permission.access:desportivo.planeamento,delete')->name('desportivo.macrociclo.delete');
+        Route::post('mesociclos', [DesportivoController::class, 'storeMesocycle'])->middleware('permission.access:desportivo.planeamento,edit')->name('desportivo.mesociclo.store');
+        Route::put('mesociclos/{mesocycle}', [DesportivoController::class, 'updateMesocycle'])->middleware('permission.access:desportivo.planeamento,edit')->name('desportivo.mesociclo.update');
+        Route::delete('mesociclos/{mesocycle}', [DesportivoController::class, 'deleteMesocycle'])->middleware('permission.access:desportivo.planeamento,delete')->name('desportivo.mesociclo.delete');
         
         // Training operations
-        Route::post('treinos', [DesportivoController::class, 'storeTraining'])->name('desportivo.treino.store');
-        Route::post('treinos/{training}/agendar', [DesportivoController::class, 'scheduleTraining'])->name('desportivo.treino.schedule');
-        Route::put('treinos/{training}', [DesportivoController::class, 'updateTraining'])->name('desportivo.treino.update');
-        Route::post('treinos/{training}/duplicar', [DesportivoController::class, 'duplicateTraining'])->name('desportivo.treino.duplicate');
-        Route::delete('treinos/{training}', [DesportivoController::class, 'deleteTraining'])->name('desportivo.treino.delete');
+        Route::post('treinos', [DesportivoController::class, 'storeTraining'])->middleware('permission.access:desportivo.treinos.agendamento,edit')->name('desportivo.treino.store');
+        Route::post('treinos/{training}/agendar', [DesportivoController::class, 'scheduleTraining'])->middleware('permission.access:desportivo.treinos.agendamento,edit')->name('desportivo.treino.schedule');
+        Route::put('treinos/{training}', [DesportivoController::class, 'updateTraining'])->middleware('permission.access:desportivo.treinos.agendamento,edit')->name('desportivo.treino.update');
+        Route::post('treinos/{training}/duplicar', [DesportivoController::class, 'duplicateTraining'])->middleware('permission.access:desportivo.treinos.agendamento,edit')->name('desportivo.treino.duplicate');
+        Route::delete('treinos/{training}', [DesportivoController::class, 'deleteTraining'])->middleware('permission.access:desportivo.treinos.agendamento,delete')->name('desportivo.treino.delete');
         
         // Presence operations
-            Route::put('treinos/{training}/presencas', [DesportivoController::class, 'updateTrainingPresencas'])->name('desportivo.treino.presencas.update');
-            Route::post('treinos/{training}/atletas', [DesportivoController::class, 'addAthleteToTraining'])->name('desportivo.treino.atleta.add');
-            Route::delete('treinos/{training}/atletas/{user}', [DesportivoController::class, 'removeAthleteFromTraining'])->name('desportivo.treino.atleta.remove');
+            Route::put('treinos/{training}/presencas', [DesportivoController::class, 'updateTrainingPresencas'])->middleware('permission.access:desportivo.presencas,edit')->name('desportivo.treino.presencas.update');
+            Route::post('treinos/{training}/atletas', [DesportivoController::class, 'addAthleteToTraining'])->middleware('permission.access:desportivo.treinos.agendamento,edit')->name('desportivo.treino.atleta.add');
+            Route::delete('treinos/{training}/atletas/{user}', [DesportivoController::class, 'removeAthleteFromTraining'])->middleware('permission.access:desportivo.treinos.agendamento,delete')->name('desportivo.treino.atleta.remove');
 
             // Presence operations
-        Route::put('presencas', [DesportivoController::class, 'updatePresencas'])->name('desportivo.presencas.update');
-        Route::post('presencas/marcar-presentes', [DesportivoController::class, 'markAllPresent'])->name('desportivo.presencas.mark-all-present');
-        Route::post('presencas/limpar', [DesportivoController::class, 'clearAllPresences'])->name('desportivo.presencas.clear-all');
-        Route::get('cais/metricas', [DesportivoController::class, 'getCaisMetrics'])->name('desportivo.cais.metrics.index');
-        Route::post('cais/metricas', [DesportivoController::class, 'storeCaisMetrics'])->name('desportivo.cais.metrics.store');
+        Route::put('presencas', [DesportivoController::class, 'updatePresencas'])->middleware('permission.access:desportivo.presencas,edit')->name('desportivo.presencas.update');
+        Route::post('presencas/marcar-presentes', [DesportivoController::class, 'markAllPresent'])->middleware('permission.access:desportivo.presencas,edit')->name('desportivo.presencas.mark-all-present');
+        Route::post('presencas/limpar', [DesportivoController::class, 'clearAllPresences'])->middleware('permission.access:desportivo.presencas,edit')->name('desportivo.presencas.clear-all');
+        Route::get('cais/metricas', [DesportivoController::class, 'getCaisMetrics'])->middleware('permission.access:desportivo.treinos.cais,view')->name('desportivo.cais.metrics.index');
+        Route::post('cais/metricas', [DesportivoController::class, 'storeCaisMetrics'])->middleware('permission.access:desportivo.treinos.cais,edit')->name('desportivo.cais.metrics.store');
     });
     
-    Route::resource('financeiro', FinanceiroController::class)->except(['create']);
-    Route::prefix('logistica')->group(function () {
+    Route::resource('financeiro', FinanceiroController::class)
+        ->middleware('module.access:financeiro')
+        ->middlewareFor(['index', 'show'], 'permission.access:financeiro.dashboard,view')
+        ->middlewareFor(['store', 'edit', 'update'], 'permission.access:financeiro.dashboard,edit')
+        ->middlewareFor(['destroy'], 'permission.access:financeiro.dashboard,delete')
+        ->except(['create']);
+    Route::prefix('logistica')->middleware('module.access:logistica')->group(function () {
         Route::get('/', [LogisticaController::class, 'index'])->name('logistica.index');
         Route::post('/requisicoes', [LogisticaController::class, 'storeRequest'])->name('logistica.requisicoes.store');
         Route::put('/requisicoes/{logisticsRequest}', [LogisticaController::class, 'updateRequest'])->name('logistica.requisicoes.update');
@@ -133,8 +167,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('/fornecedores/compras/{supplierPurchase}', [LogisticaController::class, 'updateSupplierPurchase'])->name('logistica.fornecedores.compras.update');
         Route::delete('/fornecedores/compras/{supplierPurchase}', [LogisticaController::class, 'destroySupplierPurchase'])->name('logistica.fornecedores.compras.destroy');
     });
-    Route::post('financeiro/{financeiro}/apagar', [FinanceiroController::class, 'destroy'])->name('financeiro.destroy.post');
-    Route::prefix('loja')->group(function () {
+    Route::post('financeiro/{financeiro}/apagar', [FinanceiroController::class, 'destroy'])
+        ->middleware(['module.access:financeiro', 'permission.access:financeiro.dashboard,delete'])
+        ->name('financeiro.destroy.post');
+    Route::prefix('loja')->middleware('module.access:loja')->group(function () {
         Route::get('/', [StoreController::class, 'index'])->name('loja.index');
         Route::get('/pedidos', [StoreController::class, 'orders'])->name('loja.pedidos');
 
@@ -146,55 +182,61 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('/pedidos/{storeOrder}', [StoreOrderController::class, 'update'])->name('loja.orders.update');
         Route::delete('/pedidos/{storeOrder}', [StoreOrderController::class, 'destroy'])->name('loja.orders.destroy');
     });
-    Route::prefix('patrocinios')->group(function () {
+    Route::prefix('patrocinios')->middleware('module.access:patrocinios')->group(function () {
         Route::get('/integracoes', [PatrocinosController::class, 'integrationsIndex'])->name('patrocinios.integrations.index');
         Route::post('/{patrocinio}/integracoes/retry', [PatrocinosController::class, 'retry'])->name('patrocinios.integrations.retry');
         Route::post('/{patrocinio}/fechar', [PatrocinosController::class, 'close'])->name('patrocinios.close');
         Route::post('/{patrocinio}/cancelar', [PatrocinosController::class, 'cancel'])->name('patrocinios.cancel');
     });
-    Route::resource('patrocinios', PatrocinosController::class);
-    Route::get('/comunicacao', [ComunicacaoController::class, 'index'])->name('comunicacao.index');
+    Route::resource('patrocinios', PatrocinosController::class)->middleware('module.access:patrocinios');
+    Route::get('/comunicacao', [ComunicacaoController::class, 'index'])->middleware('module.access:comunicacao')->name('comunicacao.index');
 
-    Route::post('/comunicacao/campaigns', [CommunicationCampaignController::class, 'store'])->name('comunicacao.campaigns.store');
-    Route::put('/comunicacao/campaigns/{campaign}', [CommunicationCampaignController::class, 'update'])->name('comunicacao.campaigns.update');
-    Route::post('/comunicacao/campaigns/{campaign}/duplicate', [CommunicationCampaignController::class, 'duplicate'])->name('comunicacao.campaigns.duplicate');
-    Route::post('/comunicacao/campaigns/{campaign}/send', [CommunicationCampaignController::class, 'send'])->name('comunicacao.campaigns.send');
-    Route::post('/comunicacao/campaigns/{campaign}/schedule', [CommunicationCampaignController::class, 'schedule'])->name('comunicacao.campaigns.schedule');
-    Route::post('/comunicacao/campaigns/{campaign}/cancel', [CommunicationCampaignController::class, 'cancel'])->name('comunicacao.campaigns.cancel');
-    Route::delete('/comunicacao/campaigns/{campaign}', [CommunicationCampaignController::class, 'destroy'])->name('comunicacao.campaigns.destroy');
-    Route::post('/comunicacao/campaigns/send-individual', [CommunicationCampaignController::class, 'sendIndividual'])->name('comunicacao.campaigns.sendIndividual');
+    Route::post('/comunicacao/campaigns', [CommunicationCampaignController::class, 'store'])->middleware('module.access:comunicacao')->name('comunicacao.campaigns.store');
+    Route::put('/comunicacao/campaigns/{campaign}', [CommunicationCampaignController::class, 'update'])->middleware('module.access:comunicacao')->name('comunicacao.campaigns.update');
+    Route::post('/comunicacao/campaigns/{campaign}/duplicate', [CommunicationCampaignController::class, 'duplicate'])->middleware('module.access:comunicacao')->name('comunicacao.campaigns.duplicate');
+    Route::post('/comunicacao/campaigns/{campaign}/send', [CommunicationCampaignController::class, 'send'])->middleware('module.access:comunicacao')->name('comunicacao.campaigns.send');
+    Route::post('/comunicacao/campaigns/{campaign}/schedule', [CommunicationCampaignController::class, 'schedule'])->middleware('module.access:comunicacao')->name('comunicacao.campaigns.schedule');
+    Route::post('/comunicacao/campaigns/{campaign}/cancel', [CommunicationCampaignController::class, 'cancel'])->middleware('module.access:comunicacao')->name('comunicacao.campaigns.cancel');
+    Route::delete('/comunicacao/campaigns/{campaign}', [CommunicationCampaignController::class, 'destroy'])->middleware('module.access:comunicacao')->name('comunicacao.campaigns.destroy');
+    Route::post('/comunicacao/campaigns/send-individual', [CommunicationCampaignController::class, 'sendIndividual'])->middleware('module.access:comunicacao')->name('comunicacao.campaigns.sendIndividual');
 
-    Route::get('/comunicacao/deliveries', [CommunicationDeliveryController::class, 'index'])->name('comunicacao.deliveries.index');
+    Route::get('/comunicacao/deliveries', [CommunicationDeliveryController::class, 'index'])->middleware('module.access:comunicacao')->name('comunicacao.deliveries.index');
 
-    Route::get('/comunicacao/templates', [CommunicationTemplateController::class, 'index'])->name('comunicacao.templates.index');
-    Route::post('/comunicacao/templates', [CommunicationTemplateController::class, 'store'])->name('comunicacao.templates.store');
-    Route::put('/comunicacao/templates/{template}', [CommunicationTemplateController::class, 'update'])->name('comunicacao.templates.update');
-    Route::post('/comunicacao/templates/{template}/duplicate', [CommunicationTemplateController::class, 'duplicate'])->name('comunicacao.templates.duplicate');
-    Route::post('/comunicacao/templates/{template}/toggle', [CommunicationTemplateController::class, 'toggle'])->name('comunicacao.templates.toggle');
-    Route::delete('/comunicacao/templates/{template}', [CommunicationTemplateController::class, 'destroy'])->name('comunicacao.templates.destroy');
+    Route::get('/comunicacao/templates', [CommunicationTemplateController::class, 'index'])->middleware('module.access:comunicacao')->name('comunicacao.templates.index');
+    Route::post('/comunicacao/templates', [CommunicationTemplateController::class, 'store'])->middleware('module.access:comunicacao')->name('comunicacao.templates.store');
+    Route::put('/comunicacao/templates/{template}', [CommunicationTemplateController::class, 'update'])->middleware('module.access:comunicacao')->name('comunicacao.templates.update');
+    Route::post('/comunicacao/templates/{template}/duplicate', [CommunicationTemplateController::class, 'duplicate'])->middleware('module.access:comunicacao')->name('comunicacao.templates.duplicate');
+    Route::post('/comunicacao/templates/{template}/toggle', [CommunicationTemplateController::class, 'toggle'])->middleware('module.access:comunicacao')->name('comunicacao.templates.toggle');
+    Route::delete('/comunicacao/templates/{template}', [CommunicationTemplateController::class, 'destroy'])->middleware('module.access:comunicacao')->name('comunicacao.templates.destroy');
 
-    Route::get('/comunicacao/segments', [CommunicationSegmentController::class, 'index'])->name('comunicacao.segments.index');
-    Route::post('/comunicacao/segments', [CommunicationSegmentController::class, 'store'])->name('comunicacao.segments.store');
-    Route::put('/comunicacao/segments/{segment}', [CommunicationSegmentController::class, 'update'])->name('comunicacao.segments.update');
-    Route::delete('/comunicacao/segments/{segment}', [CommunicationSegmentController::class, 'destroy'])->name('comunicacao.segments.destroy');
+    Route::get('/comunicacao/segments', [CommunicationSegmentController::class, 'index'])->middleware('module.access:comunicacao')->name('comunicacao.segments.index');
+    Route::post('/comunicacao/segments', [CommunicationSegmentController::class, 'store'])->middleware('module.access:comunicacao')->name('comunicacao.segments.store');
+    Route::put('/comunicacao/segments/{segment}', [CommunicationSegmentController::class, 'update'])->middleware('module.access:comunicacao')->name('comunicacao.segments.update');
+    Route::delete('/comunicacao/segments/{segment}', [CommunicationSegmentController::class, 'destroy'])->middleware('module.access:comunicacao')->name('comunicacao.segments.destroy');
 
-    Route::get('/comunicacao/alerts', [CommunicationAlertController::class, 'index'])->name('comunicacao.alerts.index');
-    Route::post('/comunicacao/alerts/mark-read', [CommunicationAlertController::class, 'markRead'])->name('comunicacao.alerts.markRead');
-    Route::post('/comunicacao/alerts/mark-unread', [CommunicationAlertController::class, 'markUnread'])->name('comunicacao.alerts.markUnread');
-    Route::post('/comunicacao/alerts/mark-all-read', [CommunicationAlertController::class, 'markAllRead'])->name('comunicacao.alerts.markAllRead');
-    Route::delete('/comunicacao/alerts/{alert}', [CommunicationAlertController::class, 'destroy'])->name('comunicacao.alerts.destroy');
+    Route::get('/comunicacao/alerts', [CommunicationAlertController::class, 'index'])->middleware('module.access:comunicacao')->name('comunicacao.alerts.index');
+    Route::post('/comunicacao/alerts/mark-read', [CommunicationAlertController::class, 'markRead'])->middleware('module.access:comunicacao')->name('comunicacao.alerts.markRead');
+    Route::post('/comunicacao/alerts/mark-unread', [CommunicationAlertController::class, 'markUnread'])->middleware('module.access:comunicacao')->name('comunicacao.alerts.markUnread');
+    Route::post('/comunicacao/alerts/mark-all-read', [CommunicationAlertController::class, 'markAllRead'])->middleware('module.access:comunicacao')->name('comunicacao.alerts.markAllRead');
+    Route::delete('/comunicacao/alerts/{alert}', [CommunicationAlertController::class, 'destroy'])->middleware('module.access:comunicacao')->name('comunicacao.alerts.destroy');
 
-    Route::resource('campanhas-marketing', CampanhasMarketingController::class);
+    Route::resource('campanhas-marketing', CampanhasMarketingController::class)->middleware('module.access:marketing');
     
     // Settings routes
-    Route::get('/configuracoes', [ConfiguracoesController::class, 'index'])->name('configuracoes');
+    Route::get('/configuracoes', [ConfiguracoesController::class, 'index'])
+        ->middleware('module.access:configuracoes')
+        ->name('configuracoes');
     Route::get('/configuracoes/desportivo', [ConfiguracoesDesportivoController::class, 'index'])
+        ->middleware(['module.access:configuracoes', 'permission.access:configuracoes.estados,view'])
         ->name('configuracoes.desportivo.index');
     Route::post('/configuracoes/desportivo/estados-atleta', [ConfiguracoesDesportivoController::class, 'storeAthleteStatus'])
+        ->middleware(['module.access:configuracoes', 'permission.access:configuracoes.estados,edit'])
         ->name('configuracoes.desportivo.estados-atleta.store');
     Route::put('/configuracoes/desportivo/estados-atleta/{athleteStatus}', [ConfiguracoesDesportivoController::class, 'updateAthleteStatus'])
+        ->middleware(['module.access:configuracoes', 'permission.access:configuracoes.estados,edit'])
         ->name('configuracoes.desportivo.estados-atleta.update');
     Route::delete('/configuracoes/desportivo/estados-atleta/{athleteStatus}', [ConfiguracoesDesportivoController::class, 'destroyAthleteStatus'])
+        ->middleware(['module.access:configuracoes', 'permission.access:configuracoes.estados,delete'])
         ->name('configuracoes.desportivo.estados-atleta.destroy');
     Route::post('/configuracoes/desportivo/tipos-treino', [ConfiguracoesDesportivoController::class, 'storeTrainingType'])
         ->name('configuracoes.desportivo.tipos-treino.store');
@@ -228,9 +270,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('configuracoes.desportivo.tipos-piscina.destroy');
     
     // Settings CRUD sub-routes
-    Route::post('/configuracoes/tipos-utilizador', [ConfiguracoesController::class, 'storeUserType'])->name('configuracoes.tipos-utilizador.store');
-    Route::put('/configuracoes/tipos-utilizador/{userType}', [ConfiguracoesController::class, 'updateUserType'])->name('configuracoes.tipos-utilizador.update');
-    Route::delete('/configuracoes/tipos-utilizador/{userType}', [ConfiguracoesController::class, 'destroyUserType'])->name('configuracoes.tipos-utilizador.destroy');
+    Route::post('/configuracoes/tipos-utilizador', [ConfiguracoesController::class, 'storeUserType'])->middleware(['module.access:configuracoes', 'permission.access:configuracoes.tipos_utilizador,edit'])->name('configuracoes.tipos-utilizador.store');
+    Route::put('/configuracoes/tipos-utilizador/{userType}', [ConfiguracoesController::class, 'updateUserType'])->middleware(['module.access:configuracoes', 'permission.access:configuracoes.tipos_utilizador,edit'])->name('configuracoes.tipos-utilizador.update');
+    Route::delete('/configuracoes/tipos-utilizador/{userType}', [ConfiguracoesController::class, 'destroyUserType'])->middleware(['module.access:configuracoes', 'permission.access:configuracoes.tipos_utilizador,delete'])->name('configuracoes.tipos-utilizador.destroy');
     
     Route::post('/configuracoes/escaloes', [ConfiguracoesController::class, 'storeAgeGroup'])->name('configuracoes.escaloes.store');
     Route::put('/configuracoes/escaloes/{ageGroup}', [ConfiguracoesController::class, 'updateAgeGroup'])->name('configuracoes.escaloes.update');
@@ -244,9 +286,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     
     Route::put('/configuracoes/clube', [ConfiguracoesController::class, 'updateClubSettings'])->name('configuracoes.clube.update');
 
-    Route::post('/configuracoes/permissoes', [ConfiguracoesController::class, 'storePermission'])->name('configuracoes.permissoes.store');
-    Route::put('/configuracoes/permissoes/{permission}', [ConfiguracoesController::class, 'updatePermission'])->name('configuracoes.permissoes.update');
-    Route::delete('/configuracoes/permissoes/{permission}', [ConfiguracoesController::class, 'destroyPermission'])->name('configuracoes.permissoes.destroy');
+    Route::post('/configuracoes/permissoes', [ConfiguracoesController::class, 'storePermission'])->middleware(['module.access:configuracoes', 'permission.access:configuracoes.permissoes,edit'])->name('configuracoes.permissoes.store');
+    Route::put('/configuracoes/permissoes/{permission}', [ConfiguracoesController::class, 'updatePermission'])->middleware(['module.access:configuracoes', 'permission.access:configuracoes.permissoes,edit'])->name('configuracoes.permissoes.update');
+    Route::delete('/configuracoes/permissoes/{permission}', [ConfiguracoesController::class, 'destroyPermission'])->middleware(['module.access:configuracoes', 'permission.access:configuracoes.permissoes,delete'])->name('configuracoes.permissoes.destroy');
 
     Route::post('/configuracoes/centros-custo', [ConfiguracoesController::class, 'storeCostCenter'])->name('configuracoes.centros-custo.store');
     Route::put('/configuracoes/centros-custo/{costCenter}', [ConfiguracoesController::class, 'updateCostCenter'])->name('configuracoes.centros-custo.update');

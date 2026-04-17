@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreMembroRequest;
 use App\Http\Requests\UpdateMemberRequest;
 use App\Models\User;
+use App\Notifications\MemberAccessSetupNotification;
 use App\Models\UserType;
 use App\Models\AgeGroup;
 use App\Models\CostCenter;
@@ -18,7 +19,9 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 
@@ -171,15 +174,7 @@ class MembrosController extends Controller
                 $data['numero_socio'] = $this->generateMemberNumber();
             }
 
-            // Ensure core auth fields exist
-            if (empty($data['name'])) {
-                $data['name'] = $data['nome_completo'] ?? 'Membro';
-            }
-
-            if (empty($data['email'])) {
-                $baseEmail = $data['email_utilizador'] ?? null;
-                $data['email'] = $baseEmail ?: ('member+' . Str::uuid() . '@local.test');
-            }
+            $data = $this->syncAuthIdentityFields($data);
             
             // Auto-calculate menor field (age < 18)
             if (isset($data['data_nascimento'])) {
@@ -508,6 +503,8 @@ class MembrosController extends Controller
                 $data['declaracao_transporte'] = $this->storeFile($data['declaracao_transporte'], 'members/transport');
             }
             
+            $data = $this->syncAuthIdentityFields($data, $member);
+
             $member->update($data);
 
             if (array_key_exists('tipo_mensalidade', $data) || array_key_exists('conta_corrente_manual', $data)) {
@@ -594,6 +591,36 @@ class MembrosController extends Controller
                 ->with('error', 'Erro ao eliminar membro: ' . $e->getMessage());
         }
     }
+
+    public function sendAccessEmail(Request $request, User $member): RedirectResponse
+    {
+        $validated = $request->validate([
+            'email_utilizador' => [
+                'required',
+                'string',
+                'email',
+                'max:255',
+                Rule::unique('users', 'email_utilizador')->ignore($member->id),
+                Rule::unique('users', 'email')->ignore($member->id),
+            ],
+        ], [
+            'email_utilizador.required' => 'O email de autenticação é obrigatório para enviar o acesso.',
+            'email_utilizador.email' => 'O email de autenticação deve ser válido.',
+            'email_utilizador.unique' => 'Este email já está em uso por outro utilizador.',
+        ]);
+
+        $member->forceFill(
+            $this->syncAuthIdentityFields([
+                'nome_completo' => $member->nome_completo,
+                'email_utilizador' => $validated['email_utilizador'],
+            ], $member)
+        )->save();
+
+        $token = Password::broker()->createToken($member);
+        $member->notify(new MemberAccessSetupNotification($token));
+
+        return back()->with('success', 'Email de acesso enviado com sucesso.');
+    }
     
     // Helper methods
 
@@ -605,6 +632,27 @@ class MembrosController extends Controller
         $normalized = array_map('strval', $ids ?? []);
         $normalized = array_filter($normalized, fn ($id) => $id !== '');
         return array_values(array_unique($normalized));
+    }
+
+    private function syncAuthIdentityFields(array $data, ?User $member = null): array
+    {
+        if (!empty($data['nome_completo'])) {
+            $data['name'] = $data['nome_completo'];
+        } elseif (!$member && empty($data['name'])) {
+            $data['name'] = 'Membro';
+        }
+
+        if (array_key_exists('email_utilizador', $data)) {
+            $emailUtilizador = trim((string) ($data['email_utilizador'] ?? ''));
+            $data['email_utilizador'] = $emailUtilizador !== '' ? $emailUtilizador : null;
+            $data['email'] = $emailUtilizador !== ''
+                ? $emailUtilizador
+                : ('member+' . Str::uuid() . '@local.test');
+        } elseif (!$member && empty($data['email'])) {
+            $data['email'] = 'member+' . Str::uuid() . '@local.test';
+        }
+
+        return $data;
     }
 
     /**

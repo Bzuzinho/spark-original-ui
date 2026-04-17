@@ -1,5 +1,6 @@
 import { Head } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { moduleScrollableContentClass, moduleViewportClass } from '@/lib/module-layout';
 
 export default function FinanceiroEditPage() {
     return (
@@ -13,9 +14,11 @@ export default function FinanceiroEditPage() {
         >
             <Head title="Financeiro - Edit" />
 
-            <div className="p-4 sm:p-6">
-                <div className="rounded-lg border bg-card p-4 text-sm text-muted-foreground">
-                    Pagina Financeiro (Edit) em desenvolvimento.
+            <div className={moduleViewportClass}>
+                <div className={moduleScrollableContentClass}>
+                    <div className="rounded-lg border bg-card p-4 text-sm text-muted-foreground sm:p-6">
+                        Pagina Financeiro (Edit) em desenvolvimento.
+                    </div>
                 </div>
             </div>
         </AuthenticatedLayout>

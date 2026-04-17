@@ -1,6 +1,7 @@
 import { FormEventHandler } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { moduleScrollableContentClass, moduleViewportClass } from '@/lib/module-layout';
 import { Button } from '@/Components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import { Input } from '@/Components/ui/input';
@@ -196,8 +197,8 @@ export default function MembrosEdit({
         >
             <Head title={`Editar ${member.nome_completo || member.name}`} />
 
-            <div className="py-6">
-                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
+            <div className={moduleViewportClass}>
+                <div className={`${moduleScrollableContentClass} max-w-7xl mx-auto sm:px-6 lg:px-8 py-6`}>
                     <form onSubmit={handleSubmit} className="space-y-6">
                         {/* Exibir erros de validação */}
                         {Object.keys(errors).length > 0 && (

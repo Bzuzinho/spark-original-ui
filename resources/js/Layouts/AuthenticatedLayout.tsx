@@ -8,6 +8,7 @@ import {
     ShoppingCart,
     CurrencyCircleDollar,
     Handshake,
+    MegaphoneSimple,
     House,
     List,
     X,
@@ -57,6 +58,16 @@ interface PageProps {
     auth: {
         user: User;
     };
+    accessControl?: {
+        currentUserType?: {
+            id: string;
+            nome: string;
+        } | null;
+        visibleMenuModules?: string[];
+        landingPage?: {
+            route: string;
+        };
+    };
     clubSettings?: {
         nome_clube?: string | null;
         sigla?: string | null;
@@ -69,19 +80,20 @@ interface PageProps {
 }
 
 const mainMenuItems = [
-    { id: 'dashboard', label: 'Início', icon: House, route: '/dashboard' },
-    { id: 'membros', label: 'Membros', icon: Users, route: '/membros' },
-    { id: 'desportivo', label: 'Desportivo', icon: Trophy, route: '/desportivo' },
-    { id: 'eventos', label: 'Eventos', icon: CalendarBlank, route: '/eventos' },
-    { id: 'financeiro', label: 'Financeiro', icon: CurrencyCircleDollar, route: '/financeiro' },
-    { id: 'logistica', label: 'Logística', icon: Package, route: '/logistica' },
-    { id: 'loja', label: 'Loja', icon: ShoppingCart, route: '/loja' },
-    { id: 'patrocinios', label: 'Patrocínios', icon: Handshake, route: '/patrocinios' },
-    { id: 'comunicacao', label: 'Comunicação', icon: Envelope, route: '/comunicacao' },
+    { id: 'dashboard', moduleKey: 'inicio', label: 'Início', icon: House, route: '/dashboard' },
+    { id: 'membros', moduleKey: 'membros', label: 'Membros', icon: Users, route: '/membros' },
+    { id: 'desportivo', moduleKey: 'desportivo', label: 'Desportivo', icon: Trophy, route: '/desportivo' },
+    { id: 'eventos', moduleKey: 'eventos', label: 'Eventos', icon: CalendarBlank, route: '/eventos' },
+    { id: 'financeiro', moduleKey: 'financeiro', label: 'Financeiro', icon: CurrencyCircleDollar, route: '/financeiro' },
+    { id: 'logistica', moduleKey: 'logistica', label: 'Logística', icon: Package, route: '/logistica' },
+    { id: 'loja', moduleKey: 'loja', label: 'Loja', icon: ShoppingCart, route: '/loja' },
+    { id: 'patrocinios', moduleKey: 'patrocinios', label: 'Patrocínios', icon: Handshake, route: '/patrocinios' },
+    { id: 'comunicacao', moduleKey: 'comunicacao', label: 'Comunicação', icon: Envelope, route: '/comunicacao' },
+    { id: 'marketing', moduleKey: 'marketing', label: 'Marketing', icon: MegaphoneSimple, route: '/campanhas-marketing' },
 ];
 
 const settingsMenuItems = [
-    { id: 'configuracoes', label: 'Configurações', icon: Gear, route: '/configuracoes' },
+    { id: 'configuracoes', moduleKey: 'configuracoes', label: 'Configurações', icon: Gear, route: '/configuracoes' },
 ];
 
 export default function AuthenticatedLayout({ 
@@ -98,13 +110,18 @@ export default function AuthenticatedLayout({
     showSidebarPopupButton?: boolean;
     hideMobileHeader?: boolean;
 }>) {
-    const { auth, clubSettings, communicationAlerts } = usePage<PageProps>().props;
+    const { auth, accessControl, clubSettings, communicationAlerts } = usePage<PageProps>().props;
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [selectedAlertId, setSelectedAlertId] = useState<string | null>(null);
     const [isAlertDialogOpen, setIsAlertDialogOpen] = useState(false);
     const [alertAction, setAlertAction] = useState<'read' | 'unread' | 'delete' | null>(null);
     const currentRoute = route().current();
     const alerts = communicationAlerts?.recent ?? [];
+    const visibleMenuModules = new Set(
+        accessControl?.visibleMenuModules ?? [...mainMenuItems, ...settingsMenuItems].map((item) => item.moduleKey)
+    );
+    const filteredMainMenuItems = mainMenuItems.filter((item) => visibleMenuModules.has(item.moduleKey));
+    const filteredSettingsMenuItems = settingsMenuItems.filter((item) => visibleMenuModules.has(item.moduleKey));
     const unreadAlerts = alerts.filter((alert) => !alert.is_read);
     const selectedAlert = alerts.find((alert) => alert.id === selectedAlertId) ?? null;
 
@@ -203,16 +220,6 @@ export default function AuthenticatedLayout({
     };
 
     const handleOpenAlert = (alert: AlertItem) => {
-        if (alert.link) {
-            if (!alert.is_read) {
-                handleMarkRead(alert.id, () => router.visit(alert.link as string));
-                return;
-            }
-
-            router.visit(alert.link as string);
-            return;
-        }
-
         setSelectedAlertId(alert.id);
         setIsAlertDialogOpen(true);
 
@@ -302,7 +309,7 @@ export default function AuthenticatedLayout({
                     <nav className="flex-1 p-4 overflow-y-auto flex flex-col">
                         {/* Main Menu */}
                         <div className="space-y-1 flex-1">
-                            {mainMenuItems.map((item) => {
+                            {filteredMainMenuItems.map((item) => {
                                 const Icon = item.icon;
                                 const active = isActive(item.id);
 
@@ -329,7 +336,7 @@ export default function AuthenticatedLayout({
 
                         {/* Settings Menu */}
                         <div className="space-y-1">
-                            {settingsMenuItems.map((item) => {
+                            {filteredSettingsMenuItems.map((item) => {
                                 const Icon = item.icon;
                                 const active = isActive(item.id);
 

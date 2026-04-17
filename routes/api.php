@@ -23,6 +23,7 @@ use App\Http\Controllers\Api\CompetitionResultController;
 use App\Http\Controllers\Api\CompetitionRegistrationController;
 use App\Http\Controllers\Api\TeamResultController;
 use App\Http\Controllers\Api\PerformanceController;
+use App\Http\Controllers\Api\UserTypeAccessControlController;
 
 /*
 |--------------------------------------------------------------------------
@@ -57,6 +58,21 @@ Route::middleware(['auth'])->group(function () {
     Route::apiResource('event-types', TiposEventoController::class);
     Route::apiResource('cost-centers', CentrosCustoController::class);
     Route::apiResource('club-settings', ClubSettingController::class);
+
+    Route::prefix('access-control')->group(function () {
+        Route::get('catalog', [UserTypeAccessControlController::class, 'catalog'])
+            ->middleware(['module.access:configuracoes', 'permission.access:configuracoes.permissoes,view']);
+        Route::get('user-types', [UserTypeAccessControlController::class, 'userTypes'])
+            ->middleware(['module.access:configuracoes', 'permission.access:configuracoes.permissoes,view']);
+        Route::get('user-types/{userType}', [UserTypeAccessControlController::class, 'show'])
+            ->middleware(['module.access:configuracoes', 'permission.access:configuracoes.permissoes,view']);
+        Route::put('user-types/{userType}/menu-modules', [UserTypeAccessControlController::class, 'updateMenuModules'])
+            ->middleware(['module.access:configuracoes', 'permission.access:configuracoes.permissoes,edit']);
+        Route::put('user-types/{userType}/landing-page', [UserTypeAccessControlController::class, 'updateLandingPage'])
+            ->middleware(['module.access:configuracoes', 'permission.access:configuracoes.permissoes,edit']);
+        Route::put('user-types/{userType}/permissions', [UserTypeAccessControlController::class, 'updatePermissions'])
+            ->middleware(['module.access:configuracoes', 'permission.access:configuracoes.permissoes,edit']);
+    });
 
     // Desportivo Module APIs (Step 5-6)
     Route::prefix('desportivo')->group(function () {

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\UserType;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class TiposUtilizadorController extends Controller
 {
@@ -13,7 +14,7 @@ class TiposUtilizadorController extends Controller
      */
     public function index()
     {
-        return UserType::orderBy('name')->get();
+        return UserType::query()->orderBy('nome')->get();
     }
 
     /**
@@ -22,9 +23,10 @@ class TiposUtilizadorController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:user_types',
-            'description' => 'nullable|string',
-            'active' => 'boolean',
+            'codigo' => ['nullable', 'string', 'max:100', Rule::unique('user_types', 'codigo')],
+            'nome' => ['required', 'string', 'max:255', Rule::unique('user_types', 'nome')],
+            'descricao' => 'nullable|string',
+            'ativo' => 'boolean',
         ]);
 
         return UserType::create($validated);
@@ -44,9 +46,10 @@ class TiposUtilizadorController extends Controller
     public function update(Request $request, UserType $userType)
     {
         $validated = $request->validate([
-            'name' => 'sometimes|string|max:255|unique:user_types,name,' . $userType->id,
-            'description' => 'nullable|string',
-            'active' => 'boolean',
+            'codigo' => ['sometimes', 'nullable', 'string', 'max:100', Rule::unique('user_types', 'codigo')->ignore($userType->id)],
+            'nome' => ['sometimes', 'string', 'max:255', Rule::unique('user_types', 'nome')->ignore($userType->id)],
+            'descricao' => 'nullable|string',
+            'ativo' => 'boolean',
         ]);
 
         $userType->update($validated);

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Head } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { moduleTabbedContentClass, moduleTabsClass, moduleViewportClass } from '@/lib/module-layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs';
 import { ListChecks, CalendarBlank, ChartBar } from '@phosphor-icons/react';
 import {
@@ -106,9 +107,9 @@ export default function EventosIndex({
     >
       <Head title="Gestão de Eventos" />
 
-      <div className="w-full space-y-2 sm:space-y-3">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-3">
-          <TabsList className="grid w-full h-9 grid-cols-4 p-1">
+      <div className={moduleViewportClass}>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className={moduleTabsClass}>
+          <TabsList className="grid w-full shrink-0 h-9 grid-cols-4 p-1">
             <TabsTrigger
               value="dashboard"
               className="flex items-center gap-1.5 px-1 py-1 text-xs"
@@ -139,7 +140,7 @@ export default function EventosIndex({
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="dashboard" className="space-y-3">
+          <TabsContent value="dashboard" className={`${moduleTabbedContentClass} space-y-3`}>
             <EventosDashboard
               events={eventos}
               convocatorias={convocations}
@@ -147,7 +148,7 @@ export default function EventosIndex({
             />
           </TabsContent>
 
-          <TabsContent value="calendario" className="space-y-3">
+          <TabsContent value="calendario" className={`${moduleTabbedContentClass} space-y-3`}>
             <EventosCalendar
               events={eventos}
               ageGroups={ageGroups}
@@ -155,7 +156,7 @@ export default function EventosIndex({
             />
           </TabsContent>
 
-          <TabsContent value="eventos" className="space-y-3">
+          <TabsContent value="eventos" className={`${moduleTabbedContentClass} space-y-3`}>
             <EventosList
               events={eventos}
               users={users}
@@ -165,7 +166,7 @@ export default function EventosIndex({
             />
           </TabsContent>
 
-          <TabsContent value="relatorios" className="space-y-3">
+          <TabsContent value="relatorios" className={`${moduleTabbedContentClass} space-y-3`}>
             <EventosRelatorios
               events={eventos}
               convocatorias={convocations}
