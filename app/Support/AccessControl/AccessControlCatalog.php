@@ -37,6 +37,8 @@ final class AccessControlCatalog
                 'base_pages' => [
                     ['key' => 'membros_dashboard', 'label' => 'Dashboard de membros', 'route' => '/membros?tab=dashboard'],
                     ['key' => 'membros_lista', 'label' => 'Lista de membros', 'route' => '/membros?tab=list'],
+                    ['key' => 'membros_ficha_propria', 'label' => 'Ficha do próprio utilizador', 'route' => '/membros/__current__'],
+                    ['key' => 'membros_educando_principal', 'label' => 'Ficha do educando principal', 'route' => '/membros/__dependent__'],
                 ],
             ],
             [

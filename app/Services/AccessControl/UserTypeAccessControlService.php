@@ -10,6 +10,7 @@ use App\Models\UserTypeMenuModule;
 use App\Models\UserTypePermission;
 use App\Support\AccessControl\AccessControlCatalog;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class UserTypeAccessControlService
@@ -127,6 +128,12 @@ class UserTypeAccessControlService
 
     public function syncLandingPage(UserType $userType, string $landingModuleKey, string $basePageKey): array
     {
+        ['landing_module_key' => $landingModuleKey, 'base_page_key' => $basePageKey] = $this->normalizeLandingSelectionForUserType(
+            $userType,
+            $landingModuleKey,
+            $basePageKey,
+        );
+
         $basePage = AccessControlCatalog::findBasePage($landingModuleKey, $basePageKey);
 
         if ($basePage === null) {
@@ -213,6 +220,7 @@ class UserTypeAccessControlService
         }
 
         $settings = $this->getUserTypeSettings($userType);
+        $settings['landingPage']['route'] = $this->resolveLandingRoute($settings['landingPage'], $user);
 
         return [
             'currentUserType' => $settings['userType'],
@@ -327,13 +335,88 @@ class UserTypeAccessControlService
             return null;
         }
 
+        ['landing_module_key' => $landingModuleKey, 'base_page_key' => $basePageKey] = $this->normalizeLandingSelectionForUserType(
+            $userType,
+            $landing->landing_module_key,
+            $landing->base_page_key,
+        );
+
+        $module = AccessControlCatalog::findLandingModule($landingModuleKey);
+        $page = AccessControlCatalog::findBasePage($landingModuleKey, $basePageKey);
+
+        if ($module === null || $page === null) {
+            return null;
+        }
+
         return [
-            'landing_module_key' => $landing->landing_module_key,
+            'landing_module_key' => $landingModuleKey,
             'landing_module_label' => $module['module_label'],
-            'base_page_key' => $landing->base_page_key,
+            'base_page_key' => $basePageKey,
             'base_page_label' => $page['label'],
             'route' => $page['route'],
         ];
+    }
+
+    private function normalizeLandingSelectionForUserType(UserType $userType, string $landingModuleKey, string $basePageKey): array
+    {
+        if ($landingModuleKey === 'membros' && $this->isAthleteUserType($userType)) {
+            return [
+                'landing_module_key' => 'membros',
+                'base_page_key' => 'membros_ficha_propria',
+            ];
+        }
+
+        if ($landingModuleKey === 'membros' && $this->isGuardianUserType($userType)) {
+            return [
+                'landing_module_key' => 'membros',
+                'base_page_key' => 'membros_educando_principal',
+            ];
+        }
+
+        return [
+            'landing_module_key' => $landingModuleKey,
+            'base_page_key' => $basePageKey,
+        ];
+    }
+
+    private function resolveLandingRoute(array $landingPage, ?User $user): string
+    {
+        if (($landingPage['base_page_key'] ?? null) === 'membros_ficha_propria' && $user !== null) {
+            return route('membros.show', ['member' => $user->id]);
+        }
+
+        if (($landingPage['base_page_key'] ?? null) === 'membros_educando_principal' && $user !== null) {
+            $primaryDependentId = $user->educandos()
+                ->select('users.id')
+                ->orderBy('users.nome_completo')
+                ->value('users.id');
+
+            return route('membros.show', ['member' => $primaryDependentId ?: $user->id]);
+        }
+
+        return $landingPage['route'] ?? '/dashboard';
+    }
+
+    private function isAthleteUserType(UserType $userType): bool
+    {
+        $codigo = $this->normalizeUserTypeIdentifier($userType->codigo);
+        $nome = $this->normalizeUserTypeIdentifier($userType->nome);
+
+        return $codigo === 'atleta' || $nome === 'atleta';
+    }
+
+    private function isGuardianUserType(UserType $userType): bool
+    {
+        $codigo = $this->normalizeUserTypeIdentifier($userType->codigo);
+        $nome = $this->normalizeUserTypeIdentifier($userType->nome);
+
+        return in_array($codigo, ['encarregado_educacao', 'encarregado'], true)
+            || in_array($nome, ['encarregado_educacao', 'encarregado'], true);
+    }
+
+    private function normalizeUserTypeIdentifier(?string $value): string
+    {
+        return Str::of((string) $value)->lower()->ascii()->replaceMatches('/[^a-z0-9]+/', '_')->trim('_')->value();
     }
 
     private function isReady(): bool

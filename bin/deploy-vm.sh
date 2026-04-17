@@ -15,6 +15,7 @@ REMOTE_BACKEND_SCRIPT="/usr/local/bin/clubmanager-deploy-backend.sh"
 REMOTE_FRONTEND_SCRIPT="/usr/local/bin/clubmanager-frontend-reload.sh"
 REMOTE_HEALTHCHECK_SCRIPT="/usr/local/bin/clubmanager-healthcheck.sh"
 SYNC_MAIL_ENV="${SYNC_MAIL_ENV:-0}"
+APP_NAME="${APP_NAME:-ClubOS}"
 MAIL_MAILER="${MAIL_MAILER:-}"
 MAIL_HOST="${MAIL_HOST:-}"
 MAIL_PORT="${MAIL_PORT:-}"
@@ -95,6 +96,7 @@ upsert_env() {
   fi
 }
 
+upsert_env APP_NAME $(quote_env_value "${APP_NAME}")
 upsert_env MAIL_MAILER $(quote_env_value "${MAIL_MAILER}")
 upsert_env MAIL_HOST $(quote_env_value "${MAIL_HOST}")
 upsert_env MAIL_PORT $(quote_env_value "${MAIL_PORT}")
@@ -335,14 +337,23 @@ FRONTEND
 fi
 
 # --- clubmanager-healthcheck.sh ---
-if [[ ! -x /usr/local/bin/clubmanager-healthcheck.sh ]]; then
-  echo "  Criar /usr/local/bin/clubmanager-healthcheck.sh ..."
-  sudo tee /usr/local/bin/clubmanager-healthcheck.sh > /dev/null <<'HEALTH'
+echo "  Atualizar /usr/local/bin/clubmanager-healthcheck.sh ..."
+sudo tee /usr/local/bin/clubmanager-healthcheck.sh > /dev/null <<'HEALTH'
 #!/usr/bin/env bash
 set -euo pipefail
-HOST="${1:-localhost}"
-echo "[healthcheck] curl -Is http://${HOST}/ ..."
-RESPONSE="$(curl -Is --max-time 10 "http://${HOST}/" | head -1)"
+APP_DIR="${1:-/var/www/clubmanager}"
+TARGET_HOST="${HEALTHCHECK_HOST:-}"
+
+if [[ -z "${TARGET_HOST}" && -f "${APP_DIR}/.env" ]]; then
+  TARGET_HOST="$(sed -n 's/^APP_URL=//p' "${APP_DIR}/.env" | tail -n 1 | tr -d '"' | sed -E 's#^[a-zA-Z]+://([^/:]+).*#\1#')"
+fi
+
+if [[ -z "${TARGET_HOST}" ]]; then
+  TARGET_HOST="localhost"
+fi
+
+echo "[healthcheck] curl -Is http://127.0.0.1/ (Host: ${TARGET_HOST}) ..."
+RESPONSE="$(curl -Is --max-time 10 -H "Host: ${TARGET_HOST}" "http://127.0.0.1/" | head -1)"
 echo "[healthcheck] ${RESPONSE}"
 if echo "${RESPONSE}" | grep -qE "^HTTP/[0-9.]+ (200|301|302|303)"; then
   echo "[healthcheck] OK"
@@ -351,8 +362,7 @@ else
   exit 1
 fi
 HEALTH
-  sudo chmod +x /usr/local/bin/clubmanager-healthcheck.sh
-fi
+sudo chmod +x /usr/local/bin/clubmanager-healthcheck.sh
 
 echo "Scripts remotos OK"
 ENSURE_SCRIPTS
@@ -383,7 +393,7 @@ if ! vm_ssh "/usr/local/bin/clubmanager-frontend-reload.sh"; then
   exit 1
 fi
 
-if ! vm_ssh "/usr/local/bin/clubmanager-healthcheck.sh"; then
+if ! vm_ssh "/usr/local/bin/clubmanager-healthcheck.sh '${VM_APP_DIR}'"; then
   echo "❌ Healthcheck falhou."
   show_failure_logs
   exit 1

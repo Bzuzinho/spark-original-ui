@@ -55,6 +55,22 @@ export function UserTypePermissionSettings({ userTypes, bootstrap }: UserTypePer
   const [selectionState, setSelectionState] = useState<PermissionSelectionState>(
     createEmptyPermissionSelectionState(),
   );
+  const currentUserTypeCode = settings?.userType.codigo ?? null;
+
+  const getAvailableBasePages = (moduleKey: string) => {
+    const module = bootstrap.landingPages.find((item) => item.module_key === moduleKey);
+    const basePages = module?.base_pages ?? [];
+
+    if (currentUserTypeCode === 'atleta' && moduleKey === 'membros') {
+      return basePages.filter((page) => page.key === 'membros_ficha_propria');
+    }
+
+    if ((currentUserTypeCode === 'encarregado_educacao' || currentUserTypeCode === 'encarregado') && moduleKey === 'membros') {
+      return basePages.filter((page) => page.key === 'membros_educando_principal');
+    }
+
+    return basePages;
+  };
 
   useEffect(() => {
     if (!settings) {
@@ -71,11 +87,27 @@ export function UserTypePermissionSettings({ userTypes, bootstrap }: UserTypePer
     setSelectionState(mapPermissionsToSelectionState(settings.permissions));
   }, [settings]);
 
+  useEffect(() => {
+    if (!landingModuleKey) {
+      return;
+    }
+
+    const availableBasePages = getAvailableBasePages(landingModuleKey);
+
+    if (availableBasePages.length === 0) {
+      return;
+    }
+
+    if (!availableBasePages.some((page) => page.key === basePageKey)) {
+      setBasePageKey(availableBasePages[0].key);
+    }
+  }, [landingModuleKey, basePageKey, currentUserTypeCode]);
+
   const handleLandingModuleChange = (moduleKey: string) => {
-    const module = bootstrap.landingPages.find((item) => item.module_key === moduleKey);
+    const availableBasePages = getAvailableBasePages(moduleKey);
 
     setLandingModuleKey(moduleKey);
-    setBasePageKey(module?.base_pages[0]?.key ?? '');
+    setBasePageKey(availableBasePages[0]?.key ?? '');
   };
 
   const handleToggleMenuModule = (moduleKey: string, checked: boolean) => {
@@ -183,6 +215,7 @@ export function UserTypePermissionSettings({ userTypes, bootstrap }: UserTypePer
         landingPages={bootstrap.landingPages}
         selectedModuleKey={landingModuleKey}
         selectedBasePageKey={basePageKey}
+        currentUserTypeCode={currentUserTypeCode}
         onModuleChange={handleLandingModuleChange}
         onBasePageChange={setBasePageKey}
         onSave={handleSaveLandingPage}

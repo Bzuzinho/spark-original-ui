@@ -8,6 +8,7 @@ interface LandingPageSettingsProps {
   landingPages: AccessControlLandingModule[];
   selectedModuleKey: string;
   selectedBasePageKey: string;
+  currentUserTypeCode?: string | null;
   onModuleChange: (moduleKey: string) => void;
   onBasePageChange: (basePageKey: string) => void;
   onSave: () => void;
@@ -19,6 +20,7 @@ export function LandingPageSettings({
   landingPages,
   selectedModuleKey,
   selectedBasePageKey,
+  currentUserTypeCode,
   onModuleChange,
   onBasePageChange,
   onSave,
@@ -26,7 +28,23 @@ export function LandingPageSettings({
   saving = false,
 }: LandingPageSettingsProps) {
   const selectedModule = landingPages.find((module) => module.module_key === selectedModuleKey) ?? landingPages[0];
-  const basePages = selectedModule?.base_pages ?? [];
+  const isAthlete = currentUserTypeCode === 'atleta';
+  const isGuardian = currentUserTypeCode === 'encarregado_educacao' || currentUserTypeCode === 'encarregado';
+  const basePages = (selectedModule?.base_pages ?? []).filter((page) => {
+    if (selectedModule?.module_key !== 'membros') {
+      return true;
+    }
+
+    if (isAthlete) {
+      return page.key === 'membros_ficha_propria';
+    }
+
+    if (isGuardian) {
+      return page.key === 'membros_educando_principal';
+    }
+
+    return true;
+  });
 
   return (
     <Card>

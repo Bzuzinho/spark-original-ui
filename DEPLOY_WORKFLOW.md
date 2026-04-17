@@ -20,7 +20,7 @@ Executa `bin/deploy-vm.sh` que realiza todo o processo de forma automatizada e i
 | **[3/6]** | Configura SSH: gera chave ed25519, atualiza `known_hosts`, cria alias `clubmanager-vm` no `~/.ssh/config`, instala chave pública na VM |
 | **[4/6]** | Deploy backend na VM: `git pull`, `composer install`, `migrate`, `config/route/view:cache`, reload `php8.3-fpm`; cria scripts remotos se não existirem |
 | **[5/6]** | Copia `public/build/` do Codespace para `/var/www/clubmanager/public/` na VM via `scp` |
-| **[6/6]** | Reload nginx na VM + healthcheck via `curl` |
+| **[6/6]** | Reload nginx na VM + healthcheck via `curl`, usando o host configurado em `APP_URL` |
 
 ---
 
@@ -71,7 +71,7 @@ O deploy cria automaticamente em `/usr/local/bin/` (se não existirem):
 |--------|--------|
 | `clubmanager-deploy-backend.sh` | `git pull`, `composer install`, `migrate`, caches, reload php-fpm |
 | `clubmanager-frontend-reload.sh` | `systemctl reload nginx` |
-| `clubmanager-healthcheck.sh` | `curl -Is http://localhost/` e verifica 200/30x |
+| `clubmanager-healthcheck.sh` | `curl -Is http://127.0.0.1/` com `Host` derivado de `APP_URL`, e verifica 200/30x |
 
 ---
 
@@ -130,4 +130,4 @@ npm run deploy:vm
 🌍 Abre: http://129.159.13.211
 ```
 
-O healthcheck confirma que `curl -I http://localhost/` retorna `200` ou `30x` na VM.
+O healthcheck confirma que `curl -I http://127.0.0.1/` com o `Host` da aplicação retorna `200` ou `30x` na VM.
