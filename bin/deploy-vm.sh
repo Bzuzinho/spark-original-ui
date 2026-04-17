@@ -150,7 +150,7 @@ echo "    npm ci ..."
 npm ci
 
 echo "    npm run build ..."
-npm run build
+NODE_OPTIONS="--max-old-space-size=4096" npm run build
 
 if [[ ! -f "public/build/manifest.json" ]]; then
   echo "❌ Build não gerou public/build/manifest.json — abortar."

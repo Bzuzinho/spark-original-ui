@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { moduleTabbedContentClass, moduleTabsClass, moduleViewportClass } from '@/lib/module-layout';
@@ -29,16 +29,27 @@ interface User {
     tipo_membro: string[];
 }
 
+interface PaginatedMembers {
+    data: User[];
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+    from: number | null;
+    to: number | null;
+    links: Array<{ url: string | null; label: string; active: boolean }>;
+}
+
 interface Stats {
     totalMembros: number;
-    membrosAtivos: number;
-    membrosInativos: number;
-    totalAtletas: number;
-    atletasAtivos: number;
-    encarregados: number;
-    treinadores: number;
-    novosUltimos30Dias: number;
-    atestadosACaducar: number;
+    membrosAtivos?: number;
+    membrosInativos?: number;
+    totalAtletas?: number;
+    atletasAtivos?: number;
+    encarregados?: number;
+    treinadores?: number;
+    novosUltimos30Dias?: number;
+    atestadosACaducar?: number;
 }
 
 interface TipoStat {
@@ -52,7 +63,7 @@ interface EscalaoStat {
 }
 
 interface Props {
-    members: User[];
+    members: PaginatedMembers | null;
     userTypes: any[];
     ageGroups: any[];
     stats: Stats;
@@ -64,37 +75,54 @@ interface Props {
 }
 
 export default function MembrosIndex({ members, userTypes, ageGroups, stats, tipoMembrosStats, escaloesStats, communicationState }: Props) {
-    const [activeTab, setActiveTab] = useState(() => {
-        if (typeof window !== 'undefined') {
-            const queryTab = new URLSearchParams(window.location.search).get('tab');
-            if (queryTab) {
-                return queryTab;
-            }
-        }
+    const getUrlParam = (key: string) => {
+        if (typeof window === 'undefined') return '';
+        return new URLSearchParams(window.location.search).get(key) ?? '';
+    };
 
-        return communicationState?.initialTab || 'dashboard';
-    });
-    const [searchTerm, setSearchTerm] = useState('');
-    const [statusFilter, setStatusFilter] = useState<string>('all');
-    const [typeFilter, setTypeFilter] = useState<string>('all');
+    const [activeTab, setActiveTab] = useState(() => communicationState?.initialTab || 'dashboard');
+    const [searchTerm, setSearchTerm] = useState(() => getUrlParam('q'));
+    const [statusFilter, setStatusFilter] = useState<string>(() => getUrlParam('estado') || 'all');
+    const [typeFilter, setTypeFilter] = useState<string>(() => getUrlParam('tipo') || 'all');
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [userToDelete, setUserToDelete] = useState<User | null>(null);
     const [viewMode, setViewMode] = useState<'card' | 'table'>('card');
+    const isFirstListRender = useRef(true);
 
-    const filteredUsers = useMemo(() => {
-        return members.filter(user => {
-            const matchesSearch = 
-                (user.nome_completo || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                (user.numero_socio || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                (user.email_utilizador || '').toLowerCase().includes(searchTerm.toLowerCase());
-            
-            const matchesStatus = statusFilter === 'all' || user.estado === statusFilter;
-            const tipoMembro = Array.isArray(user.tipo_membro) ? user.tipo_membro : [];
-            const matchesType = typeFilter === 'all' || tipoMembro.includes(typeFilter as any);
-            
-            return matchesSearch && matchesStatus && matchesType;
-        });
-    }, [members, searchTerm, statusFilter, typeFilter]);
+    // Debounced server-side filter for the list tab
+    useEffect(() => {
+        if (activeTab !== 'list') return;
+        if (isFirstListRender.current) {
+            isFirstListRender.current = false;
+            return;
+        }
+        const timer = setTimeout(() => {
+            router.get(
+                route('membros.index'),
+                {
+                    tab: 'list',
+                    q: searchTerm || undefined,
+                    estado: statusFilter !== 'all' ? statusFilter : undefined,
+                    tipo: typeFilter !== 'all' ? typeFilter : undefined,
+                },
+                { preserveState: true, replace: true }
+            );
+        }, 400);
+        return () => clearTimeout(timer);
+    }, [searchTerm, statusFilter, typeFilter]);
+
+    const handleTabChange = (value: string) => {
+        setActiveTab(value);
+        isFirstListRender.current = true;
+        setSearchTerm('');
+        setStatusFilter('all');
+        setTypeFilter('all');
+        router.get(
+            route('membros.index'),
+            { tab: value },
+            { preserveState: false, replace: true }
+        );
+    };
 
     const getInitials = (name: string) => {
         if (!name) return '?';
@@ -124,6 +152,10 @@ export default function MembrosIndex({ members, userTypes, ageGroups, stats, tip
         }
     };
 
+    const displayedMembers = members?.data ?? [];
+    const totalFiltered = members?.total ?? 0;
+    const totalMembros = stats?.totalMembros ?? 0;
+
     return (
         <AuthenticatedLayout
             fullWidth
@@ -139,7 +171,7 @@ export default function MembrosIndex({ members, userTypes, ageGroups, stats, tip
             <Head title="Membros" />
 
             <div className={moduleViewportClass}>
-            <Tabs value={activeTab} onValueChange={setActiveTab} className={moduleTabsClass}>
+            <Tabs value={activeTab} onValueChange={handleTabChange} className={moduleTabsClass}>
                 <TabsList className="grid w-full shrink-0 grid-cols-2 h-auto">
                     <TabsTrigger value="dashboard" className="flex items-center gap-1.5 py-1.5 text-xs">
                         <ChartLineUp size={14} weight="duotone" />
@@ -153,7 +185,17 @@ export default function MembrosIndex({ members, userTypes, ageGroups, stats, tip
 
                 <TabsContent value="dashboard" className={moduleTabbedContentClass}>
                     <MembrosDashboard 
-                        stats={stats} 
+                        stats={{
+                            totalMembros: stats?.totalMembros ?? 0,
+                            membrosAtivos: stats?.membrosAtivos ?? 0,
+                            membrosInativos: stats?.membrosInativos ?? 0,
+                            totalAtletas: stats?.totalAtletas ?? 0,
+                            atletasAtivos: stats?.atletasAtivos ?? 0,
+                            encarregados: stats?.encarregados ?? 0,
+                            treinadores: stats?.treinadores ?? 0,
+                            novosUltimos30Dias: stats?.novosUltimos30Dias ?? 0,
+                            atestadosACaducar: stats?.atestadosACaducar ?? 0,
+                        }}
                         tipoMembrosStats={tipoMembrosStats} 
                         escaloesStats={escaloesStats} 
                     />
@@ -163,7 +205,7 @@ export default function MembrosIndex({ members, userTypes, ageGroups, stats, tip
                     {/* Header */}
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         <p className="text-xs text-muted-foreground">
-                            {filteredUsers.length} de {members.length} membros
+                            {members ? `${totalFiltered} de ${totalMembros} membros` : `${totalMembros} membros`}
                         </p>
                         
                         <div className="flex items-center gap-1.5">
@@ -231,7 +273,7 @@ export default function MembrosIndex({ members, userTypes, ageGroups, stats, tip
                                                 'Funcionário': 'funcionario',
                                             };
                                             const tipoNome = tipo?.nome || '';
-                                            const tipoValue = typeMapping[tipoNome] || tipoNome.toLowerCase().replace(/\s+/g, '_').replace(/ç/g, 'c').replace(/ã/g, 'a');
+                                            const tipoValue = tipo?.codigo || typeMapping[tipoNome] || tipoNome.toLowerCase().replace(/\s+/g, '_').replace(/ç/g, 'c').replace(/ã/g, 'a');
                                             return (
                                                 <SelectItem key={tipo.id} value={tipoValue}>
                                                     {tipoNome}
@@ -245,10 +287,10 @@ export default function MembrosIndex({ members, userTypes, ageGroups, stats, tip
                     </Card>
 
                     {/* Members View */}
-                    {filteredUsers.length > 0 ? (
+                    {displayedMembers.length > 0 ? (
                         viewMode === 'card' ? (
                             <div className="grid gap-2.5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5">
-                                {filteredUsers.map(user => (
+                                {displayedMembers.map(user => (
                                     <Link key={user.id} href={route('membros.show', user.id)}>
                                         <Card className="p-2.5 cursor-pointer transition-all hover:shadow-lg hover:border-primary/50 h-full">
                                             <div className="flex items-start gap-2">
@@ -307,7 +349,7 @@ export default function MembrosIndex({ members, userTypes, ageGroups, stats, tip
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
-                                            {filteredUsers.map((user) => (
+                                            {displayedMembers.map((user) => (
                                                 <TableRow key={user.id}>
                                                     <TableCell className="text-xs font-medium">{user.numero_socio || '-'}</TableCell>
                                                     <TableCell className="max-w-[200px]">
@@ -377,6 +419,29 @@ export default function MembrosIndex({ members, userTypes, ageGroups, stats, tip
                                 </Link>
                             </div>
                         </Card>
+                    )}
+
+                    {/* Pagination */}
+                    {members && members.last_page > 1 && (
+                        <div className="flex items-center justify-center gap-1 pt-1">
+                            {members.links.map((link, idx) => (
+                                <Button
+                                    key={idx}
+                                    variant={link.active ? 'default' : 'outline'}
+                                    size="sm"
+                                    className="h-7 min-w-[28px] px-2 text-xs"
+                                    disabled={!link.url}
+                                    onClick={() => {
+                                        if (link.url) {
+                                            const url = new URL(link.url);
+                                            const params = Object.fromEntries(url.searchParams.entries());
+                                            router.get(route('membros.index'), params, { preserveState: true, replace: true });
+                                        }
+                                    }}
+                                    dangerouslySetInnerHTML={{ __html: link.label }}
+                                />
+                            ))}
+                        </div>
                     )}
                 </TabsContent>
 

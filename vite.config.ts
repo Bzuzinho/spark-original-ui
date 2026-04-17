@@ -79,6 +79,50 @@ export default defineConfig({
         }),
         react(),
     ],
+    build: {
+        rollupOptions: {
+            output: {
+                manualChunks(id) {
+                    // Core framework — always cached together
+                    if (
+                        id.includes('node_modules/react/') ||
+                        id.includes('node_modules/react-dom/') ||
+                        id.includes('node_modules/@inertiajs/') ||
+                        id.includes('node_modules/axios/') ||
+                        id.includes('node_modules/ziggy-js/')
+                    ) {
+                        return 'framework';
+                    }
+                    // Radix UI component primitives
+                    if (id.includes('node_modules/@radix-ui/')) {
+                        return 'radix';
+                    }
+                    // Charting library
+                    if (id.includes('node_modules/recharts/')) {
+                        return 'charts';
+                    }
+                    // Spreadsheet export
+                    if (id.includes('node_modules/xlsx/')) {
+                        return 'xlsx';
+                    }
+                    // Icon packs
+                    if (
+                        id.includes('node_modules/@phosphor-icons/') ||
+                        id.includes('node_modules/lucide-react/')
+                    ) {
+                        return 'icons';
+                    }
+                    // Date utilities
+                    if (
+                        id.includes('node_modules/date-fns/') ||
+                        id.includes('node_modules/react-day-picker/')
+                    ) {
+                        return 'date';
+                    }
+                },
+            },
+        },
+    },
     server: {
         host: '0.0.0.0',
         port: 5173,
