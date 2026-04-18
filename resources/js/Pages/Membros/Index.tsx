@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { moduleTabbedContentClass, moduleTabsClass, moduleViewportClass } from '@/lib/module-layout';
@@ -96,7 +96,7 @@ export default function MembrosIndex({ members, userTypes, ageGroups, stats, tip
         });
     }, [members, searchTerm, statusFilter, typeFilter]);
 
-    const getInitials = (name: string) => {
+    const getInitials = useCallback((name: string) => {
         if (!name) return '?';
         return name
             .split(' ')
@@ -104,16 +104,16 @@ export default function MembrosIndex({ members, userTypes, ageGroups, stats, tip
             .slice(0, 2)
             .join('')
             .toUpperCase();
-    };
+    }, []);
 
-    const handleDeleteClick = (user: User, e: React.MouseEvent) => {
+    const handleDeleteClick = useCallback((user: User, e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
         setUserToDelete(user);
         setDeleteDialogOpen(true);
-    };
+    }, []);
 
-    const confirmDelete = () => {
+    const confirmDelete = useCallback(() => {
         if (userToDelete) {
             router.delete(route('membros.destroy', userToDelete.id), {
                 onSuccess: () => {
@@ -122,7 +122,7 @@ export default function MembrosIndex({ members, userTypes, ageGroups, stats, tip
                 }
             });
         }
-    };
+    }, [userToDelete]);
 
     return (
         <AuthenticatedLayout

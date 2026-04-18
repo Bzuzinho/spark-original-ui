@@ -18,6 +18,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Storage;
@@ -33,99 +34,95 @@ class MembrosController extends Controller
 
     public function index(Request $request): Response
     {
-        $users = User::with(['userTypes', 'ageGroup', 'encarregados', 'educandos'])->get();
-        $userTypes = UserType::where('ativo', true)->get();
-        $ageGroups = AgeGroup::all();
+        // members list — 60s TTL, invalidated on store/update/destroy
+        $members = Cache::remember('membros:list', 60, fn () =>
+            User::select([
+                'id', 'numero_socio', 'nome_completo', 'email_utilizador',
+                'foto_perfil', 'estado', 'tipo_membro',
+            ])->orderBy('nome_completo')->get()
+        );
+
+        $userTypes = Cache::remember('membros:user_types', 300, fn () =>
+            UserType::where('ativo', true)->select('id', 'nome')->get()
+        );
+
+        $ageGroups = Cache::remember('membros:age_groups', 300, fn () =>
+            AgeGroup::select('id', 'nome')->get()
+        );
+
         $currentUser = $request->user();
 
-        // Calculate statistics
-        $totalMembros = $users->count();
-        $membrosAtivos = $users->where('estado', 'ativo')->count();
-        $membrosInativos = $users->where('estado', 'inativo')->count();
-        
-        $totalAtletas = $users->filter(function ($user) {
-            return is_array($user->tipo_membro) && in_array('atleta', $user->tipo_membro);
-        })->count();
-        
-        $atletasAtivos = $users->filter(function ($user) {
-            return is_array($user->tipo_membro) && 
-                   in_array('atleta', $user->tipo_membro) && 
-                   $user->ativo_desportivo == true;
-        })->count();
-        
-        $encarregados = $users->filter(function ($user) {
-            return is_array($user->tipo_membro) && in_array('encarregado_educacao', $user->tipo_membro);
-        })->count();
-        
-        $treinadores = $users->filter(function ($user) {
-            return is_array($user->tipo_membro) && in_array('treinador', $user->tipo_membro);
-        })->count();
-
-        $novosUltimos30Dias = $users->filter(function ($user) {
-            return $user->created_at && $user->created_at->isAfter(now()->subDays(30));
-        })->count();
-
-        // Count members by type
-        $tipoMembrosStats = [];
-        foreach ($userTypes as $tipo) {
-            $count = $users->filter(function ($user) use ($tipo) {
-                return is_array($user->tipo_membro) && in_array($tipo->id, $user->tipo_membro);
-            })->count();
-            
-            if ($count > 0) {
-                $tipoMembrosStats[] = [
-                    'tipo' => $tipo->nome,
-                    'count' => $count
-                ];
+        // All stats in a single cache entry — avoids 8+ separate roundtrips
+        $stats = Cache::remember('membros:stats', 60, function () use ($userTypes, $ageGroups) {
+            $tipoMembrosStats = [];
+            foreach ($userTypes as $tipo) {
+                $count = User::whereJsonContains('tipo_membro', (string) $tipo->id)->count();
+                if ($count > 0) {
+                    $tipoMembrosStats[] = ['tipo' => $tipo->nome, 'count' => $count];
+                }
             }
-        }
 
-        // Count athletes by age group
-        $escaloesStats = [];
-        foreach ($ageGroups as $escalao) {
-            $count = $users->filter(function ($user) use ($escalao) {
-                return is_array($user->tipo_membro) && 
-                       in_array('atleta', $user->tipo_membro) && 
-                       $user->escalao_id == $escalao->id;
-            })->count();
-            
-            if ($count > 0) {
-                $escaloesStats[] = [
-                    'escalao' => $escalao->nome,
-                    'count' => $count
-                ];
+            $escaloesStats = [];
+            foreach ($ageGroups as $escalao) {
+                $count = User::whereJsonContains('tipo_membro', 'atleta')
+                    ->whereJsonContains('escalao', (string) $escalao->id)
+                    ->count();
+                if ($count > 0) {
+                    $escaloesStats[] = ['escalao' => $escalao->nome, 'count' => $count];
+                }
             }
+
+            return [
+                'counts' => [
+                    'totalMembros'      => User::count(),
+                    'membrosAtivos'     => User::where('estado', 'ativo')->count(),
+                    'membrosInativos'   => User::where('estado', 'inativo')->count(),
+                    'totalAtletas'      => User::whereJsonContains('tipo_membro', 'atleta')->count(),
+                    'atletasAtivos'     => User::whereJsonContains('tipo_membro', 'atleta')->where('ativo_desportivo', true)->count(),
+                    'encarregados'      => User::whereJsonContains('tipo_membro', 'encarregado_educacao')->count(),
+                    'treinadores'       => User::whereJsonContains('tipo_membro', 'treinador')->count(),
+                    'novosUltimos30Dias' => User::where('created_at', '>=', now()->subDays(30))->count(),
+                ],
+                'tipoMembrosStats' => $tipoMembrosStats,
+                'escaloesStats'    => $escaloesStats,
+            ];
+        });
+
+        $internalCommunications = ['received' => [], 'sent' => []];
+        if ($currentUser) {
+            $internalCommunications = Cache::remember(
+                'membros:communications:' . $currentUser->id,
+                30,
+                fn () => [
+                    'received' => $this->internalCommunicationService->receivedFeed($currentUser->id),
+                    'sent' => $this->internalCommunicationService->sentFeed($currentUser->id),
+                ]
+            );
         }
 
         return Inertia::render('Membros/Index', [
-            'members' => $users->values(),
+            'members' => $members,
             'userTypes' => $userTypes,
             'ageGroups' => $ageGroups,
-            'internalCommunications' => $currentUser ? [
-                'received' => $this->internalCommunicationService->receivedFeed($currentUser->id),
-                'sent' => $this->internalCommunicationService->sentFeed($currentUser->id),
-            ] : [
-                'received' => [],
-                'sent' => [],
-            ],
+            'internalCommunications' => $internalCommunications,
             'communicationState' => [
                 'initialTab' => $request->string('tab')->value() ?: 'dashboard',
                 'initialFolder' => $request->string('folder')->value() ?: 'received',
                 'initialMessageId' => $request->string('message')->value() ?: null,
             ],
             'stats' => [
-                'totalMembros' => $totalMembros,
-                'membrosAtivos' => $membrosAtivos,
-                'membrosInativos' => $membrosInativos,
-                'totalAtletas' => $totalAtletas,
-                'atletasAtivos' => $atletasAtivos,
-                'encarregados' => $encarregados,
-                'treinadores' => $treinadores,
-                'novosUltimos30Dias' => $novosUltimos30Dias,
+                'totalMembros'      => $stats['counts']['totalMembros'],
+                'membrosAtivos'     => $stats['counts']['membrosAtivos'],
+                'membrosInativos'   => $stats['counts']['membrosInativos'],
+                'totalAtletas'      => $stats['counts']['totalAtletas'],
+                'atletasAtivos'     => $stats['counts']['atletasAtivos'],
+                'encarregados'      => $stats['counts']['encarregados'],
+                'treinadores'       => $stats['counts']['treinadores'],
+                'novosUltimos30Dias' => $stats['counts']['novosUltimos30Dias'],
                 'atestadosACaducar' => 0, // TODO: implement when health data is available
             ],
-            'tipoMembrosStats' => $tipoMembrosStats,
-            'escaloesStats' => $escaloesStats,
+            'tipoMembrosStats' => $stats['tipoMembrosStats'],
+            'escaloesStats' => $stats['escaloesStats'],
         ]);
     }
 
@@ -261,6 +258,12 @@ class MembrosController extends Controller
                 $member->centrosCusto()->sync($syncData);
                 $member->centro_custo = array_values(array_keys($syncData));
                 $member->save();
+            }
+
+            Cache::forget('membros:list');
+            Cache::forget('membros:stats');
+            if ($request->user()) {
+                Cache::forget('membros:communications:' . $request->user()->id);
             }
 
             return redirect()->route('membros.index')
@@ -556,6 +559,12 @@ class MembrosController extends Controller
                 $this->syncEducandoRelations($member, $data['educandos']);
             }
 
+            Cache::forget('membros:list');
+            Cache::forget('membros:stats');
+            if ($request->user()) {
+                Cache::forget('membros:communications:' . $request->user()->id);
+            }
+
             return redirect()->route('membros.index')
                 ->with('success', 'Membro atualizado com sucesso!');
                 
@@ -582,6 +591,13 @@ class MembrosController extends Controller
             $this->deleteFile($member->declaracao_transporte);
             
             $member->delete();
+
+            Cache::forget('membros:list');
+            Cache::forget('membros:stats');
+            Cache::forget('dashboard:stats');
+            if (request()->user()) {
+                Cache::forget('membros:communications:' . request()->user()->id);
+            }
 
             return redirect()->route('membros.index')
                 ->with('success', 'Membro eliminado com sucesso!');

@@ -83,9 +83,14 @@ export default defineConfig({
         host: '0.0.0.0',
         port: 5173,
         strictPort: true,
-        // Warm up the finance route to reduce first-hit latency in forwarded dev environments.
+        // Warm up heavy module routes to reduce first-hit latency in forwarded dev environments.
         warmup: {
             clientFiles: [
+                './resources/js/Pages/Dashboard.tsx',
+                './resources/js/Pages/Membros/Index.tsx',
+                './resources/js/Pages/Desportivo/Index.tsx',
+                './resources/js/Pages/Desportivo/Cais.tsx',
+                './resources/js/Pages/Eventos/Index.tsx',
                 './resources/js/Pages/Financeiro/Index.tsx',
                 './resources/js/Pages/Financeiro/DashboardTab.tsx',
                 './resources/js/Pages/Financeiro/RelatoriosTab.tsx',
@@ -130,6 +135,41 @@ export default defineConfig({
         alias: {
             '@': '/resources/js',
             '@github/spark/hooks': '/resources/js/hooks',
+        },
+    },
+    build: {
+        rollupOptions: {
+            output: {
+                manualChunks(id) {
+                    // Core React + Inertia + HTTP
+                    if (id.includes('node_modules/react/') || id.includes('node_modules/react-dom/')) {
+                        return 'vendor-react';
+                    }
+                    if (id.includes('node_modules/@inertiajs/') || id.includes('node_modules/axios/') || id.includes('node_modules/ziggy')) {
+                        return 'vendor-inertia';
+                    }
+                    // Radix UI primitives
+                    if (id.includes('node_modules/@radix-ui/')) {
+                        return 'vendor-radix';
+                    }
+                    // Charts
+                    if (id.includes('node_modules/recharts/') || id.includes('node_modules/d3-')) {
+                        return 'vendor-charts';
+                    }
+                    // Excel export
+                    if (id.includes('node_modules/xlsx/')) {
+                        return 'vendor-xlsx';
+                    }
+                    // Icon packs
+                    if (id.includes('node_modules/@phosphor-icons/') || id.includes('node_modules/lucide-react/')) {
+                        return 'vendor-icons';
+                    }
+                    // Date libs
+                    if (id.includes('node_modules/date-fns/') || id.includes('node_modules/dayjs/')) {
+                        return 'vendor-dates';
+                    }
+                },
+            },
         },
     },
 });

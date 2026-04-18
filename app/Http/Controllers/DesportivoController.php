@@ -38,6 +38,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
 
 class DesportivoController extends Controller
@@ -158,6 +159,19 @@ class DesportivoController extends Controller
             ]);
         }
 
+        // Cache full payload per tab/view/query to avoid recomputing all heavy metrics every navigation.
+        $cacheKey = 'desportivo:payload:' . md5(
+            $view
+            . '|' . $tab
+            . '|' . (string) request()->getQueryString()
+            . '|u:' . (string) optional(request()->user())->id
+        );
+
+        $cachedPayload = Cache::get($cacheKey);
+        if (is_array($cachedPayload)) {
+            return Inertia::render($view, $cachedPayload);
+        }
+
         $now = Carbon::now();
         $sevenDaysAgo = $now->copy()->subDays(7);
         $thirtyDaysAgo = $now->copy()->subDays(30);
@@ -209,23 +223,19 @@ class DesportivoController extends Controller
 
         $alerts = [];
 
-        $medicalCerts = (clone $athletesQuery)
+        // Pure DB count — avoids loading all athletes into PHP memory
+        $medicalCertsCount = (clone $athletesQuery)
             ->where('estado', 'ativo')
-            ->get()
-            ->filter(function ($user) {
-                if (empty($user->data_atestado_medico)) {
-                    return false;
-                }
+            ->whereNotNull('data_atestado_medico')
+            ->whereDate('data_atestado_medico', '<=', now()->subDays(335)->toDateString())
+            ->count();
 
-                return Carbon::parse($user->data_atestado_medico)->diffInDays(Carbon::now()) >= 335;
-            });
-
-        if ($medicalCerts->count() > 0) {
+        if ($medicalCertsCount > 0) {
             $alerts[] = [
                 'type' => 'warning',
                 'title' => 'Atestados Médicos a Caducar',
-                'message' => $medicalCerts->count() . ' atletas com atestado a caducar em 30 dias',
-                'count' => $medicalCerts->count(),
+                'message' => $medicalCertsCount . ' atletas com atestado a caducar em 30 dias',
+                'count' => $medicalCertsCount,
             ];
         }
 
@@ -735,7 +745,7 @@ class DesportivoController extends Controller
         $totalDistanceKm = $totalDistanceMeters / 1000;
         $costPerKm = $totalDistanceKm > 0 ? $sportsFinancialTotal / $totalDistanceKm : null;
 
-        return Inertia::render($view, [
+        $payload = [
             'tab' => $tab,
             'stats' => [
                 'athletesCount' => $athletesCount,
@@ -817,7 +827,11 @@ class DesportivoController extends Controller
                 'totalSportDistanceKm' => round($totalDistanceKm, 2),
                 'costPerKm' => $costPerKm !== null ? round($costPerKm, 2) : null,
             ],
-        ]);
+        ];
+
+        Cache::put($cacheKey, $payload, 60);
+
+        return Inertia::render($view, $payload);
     }
 
     /**

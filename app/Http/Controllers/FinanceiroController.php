@@ -18,6 +18,7 @@ use App\Models\MapaConciliacao;
 use App\Models\Product;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -29,89 +30,103 @@ class FinanceiroController extends Controller
     public function index(): Response
     {
         try {
-            $faturas = Invoice::orderBy('data_emissao', 'desc')->get()->map(function ($fatura) {
-                $fatura->valor_total = (float) $fatura->valor_total;
-                return $fatura;
-            });
+            $faturas = Cache::remember('financeiro:faturas', 60, fn () =>
+                Invoice::orderBy('data_emissao', 'desc')->limit(1000)->get()->map(function ($fatura) {
+                    $fatura->valor_total = (float) $fatura->valor_total;
+                    return $fatura;
+                })
+            );
         } catch (\Exception $e) {
             \Log::error('FinanceiroController::index - Faturas query failed: ' . $e->getMessage());
             $faturas = [];
         }
 
         try {
-            $faturaItens = InvoiceItem::orderBy('created_at', 'desc')->get();
+            $faturaItens = Cache::remember('financeiro:fatura_itens', 60, fn () =>
+                InvoiceItem::orderBy('created_at', 'desc')->limit(3000)->get()
+            );
         } catch (\Exception $e) {
             \Log::error('FinanceiroController::index - FaturaItens query failed: ' . $e->getMessage());
             $faturaItens = [];
         }
 
         try {
-            $movimentos = Movement::orderBy('data_emissao', 'desc')->get()->map(function ($movimento) {
-                $movimento->valor_total = (float) $movimento->valor_total;
-                return $movimento;
-            });
+            $movimentos = Cache::remember('financeiro:movimentos', 60, fn () =>
+                Movement::orderBy('data_emissao', 'desc')->limit(1000)->get()->map(function ($movimento) {
+                    $movimento->valor_total = (float) $movimento->valor_total;
+                    return $movimento;
+                })
+            );
         } catch (\Exception $e) {
             \Log::error('FinanceiroController::index - Movimentos query failed: ' . $e->getMessage());
             $movimentos = [];
         }
 
         try {
-            $movimentoItens = MovementItem::orderBy('created_at', 'desc')->get();
+            $movimentoItens = Cache::remember('financeiro:movimento_itens', 60, fn () =>
+                MovementItem::orderBy('created_at', 'desc')->limit(3000)->get()
+            );
         } catch (\Exception $e) {
             \Log::error('FinanceiroController::index - MovimentoItens query failed: ' . $e->getMessage());
             $movimentoItens = [];
         }
 
         try {
-            $lancamentos = FinancialEntry::orderBy('data', 'desc')->get()->map(function ($lancamento) {
-                $lancamento->valor = (float) $lancamento->valor;
-                return $lancamento;
-            });
+            $lancamentos = Cache::remember('financeiro:lancamentos', 60, fn () =>
+                FinancialEntry::orderBy('data', 'desc')->limit(1000)->get()->map(function ($lancamento) {
+                    $lancamento->valor = (float) $lancamento->valor;
+                    return $lancamento;
+                })
+            );
         } catch (\Exception $e) {
             \Log::error('FinanceiroController::index - Lancamentos query failed: ' . $e->getMessage());
             $lancamentos = [];
         }
 
         try {
-            $extratos = BankStatement::orderBy('data_movimento', 'desc')->get()->map(function ($extrato) {
-                $extrato->valor = (float) $extrato->valor;
-                $extrato->saldo = $extrato->saldo !== null ? (float) $extrato->saldo : null;
-                return $extrato;
-            });
+            $extratos = Cache::remember('financeiro:extratos', 60, fn () =>
+                BankStatement::orderBy('data_movimento', 'desc')->limit(1000)->get()->map(function ($extrato) {
+                    $extrato->valor = (float) $extrato->valor;
+                    $extrato->saldo = $extrato->saldo !== null ? (float) $extrato->saldo : null;
+                    return $extrato;
+                })
+            );
         } catch (\Exception $e) {
             \Log::error('FinanceiroController::index - Extratos query failed: ' . $e->getMessage());
             $extratos = [];
         }
 
         try {
-            // Try to select with all fields first, fallback if valor_conciliado doesn't exist
-            $conciliacoes = MapaConciliacao::select(
-                'id',
-                'extrato_id',
-                'lancamento_id',
-                'fatura_id',
-                'movimento_id',
-                'estado_fatura_anterior',
-                'estado_movimento_anterior',
-                'valor_conciliado'
-            )->get();
-        } catch (\Exception $e) {
-            \Log::warning('FinanceiroController::index - Conciliacoes with valor_conciliado failed, fallback: ' . $e->getMessage());
-            // Fallback without valor_conciliado field
-            try {
-                $conciliacoes = MapaConciliacao::select(
-                    'id',
-                    'extrato_id',
-                    'lancamento_id',
-                    'fatura_id',
-                    'movimento_id',
-                    'estado_fatura_anterior',
-                    'estado_movimento_anterior'
-                )->get();
-            } catch (\Exception $fallbackError) {
-                \Log::error('FinanceiroController::index - Conciliacoes fallback also failed: ' . $fallbackError->getMessage());
-                $conciliacoes = [];
-            }
+            $conciliacoes = Cache::remember('financeiro:conciliacoes', 60, function () {
+                try {
+                    // Try to select with all fields first, fallback if valor_conciliado doesn't exist
+                    return MapaConciliacao::select(
+                        'id',
+                        'extrato_id',
+                        'lancamento_id',
+                        'fatura_id',
+                        'movimento_id',
+                        'estado_fatura_anterior',
+                        'estado_movimento_anterior',
+                        'valor_conciliado'
+                    )->get();
+                } catch (\Exception $e) {
+                    \Log::warning('FinanceiroController::index - Conciliacoes with valor_conciliado failed, fallback: ' . $e->getMessage());
+
+                    return MapaConciliacao::select(
+                        'id',
+                        'extrato_id',
+                        'lancamento_id',
+                        'fatura_id',
+                        'movimento_id',
+                        'estado_fatura_anterior',
+                        'estado_movimento_anterior'
+                    )->get();
+                }
+            });
+        } catch (\Exception $fallbackError) {
+            \Log::error('FinanceiroController::index - Conciliacoes fallback also failed: ' . $fallbackError->getMessage());
+            $conciliacoes = [];
         }
 
         return Inertia::render('Financeiro/Index', [
@@ -122,15 +137,15 @@ class FinanceiroController extends Controller
             'lancamentos' => $lancamentos,
             'extratos' => $extratos,
             'conciliacoes' => $conciliacoes,
-            'centrosCusto' => (function() {
+            'centrosCusto' => Cache::remember('financeiro:centros_custo', 300, function () {
                 try {
                     return CostCenter::orderBy('nome')->get();
                 } catch (\Exception $e) {
                     \Log::error('FinanceiroController::index - CostCenter query failed: ' . $e->getMessage());
                     return [];
                 }
-            })(),
-            'users' => (function() {
+            }),
+            'users' => Cache::remember('financeiro:users', 60, function () {
                 try {
                     return User::select(
                         'id',
@@ -182,8 +197,8 @@ class FinanceiroController extends Controller
                     \Log::error('FinanceiroController::index - Users query failed: ' . $e->getMessage());
                     return [];
                 }
-            })(),
-            'products' => (function() {
+            }),
+            'products' => Cache::remember('financeiro:products', 60, function () {
                 try {
                     return Product::select('id', 'nome', 'preco', 'stock', 'stock_minimo', 'ativo')
                         ->orderBy('nome')
@@ -196,8 +211,8 @@ class FinanceiroController extends Controller
                     \Log::error('FinanceiroController::index - Products query failed: ' . $e->getMessage());
                     return [];
                 }
-            })(),
-            'mensalidades' => (function() {
+            }),
+            'mensalidades' => Cache::remember('financeiro:mensalidades', 300, function () {
                 try {
                     return MonthlyFee::select('id', 'designacao', 'valor', 'age_group_id')
                         ->get()
@@ -209,23 +224,23 @@ class FinanceiroController extends Controller
                     \Log::error('FinanceiroController::index - MonthlyFee query failed: ' . $e->getMessage());
                     return [];
                 }
-            })(),
-            'invoiceTypes' => (function() {
+            }),
+            'invoiceTypes' => Cache::remember('financeiro:invoice_types', 300, function () {
                 try {
                     return InvoiceType::orderBy('nome')->get();
                 } catch (\Exception $e) {
                     \Log::error('FinanceiroController::index - InvoiceType query failed: ' . $e->getMessage());
                     return [];
                 }
-            })(),
-            'ageGroups' => (function() {
+            }),
+            'ageGroups' => Cache::remember('financeiro:age_groups', 300, function () {
                 try {
                     return AgeGroup::select('id', 'nome')->orderBy('nome')->get();
                 } catch (\Exception $e) {
                     \Log::error('FinanceiroController::index - AgeGroup query failed: ' . $e->getMessage());
                     return [];
                 }
-            })(),
+            }),
         ]);
     }
 
@@ -275,6 +290,8 @@ class FinanceiroController extends Controller
                 'invoice' => $invoice->load('items'),
             ]);
         }
+
+        $this->invalidateFinanceiroCaches();
 
         return redirect()->route('financeiro.index')
             ->with('success', 'Fatura criada com sucesso!');
@@ -366,6 +383,8 @@ class FinanceiroController extends Controller
             ]);
         }
 
+        $this->invalidateFinanceiroCaches();
+
         return redirect()->route('financeiro.index')
             ->with('success', 'Fatura atualizada com sucesso!');
     }
@@ -377,6 +396,8 @@ class FinanceiroController extends Controller
         if (request()->expectsJson()) {
             return response()->json(['success' => true]);
         }
+
+        $this->invalidateFinanceiroCaches();
 
         return redirect()->route('financeiro.index')
             ->with('success', 'Fatura eliminada com sucesso!');
@@ -469,6 +490,8 @@ class FinanceiroController extends Controller
                 Product::where('id', $item['produto_id'])->increment('stock', $delta);
             }
         }
+
+        $this->invalidateFinanceiroCaches();
 
         return response()->json([
             'movimento' => $movimento,
@@ -593,6 +616,8 @@ class FinanceiroController extends Controller
             }
         }
 
+        $this->invalidateFinanceiroCaches();
+
         return response()->json([
             'movimento' => $movimento,
             'items' => $createdItems,
@@ -610,6 +635,8 @@ class FinanceiroController extends Controller
 
         MovementItem::where('movimento_id', $movimento->id)->delete();
         $movimento->delete();
+
+        $this->invalidateFinanceiroCaches();
 
         return response()->json(['success' => true]);
     }
@@ -660,6 +687,8 @@ class FinanceiroController extends Controller
             ]);
         }
 
+        $this->invalidateFinanceiroCaches();
+
         return response()->json(['movimento' => $movimento, 'lancamento' => $lancamento]);
     }
 
@@ -687,6 +716,8 @@ class FinanceiroController extends Controller
             'centro_custo_id' => $data['centro_custo_id'],
             'conciliado' => false,
         ]);
+
+        $this->invalidateFinanceiroCaches();
 
         return response()->json(['extrato' => $extrato]);
     }
@@ -720,6 +751,8 @@ class FinanceiroController extends Controller
             ]);
         }
 
+        $this->invalidateFinanceiroCaches();
+
         return response()->json(['extratos' => $created]);
     }
 
@@ -743,6 +776,8 @@ class FinanceiroController extends Controller
             'centro_custo_id' => $data['centro_custo_id'],
         ]);
 
+        $this->invalidateFinanceiroCaches();
+
         return response()->json(['extrato' => $extrato]);
     }
 
@@ -753,6 +788,9 @@ class FinanceiroController extends Controller
         }
 
         $extrato->delete();
+
+        $this->invalidateFinanceiroCaches();
+
         return response()->json(['success' => true]);
     }
 
@@ -911,6 +949,8 @@ class FinanceiroController extends Controller
             $movimentosAtualizados[] = $movimento;
         }
 
+        $this->invalidateFinanceiroCaches();
+
         return response()->json([
             'extrato' => $extrato,
             'lancamentos' => $lancamentos,
@@ -984,11 +1024,31 @@ class FinanceiroController extends Controller
             'lancamento_id' => null,
         ]);
 
+        $this->invalidateFinanceiroCaches();
+
         return response()->json([
             'extrato' => $extrato,
             'faturas' => $faturasAtualizadas,
             'movimentos' => $movimentosAtualizados,
             'lancamentos_removidos' => $lancamentosRemovidos,
         ]);
+    }
+
+    private function invalidateFinanceiroCaches(): void
+    {
+        Cache::forget('financeiro:faturas');
+        Cache::forget('financeiro:fatura_itens');
+        Cache::forget('financeiro:movimentos');
+        Cache::forget('financeiro:movimento_itens');
+        Cache::forget('financeiro:lancamentos');
+        Cache::forget('financeiro:extratos');
+        Cache::forget('financeiro:conciliacoes');
+        Cache::forget('financeiro:centros_custo');
+        Cache::forget('financeiro:users');
+        Cache::forget('financeiro:products');
+        Cache::forget('financeiro:mensalidades');
+        Cache::forget('financeiro:invoice_types');
+        Cache::forget('financeiro:age_groups');
+        Cache::forget('dashboard:stats');
     }
 }
