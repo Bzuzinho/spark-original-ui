@@ -22,7 +22,7 @@
  *   dashboard | grupos | treinos | presencas | planeamento | competicoes | performance
  */
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Head, router } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { moduleScrollableContentClass, moduleTabbedContentClass, moduleTabsClass, moduleViewportClass } from '@/lib/module-layout';
@@ -46,13 +46,6 @@ import {
   TrainingsTab,
   PerformanceTab,
 } from '@/components/sports/tabs';
-import {
-  useAthletes,
-  useCompetitionResults,
-  useCompetitions,
-  usePerformance,
-  useTrainings,
-} from '@/hooks/sports';
 
 import type {
   AgeGroup,
@@ -119,7 +112,7 @@ interface MesocycleOption {
 
 interface DesportivoProps {
   tab?: string;
-  stats: Stats;
+  stats?: Stats;
   alerts?: Alert[];
   upcomingCompetitions?: UpcomingCompetition[];
   seasons?: Season[];
@@ -168,11 +161,29 @@ const TABS = [
 
 type TabValue = typeof TABS[number]['value'];
 
+const DEFAULT_STATS: Stats = {
+  athletesCount: 0,
+  trainings7Days: 0,
+  trainings30Days: 0,
+  km7Days: 0,
+  km30Days: 0,
+};
+
+const TAB_ROUTES: Record<TabValue, () => string> = {
+  dashboard: () => route('desportivo.index'),
+  atletas: () => route('desportivo.index', { tab: 'atletas' }),
+  treinos: () => route('desportivo.treinos'),
+  planeamento: () => route('desportivo.planeamento'),
+  cais: () => route('desportivo.cais'),
+  competicoes: () => route('desportivo.competicoes'),
+  performance: () => route('desportivo.relatorios'),
+};
+
 // ─── Componente ───────────────────────────────────────────────────────────────
 
 export default function DesportivoIndex({
   tab = 'dashboard',
-  stats,
+  stats = DEFAULT_STATS,
   alerts = [],
   upcomingCompetitions = [],
   seasons = [],
@@ -206,20 +217,8 @@ export default function DesportivoIndex({
   athleteOperationalRows = [],
 }: DesportivoProps) {
   const initialTab = (tab === 'presencas' ? 'cais' : tab === 'resultados' ? 'competicoes' : tab) as TabValue;
-  const [activeTab, setActiveTab] = useState<TabValue>(initialTab);
   const [isNavigatingToCais, setIsNavigatingToCais] = useState(false);
-
-  const shouldFetchAthletes = users.length === 0 && ['dashboard', 'atletas', 'treinos', 'cais', 'competicoes', 'performance'].includes(activeTab);
-  const shouldFetchTrainings = trainings.data.length === 0 && ['dashboard', 'treinos', 'cais'].includes(activeTab);
-  const shouldFetchCompetitions = competitions.length === 0 && ['dashboard', 'competicoes'].includes(activeTab);
-  const shouldFetchCompetitionResults = results.length === 0 && ['competicoes'].includes(activeTab);
-  const shouldFetchPerformance = volumeByAthlete.length === 0 && ['dashboard', 'performance'].includes(activeTab);
-
-  const athletesQuery = useAthletes(shouldFetchAthletes);
-  const trainingsQuery = useTrainings(shouldFetchTrainings);
-  const competitionsQuery = useCompetitions(shouldFetchCompetitions);
-  const competitionResultsQuery = useCompetitionResults(shouldFetchCompetitionResults);
-  const performanceQuery = usePerformance(shouldFetchPerformance);
+  const activeTab = TABS.some(({ value }) => value === initialTab) ? initialTab : 'dashboard';
 
   const safeUsers = Array.isArray(users) ? users : [];
   const safeTrainings = Array.isArray(trainings?.data) ? trainings.data : [];
@@ -227,16 +226,11 @@ export default function DesportivoIndex({
   const safeResults = Array.isArray(results) ? results : [];
   const safeVolumeByAthlete = Array.isArray(volumeByAthlete) ? volumeByAthlete : [];
 
-  const resolvedUsers = safeUsers.length > 0 ? safeUsers : athletesQuery.data;
-  const resolvedTrainings = safeTrainings.length > 0 ? safeTrainings : trainingsQuery.data;
-  const resolvedCompetitions = safeCompetitions.length > 0 ? safeCompetitions : competitionsQuery.data;
-  const resolvedResults = safeResults.length > 0 ? safeResults : competitionResultsQuery.data;
-  const resolvedVolumeByAthlete = safeVolumeByAthlete.length > 0
-    ? safeVolumeByAthlete
-    : performanceQuery.data.performance.map((row) => ({
-        nome_completo: resolvedUsers.find((u) => u.id === row.athlete_id)?.nome_completo ?? row.athlete_id,
-        total_m: row.volume_semanal_m,
-      }));
+  const resolvedUsers = safeUsers;
+  const resolvedTrainings = safeTrainings;
+  const resolvedCompetitions = safeCompetitions;
+  const resolvedResults = safeResults;
+  const resolvedVolumeByAthlete = safeVolumeByAthlete;
 
   const resolvedTrainingOptions = trainingOptions.length > 0
     ? trainingOptions
@@ -253,33 +247,23 @@ export default function DesportivoIndex({
         nome,
       }));
 
-  useEffect(() => {
-    setActiveTab(initialTab);
-    setIsNavigatingToCais(false);
-  }, [initialTab]);
-
-  const loading =
-    (safeUsers.length === 0 && athletesQuery.loading) ||
-    (safeTrainings.length === 0 && trainingsQuery.loading) ||
-    (safeCompetitions.length === 0 && competitionsQuery.loading) ||
-    (safeResults.length === 0 && competitionResultsQuery.loading);
-
-  if (loading) {
-    return <div>Loading...</div>;
-  }
-
   const handleTabChange = (value: string) => {
     const t = value as TabValue;
 
-    // Sincronizar URL para que o refresh mantenha a tab correta
-    if (t === 'cais') {
-      setIsNavigatingToCais(true);
-      router.get(route('desportivo.cais'));
+    if (t === activeTab) {
       return;
     }
 
-    setIsNavigatingToCais(false);
-    setActiveTab(t);
+    if (t === 'cais') {
+      setIsNavigatingToCais(true);
+    } else {
+      setIsNavigatingToCais(false);
+    }
+
+    router.get(TAB_ROUTES[t](), {}, {
+      preserveScroll: true,
+      preserveState: false,
+    });
   };
 
   return (
