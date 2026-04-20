@@ -25,6 +25,7 @@ MAIL_ENCRYPTION="${MAIL_ENCRYPTION:-}"
 MAIL_FROM_ADDRESS="${MAIL_FROM_ADDRESS:-}"
 MAIL_FROM_NAME="${MAIL_FROM_NAME:-}"
 APP_URL="${APP_URL:-}"
+ALLOW_SHARED_DB="${ALLOW_SHARED_DB:-0}"
 
 echo "==> Repo: $(pwd)"
 echo "==> VM:   ${VM_USER}@${VM_HOST}:${VM_APP_DIR}"
@@ -32,6 +33,58 @@ echo "==> VM:   ${VM_USER}@${VM_HOST}:${VM_APP_DIR}"
 # ===== Helper: run ssh via alias (BatchMode, 15s timeout) =====
 vm_ssh() {
   ssh -o BatchMode=yes -o ConnectTimeout=15 "${SSH_ALIAS}" "$@"
+}
+
+read_local_env_value() {
+  local key="$1"
+  local env_file=".env"
+
+  if [[ ! -f "${env_file}" ]]; then
+    return 0
+  fi
+
+  grep -E "^${key}=" "${env_file}" | tail -n 1 | cut -d'=' -f2-
+}
+
+read_remote_env_value() {
+  local key="$1"
+
+  vm_ssh "grep -E '^${key}=' '${VM_APP_DIR}/.env' 2>/dev/null | tail -n 1 | cut -d'=' -f2-" | tr -d '\r'
+}
+
+guard_shared_database_target() {
+  local local_app_env local_db_host local_db_database local_db_username
+  local remote_db_host remote_db_database remote_db_username
+
+  local_app_env="$(read_local_env_value APP_ENV | tr -d '"')"
+  local_db_host="$(read_local_env_value DB_HOST | tr -d '"')"
+  local_db_database="$(read_local_env_value DB_DATABASE | tr -d '"')"
+  local_db_username="$(read_local_env_value DB_USERNAME | tr -d '"')"
+
+  remote_db_host="$(read_remote_env_value DB_HOST | tr -d '"')"
+  remote_db_database="$(read_remote_env_value DB_DATABASE | tr -d '"')"
+  remote_db_username="$(read_remote_env_value DB_USERNAME | tr -d '"')"
+
+  if [[ -z "${local_db_host}" || -z "${local_db_database}" || -z "${remote_db_host}" || -z "${remote_db_database}" ]]; then
+    echo "   ⚠ Não foi possível validar se o Codespace e a VM usam a mesma base de dados."
+    return 0
+  fi
+
+  if [[ "${local_db_host}" == "${remote_db_host}" && "${local_db_database}" == "${remote_db_database}" && "${local_db_username}" == "${remote_db_username}" ]]; then
+    echo ""
+    echo "❌ Guardrail: o ambiente local e a VM apontam para a mesma base de dados (${local_db_host}/${local_db_database})."
+    echo "   Isto é perigoso: comandos locais (benchmarks, tinker, scripts) podem alterar dados da VM."
+
+    if [[ "${local_app_env}" != "production" && "${ALLOW_SHARED_DB}" != "1" ]]; then
+      echo "   Abortar deploy."
+      echo "   Corrige o .env local para usar uma base separada ou usa ALLOW_SHARED_DB=1 se for intencional."
+      exit 1
+    fi
+
+    echo "   ⚠ Continuação forçada porque APP_ENV=${local_app_env:-unknown} ou ALLOW_SHARED_DB=1."
+  else
+    echo "   ✔ Guardrail DB OK — Codespace e VM usam bases distintas"
+  fi
 }
 
 quote_env_value() {
@@ -262,6 +315,9 @@ SSH_TEST="$(vm_ssh 'echo SSH_OK && hostname' 2>&1)" || {
 }
 echo "   ✔ SSH OK — ${SSH_TEST}"
 
+echo "    Validar isolamento da base de dados ..."
+guard_shared_database_target
+
 configure_vm_mail_env
 
 # ===== [4/6] Deploy backend na VM =====
@@ -317,6 +373,10 @@ echo "[backend] cache"
 "${RUN_AS[@]}" php "${APP_DIR}/artisan" config:cache
 "${RUN_AS[@]}" php "${APP_DIR}/artisan" route:cache
 "${RUN_AS[@]}" php "${APP_DIR}/artisan" view:cache
+echo "[backend] fix writable permissions"
+sudo chown -R "${APP_USER}:${APP_USER}" "${APP_DIR}/storage" "${APP_DIR}/bootstrap/cache"
+sudo find "${APP_DIR}/storage" "${APP_DIR}/bootstrap/cache" -type d -exec chmod 775 {} +
+sudo find "${APP_DIR}/storage" "${APP_DIR}/bootstrap/cache" -type f -exec chmod 664 {} +
 echo "[backend] reload php-fpm"
 sudo systemctl reload php8.3-fpm || sudo service php8.3-fpm reload
 echo "[backend] done"

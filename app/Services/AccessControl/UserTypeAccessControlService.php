@@ -15,6 +15,13 @@ use Illuminate\Validation\ValidationException;
 
 class UserTypeAccessControlService
 {
+    private ?bool $accessControlReady = null;
+
+    /**
+     * @var array<string, bool>
+     */
+    private array $tableExists = [];
+
     public function __construct(
         private readonly ResolveCurrentUserType $resolveCurrentUserType,
     ) {
@@ -37,7 +44,7 @@ class UserTypeAccessControlService
 
     public function getPermissionTree(): array
     {
-        if (! $this->isReady() || ! Schema::hasTable('permission_nodes')) {
+        if (! $this->isReady() || ! $this->tableExists('permission_nodes')) {
             return [];
         }
 
@@ -75,7 +82,7 @@ class UserTypeAccessControlService
 
         $permissions = [];
 
-        if ($this->isReady() && Schema::hasTable('user_type_permissions')) {
+        if ($this->isReady() && $this->tableExists('user_type_permissions')) {
             $permissions = UserTypePermission::query()
                 ->where('user_type_id', $userType->id)
                 ->whereNotNull('permission_node_id')
@@ -259,7 +266,7 @@ class UserTypeAccessControlService
             return false;
         }
 
-        if (! $this->isReady() || ! Schema::hasTable('permission_nodes') || ! Schema::hasTable('user_type_permissions')) {
+        if (! $this->isReady() || ! $this->tableExists('permission_nodes') || ! $this->tableExists('user_type_permissions')) {
             return true;
         }
 
@@ -302,7 +309,7 @@ class UserTypeAccessControlService
 
     private function menuModulesForUserType(UserType $userType): array
     {
-        if (! $this->isReady() || ! Schema::hasTable('user_type_menu_modules')) {
+        if (! $this->isReady() || ! $this->tableExists('user_type_menu_modules')) {
             return AccessControlCatalog::allMenuModuleKeys();
         }
 
@@ -318,7 +325,7 @@ class UserTypeAccessControlService
 
     private function landingPageForUserType(UserType $userType): ?array
     {
-        if (! $this->isReady() || ! Schema::hasTable('user_type_landing_pages')) {
+        if (! $this->isReady() || ! $this->tableExists('user_type_landing_pages')) {
             return null;
         }
 
@@ -421,7 +428,12 @@ class UserTypeAccessControlService
 
     private function isReady(): bool
     {
-        return Schema::hasTable('user_types');
+        return $this->accessControlReady ??= $this->tableExists('user_types');
+    }
+
+    private function tableExists(string $table): bool
+    {
+        return $this->tableExists[$table] ??= Schema::hasTable($table);
     }
 
     private function userTypeHasExplicitPermissions(UserType $userType): bool

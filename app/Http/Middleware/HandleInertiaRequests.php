@@ -12,6 +12,8 @@ use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
 {
+    private ?bool $hasInAppAlertsTable = null;
+
     /**
      * The root template that's loaded on the first page visit.
      *
@@ -40,18 +42,42 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
+        $user = $request->user();
+
         return [
             ...parent::share($request),
             'auth' => [
-                'user' => $request->user(),
+                'user' => $user,
             ],
-            'accessControl' => app(UserTypeAccessControlService::class)->getCurrentUserAccess($request->user()),
+            'accessControl' => $user
+                ? Cache::remember(
+                    'shared:access_control:' . $user->id,
+                    now()->addMinutes(5),
+                    fn () => app(UserTypeAccessControlService::class)->getCurrentUserAccess($user)
+                )
+                : app(UserTypeAccessControlService::class)->getCurrentUserAccess(null),
             'clubSettings' => Cache::remember('club_settings_shared', now()->addMinutes(5), function () {
                 return ClubSetting::select('nome_clube', 'sigla', 'logo_url')->first();
             }),
-            'communicationAlerts' => $request->user() && Schema::hasTable('in_app_alerts')
-                ? [
-                    'unreadCount' => InAppAlert::where('user_id', $request->user()->id)
+            'communicationAlerts' => $this->sharedCommunicationAlerts($user),
+        ];
+    }
+
+    private function sharedCommunicationAlerts($user): array
+    {
+        if (! $user || ! $this->hasInAppAlertsTable()) {
+            return [
+                'unreadCount' => 0,
+                'recent' => [],
+            ];
+        }
+
+        return Cache::remember(
+            'shared:communication_alerts:' . $user->id,
+            now()->addSeconds(30),
+            function () use ($user) {
+                return [
+                    'unreadCount' => InAppAlert::where('user_id', $user->id)
                         ->where('is_read', false)
                         ->where(function ($query) {
                             $query->whereNull('visible_from')->orWhere('visible_from', '<=', now());
@@ -60,7 +86,7 @@ class HandleInertiaRequests extends Middleware
                             $query->whereNull('visible_until')->orWhere('visible_until', '>=', now());
                         })
                         ->count(),
-                    'recent' => InAppAlert::where('user_id', $request->user()->id)
+                    'recent' => InAppAlert::where('user_id', $user->id)
                         ->where(function ($query) {
                             $query->whereNull('visible_from')->orWhere('visible_from', '<=', now());
                         })
@@ -70,11 +96,13 @@ class HandleInertiaRequests extends Middleware
                         ->latest()
                         ->limit(8)
                         ->get(['id', 'title', 'message', 'type', 'link', 'is_read', 'created_at']),
-                ]
-                : [
-                    'unreadCount' => 0,
-                    'recent' => [],
-                ],
-        ];
+                ];
+            }
+        );
+    }
+
+    private function hasInAppAlertsTable(): bool
+    {
+        return $this->hasInAppAlertsTable ??= Schema::hasTable('in_app_alerts');
     }
 }

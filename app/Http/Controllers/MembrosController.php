@@ -38,7 +38,7 @@ class MembrosController extends Controller
         $members = Cache::remember('membros:list', 60, fn () =>
             User::select([
                 'id', 'numero_socio', 'nome_completo', 'email_utilizador',
-                'foto_perfil', 'estado', 'tipo_membro',
+                'foto_perfil', 'estado', 'tipo_membro', 'ativo_desportivo', 'escalao', 'created_at',
             ])->orderBy('nome_completo')->get()
         );
 
@@ -53,10 +53,27 @@ class MembrosController extends Controller
         $currentUser = $request->user();
 
         // All stats in a single cache entry — avoids 8+ separate roundtrips
-        $stats = Cache::remember('membros:stats', 60, function () use ($userTypes, $ageGroups) {
+        $stats = Cache::remember('membros:stats', 60, function () use ($members, $userTypes, $ageGroups) {
+            $membersByUserType = [];
+            $athletesByAgeGroup = [];
+
+            foreach ($members as $member) {
+                $memberTypes = collect($member->tipo_membro ?? [])->map(static fn ($type) => (string) $type);
+
+                foreach ($memberTypes as $typeId) {
+                    $membersByUserType[$typeId] = ($membersByUserType[$typeId] ?? 0) + 1;
+                }
+
+                if ($memberTypes->contains('atleta')) {
+                    foreach (collect($member->escalao ?? [])->map(static fn ($ageGroupId) => (string) $ageGroupId) as $ageGroupId) {
+                        $athletesByAgeGroup[$ageGroupId] = ($athletesByAgeGroup[$ageGroupId] ?? 0) + 1;
+                    }
+                }
+            }
+
             $tipoMembrosStats = [];
             foreach ($userTypes as $tipo) {
-                $count = User::whereJsonContains('tipo_membro', (string) $tipo->id)->count();
+                $count = $membersByUserType[(string) $tipo->id] ?? 0;
                 if ($count > 0) {
                     $tipoMembrosStats[] = ['tipo' => $tipo->nome, 'count' => $count];
                 }
@@ -64,24 +81,25 @@ class MembrosController extends Controller
 
             $escaloesStats = [];
             foreach ($ageGroups as $escalao) {
-                $count = User::whereJsonContains('tipo_membro', 'atleta')
-                    ->whereJsonContains('escalao', (string) $escalao->id)
-                    ->count();
+                $count = $athletesByAgeGroup[(string) $escalao->id] ?? 0;
                 if ($count > 0) {
                     $escaloesStats[] = ['escalao' => $escalao->nome, 'count' => $count];
                 }
             }
 
+            $createdThreshold = now()->subDays(30);
+            $athletes = $members->filter(static fn ($member) => in_array('atleta', $member->tipo_membro ?? [], true));
+
             return [
                 'counts' => [
-                    'totalMembros'      => User::count(),
-                    'membrosAtivos'     => User::where('estado', 'ativo')->count(),
-                    'membrosInativos'   => User::where('estado', 'inativo')->count(),
-                    'totalAtletas'      => User::whereJsonContains('tipo_membro', 'atleta')->count(),
-                    'atletasAtivos'     => User::whereJsonContains('tipo_membro', 'atleta')->where('ativo_desportivo', true)->count(),
-                    'encarregados'      => User::whereJsonContains('tipo_membro', 'encarregado_educacao')->count(),
-                    'treinadores'       => User::whereJsonContains('tipo_membro', 'treinador')->count(),
-                    'novosUltimos30Dias' => User::where('created_at', '>=', now()->subDays(30))->count(),
+                    'totalMembros'      => $members->count(),
+                    'membrosAtivos'     => $members->where('estado', 'ativo')->count(),
+                    'membrosInativos'   => $members->where('estado', 'inativo')->count(),
+                    'totalAtletas'      => $athletes->count(),
+                    'atletasAtivos'     => $athletes->where('ativo_desportivo', true)->count(),
+                    'encarregados'      => $members->filter(static fn ($member) => in_array('encarregado_educacao', $member->tipo_membro ?? [], true))->count(),
+                    'treinadores'       => $members->filter(static fn ($member) => in_array('treinador', $member->tipo_membro ?? [], true))->count(),
+                    'novosUltimos30Dias' => $members->filter(static fn ($member) => optional($member->created_at)?->greaterThanOrEqualTo($createdThreshold))->count(),
                 ],
                 'tipoMembrosStats' => $tipoMembrosStats,
                 'escaloesStats'    => $escaloesStats,
