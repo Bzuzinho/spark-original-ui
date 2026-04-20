@@ -9,18 +9,44 @@ use App\Models\UserTypeLandingPage;
 use App\Models\UserTypeMenuModule;
 use App\Models\UserTypePermission;
 use App\Support\AccessControl\AccessControlCatalog;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class UserTypeAccessControlService
 {
-    private ?bool $accessControlReady = null;
+    private static ?bool $accessControlReady = null;
 
     /**
      * @var array<string, bool>
      */
-    private array $tableExists = [];
+    private static array $tableExists = [];
+
+    /**
+     * @var array<string, UserType|null>
+     */
+    private static array $resolvedUserTypes = [];
+
+    /**
+     * @var array<string, array<string, mixed>>
+     */
+    private static array $currentUserAccess = [];
+
+    /**
+     * @var array<string, array<string, mixed>>
+     */
+    private static array $userTypeSettings = [];
+
+    /**
+     * @var array<string, PermissionNode|null>
+     */
+    private static array $permissionNodesByKey = [];
+
+    /**
+     * @var array<string, PermissionNode|null>
+     */
+    private static array $permissionNodesById = [];
 
     public function __construct(
         private readonly ResolveCurrentUserType $resolveCurrentUserType,
@@ -76,38 +102,48 @@ class UserTypeAccessControlService
 
     public function getUserTypeSettings(UserType $userType): array
     {
-        $defaultLanding = AccessControlCatalog::defaultLandingPage();
-        $menuModules = $this->menuModulesForUserType($userType);
-        $landing = $this->landingPageForUserType($userType) ?? $defaultLanding;
-
-        $permissions = [];
-
-        if ($this->isReady() && $this->tableExists('user_type_permissions')) {
-            $permissions = UserTypePermission::query()
-                ->where('user_type_id', $userType->id)
-                ->whereNotNull('permission_node_id')
-                ->get(['permission_node_id', 'can_view', 'can_edit', 'can_delete'])
-                ->map(static fn (UserTypePermission $permission) => [
-                    'permission_node_id' => $permission->permission_node_id,
-                    'can_view' => (bool) $permission->can_view,
-                    'can_edit' => (bool) $permission->can_edit,
-                    'can_delete' => (bool) $permission->can_delete,
-                ])
-                ->values()
-                ->all();
+        if (isset(self::$userTypeSettings[$userType->id])) {
+            return self::$userTypeSettings[$userType->id];
         }
 
-        return [
-            'userType' => [
-                'id' => $userType->id,
-                'nome' => $userType->nome,
-                'codigo' => $userType->codigo,
-                'descricao' => $userType->descricao,
-            ],
-            'menuModuleKeys' => $menuModules,
-            'landingPage' => $landing,
-            'permissions' => $permissions,
-        ];
+        return self::$userTypeSettings[$userType->id] = Cache::remember(
+            'access_control:user_type_settings:' . $userType->id,
+            now()->addMinutes(5),
+            function () use ($userType) {
+                $defaultLanding = AccessControlCatalog::defaultLandingPage();
+                $menuModules = $this->menuModulesForUserType($userType);
+                $landing = $this->landingPageForUserType($userType) ?? $defaultLanding;
+
+                $permissions = [];
+
+                if ($this->isReady() && $this->tableExists('user_type_permissions')) {
+                    $permissions = UserTypePermission::query()
+                        ->where('user_type_id', $userType->id)
+                        ->whereNotNull('permission_node_id')
+                        ->get(['permission_node_id', 'can_view', 'can_edit', 'can_delete'])
+                        ->map(static fn (UserTypePermission $permission) => [
+                            'permission_node_id' => $permission->permission_node_id,
+                            'can_view' => (bool) $permission->can_view,
+                            'can_edit' => (bool) $permission->can_edit,
+                            'can_delete' => (bool) $permission->can_delete,
+                        ])
+                        ->values()
+                        ->all();
+                }
+
+                return [
+                    'userType' => [
+                        'id' => $userType->id,
+                        'nome' => $userType->nome,
+                        'codigo' => $userType->codigo,
+                        'descricao' => $userType->descricao,
+                    ],
+                    'menuModuleKeys' => $menuModules,
+                    'landingPage' => $landing,
+                    'permissions' => $permissions,
+                ];
+            }
+        );
     }
 
     public function syncMenuModules(UserType $userType, array $moduleKeys): array
@@ -207,19 +243,30 @@ class UserTypeAccessControlService
     {
         $defaultLanding = AccessControlCatalog::defaultLandingPage();
         $defaultModules = AccessControlCatalog::allMenuModuleKeys();
+        $cacheKey = $user?->id ?? '__guest__';
+
+        if (isset(self::$currentUserAccess[$cacheKey])) {
+            return self::$currentUserAccess[$cacheKey];
+        }
 
         if ($user === null || ! $this->isReady()) {
-            return [
+            return self::$currentUserAccess[$cacheKey] = [
                 'currentUserType' => null,
                 'visibleMenuModules' => $defaultModules,
                 'landingPage' => $defaultLanding,
             ];
         }
 
-        $userType = ($this->resolveCurrentUserType)($user);
+        $cachedAccess = Cache::get('access_control:current_user_access:' . $user->id);
+
+        if (is_array($cachedAccess)) {
+            return self::$currentUserAccess[$cacheKey] = $cachedAccess;
+        }
+
+        $userType = $this->resolveUserType($user);
 
         if ($userType === null) {
-            return [
+            return self::$currentUserAccess[$cacheKey] = [
                 'currentUserType' => null,
                 'visibleMenuModules' => $defaultModules,
                 'landingPage' => $defaultLanding,
@@ -229,11 +276,15 @@ class UserTypeAccessControlService
         $settings = $this->getUserTypeSettings($userType);
         $settings['landingPage']['route'] = $this->resolveLandingRoute($settings['landingPage'], $user);
 
-        return [
+        $access = [
             'currentUserType' => $settings['userType'],
             'visibleMenuModules' => $settings['menuModuleKeys'],
             'landingPage' => $settings['landingPage'],
         ];
+
+        Cache::put('access_control:current_user_access:' . $user->id, $access, now()->addMinutes(5));
+
+        return self::$currentUserAccess[$cacheKey] = $access;
     }
 
     public function resolveLandingRouteForUser(?User $user): string
@@ -247,17 +298,7 @@ class UserTypeAccessControlService
             return false;
         }
 
-        if (! $this->isReady()) {
-            return true;
-        }
-
-        $userType = ($this->resolveCurrentUserType)($user);
-
-        if ($userType === null) {
-            return true;
-        }
-
-        return in_array($moduleKey, $this->menuModulesForUserType($userType), true);
+        return in_array($moduleKey, $this->getCurrentUserAccess($user)['visibleMenuModules'] ?? [], true);
     }
 
     public function canAccessPermission(?User $user, string $permissionKey, string $capability = 'view'): bool
@@ -270,13 +311,13 @@ class UserTypeAccessControlService
             return true;
         }
 
-        $userType = ($this->resolveCurrentUserType)($user);
+        $userType = $this->resolveUserType($user);
 
         if ($userType === null) {
             return true;
         }
 
-        $permissionNode = PermissionNode::query()->where('key', $permissionKey)->first();
+        $permissionNode = $this->permissionNodeForKey($permissionKey);
 
         if ($permissionNode === null) {
             return false;
@@ -290,7 +331,9 @@ class UserTypeAccessControlService
             return false;
         }
 
-        if (! $this->userTypeHasExplicitPermissions($userType)) {
+        $settings = $this->getUserTypeSettings($userType);
+
+        if (($settings['permissions'] ?? []) === []) {
             return true;
         }
 
@@ -300,11 +343,12 @@ class UserTypeAccessControlService
             'delete' => 'can_delete',
         };
 
-        return UserTypePermission::query()
-            ->where('user_type_id', $userType->id)
-            ->whereIn('permission_node_id', $this->permissionNodeAndAncestorIds($permissionNode))
-            ->where($column, true)
-            ->exists();
+        $allowedPermissionNodeIds = collect($settings['permissions'] ?? [])
+            ->filter(static fn (array $permission) => (bool) ($permission[$column] ?? false))
+            ->pluck('permission_node_id')
+            ->all();
+
+        return array_intersect($allowedPermissionNodeIds, $this->permissionNodeAndAncestorIds($permissionNode)) !== [];
     }
 
     private function menuModulesForUserType(UserType $userType): array
@@ -428,12 +472,60 @@ class UserTypeAccessControlService
 
     private function isReady(): bool
     {
-        return $this->accessControlReady ??= $this->tableExists('user_types');
+        return self::$accessControlReady ??= $this->tableExists('user_types');
     }
 
     private function tableExists(string $table): bool
     {
-        return $this->tableExists[$table] ??= Schema::hasTable($table);
+        return self::$tableExists[$table] ??= Cache::rememberForever(
+            'access_control:table_exists:' . $table,
+            fn () => Schema::hasTable($table)
+        );
+    }
+
+    private function resolveUserType(User $user): ?UserType
+    {
+        if (array_key_exists($user->id, self::$resolvedUserTypes)) {
+            return self::$resolvedUserTypes[$user->id];
+        }
+
+        return self::$resolvedUserTypes[$user->id] = Cache::remember(
+            'access_control:resolved_user_type:' . $user->id,
+            now()->addMinutes(5),
+            fn () => ($this->resolveCurrentUserType)($user)
+        );
+    }
+
+    private function permissionNodeForKey(string $permissionKey): ?PermissionNode
+    {
+        if (array_key_exists($permissionKey, self::$permissionNodesByKey)) {
+            return self::$permissionNodesByKey[$permissionKey];
+        }
+
+        $permissionNode = Cache::remember(
+            'access_control:permission_node:key:' . $permissionKey,
+            now()->addMinutes(10),
+            fn () => PermissionNode::query()->where('key', $permissionKey)->first(['id', 'key', 'parent_id', 'module_key'])
+        );
+
+        if ($permissionNode !== null) {
+            self::$permissionNodesById[$permissionNode->id] = $permissionNode;
+        }
+
+        return self::$permissionNodesByKey[$permissionKey] = $permissionNode;
+    }
+
+    private function permissionNodeById(string $nodeId): ?PermissionNode
+    {
+        if (array_key_exists($nodeId, self::$permissionNodesById)) {
+            return self::$permissionNodesById[$nodeId];
+        }
+
+        return self::$permissionNodesById[$nodeId] = Cache::remember(
+            'access_control:permission_node:id:' . $nodeId,
+            now()->addMinutes(10),
+            fn () => PermissionNode::query()->find($nodeId, ['id', 'parent_id'])
+        );
     }
 
     private function userTypeHasExplicitPermissions(UserType $userType): bool
@@ -450,7 +542,7 @@ class UserTypeAccessControlService
         $parentId = $node->parent_id;
 
         while ($parentId !== null) {
-            $parent = PermissionNode::query()->find($parentId, ['id', 'parent_id']);
+            $parent = $this->permissionNodeById($parentId);
 
             if ($parent === null) {
                 break;

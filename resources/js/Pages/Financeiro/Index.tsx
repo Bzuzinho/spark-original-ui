@@ -1,14 +1,9 @@
 import { Head } from '@inertiajs/react';
-import { useState } from 'react';
+import { Suspense, lazy, useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { moduleTabbedContentClass, moduleTabsClass, moduleViewportClass } from '@/lib/module-layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs';
 import { ChartLineUp, Receipt, ArrowsDownUp, Bank, ChartBar } from '@phosphor-icons/react';
-import { DashboardTab } from './DashboardTab';
-import { FaturasTab } from './FaturasTab';
-import { MovimentosTab } from './MovimentosTab';
-import { BancoTab } from './BancoTab';
-import { RelatoriosTab } from './RelatoriosTab';
 import {
   Fatura,
   FaturaItem,
@@ -24,6 +19,16 @@ import {
   AgeGroup,
   InvoiceType,
 } from './types';
+
+const DashboardTab = lazy(() => import('./DashboardTab').then((module) => ({ default: module.DashboardTab })));
+const FaturasTab = lazy(() => import('./FaturasTab').then((module) => ({ default: module.FaturasTab })));
+const MovimentosTab = lazy(() => import('./MovimentosTab').then((module) => ({ default: module.MovimentosTab })));
+const BancoTab = lazy(() => import('./BancoTab').then((module) => ({ default: module.BancoTab })));
+const RelatoriosTab = lazy(() => import('./RelatoriosTab').then((module) => ({ default: module.RelatoriosTab })));
+
+function TabFallback() {
+  return <div className="py-8 text-sm text-muted-foreground">A carregar...</div>;
+}
 
 interface Props {
   faturas: Fatura[];
@@ -107,77 +112,93 @@ export default function FinanceiroIndex({
 
           <TabsContent value="dashboard" className={moduleTabbedContentClass}>
             {activeTab === 'dashboard' ? (
-              <DashboardTab
-                faturas={faturasState}
-                lancamentos={lancamentosState}
-                movimentos={movimentosState}
-                extratos={extratosState}
-                centrosCusto={centrosCusto || []}
-              />
+              <Suspense fallback={<TabFallback />}>
+                <DashboardTab
+                  faturas={faturasState}
+                  lancamentos={lancamentosState}
+                  movimentos={movimentosState}
+                  extratos={extratosState}
+                  centrosCusto={centrosCusto || []}
+                />
+              </Suspense>
             ) : null}
           </TabsContent>
 
           <TabsContent value="faturas" className={moduleTabbedContentClass}>
-            <FaturasTab
-              faturas={faturasState}
-              setFaturas={setFaturas}
-              faturaItens={faturaItensState}
-              setFaturaItens={setFaturaItens}
-              lancamentos={lancamentosState}
-              setLancamentos={setLancamentos}
-              conciliacoes={conciliacoesState}
-              setConciliacoes={setConciliacoes}
-              setExtratos={setExtratos}
-              users={users || []}
-              mensalidades={mensalidades || []}
-              centrosCusto={centrosCusto || []}
-              products={productsState}
-              setProducts={setProducts}
-              invoiceTypes={invoiceTypes || []}
-            />
+            {activeTab === 'faturas' ? (
+              <Suspense fallback={<TabFallback />}>
+                <FaturasTab
+                  faturas={faturasState}
+                  setFaturas={setFaturas}
+                  faturaItens={faturaItensState}
+                  setFaturaItens={setFaturaItens}
+                  lancamentos={lancamentosState}
+                  setLancamentos={setLancamentos}
+                  conciliacoes={conciliacoesState}
+                  setConciliacoes={setConciliacoes}
+                  setExtratos={setExtratos}
+                  users={users || []}
+                  mensalidades={mensalidades || []}
+                  centrosCusto={centrosCusto || []}
+                  products={productsState}
+                  setProducts={setProducts}
+                  invoiceTypes={invoiceTypes || []}
+                />
+              </Suspense>
+            ) : null}
           </TabsContent>
 
           <TabsContent value="movimentos" className={moduleTabbedContentClass}>
-            <MovimentosTab
-              movimentos={movimentosState}
-              setMovimentos={setMovimentos}
-              movimentoItens={movimentoItensState}
-              setMovimentoItens={setMovimentoItens}
-              lancamentos={lancamentosState}
-              setLancamentos={setLancamentos}
-              users={users || []}
-              centrosCusto={centrosCusto || []}
-              products={productsState}
-              setProducts={setProducts}
-              faturas={faturasState}
-            />
+            {activeTab === 'movimentos' ? (
+              <Suspense fallback={<TabFallback />}>
+                <MovimentosTab
+                  movimentos={movimentosState}
+                  setMovimentos={setMovimentos}
+                  movimentoItens={movimentoItensState}
+                  setMovimentoItens={setMovimentoItens}
+                  lancamentos={lancamentosState}
+                  setLancamentos={setLancamentos}
+                  users={users || []}
+                  centrosCusto={centrosCusto || []}
+                  products={productsState}
+                  setProducts={setProducts}
+                  faturas={faturasState}
+                />
+              </Suspense>
+            ) : null}
           </TabsContent>
 
           <TabsContent value="banco" className={moduleTabbedContentClass}>
-            <BancoTab
-              extratos={extratosState}
-              setExtratos={setExtratos}
-              lancamentos={lancamentosState}
-              setLancamentos={setLancamentos}
-              faturas={faturasState}
-              setFaturas={setFaturas}
-              movimentos={movimentosState}
-              setMovimentos={setMovimentos}
-              setConciliacoes={setConciliacoes}
-              centrosCusto={centrosCusto || []}
-              users={users || []}
-            />
+            {activeTab === 'banco' ? (
+              <Suspense fallback={<TabFallback />}>
+                <BancoTab
+                  extratos={extratosState}
+                  setExtratos={setExtratos}
+                  lancamentos={lancamentosState}
+                  setLancamentos={setLancamentos}
+                  faturas={faturasState}
+                  setFaturas={setFaturas}
+                  movimentos={movimentosState}
+                  setMovimentos={setMovimentos}
+                  setConciliacoes={setConciliacoes}
+                  centrosCusto={centrosCusto || []}
+                  users={users || []}
+                />
+              </Suspense>
+            ) : null}
           </TabsContent>
 
           <TabsContent value="relatorios" className={moduleTabbedContentClass}>
             {activeTab === 'relatorios' ? (
-              <RelatoriosTab
-                faturas={faturasState}
-                lancamentos={lancamentosState}
-                centrosCusto={centrosCusto || []}
-                users={users || []}
-                ageGroups={ageGroups || []}
-              />
+              <Suspense fallback={<TabFallback />}>
+                <RelatoriosTab
+                  faturas={faturasState}
+                  lancamentos={lancamentosState}
+                  centrosCusto={centrosCusto || []}
+                  users={users || []}
+                  ageGroups={ageGroups || []}
+                />
+              </Suspense>
             ) : null}
           </TabsContent>
         </Tabs>

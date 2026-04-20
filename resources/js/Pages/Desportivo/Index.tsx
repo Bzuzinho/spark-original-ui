@@ -22,7 +22,7 @@
  *   dashboard | grupos | treinos | presencas | planeamento | competicoes | performance
  */
 
-import { useState } from 'react';
+import { Suspense, lazy, useState } from 'react';
 import { Head, router } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { moduleScrollableContentClass, moduleTabbedContentClass, moduleTabsClass, moduleViewportClass } from '@/lib/module-layout';
@@ -36,16 +36,6 @@ import {
   Trophy,
   Lightning,
 } from '@phosphor-icons/react';
-
-import {
-  AthletesTab,
-  CompetitionsTab,
-  DashboardTab,
-  PlanningTab,
-  PoolDeckTab,
-  TrainingsTab,
-  PerformanceTab,
-} from '@/components/sports/tabs';
 
 import type {
   AgeGroup,
@@ -147,6 +137,14 @@ interface DesportivoProps {
   athleteOperationalRows?: AthleteOperationalRow[];
 }
 
+const DashboardTab = lazy(() => import('@/components/sports/tabs/DashboardTab').then((module) => ({ default: module.DashboardTab })));
+const AthletesTab = lazy(() => import('@/components/sports/tabs/AthletesTab').then((module) => ({ default: module.AthletesTab })));
+const TrainingsTab = lazy(() => import('@/components/sports/tabs/TrainingsTab').then((module) => ({ default: module.TrainingsTab })));
+const PoolDeckTab = lazy(() => import('@/components/sports/tabs/PoolDeckTab').then((module) => ({ default: module.PoolDeckTab })));
+const PlanningTab = lazy(() => import('@/components/sports/tabs/PlanningTab').then((module) => ({ default: module.PlanningTab })));
+const CompetitionsTab = lazy(() => import('@/components/sports/tabs/CompetitionsTab').then((module) => ({ default: module.CompetitionsTab })));
+const PerformanceTab = lazy(() => import('@/components/sports/tabs/PerformanceTab').then((module) => ({ default: module.PerformanceTab })));
+
 // ─── Tabs disponíveis ──────────────────────────────────────────────────────────
 
 const TABS = [
@@ -178,6 +176,14 @@ const TAB_ROUTES: Record<TabValue, () => string> = {
   competicoes: () => route('desportivo.competicoes'),
   performance: () => route('desportivo.relatorios'),
 };
+
+function TabLoadingState() {
+  return (
+    <div className={moduleScrollableContentClass}>
+      <div className="min-h-[240px] rounded-lg border border-dashed border-border bg-background" />
+    </div>
+  );
+}
 
 // ─── Componente ───────────────────────────────────────────────────────────────
 
@@ -304,87 +310,101 @@ export default function DesportivoIndex({
           </TabsList>
 
           <TabsContent value="dashboard" className={moduleTabbedContentClass}>
-            <DashboardTab
-              stats={stats}
-              alerts={alerts}
-              trainings={resolvedTrainings}
-              upcomingCompetitions={upcomingCompetitions}
-              competitions={resolvedCompetitions}
-              eventos={eventos}
-              ageGroups={ageGroups}
-              users={resolvedUsers}
-              volumeByAthlete={resolvedVolumeByAthlete}
-            />
+            <Suspense fallback={<TabLoadingState />}>
+              <DashboardTab
+                stats={stats}
+                alerts={alerts}
+                trainings={resolvedTrainings}
+                upcomingCompetitions={upcomingCompetitions}
+                competitions={resolvedCompetitions}
+                eventos={eventos}
+                ageGroups={ageGroups}
+                users={resolvedUsers}
+                volumeByAthlete={resolvedVolumeByAthlete}
+              />
+            </Suspense>
           </TabsContent>
 
           <TabsContent value="atletas" className={moduleTabbedContentClass}>
-            <AthletesTab
-              users={resolvedUsers}
-              volumeByAthlete={resolvedVolumeByAthlete}
-              athleteOperationalRows={athleteOperationalRows}
-              ageGroups={ageGroups}
-            />
+            <Suspense fallback={<TabLoadingState />}>
+              <AthletesTab
+                users={resolvedUsers}
+                volumeByAthlete={resolvedVolumeByAthlete}
+                athleteOperationalRows={athleteOperationalRows}
+                ageGroups={ageGroups}
+              />
+            </Suspense>
           </TabsContent>
 
           <TabsContent value="treinos" className={moduleTabbedContentClass}>
-            <TrainingsTab
-              trainings={resolvedTrainings}
-              seasons={seasons}
-              ageGroups={ageGroups}
-              users={resolvedUsers}
-              trainingTypeOptions={resolvedTrainingTypeOptions}
-              trainingZoneOptions={trainingZoneOptions}
-              selectedSeasonId={selectedSeason?.id}
-              macrocycles={macrocycleOptions.length > 0 ? macrocycleOptions : macrocycles}
-              mesocycles={mesocycleOptions.length > 0 ? mesocycleOptions : mesocycles}
-              microcycles={microcycleOptions.length > 0 ? microcycleOptions : microcycles}
-              planningSeason={selectedSeason}
-              planningMacrocycles={macrocycles}
-              planningMesocycles={mesocycles}
-              calendarTrainings={calendarTrainings}
-            />
+            <Suspense fallback={<TabLoadingState />}>
+              <TrainingsTab
+                trainings={resolvedTrainings}
+                seasons={seasons}
+                ageGroups={ageGroups}
+                users={resolvedUsers}
+                trainingTypeOptions={resolvedTrainingTypeOptions}
+                trainingZoneOptions={trainingZoneOptions}
+                selectedSeasonId={selectedSeason?.id}
+                macrocycles={macrocycleOptions.length > 0 ? macrocycleOptions : macrocycles}
+                mesocycles={mesocycleOptions.length > 0 ? mesocycleOptions : mesocycles}
+                microcycles={microcycleOptions.length > 0 ? microcycleOptions : microcycles}
+                planningSeason={selectedSeason}
+                planningMacrocycles={macrocycles}
+                planningMesocycles={mesocycles}
+                calendarTrainings={calendarTrainings}
+              />
+            </Suspense>
           </TabsContent>
 
           <TabsContent value="cais" className={moduleTabbedContentClass}>
-            <PoolDeckTab
-              trainings={resolvedTrainings}
-              trainingOptions={resolvedTrainingOptions}
-              selectedTraining={selectedTraining}
-              users={resolvedUsers}
-              ageGroups={ageGroups}
-            />
+            <Suspense fallback={<TabLoadingState />}>
+              <PoolDeckTab
+                trainings={resolvedTrainings}
+                trainingOptions={resolvedTrainingOptions}
+                selectedTraining={selectedTraining}
+                users={resolvedUsers}
+                ageGroups={ageGroups}
+              />
+            </Suspense>
           </TabsContent>
 
           <TabsContent value="planeamento" className={moduleTabbedContentClass}>
-            <PlanningTab
-              seasons={seasons}
-              macrocycles={macrocycles}
-              mesocycles={mesocycles}
-              selectedSeasonId={selectedSeason?.id ?? null}
-            />
+            <Suspense fallback={<TabLoadingState />}>
+              <PlanningTab
+                seasons={seasons}
+                macrocycles={macrocycles}
+                mesocycles={mesocycles}
+                selectedSeasonId={selectedSeason?.id ?? null}
+              />
+            </Suspense>
           </TabsContent>
 
           <TabsContent value="competicoes" className={moduleTabbedContentClass}>
-            <CompetitionsTab
-              competitions={resolvedCompetitions}
-              results={resolvedResults}
-              teamResults={teamResults}
-              users={resolvedUsers}
-              eventos={eventos}
-              ageGroups={ageGroups}
-              costCenters={costCenters}
-              eventTypes={eventTypes}
-              convocations={convocations}
-              convocationGroups={convocationGroups}
-              provaTipos={provaTipos}
-            />
+            <Suspense fallback={<TabLoadingState />}>
+              <CompetitionsTab
+                competitions={resolvedCompetitions}
+                results={resolvedResults}
+                teamResults={teamResults}
+                users={resolvedUsers}
+                eventos={eventos}
+                ageGroups={ageGroups}
+                costCenters={costCenters}
+                eventTypes={eventTypes}
+                convocations={convocations}
+                convocationGroups={convocationGroups}
+                provaTipos={provaTipos}
+              />
+            </Suspense>
           </TabsContent>
 
           <TabsContent value="performance" className={moduleTabbedContentClass}>
-            <PerformanceTab
-              users={resolvedUsers}
-              volumeByAthlete={resolvedVolumeByAthlete}
-            />
+            <Suspense fallback={<TabLoadingState />}>
+              <PerformanceTab
+                users={resolvedUsers}
+                volumeByAthlete={resolvedVolumeByAthlete}
+              />
+            </Suspense>
           </TabsContent>
 
         </Tabs>

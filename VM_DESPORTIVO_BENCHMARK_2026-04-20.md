@@ -91,3 +91,32 @@ Leitura:
 - A refatoracao do Desportivo melhorou o custo especifico do modulo, mas estava mascarada por latencia estrutural comum do stack
 - Depois da correcao global, a melhoria passou a ficar visivel tambem no pedido completo
 - Ainda existe um piso de latencia relevante porque a base de dados continua remota e com RTT de cerca de `100ms` por ida
+
+## Terceira iteracao - cache cross-request do access control
+
+Foi identificado que os warm requests ainda faziam varias queries repetidas de access control e permission checks em cada pedido, apesar de o modulo principal ja estar otimizado.
+
+Otimizacoes adicionais aplicadas:
+
+1. `UserTypeAccessControlService` registado como singleton por request
+2. Memoizacao estatica para tabelas, tipo de utilizador resolvido, settings e permission nodes
+3. Cache cross-request para `currentUserAccess`, `userTypeSettings`, `resolved_user_type` e `permission_node`
+4. `clubSettings` passa a ser cacheado mesmo quando nao existe registo na tabela
+
+### Perfil interno depois da terceira iteracao
+
+- `desportivo` warm: `322.86ms`, `2 queries`, `194.07ms` de SQL
+- `membros` warm: `117.24ms`, `2 queries`, `193.10ms` de SQL
+
+### Medicao HTTPS real depois da terceira iteracao
+
+Resultados autenticados via HTTPS no nginx da VM:
+
+- `membros`: `1.46s`, `1.11s`, `2.80s`, `1.28s`
+- `desportivo`: `1.40s`, `1.26s`, `1.24s`, `1.26s`
+
+Leitura final:
+
+- `desportivo` ficou de forma consistente em cerca de `1.24s` a `1.40s` no pedido HTTPS real
+- Face ao comportamento percebido de `4s` a `6s`, a reducao ficou claramente abaixo de metade
+- `membros` tambem baixou de forma substancial, embora ainda apresente um outlier ocasional

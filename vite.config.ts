@@ -69,6 +69,43 @@ const hmrConfig = isCodespaces
     : undefined;
 
 export default defineConfig({
+    build: {
+        rollupOptions: {
+            output: {
+                manualChunks(id) {
+                    if (!id.includes('node_modules')) {
+                        return undefined;
+                    }
+
+                    if (id.includes('@tanstack/react-query-devtools')) {
+                        return 'react-query-devtools';
+                    }
+
+                    if (id.includes('@tanstack/react-query')) {
+                        return 'react-query';
+                    }
+
+                    if (id.includes('@phosphor-icons/')) {
+                        return 'phosphor-icons';
+                    }
+
+                    if (id.includes('@radix-ui/')) {
+                        return 'radix-ui';
+                    }
+
+                    if (id.includes('/xlsx/')) {
+                        return 'xlsx';
+                    }
+
+                    if (id.includes('date-fns')) {
+                        return 'date-fns';
+                    }
+
+                    return undefined;
+                },
+            },
+        },
+    },
     plugins: [
         laravel({
             input: [

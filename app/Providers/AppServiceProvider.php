@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Services\AccessControl\UserTypeAccessControlService;
 use Illuminate\Support\ServiceProvider;
 use App\Models\Event;
 use App\Models\EventConvocation;
@@ -23,7 +24,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(UserTypeAccessControlService::class);
     }
 
     /**

@@ -57,7 +57,13 @@ class HandleInertiaRequests extends Middleware
                 )
                 : app(UserTypeAccessControlService::class)->getCurrentUserAccess(null),
             'clubSettings' => Cache::remember('club_settings_shared', now()->addMinutes(5), function () {
-                return ClubSetting::select('nome_clube', 'sigla', 'logo_url')->first();
+                $settings = ClubSetting::select('nome_clube', 'sigla', 'logo_url')->first();
+
+                return [
+                    'nome_clube' => $settings?->nome_clube,
+                    'sigla' => $settings?->sigla,
+                    'logo_url' => $settings?->logo_url,
+                ];
             }),
             'communicationAlerts' => $this->sharedCommunicationAlerts($user),
         ];
