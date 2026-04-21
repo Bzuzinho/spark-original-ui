@@ -1,5 +1,5 @@
-import { Head, router, useForm } from '@inertiajs/react';
-import { useMemo, useState } from 'react';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
+import { useEffect, useMemo, useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { moduleTabbedContentClass, moduleTabsClass, moduleViewportClass } from '@/lib/module-layout';
 import InputError from '@/Components/InputError';
@@ -133,10 +133,10 @@ interface Props {
     total_pending: number;
     alerts_unread: number;
   };
-  campaigns: Paginated<CampaignRow>;
-  deliveries: Paginated<DeliveryRow>;
-  templates: Paginated<TemplateRow>;
-  segments: Paginated<SegmentRow>;
+  campaigns?: Paginated<CampaignRow>;
+  deliveries?: Paginated<DeliveryRow>;
+  templates?: Paginated<TemplateRow>;
+  segments?: Paginated<SegmentRow>;
   latestCampaigns: Array<{ id: string; codigo: string; title: string; status: CampaignStatus }>;
   channelSummary: Array<{ channel: Channel; total: number; success_count: number; failed_count: number }>;
   alertsSummary: { total: number; unread: number; read: number };
@@ -149,21 +149,29 @@ interface Props {
     ageGroups: Array<{ id: string; nome: string }>;
     userTypes: Array<{ value: string; label: string }>;
     templateVariables: Array<{ key: string; label: string; description: string }>;
-    recipients: Array<{
-      id: string;
-      name?: string | null;
-      nome_completo?: string | null;
-      email?: string | null;
-      telemovel?: string | null;
-      contacto_telefonico?: string | null;
-      contacto?: string | null;
-      tipo_membro?: string[] | null;
-      escalao?: string[] | null;
-      age_group_id?: string | null;
-      numero_socio?: string | null;
-    }>;
   };
+  recipientOptions?: Array<{
+    id: string;
+    name?: string | null;
+    nome_completo?: string | null;
+    email?: string | null;
+    telemovel?: string | null;
+    contacto_telefonico?: string | null;
+    contacto?: string | null;
+    tipo_membro?: string[] | null;
+    escalao?: string[] | null;
+    age_group_id?: string | null;
+    numero_socio?: string | null;
+  }>;
   filters: Record<string, string | undefined>;
+}
+
+function SectionLoadingState({ message = 'A carregar...' }: { message?: string }) {
+  return (
+    <Card>
+      <CardContent className="py-8 text-sm text-muted-foreground">{message}</CardContent>
+    </Card>
+  );
 }
 
 const CHANNELS: Array<{ value: Channel; label: string }> = [
@@ -240,8 +248,10 @@ export default function ComunicacaoIndex({
   channelSummary,
   alertsSummary,
   filterOptions,
+  recipientOptions,
   filters,
 }: Props) {
+  const page = usePage<Props>();
   const fallbackAlertCategories = useMemo<Array<{ value: AlertCategory; label: string; channels: Array<'email' | 'sms' | 'alert_app'> }>>(
     () => [
       { value: 'mensalidade', label: 'Mensalidade', channels: ['email', 'sms', 'alert_app'] },
@@ -262,6 +272,8 @@ export default function ComunicacaoIndex({
   const defaultAlertCategory = alertCategories[0]?.value || 'geral';
   const defaultAlertChannels = alertCategories[0]?.channels || DIRECT_CHANNEL_CONFIG;
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [loadingTab, setLoadingTab] = useState<string | null>(null);
+  const [loadingRecipients, setLoadingRecipients] = useState(false);
   const [showCampaignModal, setShowCampaignModal] = useState(false);
   const [editingCampaign, setEditingCampaign] = useState<CampaignRow | null>(null);
   const [showTemplateModal, setShowTemplateModal] = useState(false);
@@ -275,6 +287,16 @@ export default function ComunicacaoIndex({
   const [recipientSearch, setRecipientSearch] = useState('');
   const [recipientAgeGroupFilter, setRecipientAgeGroupFilter] = useState('all');
   const [recipientUserTypeFilter, setRecipientUserTypeFilter] = useState('all');
+  const campaignsData = campaigns?.data ?? [];
+  const deliveriesData = deliveries?.data ?? [];
+  const templatesData = templates?.data ?? [];
+  const segmentsData = segments?.data ?? [];
+  const availableRecipients = recipientOptions ?? [];
+  const hasCampaigns = Object.prototype.hasOwnProperty.call(page.props, 'campaigns');
+  const hasDeliveries = Object.prototype.hasOwnProperty.call(page.props, 'deliveries');
+  const hasTemplates = Object.prototype.hasOwnProperty.call(page.props, 'templates');
+  const hasSegments = Object.prototype.hasOwnProperty.call(page.props, 'segments');
+  const hasRecipientOptions = Object.prototype.hasOwnProperty.call(page.props, 'recipientOptions');
 
   const templateVariableMap = useMemo(
     () => filterOptions.templateVariables.reduce<Record<string, string>>((accumulator, variable) => {
@@ -800,9 +822,13 @@ export default function ComunicacaoIndex({
   };
 
   const filteredRecipients = useMemo(() => {
+    if (!showDirectModal) {
+      return [];
+    }
+
     const searchNormalized = recipientSearch.trim().toLowerCase();
 
-    return filterOptions.recipients.filter((recipient) => {
+    return availableRecipients.filter((recipient) => {
       const ageGroupMatches =
         recipientAgeGroupFilter === 'all'
         || recipient.age_group_id === recipientAgeGroupFilter
@@ -836,7 +862,7 @@ export default function ComunicacaoIndex({
         || phone.includes(searchNormalized)
         || memberNumber.includes(searchNormalized);
     });
-  }, [filterOptions.recipients, recipientAgeGroupFilter, recipientProfile, recipientSearch, recipientUserTypeFilter]);
+  }, [availableRecipients, recipientAgeGroupFilter, recipientProfile, recipientSearch, recipientUserTypeFilter, showDirectModal]);
 
   const filteredRecipientIds = useMemo(
     () => filteredRecipients.map((recipient) => recipient.id),
@@ -1123,6 +1149,10 @@ export default function ComunicacaoIndex({
   const campaignSubmitDisabled = campaignForm.processing || !campaignForm.data.segment_id || enabledCampaignChannels.length === 0;
 
   const campaignSections = useMemo(() => {
+    if (activeTab !== 'envios') {
+      return [];
+    }
+
     const sections = [
       {
         key: 'agendados',
@@ -1147,11 +1177,11 @@ export default function ComunicacaoIndex({
       },
     ].map((section) => ({
       ...section,
-      items: campaigns.data.filter((campaign) => section.statuses.includes(campaign.status)),
+      items: campaignsData.filter((campaign) => section.statuses.includes(campaign.status)),
     }));
 
     const coveredStatuses = new Set(sections.flatMap((section) => section.statuses));
-    const remainingItems = campaigns.data.filter((campaign) => !coveredStatuses.has(campaign.status));
+    const remainingItems = campaignsData.filter((campaign) => !coveredStatuses.has(campaign.status));
 
     if (remainingItems.length > 0) {
       sections.push({
@@ -1165,7 +1195,45 @@ export default function ComunicacaoIndex({
     }
 
     return sections;
-  }, [campaigns.data]);
+  }, [activeTab, campaignsData]);
+
+  useEffect(() => {
+    const pendingByTab: Record<string, { ready: boolean; props: string[] }> = {
+      envios: { ready: hasCampaigns, props: ['campaigns'] },
+      execucao: { ready: hasDeliveries, props: ['deliveries'] },
+      templates: { ready: hasTemplates, props: ['templates'] },
+      segmentos: { ready: hasSegments, props: ['segments'] },
+    };
+
+    const pending = pendingByTab[activeTab];
+
+    if (!pending || pending.ready) {
+      setLoadingTab((current) => (current === activeTab ? null : current));
+      return;
+    }
+
+    setLoadingTab(activeTab);
+    router.reload({
+      only: pending.props,
+      preserveState: true,
+      preserveScroll: true,
+      onFinish: () => setLoadingTab((current) => (current === activeTab ? null : current)),
+    });
+  }, [activeTab, hasCampaigns, hasDeliveries, hasSegments, hasTemplates]);
+
+  useEffect(() => {
+    if (!showDirectModal || hasRecipientOptions || loadingRecipients) {
+      return;
+    }
+
+    setLoadingRecipients(true);
+    router.reload({
+      only: ['recipientOptions'],
+      preserveState: true,
+      preserveScroll: true,
+      onFinish: () => setLoadingRecipients(false),
+    });
+  }, [hasRecipientOptions, loadingRecipients, showDirectModal]);
 
   const renderCampaignChannels = (campaign: CampaignRow) => {
     const enabledChannels = campaign.channels.filter((item) => item.is_enabled);
@@ -1235,6 +1303,8 @@ export default function ComunicacaoIndex({
           </div>
 
           <TabsContent value="dashboard" className={`${moduleTabbedContentClass} space-y-3`}>
+            {activeTab === 'dashboard' ? (
+            <>
             <div className="grid gap-2 grid-cols-2 lg:grid-cols-4">
               <Card className="p-3"><div className="text-xs text-muted-foreground">Campanhas agendadas</div><div className="text-xl font-semibold">{stats.scheduled_campaigns}</div></Card>
               <Card className="p-3"><div className="text-xs text-muted-foreground">Envios concluídos</div><div className="text-xl font-semibold">{stats.completed_deliveries}</div></Card>
@@ -1280,9 +1350,16 @@ export default function ComunicacaoIndex({
                 </CardContent>
               </Card>
             </div>
+            </>
+            ) : null}
           </TabsContent>
 
           <TabsContent value="envios" className={`${moduleTabbedContentClass} space-y-3`}>
+            {activeTab === 'envios' ? (
+            !hasCampaigns || loadingTab === 'envios' ? (
+            <SectionLoadingState message="A carregar envios..." />
+            ) : (
+            <>
             <Card>
               <CardContent className="pt-3 pb-3">
                 <div className="space-y-1.5">
@@ -1442,14 +1519,21 @@ export default function ComunicacaoIndex({
                 </CardContent>
               </Card>
             ))}
+            </>
+            )
+            ) : null}
           </TabsContent>
 
           <TabsContent value="execucao" className={`${moduleTabbedContentClass} space-y-3`}>
+            {activeTab === 'execucao' ? (
+            !hasDeliveries || loadingTab === 'execucao' ? (
+            <SectionLoadingState message="A carregar histórico de execução..." />
+            ) : (
             <Card>
               <CardHeader className="pb-2"><CardTitle className="text-sm">Histórico operacional de execução</CardTitle></CardHeader>
               <CardContent>
                 <div className="space-y-2 xl:hidden">
-                  {deliveries.data.map((delivery) => (
+                  {deliveriesData.map((delivery) => (
                     <div key={delivery.id} className="rounded-md border p-3">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
@@ -1482,7 +1566,7 @@ export default function ComunicacaoIndex({
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {deliveries.data.map((delivery) => (
+                      {deliveriesData.map((delivery) => (
                         <TableRow key={delivery.id}>
                           <TableCell className="px-2 py-2 align-top text-sm whitespace-normal break-words">{delivery.campaign?.codigo} - {delivery.campaign?.title}</TableCell>
                           <TableCell className="px-2 py-2 align-top text-xs uppercase whitespace-normal break-words">{delivery.channel}</TableCell>
@@ -1498,9 +1582,16 @@ export default function ComunicacaoIndex({
                 </div>
               </CardContent>
             </Card>
+            )
+            ) : null}
           </TabsContent>
 
           <TabsContent value="templates" className={`${moduleTabbedContentClass} space-y-3`}>
+            {activeTab === 'templates' ? (
+            !hasTemplates || loadingTab === 'templates' ? (
+            <SectionLoadingState message="A carregar templates..." />
+            ) : (
+            <>
             <div className="flex justify-end">
               <Button size="sm" className="h-8 text-xs" onClick={() => {
                 setEditingTemplate(null);
@@ -1521,7 +1612,7 @@ export default function ComunicacaoIndex({
             <Card>
               <CardContent className="pt-4">
                 <div className="space-y-2 xl:hidden">
-                  {templates.data.map((template) => (
+                  {templatesData.map((template) => (
                     <div key={template.id} className="rounded-md border p-3">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
@@ -1575,7 +1666,7 @@ export default function ComunicacaoIndex({
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {templates.data.map((template) => (
+                      {templatesData.map((template) => (
                         <TableRow key={template.id}>
                           <TableCell className="px-2 py-2 align-top text-sm font-medium whitespace-normal break-words">{template.name}</TableCell>
                           <TableCell className="px-2 py-2 align-top text-xs uppercase whitespace-normal break-words">{template.channel}</TableCell>
@@ -1617,9 +1708,17 @@ export default function ComunicacaoIndex({
                 </div>
               </CardContent>
             </Card>
+            </>
+            )
+            ) : null}
           </TabsContent>
 
           <TabsContent value="segmentos" className={`${moduleTabbedContentClass} space-y-3`}>
+            {activeTab === 'segmentos' ? (
+            !hasSegments || loadingTab === 'segmentos' ? (
+            <SectionLoadingState message="A carregar segmentos..." />
+            ) : (
+            <>
             <div className="flex justify-end">
               <Button size="sm" className="h-8 text-xs" onClick={() => { setEditingSegment(null); resetSegmentFormForCreate(); setShowSegmentModal(true); }}>
                 <Plus size={14} className="mr-1" />Novo segmento
@@ -1628,7 +1727,7 @@ export default function ComunicacaoIndex({
             <Card>
               <CardContent className="pt-4">
                 <div className="space-y-2 lg:hidden">
-                  {segments.data.map((segment) => (
+                  {segmentsData.map((segment) => (
                     <div key={segment.id} className="rounded-md border p-3">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
@@ -1674,7 +1773,7 @@ export default function ComunicacaoIndex({
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {segments.data.map((segment) => (
+                      {segmentsData.map((segment) => (
                         <TableRow key={segment.id}>
                           <TableCell className="font-medium">{segment.name}</TableCell>
                           <TableCell>{segment.type}</TableCell>
@@ -1703,6 +1802,9 @@ export default function ComunicacaoIndex({
                 </div>
               </CardContent>
             </Card>
+            </>
+            )
+            ) : null}
           </TabsContent>
         </Tabs>
       </div>

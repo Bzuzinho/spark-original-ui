@@ -1,5 +1,5 @@
-import { useState, useEffect, FormEventHandler } from 'react';
-import { Head, router, useForm } from '@inertiajs/react';
+import { lazy, Suspense, useState, useEffect, FormEventHandler } from 'react';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/Components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs';
@@ -16,10 +16,11 @@ import { Badge } from '@/Components/ui/badge';
 import { Checkbox } from '@/Components/ui/checkbox';
 import { Plus, PencilSimple, Trash, FloppyDisk } from '@phosphor-icons/react';
 import { FileUpload } from '@/Components/FileUpload';
-import { UserTypePermissionSettings } from '@/Components/Configuracoes/Permissions/UserTypePermissionSettings';
-import ConfiguracoesDesportivoIndex from '@/Pages/Configuracoes/Desportivo/Index';
 import { toast } from 'sonner';
 import { AccessControlBootstrap } from '@/types/access-control';
+
+const UserTypePermissionSettings = lazy(() => import('@/Components/Configuracoes/Permissions/UserTypePermissionSettings').then((module) => ({ default: module.UserTypePermissionSettings })));
+const ConfiguracoesDesportivoIndex = lazy(() => import('@/Pages/Configuracoes/Desportivo/Index'));
 
 interface AgeGroup {
     id: string;
@@ -237,6 +238,10 @@ interface ClubSettings {
     nif?: string;
     logo_url?: string;
     iban?: string;
+}
+
+function TabFallback() {
+    return <div className="py-8 text-sm text-muted-foreground">A carregar...</div>;
 }
 
 const permissionCatalog = [
@@ -510,24 +515,24 @@ interface Props {
     ageGroups: AgeGroup[];
     eventTypes: EventType[];
     athleteStatuses: BaseDesportivoConfig[];
-    trainingTypes: BaseDesportivoConfig[];
-    trainingZones: TrainingZoneConfig[];
+    trainingTypes?: BaseDesportivoConfig[];
+    trainingZones?: TrainingZoneConfig[];
     absenceReasons: AbsenceReasonConfig[];
-    injuryReasons: InjuryReasonConfig[];
-    poolTypes: PoolTypeConfig[];
+    injuryReasons?: InjuryReasonConfig[];
+    poolTypes?: PoolTypeConfig[];
     permissions: Permission[];
-    monthlyFees: MonthlyFee[];
-    invoiceTypes: InvoiceType[];
-    costCenters: CostCenter[];
-    products: Product[];
-    sponsors: Sponsor[];
-    suppliers: Supplier[];
-    itemCategories: ItemCategory[];
-    provaTipos: ProvaTipo[];
+    monthlyFees?: MonthlyFee[];
+    invoiceTypes?: InvoiceType[];
+    costCenters?: CostCenter[];
+    products?: Product[];
+    sponsors?: Sponsor[];
+    suppliers?: Supplier[];
+    itemCategories?: ItemCategory[];
+    provaTipos?: ProvaTipo[];
     notificationPrefs?: NotificationPrefs | null;
-    communicationDynamicSources: CommunicationDynamicSource[];
-    communicationAlertCategories: CommunicationAlertCategory[];
-    users: DbUser[];
+    communicationDynamicSources?: CommunicationDynamicSource[];
+    communicationAlertCategories?: CommunicationAlertCategory[];
+    users?: DbUser[];
     clubSettings?: ClubSettings;
     accessControlBootstrap: AccessControlBootstrap;
 }
@@ -537,27 +542,28 @@ export default function SettingsIndex({
     ageGroups,
     eventTypes,
     athleteStatuses,
-    trainingTypes,
-    trainingZones,
+    trainingTypes = [],
+    trainingZones = [],
     absenceReasons,
-    injuryReasons,
-    poolTypes,
+    injuryReasons = [],
+    poolTypes = [],
     permissions,
-    monthlyFees,
-    invoiceTypes,
-    costCenters,
-    products,
-    sponsors,
-    suppliers,
-    itemCategories,
-    provaTipos,
+    monthlyFees = [],
+    invoiceTypes = [],
+    costCenters = [],
+    products = [],
+    sponsors = [],
+    suppliers = [],
+    itemCategories = [],
+    provaTipos = [],
     notificationPrefs: initialNotificationPrefs,
-    communicationDynamicSources,
-    communicationAlertCategories,
-    users,
+    communicationDynamicSources = [],
+    communicationAlertCategories = [],
+    users = [],
     clubSettings,
     accessControlBootstrap,
 }: Props) {
+    const page = usePage<Props>();
     const [currentTab, setCurrentTab] = useState(() => {
         if (typeof window !== 'undefined') {
             return new URLSearchParams(window.location.search).get('tab') || 'geral';
@@ -572,6 +578,10 @@ export default function SettingsIndex({
 
         return 'geral-tipos-utilizador';
     });
+    const [currentFinanceiroTab, setCurrentFinanceiroTab] = useState('financeiro-mensalidades');
+    const [currentLogisticaTab, setCurrentLogisticaTab] = useState('logistica-artigos');
+    const [currentNotificacoesTab, setCurrentNotificacoesTab] = useState('fontes-dinamicas');
+    const [loadingRootTab, setLoadingRootTab] = useState<string | null>(null);
     const [dialogOpen, setDialogOpen] = useState(false);
     const [editingItem, setEditingItem] = useState<any>(null);
     const [productImagePreview, setProductImagePreview] = useState<string | null>(null);
@@ -658,12 +668,87 @@ export default function SettingsIndex({
     const sectionTabsClass = 'flex h-full min-h-0 flex-col space-y-4';
     const scrollableTabContentClass = 'mt-0 min-h-0 flex-1 overflow-auto pr-1';
     const nestedScrollableTabContentClass = 'min-h-0 flex-1 overflow-auto pr-1';
+    const hasMonthlyFees = Object.prototype.hasOwnProperty.call(page.props, 'monthlyFees');
+    const hasInvoiceTypes = Object.prototype.hasOwnProperty.call(page.props, 'invoiceTypes');
+    const hasCostCenters = Object.prototype.hasOwnProperty.call(page.props, 'costCenters');
+    const hasProducts = Object.prototype.hasOwnProperty.call(page.props, 'products');
+    const hasSponsors = Object.prototype.hasOwnProperty.call(page.props, 'sponsors');
+    const hasSuppliers = Object.prototype.hasOwnProperty.call(page.props, 'suppliers');
+    const hasItemCategories = Object.prototype.hasOwnProperty.call(page.props, 'itemCategories');
+    const hasNotificationPrefs = Object.prototype.hasOwnProperty.call(page.props, 'notificationPrefs');
+    const hasCommunicationDynamicSources = Object.prototype.hasOwnProperty.call(page.props, 'communicationDynamicSources');
+    const hasCommunicationAlertCategories = Object.prototype.hasOwnProperty.call(page.props, 'communicationAlertCategories');
+    const hasUsers = Object.prototype.hasOwnProperty.call(page.props, 'users');
+    const hasTrainingTypes = Object.prototype.hasOwnProperty.call(page.props, 'trainingTypes');
+    const hasTrainingZones = Object.prototype.hasOwnProperty.call(page.props, 'trainingZones');
+    const hasInjuryReasons = Object.prototype.hasOwnProperty.call(page.props, 'injuryReasons');
+    const hasPoolTypes = Object.prototype.hasOwnProperty.call(page.props, 'poolTypes');
+    const hasProvaTipos = Object.prototype.hasOwnProperty.call(page.props, 'provaTipos');
 
     useEffect(() => {
         if (clubSettings?.logo_url) {
             setLogoPreview(clubSettings.logo_url);
         }
     }, [clubSettings?.logo_url]);
+
+    useEffect(() => {
+        notificationPrefsForm.setData({
+            email_notificacoes: initialNotificationPrefs?.email_notificacoes ?? true,
+            alertas_pagamento: initialNotificationPrefs?.alertas_pagamento ?? true,
+            alertas_atividade: initialNotificationPrefs?.alertas_atividade ?? true,
+            automacoes_financeiro: initialNotificationPrefs?.automacoes_financeiro ?? true,
+            automacoes_eventos: initialNotificationPrefs?.automacoes_eventos ?? true,
+            automacoes_logistica: initialNotificationPrefs?.automacoes_logistica ?? true,
+            automacoes_faturas_financeiras: initialNotificationPrefs?.automacoes_faturas_financeiras ?? true,
+            automacoes_movimentos_financeiros: initialNotificationPrefs?.automacoes_movimentos_financeiros ?? true,
+            automacoes_convocatorias_eventos: initialNotificationPrefs?.automacoes_convocatorias_eventos ?? true,
+            automacoes_requisicoes_logistica: initialNotificationPrefs?.automacoes_requisicoes_logistica ?? true,
+            automacoes_alertas_operacionais: initialNotificationPrefs?.automacoes_alertas_operacionais ?? true,
+        });
+    }, [initialNotificationPrefs]);
+
+    useEffect(() => {
+        const pendingByTab: Record<string, { ready: boolean; props: string[] }> = {
+            financeiro: { ready: hasMonthlyFees && hasInvoiceTypes && hasCostCenters, props: ['monthlyFees', 'invoiceTypes', 'costCenters'] },
+            logistica: { ready: hasProducts && hasSponsors && hasSuppliers && hasItemCategories, props: ['products', 'sponsors', 'suppliers', 'itemCategories'] },
+            notificacoes: { ready: hasNotificationPrefs && hasCommunicationDynamicSources && hasCommunicationAlertCategories, props: ['notificationPrefs', 'communicationDynamicSources', 'communicationAlertCategories'] },
+            'base-dados': { ready: hasUsers, props: ['users'] },
+            desportivo: { ready: hasTrainingTypes && hasTrainingZones && hasInjuryReasons && hasPoolTypes && hasProvaTipos, props: ['trainingTypes', 'trainingZones', 'injuryReasons', 'poolTypes', 'provaTipos'] },
+        };
+
+        const pending = pendingByTab[currentTab];
+
+        if (!pending || pending.ready) {
+            setLoadingRootTab((current) => (current === currentTab ? null : current));
+            return;
+        }
+
+        setLoadingRootTab(currentTab);
+        router.reload({
+            only: pending.props,
+            preserveState: true,
+            preserveScroll: true,
+            onFinish: () => setLoadingRootTab((current) => (current === currentTab ? null : current)),
+        });
+    }, [
+        currentTab,
+        hasCommunicationAlertCategories,
+        hasCommunicationDynamicSources,
+        hasCostCenters,
+        hasInvoiceTypes,
+        hasInjuryReasons,
+        hasItemCategories,
+        hasMonthlyFees,
+        hasNotificationPrefs,
+        hasPoolTypes,
+        hasProducts,
+        hasProvaTipos,
+        hasSponsors,
+        hasSuppliers,
+        hasTrainingTypes,
+        hasTrainingZones,
+        hasUsers,
+    ]);
 
     const openAddDialog = (type: string) => {
         reset();
@@ -1032,6 +1117,7 @@ export default function SettingsIndex({
 
                     {/* Tab: Geral */}
                     <TabsContent value="geral" className="mt-0 min-h-0 flex-1 overflow-hidden">
+                        {currentTab === 'geral' ? (
                         <Tabs value={currentGeneralTab} onValueChange={setCurrentGeneralTab} className={sectionTabsClass}>
                             <TabsList className="w-full shrink-0 flex flex-wrap h-auto gap-1 justify-start">
                                 <TabsTrigger value="geral-tipos-utilizador">Tipos de Utilizador</TabsTrigger>
@@ -1043,6 +1129,7 @@ export default function SettingsIndex({
 
 
                         <TabsContent value="geral-tipos-utilizador" className={nestedScrollableTabContentClass}>
+                        {currentGeneralTab === 'geral-tipos-utilizador' ? (
                         <Card>
                             <CardHeader className="pb-3">
                                 <CardTitle className="text-lg">Tipos de Utilizador</CardTitle>
@@ -1102,9 +1189,11 @@ export default function SettingsIndex({
                                 </Table>
                             </CardContent>
                         </Card>
+                        ) : null}
                         </TabsContent>
 
                         <TabsContent value="geral-tipos-evento" className={nestedScrollableTabContentClass}>
+                        {currentGeneralTab === 'geral-tipos-evento' ? (
                         <Card>
                             <CardHeader className="pb-3">
                                 <CardTitle className="text-lg">Tipos de Evento</CardTitle>
@@ -1197,16 +1286,22 @@ export default function SettingsIndex({
                                 )}
                             </CardContent>
                         </Card>
+                        ) : null}
                         </TabsContent>
 
                         <TabsContent value="geral-permissoes" className={nestedScrollableTabContentClass}>
+                        {currentGeneralTab === 'geral-permissoes' ? (
+                        <Suspense fallback={<TabFallback />}>
                         <UserTypePermissionSettings
                             userTypes={userTypes}
                             bootstrap={accessControlBootstrap}
                         />
+                        </Suspense>
+                        ) : null}
                         </TabsContent>
 
                         <TabsContent value="geral-estados" className={nestedScrollableTabContentClass}>
+                        {currentGeneralTab === 'geral-estados' ? (
                         <Card>
                             <CardHeader className="pb-3">
                                 <CardTitle className="text-lg">Estados</CardTitle>
@@ -1277,9 +1372,11 @@ export default function SettingsIndex({
                                 </Table>
                             </CardContent>
                         </Card>
+                        ) : null}
                         </TabsContent>
 
                         <TabsContent value="geral-motivos-ausencia" className={nestedScrollableTabContentClass}>
+                        {currentGeneralTab === 'geral-motivos-ausencia' ? (
                         <Card>
                             <CardHeader className="pb-3">
                                 <CardTitle className="text-lg">Motivos de Ausência</CardTitle>
@@ -1343,12 +1440,15 @@ export default function SettingsIndex({
                                 </Table>
                             </CardContent>
                         </Card>
+                        ) : null}
                         </TabsContent>
                         </Tabs>
+                        ) : null}
                     </TabsContent>
 
                     {/* Tab: Clube */}
                     <TabsContent value="clube" className={scrollableTabContentClass}>
+                        {currentTab === 'clube' ? (
                         <Card>
                             <CardHeader>
                                 <CardTitle>Informações do Clube</CardTitle>
@@ -1468,11 +1568,16 @@ export default function SettingsIndex({
                                 </form>
                             </CardContent>
                         </Card>
+                        ) : null}
                     </TabsContent>
 
                     {/* Tab: Financeiro */}
                     <TabsContent value="financeiro" className="mt-0 min-h-0 flex-1 overflow-hidden">
-                        <Tabs defaultValue="financeiro-mensalidades" className={sectionTabsClass}>
+                        {currentTab === 'financeiro' ? (
+                        !hasMonthlyFees || !hasInvoiceTypes || !hasCostCenters || loadingRootTab === 'financeiro' ? (
+                        <TabFallback />
+                        ) : (
+                        <Tabs value={currentFinanceiroTab} onValueChange={setCurrentFinanceiroTab} className={sectionTabsClass}>
                             <TabsList className="w-full shrink-0 flex flex-wrap h-auto gap-1 justify-start">
                                 <TabsTrigger value="financeiro-mensalidades">Mensalidades</TabsTrigger>
                                 <TabsTrigger value="financeiro-tipos-fatura">Tipos de Fatura</TabsTrigger>
@@ -1480,6 +1585,7 @@ export default function SettingsIndex({
                             </TabsList>
 
                         <TabsContent value="financeiro-mensalidades" className={nestedScrollableTabContentClass}>
+                        {currentFinanceiroTab === 'financeiro-mensalidades' ? (
                         <Card>
                             <CardHeader className="pb-3">
                                 <CardTitle className="text-lg">Mensalidades</CardTitle>
@@ -1544,9 +1650,11 @@ export default function SettingsIndex({
                                 </Table>
                             </CardContent>
                         </Card>
+                        ) : null}
                         </TabsContent>
 
                         <TabsContent value="financeiro-tipos-fatura" className={nestedScrollableTabContentClass}>
+                        {currentFinanceiroTab === 'financeiro-tipos-fatura' ? (
                         <Card>
                             <CardHeader className="pb-3">
                                 <CardTitle className="text-lg">Tipos de Fatura</CardTitle>
@@ -1608,9 +1716,11 @@ export default function SettingsIndex({
                                 </Table>
                             </CardContent>
                         </Card>
+                        ) : null}
                         </TabsContent>
 
                         <TabsContent value="financeiro-centros-custos" className={nestedScrollableTabContentClass}>
+                        {currentFinanceiroTab === 'financeiro-centros-custos' ? (
                         <Card>
                             <CardHeader className="pb-3">
                                 <CardTitle className="text-lg">Centros de Custos</CardTitle>
@@ -1672,13 +1782,20 @@ export default function SettingsIndex({
                                 </Table>
                             </CardContent>
                         </Card>
+                        ) : null}
                         </TabsContent>
                         </Tabs>
+                        )
+                        ) : null}
                     </TabsContent>
 
                     {/* Tab: Logistica */}
                     <TabsContent value="logistica" className="mt-0 min-h-0 flex-1 overflow-hidden">
-                        <Tabs defaultValue="logistica-artigos" className={sectionTabsClass}>
+                        {currentTab === 'logistica' ? (
+                        !hasProducts || !hasSponsors || !hasSuppliers || !hasItemCategories || loadingRootTab === 'logistica' ? (
+                        <TabFallback />
+                        ) : (
+                        <Tabs value={currentLogisticaTab} onValueChange={setCurrentLogisticaTab} className={sectionTabsClass}>
                             <TabsList className="w-full shrink-0 flex flex-wrap h-auto gap-1 justify-start">
                                 <TabsTrigger value="logistica-artigos">Artigos</TabsTrigger>
                                 <TabsTrigger value="logistica-categorias">Categorias de Itens</TabsTrigger>
@@ -1687,6 +1804,7 @@ export default function SettingsIndex({
                             </TabsList>
 
                         <TabsContent value="logistica-artigos" className={nestedScrollableTabContentClass}>
+                        {currentLogisticaTab === 'logistica-artigos' ? (
                         <Card>
                             <CardHeader className="pb-3">
                                 <CardTitle className="text-lg">Artigos</CardTitle>
@@ -1774,9 +1892,11 @@ export default function SettingsIndex({
                                 </Table>
                             </CardContent>
                         </Card>
+                        ) : null}
                         </TabsContent>
 
                         <TabsContent value="logistica-categorias" className={nestedScrollableTabContentClass}>
+                        {currentLogisticaTab === 'logistica-categorias' ? (
                         <Card>
                             <CardHeader className="pb-3">
                                 <CardTitle className="text-lg">Categorias de Itens</CardTitle>
@@ -1842,9 +1962,11 @@ export default function SettingsIndex({
                                 </Table>
                             </CardContent>
                         </Card>
+                        ) : null}
                         </TabsContent>
 
                         <TabsContent value="logistica-patrocinadores" className={nestedScrollableTabContentClass}>
+                        {currentLogisticaTab === 'logistica-patrocinadores' ? (
                         <Card>
                             <CardHeader className="pb-3">
                                 <CardTitle className="text-lg">Patrocinadores</CardTitle>
@@ -1936,9 +2058,11 @@ export default function SettingsIndex({
                                 </Table>
                             </CardContent>
                         </Card>
+                        ) : null}
                         </TabsContent>
 
                         <TabsContent value="logistica-fornecedores" className={nestedScrollableTabContentClass}>
+                        {currentLogisticaTab === 'logistica-fornecedores' ? (
                         <Card>
                             <CardHeader className="pb-3">
                                 <CardTitle className="text-lg">Fornecedores</CardTitle>
@@ -2004,13 +2128,20 @@ export default function SettingsIndex({
                                 </Table>
                             </CardContent>
                         </Card>
+                        ) : null}
                         </TabsContent>
                         </Tabs>
+                        )
+                        ) : null}
                     </TabsContent>
 
                     {/* Tab: Notificações */}
                     <TabsContent value="notificacoes" className="mt-0 min-h-0 flex-1 overflow-hidden">
-                        <Tabs defaultValue="fontes-dinamicas" className={sectionTabsClass}>
+                        {currentTab === 'notificacoes' ? (
+                        !hasNotificationPrefs || !hasCommunicationDynamicSources || !hasCommunicationAlertCategories || loadingRootTab === 'notificacoes' ? (
+                        <TabFallback />
+                        ) : (
+                        <Tabs value={currentNotificacoesTab} onValueChange={setCurrentNotificacoesTab} className={sectionTabsClass}>
                             <TabsList className="w-full shrink-0 flex flex-wrap h-auto gap-1 justify-start">
                                 <TabsTrigger value="automacoes">Automações</TabsTrigger>
                                 <TabsTrigger value="fontes-dinamicas">Fontes Dinâmicas</TabsTrigger>
@@ -2018,6 +2149,7 @@ export default function SettingsIndex({
                             </TabsList>
 
                             <TabsContent value="automacoes" className={nestedScrollableTabContentClass}>
+                                {currentNotificacoesTab === 'automacoes' ? (
                                 <Card>
                                     <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                         <div>
@@ -2059,9 +2191,11 @@ export default function SettingsIndex({
                                         </div>
                                     </CardContent>
                                 </Card>
+                                ) : null}
                             </TabsContent>
 
                             <TabsContent value="fontes-dinamicas" className={nestedScrollableTabContentClass}>
+                                {currentNotificacoesTab === 'fontes-dinamicas' ? (
                                 <Card>
                                     <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                         <div>
@@ -2125,9 +2259,11 @@ export default function SettingsIndex({
                                         </Table>
                                     </CardContent>
                                 </Card>
+                                ) : null}
                             </TabsContent>
 
                             <TabsContent value="categorias-alerta" className={nestedScrollableTabContentClass}>
+                                {currentNotificacoesTab === 'categorias-alerta' ? (
                                 <Card>
                                     <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                         <div>
@@ -2199,12 +2335,19 @@ export default function SettingsIndex({
                                         </Table>
                                     </CardContent>
                                 </Card>
+                                ) : null}
                             </TabsContent>
                         </Tabs>
+                        )
+                        ) : null}
                     </TabsContent>
 
                     {/* Tab: Base de Dados */}
                     <TabsContent value="base-dados" className={scrollableTabContentClass}>
+                        {currentTab === 'base-dados' ? (
+                        !hasUsers || loadingRootTab === 'base-dados' ? (
+                        <TabFallback />
+                        ) : (
                         <Card>
                             <CardHeader>
                                 <CardTitle>Utilizadores na Base de Dados</CardTitle>
@@ -2260,9 +2403,16 @@ export default function SettingsIndex({
                                 </div>
                             </CardContent>
                         </Card>
+                        )
+                        ) : null}
                     </TabsContent>
 
                     <TabsContent value="desportivo" className={scrollableTabContentClass}>
+                        {currentTab === 'desportivo' ? (
+                        !hasTrainingTypes || !hasTrainingZones || !hasInjuryReasons || !hasPoolTypes || !hasProvaTipos || loadingRootTab === 'desportivo' ? (
+                        <TabFallback />
+                        ) : (
+                        <Suspense fallback={<TabFallback />}>
                         <ConfiguracoesDesportivoIndex
                             athleteStatuses={athleteStatuses}
                             trainingTypes={trainingTypes}
@@ -2275,6 +2425,9 @@ export default function SettingsIndex({
                             embedded
                             showSummary={false}
                         />
+                        </Suspense>
+                        )
+                        ) : null}
                     </TabsContent>
                 </Tabs>
             </div>

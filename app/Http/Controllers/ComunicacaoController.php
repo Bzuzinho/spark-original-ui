@@ -13,6 +13,7 @@ use App\Models\AgeGroup;
 use App\Models\User;
 use App\Services\Communication\SegmentResolverService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -31,6 +32,120 @@ class ComunicacaoController extends Controller
 
     public function index(Request $request): Response
     {
+        return Inertia::render('Comunicacao/Index', $this->indexPayload($request));
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function indexPayload(Request $request): array
+    {
+        $useDefaultCache = $this->shouldCacheDefaultIndexPayload($request);
+
+        return [
+            ...$this->buildDashboardPayload($useDefaultCache),
+            'filterOptions' => $useDefaultCache
+                ? Cache::remember('comunicacao:filter-options', now()->addSeconds(60), fn () => $this->buildFilterOptions())
+                : $this->buildFilterOptions(),
+            'campaigns' => Inertia::lazy(fn () => $this->buildCampaignsPayload($request, $useDefaultCache)),
+            'deliveries' => Inertia::lazy(fn () => $this->buildDeliveriesPayload($request, $useDefaultCache)),
+            'templates' => Inertia::lazy(fn () => $this->buildTemplatesPayload($useDefaultCache)),
+            'segments' => Inertia::lazy(fn () => $this->buildSegmentsPayload($useDefaultCache)),
+            'recipientOptions' => Inertia::lazy(fn () => $this->buildRecipientOptions($useDefaultCache)),
+            'filters' => $request->only([
+                'search',
+                'channel',
+                'status',
+                'period_start',
+                'period_end',
+                'author',
+                'delivery_channel',
+                'delivery_status',
+                'delivery_campaign',
+            ]),
+        ];
+    }
+
+    private function shouldCacheDefaultIndexPayload(Request $request): bool
+    {
+        if ($request->session()->has('success') || $request->session()->has('error') || $request->session()->has('warning')) {
+            return false;
+        }
+
+        $allowedKeys = [
+            'search',
+            'channel',
+            'status',
+            'period_start',
+            'period_end',
+            'author',
+            'delivery_channel',
+            'delivery_status',
+            'delivery_campaign',
+            'page',
+            'deliveries_page',
+            'templates_page',
+            'segments_page',
+        ];
+
+        $query = collect($request->query())
+            ->only($allowedKeys)
+            ->filter(fn ($value) => !($value === null || $value === ''));
+
+        return $query->isEmpty();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildDashboardPayload(bool $useDefaultCache): array
+    {
+        if ($useDefaultCache) {
+            return Cache::remember('comunicacao:dashboard', now()->addSeconds(60), fn () => $this->buildDashboardPayload(false));
+        }
+
+        $alertsSummary = [
+            'total' => InAppAlert::count(),
+            'unread' => InAppAlert::where('is_read', false)->count(),
+            'read' => InAppAlert::where('is_read', true)->count(),
+        ];
+
+        $stats = [
+            'scheduled_campaigns' => CommunicationCampaign::where('status', 'agendada')->count(),
+            'completed_deliveries' => CommunicationDelivery::where('status', 'completed')->count(),
+            'failed_deliveries' => CommunicationDelivery::whereIn('status', ['failed', 'partial'])->count(),
+            'active_templates' => CommunicationTemplate::where('status', 'ativo')->count(),
+            'total_sent' => CommunicationDelivery::sum('success_count'),
+            'total_failed' => CommunicationDelivery::sum('failed_count'),
+            'total_pending' => CommunicationDelivery::sum('pending_count'),
+            'alerts_unread' => $alertsSummary['unread'],
+        ];
+
+        $latestCampaigns = CommunicationCampaign::query()
+            ->select('id', 'codigo', 'title', 'status', 'created_at', 'sent_at')
+            ->latest()
+            ->take(6)
+            ->get();
+
+        $channelSummary = CommunicationDelivery::query()
+            ->selectRaw('channel, count(*) as total, sum(success_count) as success_count, sum(failed_count) as failed_count')
+            ->groupBy('channel')
+            ->get();
+
+        return [
+            'stats' => $stats,
+            'latestCampaigns' => $latestCampaigns,
+            'channelSummary' => $channelSummary,
+            'alertsSummary' => $alertsSummary,
+        ];
+    }
+
+    private function buildCampaignsPayload(Request $request, bool $useDefaultCache): mixed
+    {
+        if ($useDefaultCache) {
+            return Cache::remember('comunicacao:campaigns:default', now()->addSeconds(60), fn () => $this->buildCampaignsPayload($request, false));
+        }
+
         $campaignsQuery = CommunicationCampaign::query()
             ->with([
                 'segment:id,name,rules_json',
@@ -69,7 +184,14 @@ class ComunicacaoController extends Controller
             $campaignsQuery->whereDate('created_at', '<=', $request->string('period_end')->toString());
         }
 
-        $campaigns = $campaignsQuery->paginate(12)->withQueryString();
+        return $campaignsQuery->paginate(12)->withQueryString();
+    }
+
+    private function buildDeliveriesPayload(Request $request, bool $useDefaultCache): mixed
+    {
+        if ($useDefaultCache) {
+            return Cache::remember('comunicacao:deliveries:default', now()->addSeconds(60), fn () => $this->buildDeliveriesPayload($request, false));
+        }
 
         $deliveriesQuery = CommunicationDelivery::query()
             ->with(['campaign:id,codigo,title', 'segment:id,name'])
@@ -87,12 +209,26 @@ class ComunicacaoController extends Controller
             $deliveriesQuery->where('campaign_id', $request->string('delivery_campaign')->toString());
         }
 
-        $deliveries = $deliveriesQuery->paginate(12, ['*'], 'deliveries_page')->withQueryString();
+        return $deliveriesQuery->paginate(12, ['*'], 'deliveries_page')->withQueryString();
+    }
 
-        $templates = CommunicationTemplate::query()
+    private function buildTemplatesPayload(bool $useDefaultCache): mixed
+    {
+        if ($useDefaultCache) {
+            return Cache::remember('comunicacao:templates:default', now()->addSeconds(60), fn () => $this->buildTemplatesPayload(false));
+        }
+
+        return CommunicationTemplate::query()
             ->latest()
             ->paginate(12, ['*'], 'templates_page')
             ->withQueryString();
+    }
+
+    private function buildSegmentsPayload(bool $useDefaultCache): mixed
+    {
+        if ($useDefaultCache) {
+            return Cache::remember('comunicacao:segments:default', now()->addSeconds(60), fn () => $this->buildSegmentsPayload(false));
+        }
 
         $segments = CommunicationSegment::query()
             ->where(function ($query) {
@@ -119,83 +255,47 @@ class ComunicacaoController extends Controller
             ];
         });
 
-        $alertsSummary = [
-            'total' => InAppAlert::count(),
-            'unread' => InAppAlert::where('is_read', false)->count(),
-            'read' => InAppAlert::where('is_read', true)->count(),
+        return $segments;
+    }
+
+    private function buildFilterOptions(): array
+    {
+        return [
+            'authors' => User::select('id', 'name', 'nome_completo')->orderBy('name')->get(),
+            'segments' => CommunicationSegment::select('id', 'name')
+                ->where('is_active', true)
+                ->where(function ($query) {
+                    $query->where('type', '!=', 'system')
+                        ->orWhereNull('type');
+                })
+                ->where(function ($query) {
+                    $query->where('description', '!=', self::TECHNICAL_INDIVIDUAL_SEGMENT_DESCRIPTION)
+                        ->orWhereNull('description');
+                })
+                ->orderBy('name')
+                ->get(),
+            'dynamicSources' => $this->dynamicSourcesForCommunication(),
+            'alertCategories' => AlertCategoryRegistry::all(true)->values()->all(),
+            'templates' => CommunicationTemplate::select('id', 'name', 'channel', 'category')->where('status', 'ativo')->orderBy('name')->get(),
+            'ageGroups' => AgeGroup::select('id', 'nome')->where('ativo', true)->orderBy('nome')->get(),
+            'userTypes' => $this->communicationUserTypes(),
+            'templateVariables' => TemplateVariableCatalog::definitions(),
         ];
+    }
 
-        $stats = [
-            'scheduled_campaigns' => CommunicationCampaign::where('status', 'agendada')->count(),
-            'completed_deliveries' => CommunicationDelivery::where('status', 'completed')->count(),
-            'failed_deliveries' => CommunicationDelivery::whereIn('status', ['failed', 'partial'])->count(),
-            'active_templates' => CommunicationTemplate::where('status', 'ativo')->count(),
-            'total_sent' => CommunicationDelivery::sum('success_count'),
-            'total_failed' => CommunicationDelivery::sum('failed_count'),
-            'total_pending' => CommunicationDelivery::sum('pending_count'),
-            'alerts_unread' => $alertsSummary['unread'],
-        ];
+    private function buildRecipientOptions(bool $useDefaultCache): mixed
+    {
+        if ($useDefaultCache) {
+            return Cache::remember('comunicacao:recipients', now()->addSeconds(60), fn () => $this->buildRecipientOptions(false));
+        }
 
-        $latestCampaigns = CommunicationCampaign::query()
-            ->select('id', 'codigo', 'title', 'status', 'created_at', 'sent_at')
-            ->latest()
-            ->take(6)
+        return User::query()
+            ->select($this->recipientSelectColumns())
+            ->where(function ($query) {
+                $query->where('estado', 'ativo')->orWhereNull('estado');
+            })
+            ->orderByRaw('COALESCE(nome_completo, name) asc')
             ->get();
-
-        $channelSummary = CommunicationDelivery::query()
-            ->selectRaw('channel, count(*) as total, sum(success_count) as success_count, sum(failed_count) as failed_count')
-            ->groupBy('channel')
-            ->get();
-
-        return Inertia::render('Comunicacao/Index', [
-            'stats' => $stats,
-            'campaigns' => $campaigns,
-            'deliveries' => $deliveries,
-            'templates' => $templates,
-            'segments' => $segments,
-            'latestCampaigns' => $latestCampaigns,
-            'channelSummary' => $channelSummary,
-            'alertsSummary' => $alertsSummary,
-            'filterOptions' => [
-                'authors' => User::select('id', 'name', 'nome_completo')->orderBy('name')->get(),
-                'segments' => CommunicationSegment::select('id', 'name')
-                    ->where('is_active', true)
-                    ->where(function ($query) {
-                        $query->where('type', '!=', 'system')
-                            ->orWhereNull('type');
-                    })
-                    ->where(function ($query) {
-                        $query->where('description', '!=', self::TECHNICAL_INDIVIDUAL_SEGMENT_DESCRIPTION)
-                            ->orWhereNull('description');
-                    })
-                    ->orderBy('name')
-                    ->get(),
-                'dynamicSources' => $this->dynamicSourcesForCommunication(),
-                'alertCategories' => AlertCategoryRegistry::all(true)->values()->all(),
-                'templates' => CommunicationTemplate::select('id', 'name', 'channel', 'category')->where('status', 'ativo')->orderBy('name')->get(),
-                'ageGroups' => AgeGroup::select('id', 'nome')->where('ativo', true)->orderBy('nome')->get(),
-                'userTypes' => $this->communicationUserTypes(),
-                'templateVariables' => TemplateVariableCatalog::definitions(),
-                'recipients' => User::query()
-                    ->select($this->recipientSelectColumns())
-                    ->where(function ($query) {
-                        $query->where('estado', 'ativo')->orWhereNull('estado');
-                    })
-                    ->orderByRaw('COALESCE(nome_completo, name) asc')
-                    ->get(),
-            ],
-            'filters' => $request->only([
-                'search',
-                'channel',
-                'status',
-                'period_start',
-                'period_end',
-                'author',
-                'delivery_channel',
-                'delivery_status',
-                'delivery_campaign',
-            ]),
-        ]);
     }
 
     private function dynamicSourcesForCommunication(): array

@@ -373,6 +373,8 @@ echo "[backend] cache"
 "${RUN_AS[@]}" php "${APP_DIR}/artisan" config:cache
 "${RUN_AS[@]}" php "${APP_DIR}/artisan" route:cache
 "${RUN_AS[@]}" php "${APP_DIR}/artisan" view:cache
+echo "[backend] warm authenticated module caches"
+"${RUN_AS[@]}" php "${APP_DIR}/artisan" cache:warm-modules
 echo "[backend] fix writable permissions"
 sudo chown -R "${APP_USER}:${APP_USER}" "${APP_DIR}/storage" "${APP_DIR}/bootstrap/cache"
 sudo find "${APP_DIR}/storage" "${APP_DIR}/bootstrap/cache" -type d -exec chmod 775 {} +

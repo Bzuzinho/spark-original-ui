@@ -9,6 +9,7 @@ use App\Models\UserType;
 use App\Models\AgeGroup;
 use App\Models\Event;
 use App\Models\Invoice;
+use App\Services\Performance\AuthenticatedModuleWarmupService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
@@ -16,6 +17,8 @@ class DashboardController extends Controller
 {
     public function index(): Response
     {
+        app(AuthenticatedModuleWarmupService::class)->scheduleForUser(auth()->user());
+
         $stats = Cache::remember('dashboard:stats', 60, function () {
             return [
                 'totalMembers' => User::count(),

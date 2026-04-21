@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useState, PropsWithChildren } from 'react';
+import { ReactNode, useEffect, useMemo, useState, PropsWithChildren } from 'react';
 import { router, usePage } from '@inertiajs/react';
 import {
     Users,
@@ -96,6 +96,8 @@ const settingsMenuItems = [
     { id: 'configuracoes', moduleKey: 'configuracoes', label: 'Configurações', icon: Gear, route: '/configuracoes' },
 ];
 
+const defaultVisibleMenuModules = [...mainMenuItems, ...settingsMenuItems].map((item) => item.moduleKey);
+
 export default function AuthenticatedLayout({ 
     header,
     children,
@@ -110,18 +112,28 @@ export default function AuthenticatedLayout({
     showSidebarPopupButton?: boolean;
     hideMobileHeader?: boolean;
 }>) {
-    const { auth, accessControl, clubSettings, communicationAlerts } = usePage<PageProps>().props;
+    const page = usePage<PageProps>();
+    const { auth, accessControl, clubSettings, communicationAlerts } = page.props;
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [selectedAlertId, setSelectedAlertId] = useState<string | null>(null);
     const [isAlertDialogOpen, setIsAlertDialogOpen] = useState(false);
     const [alertAction, setAlertAction] = useState<'read' | 'unread' | 'delete' | null>(null);
     const currentRoute = route().current();
     const alerts = communicationAlerts?.recent ?? [];
-    const visibleMenuModules = new Set(
-        accessControl?.visibleMenuModules ?? [...mainMenuItems, ...settingsMenuItems].map((item) => item.moduleKey)
+    const visibleMenuModuleKeys = accessControl?.visibleMenuModules ?? defaultVisibleMenuModules;
+    const visibleMenuModulesKey = visibleMenuModuleKeys.join('|');
+    const visibleMenuModules = useMemo(
+        () => new Set(visibleMenuModuleKeys),
+        [visibleMenuModulesKey]
     );
-    const filteredMainMenuItems = mainMenuItems.filter((item) => visibleMenuModules.has(item.moduleKey));
-    const filteredSettingsMenuItems = settingsMenuItems.filter((item) => visibleMenuModules.has(item.moduleKey));
+    const filteredMainMenuItems = useMemo(
+        () => mainMenuItems.filter((item) => visibleMenuModules.has(item.moduleKey)),
+        [visibleMenuModules]
+    );
+    const filteredSettingsMenuItems = useMemo(
+        () => settingsMenuItems.filter((item) => visibleMenuModules.has(item.moduleKey)),
+        [visibleMenuModules]
+    );
     const unreadAlerts = alerts.filter((alert) => !alert.is_read);
     const selectedAlert = alerts.find((alert) => alert.id === selectedAlertId) ?? null;
 

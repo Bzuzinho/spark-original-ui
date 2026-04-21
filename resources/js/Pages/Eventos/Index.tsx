@@ -1,15 +1,18 @@
-import { useState } from 'react';
+import { Suspense, lazy, useState } from 'react';
 import { Head } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { moduleTabbedContentClass, moduleTabsClass, moduleViewportClass } from '@/lib/module-layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs';
 import { ListChecks, CalendarBlank, ChartBar } from '@phosphor-icons/react';
-import {
-  EventosDashboard,
-  EventosList,
-  EventosCalendar,
-  EventosRelatorios,
-} from '@/Components/Eventos';
+
+const EventosDashboard = lazy(() => import('@/Components/Eventos').then((module) => ({ default: module.EventosDashboard })));
+const EventosList = lazy(() => import('@/Components/Eventos').then((module) => ({ default: module.EventosList })));
+const EventosCalendar = lazy(() => import('@/Components/Eventos').then((module) => ({ default: module.EventosCalendar })));
+const EventosRelatorios = lazy(() => import('@/Components/Eventos').then((module) => ({ default: module.EventosRelatorios })));
+
+function TabFallback() {
+  return <div className="py-8 text-sm text-muted-foreground">A carregar...</div>;
+}
 
 interface Event {
     id: string;
@@ -141,40 +144,56 @@ export default function EventosIndex({
           </TabsList>
 
           <TabsContent value="dashboard" className={`${moduleTabbedContentClass} space-y-3`}>
-            <EventosDashboard
-              events={eventos}
-              convocatorias={convocations}
-              attendances={attendances}
-            />
+            {activeTab === 'dashboard' ? (
+              <Suspense fallback={<TabFallback />}>
+                <EventosDashboard
+                  events={eventos}
+                  convocatorias={convocations}
+                  attendances={attendances}
+                />
+              </Suspense>
+            ) : null}
           </TabsContent>
 
           <TabsContent value="calendario" className={`${moduleTabbedContentClass} space-y-3`}>
-            <EventosCalendar
-              events={eventos}
-              ageGroups={ageGroups}
-              isActive={activeTab === 'calendario'}
-            />
+            {activeTab === 'calendario' ? (
+              <Suspense fallback={<TabFallback />}>
+                <EventosCalendar
+                  events={eventos}
+                  ageGroups={ageGroups}
+                  isActive={activeTab === 'calendario'}
+                />
+              </Suspense>
+            ) : null}
           </TabsContent>
 
           <TabsContent value="eventos" className={`${moduleTabbedContentClass} space-y-3`}>
-            <EventosList
-              events={eventos}
-              users={users}
-              costCenters={costCenters}
-              eventTypes={eventTypes}
-              ageGroups={ageGroups}
-            />
+            {activeTab === 'eventos' ? (
+              <Suspense fallback={<TabFallback />}>
+                <EventosList
+                  events={eventos}
+                  users={users}
+                  costCenters={costCenters}
+                  eventTypes={eventTypes}
+                  ageGroups={ageGroups}
+                />
+              </Suspense>
+            ) : null}
           </TabsContent>
 
           <TabsContent value="relatorios" className={`${moduleTabbedContentClass} space-y-3`}>
-            <EventosRelatorios
-              events={eventos}
-              convocatorias={convocations}
-              attendances={attendances}
-              results={results}
-              users={users}
-              ageGroups={ageGroups}
-            />
+            {activeTab === 'relatorios' ? (
+              <Suspense fallback={<TabFallback />}>
+                <EventosRelatorios
+                  events={eventos}
+                  convocatorias={convocations}
+                  attendances={attendances}
+                  results={results}
+                  users={users}
+                  ageGroups={ageGroups}
+                />
+              </Suspense>
+            ) : null}
           </TabsContent>
         </Tabs>
       </div>

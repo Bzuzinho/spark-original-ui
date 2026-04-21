@@ -116,6 +116,28 @@ class DesportivoController extends Controller
             return Inertia::render($view, $payload);
         }
 
+        if ($this->shouldCacheSportsPage(request())) {
+            $cacheKey = implode(':', [
+                'desportivo',
+                'page',
+                str_replace('/', '-', strtolower($view)),
+                $responseTab ?? $tab,
+            ]);
+
+            $payload = Cache::remember($cacheKey, now()->addSeconds(60), function () use ($builder, $tab, $responseTab) {
+                $request = request();
+                $payload = $builder->build($tab, $request);
+
+                if ($responseTab !== null) {
+                    $payload['tab'] = $responseTab;
+                }
+
+                return $payload;
+            });
+
+            return Inertia::render($view, $payload);
+        }
+
         $payload = $builder->build($tab, request());
 
         if ($responseTab !== null) {
@@ -139,6 +161,14 @@ class DesportivoController extends Controller
             && $partialComponent === $view
             && $requestedPartialKeys->isNotEmpty()
             && $requestedPartialKeys->every(fn ($key) => in_array($key, $planningPartialKeys, true));
+    }
+
+    private function shouldCacheSportsPage(Request $request): bool
+    {
+        return $request->query->count() === 0
+            && ! $request->session()->has('success')
+            && ! $request->session()->has('error')
+            && ! $request->session()->has('warning');
     }
 
     /**

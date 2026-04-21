@@ -32,6 +32,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -39,36 +40,146 @@ use App\Support\Communication\AlertCategoryRegistry;
 
 class ConfiguracoesController extends Controller
 {
-    public function index(): Response
+    public function index(Request $request): Response
     {
+        $useDefaultCache = ! $this->shouldBypassIndexCache($request);
+
+        $payload = [
+            ...$this->buildIndexPayload($useDefaultCache),
+            'monthlyFees' => Inertia::lazy(fn () => $this->buildFinanceiroPayload($useDefaultCache)['monthlyFees']),
+            'invoiceTypes' => Inertia::lazy(fn () => $this->buildFinanceiroPayload($useDefaultCache)['invoiceTypes']),
+            'costCenters' => Inertia::lazy(fn () => $this->buildFinanceiroPayload($useDefaultCache)['costCenters']),
+            'products' => Inertia::lazy(fn () => $this->buildLogisticaPayload($useDefaultCache)['products']),
+            'sponsors' => Inertia::lazy(fn () => $this->buildLogisticaPayload($useDefaultCache)['sponsors']),
+            'suppliers' => Inertia::lazy(fn () => $this->buildLogisticaPayload($useDefaultCache)['suppliers']),
+            'itemCategories' => Inertia::lazy(fn () => $this->buildLogisticaPayload($useDefaultCache)['itemCategories']),
+            'notificationPrefs' => Inertia::lazy(fn () => $this->buildNotificacoesPayload($useDefaultCache)['notificationPrefs']),
+            'communicationDynamicSources' => Inertia::lazy(fn () => $this->buildNotificacoesPayload($useDefaultCache)['communicationDynamicSources']),
+            'communicationAlertCategories' => Inertia::lazy(fn () => $this->buildNotificacoesPayload($useDefaultCache)['communicationAlertCategories']),
+            'users' => Inertia::lazy(fn () => $this->buildBaseDadosPayload($useDefaultCache)['users']),
+            'trainingTypes' => Inertia::lazy(fn () => $this->buildDesportivoPayload($useDefaultCache)['trainingTypes']),
+            'trainingZones' => Inertia::lazy(fn () => $this->buildDesportivoPayload($useDefaultCache)['trainingZones']),
+            'injuryReasons' => Inertia::lazy(fn () => $this->buildDesportivoPayload($useDefaultCache)['injuryReasons']),
+            'poolTypes' => Inertia::lazy(fn () => $this->buildDesportivoPayload($useDefaultCache)['poolTypes']),
+            'provaTipos' => Inertia::lazy(fn () => $this->buildDesportivoPayload($useDefaultCache)['provaTipos']),
+        ];
+
+        return Inertia::render('Configuracoes/Index', $payload);
+    }
+
+    private function shouldBypassIndexCache(Request $request): bool
+    {
+        return $request->session()->has('success')
+            || $request->session()->has('error')
+            || $request->session()->has('warning');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildIndexPayload(bool $useDefaultCache): array
+    {
+        if ($useDefaultCache) {
+            return Cache::remember(
+                'configuracoes:index:eager',
+                now()->addMinutes(5),
+                fn () => $this->buildIndexPayload(false)
+            );
+        }
+
         $userTypes = UserType::query()->orderBy('nome')->get();
 
-        return Inertia::render('Configuracoes/Index', [
+        return [
             'userTypes' => $userTypes,
             'ageGroups' => AgeGroup::all(),
             'eventTypes' => EventType::all(),
             'athleteStatuses' => AthleteStatusConfig::query()->ordenado()->get(),
-            'trainingTypes' => TrainingTypeConfig::query()->ordenado()->get(),
-            'trainingZones' => TrainingZoneConfig::query()->ordenado()->get(),
             'absenceReasons' => AbsenceReasonConfig::query()->ordenado()->get(),
-            'injuryReasons' => InjuryReasonConfig::query()->ordenado()->get(),
-            'poolTypes' => PoolTypeConfig::query()->ordenado()->get(),
             'clubSettings' => ClubSetting::first(),
             'permissions' => UserTypePermission::all(),
-            'costCenters' => CostCenter::all(),
+            'accessControlBootstrap' => app(UserTypeAccessControlService::class)->getBootstrap($userTypes->first()),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildFinanceiroPayload(bool $useDefaultCache): array
+    {
+        if ($useDefaultCache) {
+            return Cache::remember('configuracoes:financeiro', now()->addMinutes(5), fn () => $this->buildFinanceiroPayload(false));
+        }
+
+        return [
             'monthlyFees' => MonthlyFee::all(),
             'invoiceTypes' => InvoiceType::orderBy('nome')->get(),
+            'costCenters' => CostCenter::all(),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildLogisticaPayload(bool $useDefaultCache): array
+    {
+        if ($useDefaultCache) {
+            return Cache::remember('configuracoes:logistica', now()->addMinutes(5), fn () => $this->buildLogisticaPayload(false));
+        }
+
+        return [
             'products' => Product::all(),
             'sponsors' => Sponsor::orderBy('nome')->get(),
             'suppliers' => Supplier::all(),
             'itemCategories' => ItemCategory::orderBy('nome')->get(),
-            'provaTipos' => ProvaTipo::all(),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildNotificacoesPayload(bool $useDefaultCache): array
+    {
+        if ($useDefaultCache) {
+            return Cache::remember('configuracoes:notificacoes', now()->addMinutes(5), fn () => $this->buildNotificacoesPayload(false));
+        }
+
+        return [
             'notificationPrefs' => NotificationPreference::first(),
             'communicationDynamicSources' => $this->communicationDynamicSources(),
             'communicationAlertCategories' => AlertCategoryRegistry::all(false)->values()->all(),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildBaseDadosPayload(bool $useDefaultCache): array
+    {
+        if ($useDefaultCache) {
+            return Cache::remember('configuracoes:base-dados', now()->addMinutes(5), fn () => $this->buildBaseDadosPayload(false));
+        }
+
+        return [
             'users' => User::select('id', 'numero_socio', 'nome_completo', 'email_utilizador', 'perfil', 'estado')->get(),
-            'accessControlBootstrap' => app(UserTypeAccessControlService::class)->getBootstrap($userTypes->first()),
-        ]);
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildDesportivoPayload(bool $useDefaultCache): array
+    {
+        if ($useDefaultCache) {
+            return Cache::remember('configuracoes:desportivo', now()->addMinutes(5), fn () => $this->buildDesportivoPayload(false));
+        }
+
+        return [
+            'trainingTypes' => TrainingTypeConfig::query()->ordenado()->get(),
+            'trainingZones' => TrainingZoneConfig::query()->ordenado()->get(),
+            'injuryReasons' => InjuryReasonConfig::query()->ordenado()->get(),
+            'poolTypes' => PoolTypeConfig::query()->ordenado()->get(),
+            'provaTipos' => ProvaTipo::all(),
+        ];
     }
 
     public function storeUserType(Request $request): RedirectResponse

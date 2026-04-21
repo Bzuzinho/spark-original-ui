@@ -29,6 +29,22 @@ class EventosController extends Controller
 {
     public function index(): Response
     {
+        if ($this->shouldUseIndexCache(request())) {
+            return Inertia::render('Eventos/Index', Cache::remember(
+                'eventos:index',
+                now()->addSeconds(60),
+                fn () => $this->buildIndexPayload()
+            ));
+        }
+
+        return Inertia::render('Eventos/Index', $this->buildIndexPayload());
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildIndexPayload(): array
+    {
         $now = Carbon::now();
         $startOfMonth = $now->copy()->startOfMonth();
         $endOfMonth = $now->copy()->endOfMonth();
@@ -155,7 +171,7 @@ class EventosController extends Controller
             ])->get()
         );
 
-        return Inertia::render('Eventos/Index', [
+        return [
             'eventos'      => $eventos,
             'stats'        => $stats,
             'users'        => $users,
@@ -165,7 +181,15 @@ class EventosController extends Controller
             'convocations' => $convocations,
             'attendances'  => $attendances,
             'results'      => $results,
-        ]);
+        ];
+    }
+
+    private function shouldUseIndexCache(Request $request): bool
+    {
+        return $request->query->count() === 0
+            && ! $request->session()->has('success')
+            && ! $request->session()->has('error')
+            && ! $request->session()->has('warning');
     }
 
     public function store(StoreEventRequest $request): RedirectResponse

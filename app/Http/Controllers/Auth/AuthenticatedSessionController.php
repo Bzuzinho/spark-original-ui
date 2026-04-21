@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Services\AccessControl\UserTypeAccessControlService;
+use App\Services\Performance\AuthenticatedModuleWarmupService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -28,11 +29,17 @@ class AuthenticatedSessionController extends Controller
     /**
      * Handle an incoming authentication request.
      */
-    public function store(LoginRequest $request, UserTypeAccessControlService $accessControlService): RedirectResponse
+    public function store(
+        LoginRequest $request,
+        UserTypeAccessControlService $accessControlService,
+        AuthenticatedModuleWarmupService $moduleWarmupService,
+    ): RedirectResponse
     {
         $request->authenticate();
 
         $request->session()->regenerate();
+
+        $moduleWarmupService->scheduleForUser($request->user());
 
         return redirect()->intended($accessControlService->resolveLandingRouteForUser($request->user()));
     }

@@ -29,6 +29,22 @@ class FinanceiroController extends Controller
 {
     public function index(): Response
     {
+        if ($this->shouldUseIndexCache(request())) {
+            return Inertia::render('Financeiro/Index', Cache::remember(
+                'financeiro:index',
+                now()->addSeconds(60),
+                fn () => $this->buildIndexPayload()
+            ));
+        }
+
+        return Inertia::render('Financeiro/Index', $this->buildIndexPayload());
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildIndexPayload(): array
+    {
         try {
             $faturas = Cache::remember('financeiro:faturas', 60, fn () =>
                 Invoice::orderBy('data_emissao', 'desc')->limit(1000)->get()->map(function ($fatura) {
@@ -129,7 +145,7 @@ class FinanceiroController extends Controller
             $conciliacoes = [];
         }
 
-        return Inertia::render('Financeiro/Index', [
+        return [
             'faturas' => $faturas,
             'faturaItens' => $faturaItens,
             'movimentos' => $movimentos,
@@ -241,7 +257,15 @@ class FinanceiroController extends Controller
                     return [];
                 }
             }),
-        ]);
+        ];
+    }
+
+    private function shouldUseIndexCache(Request $request): bool
+    {
+        return $request->query->count() === 0
+            && ! $request->session()->has('success')
+            && ! $request->session()->has('error')
+            && ! $request->session()->has('warning');
     }
 
     public function store(StoreInvoiceRequest $request): RedirectResponse|JsonResponse
