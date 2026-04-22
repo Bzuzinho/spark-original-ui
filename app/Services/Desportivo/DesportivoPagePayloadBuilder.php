@@ -371,7 +371,6 @@ class DesportivoPagePayloadBuilder
 
             return Competition::query()
                 ->whereBetween('data_inicio', [$now->toDateString(), $thirtyDaysAhead])
-                ->withCount('results')
                 ->orderBy('data_inicio')
                 ->limit(8)
                 ->get(['id', 'nome', 'data_inicio', 'local', 'tipo', 'evento_id'])
@@ -379,7 +378,7 @@ class DesportivoPagePayloadBuilder
                     'id' => $competition->id,
                     'nome' => $competition->nome,
                     'data_inicio' => $this->formatDate($competition->data_inicio),
-                    'num_atletas_inscritos' => (int) $competition->results_count,
+                    'num_atletas_inscritos' => 0,
                     'local' => $competition->local,
                     'evento_id' => $competition->evento_id,
                 ])
