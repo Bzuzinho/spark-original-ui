@@ -22,8 +22,8 @@
  *   dashboard | grupos | treinos | presencas | planeamento | competicoes | performance
  */
 
-import { Suspense, lazy, useState } from 'react';
-import { Head, router } from '@inertiajs/react';
+import { Suspense, lazy, useEffect, useState } from 'react';
+import { Head, router, usePage } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { moduleScrollableContentClass, moduleTabbedContentClass, moduleTabsClass, moduleViewportClass } from '@/lib/module-layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs';
@@ -137,6 +137,8 @@ interface DesportivoProps {
   athleteOperationalRows?: AthleteOperationalRow[];
 }
 
+type DesportivoPageProps = DesportivoProps & Record<string, unknown>;
+
 const DashboardTab = lazy(() => import('@/components/sports/tabs/DashboardTab').then((module) => ({ default: module.DashboardTab })));
 const AthletesTab = lazy(() => import('@/components/sports/tabs/AthletesTab').then((module) => ({ default: module.AthletesTab })));
 const TrainingsTab = lazy(() => import('@/components/sports/tabs/TrainingsTab').then((module) => ({ default: module.TrainingsTab })));
@@ -222,9 +224,12 @@ export default function DesportivoIndex({
   volumeByAthlete = [],
   athleteOperationalRows = [],
 }: DesportivoProps) {
+  const page = usePage<DesportivoPageProps>();
   const initialTab = (tab === 'presencas' ? 'cais' : tab === 'resultados' ? 'competicoes' : tab) as TabValue;
   const [isNavigatingToCais, setIsNavigatingToCais] = useState(false);
   const activeTab = TABS.some(({ value }) => value === initialTab) ? initialTab : 'dashboard';
+  const [loadingDashboardSlice, setLoadingDashboardSlice] = useState(false);
+  const hasVolumeByAthlete = Object.prototype.hasOwnProperty.call(page.props, 'volumeByAthlete');
 
   const safeUsers = Array.isArray(users) ? users : [];
   const safeTrainings = Array.isArray(trainings?.data) ? trainings.data : [];
@@ -237,6 +242,18 @@ export default function DesportivoIndex({
   const resolvedCompetitions = safeCompetitions;
   const resolvedResults = safeResults;
   const resolvedVolumeByAthlete = safeVolumeByAthlete;
+
+  useEffect(() => {
+    if (activeTab !== 'dashboard' || hasVolumeByAthlete || loadingDashboardSlice) {
+      return;
+    }
+
+    setLoadingDashboardSlice(true);
+    router.reload({
+      only: ['volumeByAthlete'],
+      onFinish: () => setLoadingDashboardSlice(false),
+    });
+  }, [activeTab, hasVolumeByAthlete, loadingDashboardSlice]);
 
   const resolvedTrainingOptions = trainingOptions.length > 0
     ? trainingOptions

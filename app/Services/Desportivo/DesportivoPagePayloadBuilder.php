@@ -124,8 +124,15 @@ class DesportivoPagePayloadBuilder
                     'age_groups' => [],
                 ])
                 ->values(),
-            'volumeByAthlete' => $this->volumeByAthlete(limit: 5),
         ];
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function buildDashboardVolumePayload(): array
+    {
+        return $this->volumeByAthlete(limit: 5);
     }
 
     /**

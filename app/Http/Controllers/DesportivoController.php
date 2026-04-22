@@ -126,7 +126,7 @@ class DesportivoController extends Controller
 
             $payload = Cache::remember($cacheKey, now()->addSeconds(60), function () use ($builder, $tab, $responseTab) {
                 $request = request();
-                $payload = $builder->build($tab, $request);
+                $payload = $this->buildSportsBasePayload($builder, $tab, $request);
 
                 if ($responseTab !== null) {
                     $payload['tab'] = $responseTab;
@@ -135,16 +135,39 @@ class DesportivoController extends Controller
                 return $payload;
             });
 
-            return Inertia::render($view, $payload);
+            return Inertia::render($view, $this->decorateSportsPayload($builder, $tab, $payload));
         }
 
-        $payload = $builder->build($tab, request());
+        $payload = $this->buildSportsBasePayload($builder, $tab, request());
 
         if ($responseTab !== null) {
             $payload['tab'] = $responseTab;
         }
 
-        return Inertia::render($view, $payload);
+        return Inertia::render($view, $this->decorateSportsPayload($builder, $tab, $payload));
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildSportsBasePayload(DesportivoPagePayloadBuilder $builder, string $tab, Request $request): array
+    {
+        return $builder->build($tab, $request);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    private function decorateSportsPayload(DesportivoPagePayloadBuilder $builder, string $tab, array $payload): array
+    {
+        if ($tab !== 'dashboard') {
+            return $payload;
+        }
+
+        $payload['volumeByAthlete'] = Inertia::lazy(fn () => $builder->buildDashboardVolumePayload());
+
+        return $payload;
     }
 
     private function isPlanningPartialRequest(string $tab, string $view): bool
