@@ -66,7 +66,7 @@ class AuthenticatedModuleWarmupService
             $this->runWithRequest($user, '/dashboard', fn () => app(DashboardController::class)->index());
             $this->runWithRequest($user, '/comunicacao', fn (Request $request) => app(ComunicacaoController::class)->index($request));
             $this->runWithRequest($user, '/configuracoes', fn (Request $request) => app(ConfiguracoesController::class)->index($request));
-            $this->runWithRequest($user, '/eventos', fn () => app(EventosController::class)->index());
+            $this->runWithRequest($user, '/eventos', fn (Request $request) => app(EventosController::class)->index($request));
             $this->runWithRequest($user, '/financeiro', fn () => app(FinanceiroController::class)->index());
             $this->runWithRequest($user, '/desportivo', fn () => app(DesportivoController::class)->index());
 
