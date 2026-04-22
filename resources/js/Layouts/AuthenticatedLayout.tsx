@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useMemo, useState, PropsWithChildren } from 'react';
+import { ReactNode, useEffect, useMemo, useRef, useState, PropsWithChildren } from 'react';
 import { router, usePage } from '@inertiajs/react';
 import {
     Users,
@@ -97,6 +97,7 @@ const settingsMenuItems = [
 ];
 
 const defaultVisibleMenuModules = [...mainMenuItems, ...settingsMenuItems].map((item) => item.moduleKey);
+const modulePrefetchPriority = ['eventos', 'financeiro', 'comunicacao', 'configuracoes', 'desportivo'];
 
 export default function AuthenticatedLayout({ 
     header,
@@ -120,6 +121,7 @@ export default function AuthenticatedLayout({
     const [alertAction, setAlertAction] = useState<'read' | 'unread' | 'delete' | null>(null);
     const currentRoute = route().current();
     const alerts = communicationAlerts?.recent ?? [];
+    const prefetchedRoutesRef = useRef<Set<string>>(new Set());
     const visibleMenuModuleKeys = accessControl?.visibleMenuModules ?? defaultVisibleMenuModules;
     const visibleMenuModulesKey = visibleMenuModuleKeys.join('|');
     const visibleMenuModules = useMemo(
@@ -154,6 +156,49 @@ export default function AuthenticatedLayout({
         setIsAlertDialogOpen(false);
         setSelectedAlertId(null);
     }, [isAlertDialogOpen, selectedAlert, selectedAlertId]);
+
+    const prefetchModuleRoute = (routePath: string) => {
+        if (prefetchedRoutesRef.current.has(routePath) || page.url === routePath) {
+            return;
+        }
+
+        prefetchedRoutesRef.current.add(routePath);
+        router.prefetch(routePath, {}, { cacheFor: '2m' });
+    };
+
+    useEffect(() => {
+        if (currentRoute !== 'dashboard') {
+            return;
+        }
+
+        const visibleItems = [...filteredMainMenuItems, ...filteredSettingsMenuItems];
+        const prioritizedRoutes = modulePrefetchPriority
+            .map((moduleKey) => visibleItems.find((item) => item.moduleKey === moduleKey))
+            .filter((item): item is (typeof visibleItems)[number] => !!item)
+            .map((item) => item.route);
+
+        if (prioritizedRoutes.length === 0) {
+            return;
+        }
+
+        const idleCallback = window.requestIdleCallback;
+        const handle = idleCallback
+            ? idleCallback(() => {
+                prioritizedRoutes.forEach((routePath) => prefetchModuleRoute(routePath));
+            }, { timeout: 1500 })
+            : window.setTimeout(() => {
+                prioritizedRoutes.forEach((routePath) => prefetchModuleRoute(routePath));
+            }, 400);
+
+        return () => {
+            if (typeof handle === 'number') {
+                window.clearTimeout(handle);
+                return;
+            }
+
+            window.cancelIdleCallback?.(handle);
+        };
+    }, [currentRoute, filteredMainMenuItems, filteredSettingsMenuItems]);
 
     const getUserInitials = () => {
         if (!auth.user) return 'U';
@@ -334,6 +379,8 @@ export default function AuthenticatedLayout({
                                             active && "bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90",
                                             !active && "hover:bg-sidebar-accent text-sidebar-foreground"
                                         )}
+                                        onMouseEnter={() => prefetchModuleRoute(item.route)}
+                                        onFocus={() => prefetchModuleRoute(item.route)}
                                         onClick={() => handleNavigate(item.route)}
                                     >
                                         <Icon className="mr-3" size={18} weight={active ? "fill" : "regular"} />
@@ -361,6 +408,8 @@ export default function AuthenticatedLayout({
                                             active && "bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90",
                                             !active && "hover:bg-sidebar-accent text-sidebar-foreground"
                                         )}
+                                        onMouseEnter={() => prefetchModuleRoute(item.route)}
+                                        onFocus={() => prefetchModuleRoute(item.route)}
                                         onClick={() => handleNavigate(item.route)}
                                     >
                                         <Icon className="mr-3" size={18} weight={active ? "fill" : "regular"} />
