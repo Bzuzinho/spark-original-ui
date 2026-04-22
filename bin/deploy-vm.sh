@@ -386,17 +386,57 @@ BACKEND
 sudo chmod +x /usr/local/bin/clubmanager-deploy-backend.sh
 
 # --- clubmanager-frontend-reload.sh ---
-if [[ ! -x /usr/local/bin/clubmanager-frontend-reload.sh ]]; then
-  echo "  Criar /usr/local/bin/clubmanager-frontend-reload.sh ..."
-  sudo tee /usr/local/bin/clubmanager-frontend-reload.sh > /dev/null <<'FRONTEND'
+echo "  Atualizar /usr/local/bin/clubmanager-frontend-reload.sh ..."
+sudo tee /usr/local/bin/clubmanager-frontend-reload.sh > /dev/null <<'FRONTEND'
 #!/usr/bin/env bash
 set -euo pipefail
+SITE_CONFIG="/etc/nginx/sites-enabled/clubmanager"
+ASSET_SNIPPET="/etc/nginx/snippets/clubmanager-static-assets.conf"
+
+if [[ ! -f "${SITE_CONFIG}" ]]; then
+  echo "[frontend] nginx site config não encontrado: ${SITE_CONFIG}"
+  exit 1
+fi
+
+echo "[frontend] garantir snippet de performance para /build/assets"
+sudo tee "${ASSET_SNIPPET}" > /dev/null <<'SNIPPET'
+location ^~ /build/assets/ {
+    access_log off;
+    expires 1y;
+    add_header Cache-Control "public, max-age=31536000, immutable" always;
+    gzip on;
+    gzip_vary on;
+    gzip_min_length 1024;
+    gzip_types text/plain text/css application/json application/javascript text/javascript application/xml text/xml image/svg+xml;
+    try_files $uri =404;
+}
+SNIPPET
+
+if ! sudo grep -qF 'include /etc/nginx/snippets/clubmanager-static-assets.conf;' "${SITE_CONFIG}"; then
+  echo "[frontend] inserir include de assets no server block"
+  sudo python3 - <<'PY'
+from pathlib import Path
+
+site_config = Path('/etc/nginx/sites-enabled/clubmanager')
+content = site_config.read_text()
+needle = '    location / {\n'
+replacement = '    include /etc/nginx/snippets/clubmanager-static-assets.conf;\n\n    location / {\n'
+
+if 'include /etc/nginx/snippets/clubmanager-static-assets.conf;' not in content:
+    if needle not in content:
+        raise SystemExit('location / block not found in nginx site config')
+    content = content.replace(needle, replacement, 1)
+    site_config.write_text(content)
+PY
+fi
+
+echo "[frontend] validar nginx config"
+sudo nginx -t
 echo "[frontend] reload nginx"
 sudo systemctl reload nginx || sudo service nginx reload
 echo "[frontend] done"
 FRONTEND
-  sudo chmod +x /usr/local/bin/clubmanager-frontend-reload.sh
-fi
+sudo chmod +x /usr/local/bin/clubmanager-frontend-reload.sh
 
 # --- clubmanager-healthcheck.sh ---
 echo "  Atualizar /usr/local/bin/clubmanager-healthcheck.sh ..."
@@ -442,7 +482,7 @@ echo "   ✔ Backend deploy OK"
 # ===== [5/6] Copiar public/build para a VM =====
 echo ""
 echo "==> [5/6] Upload public/build → VM"
-tar -C public -cf - build | vm_ssh "sudo mkdir -p '${VM_APP_DIR}/public' && sudo tar -xf - -C '${VM_APP_DIR}/public' && sudo chown -R www-data:www-data '${VM_APP_DIR}/public/build'"
+tar -C public -cf - build | vm_ssh "sudo mkdir -p '${VM_APP_DIR}/public' && sudo rm -rf '${VM_APP_DIR}/public/build' && sudo tar -xf - -C '${VM_APP_DIR}/public' && sudo chown -R www-data:www-data '${VM_APP_DIR}/public/build'"
 echo "   ✔ public/build copiado"
 
 # ===== [6/6] Reload frontend + healthcheck =====

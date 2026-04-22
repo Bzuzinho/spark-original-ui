@@ -5,10 +5,26 @@ import { moduleTabbedContentClass, moduleTabsClass, moduleViewportClass } from '
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs';
 import { ListChecks, CalendarBlank, ChartBar } from '@phosphor-icons/react';
 
-const EventosDashboard = lazy(() => import('@/Components/Eventos/EventosDashboard'));
-const EventosList = lazy(() => import('@/Components/Eventos/EventosList'));
-const EventosCalendar = lazy(() => import('@/Components/Eventos/EventosCalendar'));
-const EventosRelatorios = lazy(() => import('@/Components/Eventos/EventosRelatorios'));
+const EventosDashboard = lazy(() =>
+  import('@/Components/Eventos/EventosDashboard').then((module) => ({
+    default: module.EventosDashboard,
+  }))
+);
+const EventosList = lazy(() =>
+  import('@/Components/Eventos/EventosList').then((module) => ({
+    default: module.EventosList,
+  }))
+);
+const EventosCalendar = lazy(() =>
+  import('@/Components/Eventos/EventosCalendar').then((module) => ({
+    default: module.EventosCalendar,
+  }))
+);
+const EventosRelatorios = lazy(() =>
+  import('@/Components/Eventos/EventosRelatorios').then((module) => ({
+    default: module.EventosRelatorios,
+  }))
+);
 
 function TabFallback() {
   return <div className="py-8 text-sm text-muted-foreground">A carregar...</div>;
