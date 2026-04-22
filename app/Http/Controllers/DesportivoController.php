@@ -165,7 +165,7 @@ class DesportivoController extends Controller
             return $payload;
         }
 
-        $payload['volumeByAthlete'] = Inertia::lazy(fn () => $builder->buildDashboardVolumePayload());
+        $payload['volumeByAthlete'] = Inertia::lazy(fn () => $builder->buildDashboardVolumePayload(request()));
 
         return $payload;
     }

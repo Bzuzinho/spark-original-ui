@@ -130,8 +130,10 @@ class DesportivoPagePayloadBuilder
     /**
      * @return array<int, array<string, mixed>>
      */
-    public function buildDashboardVolumePayload(): array
+    public function buildDashboardVolumePayload(Request $request): array
     {
+        $this->boot($request);
+
         return $this->volumeByAthlete(limit: 5);
     }
 
