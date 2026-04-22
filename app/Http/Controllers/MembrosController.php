@@ -246,13 +246,13 @@ class MembrosController extends Controller
             }
             
             // Sync guardian relationship (with reciprocal update)
-            if (array_key_exists('encarregado_educacao', $data) && is_array($data['encarregado_educacao'])) {
-                $this->syncGuardianRelations($member, $data['encarregado_educacao']);
+            if ($request->boolean('sync_encarregado_educacao')) {
+                $this->syncGuardianRelations($member, is_array($data['encarregado_educacao'] ?? null) ? $data['encarregado_educacao'] : []);
             }
 
             // Sync educandos relationship (with reciprocal update)
-            if (array_key_exists('educandos', $data) && is_array($data['educandos'])) {
-                $this->syncEducandoRelations($member, $data['educandos']);
+            if ($request->boolean('sync_educandos')) {
+                $this->syncEducandoRelations($member, is_array($data['educandos'] ?? null) ? $data['educandos'] : []);
             }
 
             if (array_key_exists('centro_custo', $data) && is_array($data['centro_custo'])) {
@@ -567,14 +567,19 @@ class MembrosController extends Controller
                 $member->userTypes()->sync($data['user_types']);
             }
             
-            // Sync guardian relationship (with reciprocal update)
-            if (array_key_exists('encarregado_educacao', $data) && is_array($data['encarregado_educacao'])) {
-                $this->syncGuardianRelations($member, $data['encarregado_educacao']);
+            // Explicit sync flags let the frontend clear relations by sending empty arrays.
+            if ($request->boolean('sync_encarregado_educacao')) {
+                $this->syncGuardianRelations(
+                    $member,
+                    is_array($data['encarregado_educacao'] ?? null) ? $data['encarregado_educacao'] : []
+                );
             }
 
-            // Sync educandos relationship (with reciprocal update)
-            if (array_key_exists('educandos', $data) && is_array($data['educandos'])) {
-                $this->syncEducandoRelations($member, $data['educandos']);
+            if ($request->boolean('sync_educandos')) {
+                $this->syncEducandoRelations(
+                    $member,
+                    is_array($data['educandos'] ?? null) ? $data['educandos'] : []
+                );
             }
 
             Cache::forget('membros:list');
@@ -583,7 +588,7 @@ class MembrosController extends Controller
                 Cache::forget('membros:communications:' . $request->user()->id);
             }
 
-            return redirect()->route('membros.index')
+            return redirect()->route('membros.show', $member)
                 ->with('success', 'Membro atualizado com sucesso!');
                 
         } catch (\Exception $e) {
@@ -700,6 +705,8 @@ class MembrosController extends Controller
         );
 
         $member->encarregados()->sync($guardianIds);
+        $member->encarregado_educacao = $guardianIds;
+        $member->saveQuietly();
 
         $added = array_diff($guardianIds, $currentGuardianIds);
         $removed = array_diff($currentGuardianIds, $guardianIds);
@@ -710,13 +717,38 @@ class MembrosController extends Controller
 
             foreach ($added as $guardianId) {
                 if ($guardians->has($guardianId)) {
-                    $guardians[$guardianId]->educandos()->syncWithoutDetaching([$member->id]);
+                    $guardian = $guardians[$guardianId];
+                    $guardian->educandos()->syncWithoutDetaching([$member->id]);
+                    $educandos = $this->normalizeRelationIds($guardian->educandos);
+                    if (!in_array((string) $member->id, $educandos, true)) {
+                        $educandos[] = (string) $member->id;
+                    }
+                    $guardian->educandos = array_values(array_unique($educandos));
+                    $guardian->saveQuietly();
                 }
             }
 
             foreach ($removed as $guardianId) {
                 if ($guardians->has($guardianId)) {
-                    $guardians[$guardianId]->educandos()->detach($member->id);
+                    $guardian = $guardians[$guardianId];
+                    $guardian->educandos()->detach($member->id);
+                    $guardian->educandos = array_values(array_filter(
+                        $this->normalizeRelationIds($guardian->educandos),
+                        fn (string $educandoId) => $educandoId !== (string) $member->id
+                    ));
+                    $guardian->saveQuietly();
+                }
+            }
+        }
+
+        if ($guardianIds !== []) {
+            $currentGuardians = User::whereIn('id', $guardianIds)->get();
+            foreach ($currentGuardians as $guardian) {
+                $educandos = $this->normalizeRelationIds($guardian->educandos);
+                if (!in_array((string) $member->id, $educandos, true)) {
+                    $educandos[] = (string) $member->id;
+                    $guardian->educandos = array_values(array_unique($educandos));
+                    $guardian->saveQuietly();
                 }
             }
         }
@@ -733,6 +765,8 @@ class MembrosController extends Controller
         );
 
         $member->educandos()->sync($educandoIds);
+        $member->educandos = $educandoIds;
+        $member->saveQuietly();
 
         $added = array_diff($educandoIds, $currentEducandoIds);
         $removed = array_diff($currentEducandoIds, $educandoIds);
@@ -743,13 +777,38 @@ class MembrosController extends Controller
 
             foreach ($added as $educandoId) {
                 if ($educandos->has($educandoId)) {
-                    $educandos[$educandoId]->encarregados()->syncWithoutDetaching([$member->id]);
+                    $educando = $educandos[$educandoId];
+                    $educando->encarregados()->syncWithoutDetaching([$member->id]);
+                    $guardianIds = $this->normalizeRelationIds($educando->encarregado_educacao);
+                    if (!in_array((string) $member->id, $guardianIds, true)) {
+                        $guardianIds[] = (string) $member->id;
+                    }
+                    $educando->encarregado_educacao = array_values(array_unique($guardianIds));
+                    $educando->saveQuietly();
                 }
             }
 
             foreach ($removed as $educandoId) {
                 if ($educandos->has($educandoId)) {
-                    $educandos[$educandoId]->encarregados()->detach($member->id);
+                    $educando = $educandos[$educandoId];
+                    $educando->encarregados()->detach($member->id);
+                    $educando->encarregado_educacao = array_values(array_filter(
+                        $this->normalizeRelationIds($educando->encarregado_educacao),
+                        fn (string $guardianId) => $guardianId !== (string) $member->id
+                    ));
+                    $educando->saveQuietly();
+                }
+            }
+        }
+
+        if ($educandoIds !== []) {
+            $currentEducandos = User::whereIn('id', $educandoIds)->get();
+            foreach ($currentEducandos as $educando) {
+                $guardianIds = $this->normalizeRelationIds($educando->encarregado_educacao);
+                if (!in_array((string) $member->id, $guardianIds, true)) {
+                    $guardianIds[] = (string) $member->id;
+                    $educando->encarregado_educacao = array_values(array_unique($guardianIds));
+                    $educando->saveQuietly();
                 }
             }
         }

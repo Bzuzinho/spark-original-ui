@@ -1,4 +1,4 @@
-import { useState, FormEventHandler } from 'react';
+import { useEffect, useState, FormEventHandler } from 'react';
 import { Head, router, usePage } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { moduleTabbedContentClass, moduleTabsClass, moduleViewportClass } from '@/lib/module-layout';
@@ -92,12 +92,86 @@ const normalizeMember = (member: User): User => {
     };
 };
 
+const normalizeRelationIds = (value: unknown): string[] => {
+    if (!Array.isArray(value)) {
+        return [];
+    }
+
+    return value
+        .map((entry) => {
+            if (typeof entry === 'string') return entry;
+            if (entry && typeof entry === 'object' && 'id' in entry && typeof entry.id === 'string') {
+                return entry.id;
+            }
+            return null;
+        })
+        .filter((entry): entry is string => Boolean(entry));
+};
+
+const buildMemberUpdatePayload = (user: User) => ({
+    numero_socio: user.numero_socio || '',
+    nome_completo: user.nome_completo || '',
+    data_nascimento: formatDateForInput(user.data_nascimento),
+    sexo: user.sexo || 'masculino',
+    menor: Boolean(user.menor),
+    tipo_membro: Array.isArray(user.tipo_membro) ? user.tipo_membro : [],
+    estado: user.estado || 'ativo',
+    nif: user.nif || '',
+    morada: user.morada || '',
+    codigo_postal: user.codigo_postal || '',
+    localidade: user.localidade || '',
+    nacionalidade: user.nacionalidade || '',
+    estado_civil: user.estado_civil || '',
+    contacto_telefonico: user.contacto_telefonico || '',
+    email_secundario: user.email_secundario || '',
+    numero_irmaos: user.numero_irmaos ?? null,
+    ocupacao: user.ocupacao || '',
+    empresa: user.empresa || '',
+    escola: user.escola || '',
+    email_utilizador: user.email_utilizador || '',
+    perfil: user.perfil || '',
+    rgpd: Boolean(user.rgpd),
+    consentimento: Boolean(user.consentimento),
+    afiliacao: Boolean(user.afiliacao),
+    declaracao_de_transporte: Boolean(user.declaracao_de_transporte),
+    tipo_mensalidade: user.tipo_mensalidade || '',
+    centro_custo: normalizeRelationIds(user.centro_custo),
+    conta_corrente_manual: user.conta_corrente_manual ?? 0,
+    ativo_desportivo: Boolean(user.ativo_desportivo),
+    num_federacao: user.num_federacao || '',
+    numero_pmb: user.numero_pmb || '',
+    escalao: normalizeRelationIds(user.escalao),
+    data_inscricao: formatDateForInput(user.data_inscricao),
+    data_atestado_medico: formatDateForInput(user.data_atestado_medico),
+    informacoes_medicas: user.informacoes_medicas || '',
+    sync_encarregado_educacao: true,
+    encarregado_educacao: normalizeRelationIds(user.encarregado_educacao),
+    sync_educandos: true,
+    educandos: normalizeRelationIds(user.educandos),
+    foto_perfil: user.foto_perfil || '',
+    cartao_federacao: user.cartao_federacao || '',
+    arquivo_rgpd: user.arquivo_rgpd || '',
+    arquivo_consentimento: user.arquivo_consentimento || '',
+    arquivo_afiliacao: user.arquivo_afiliacao || '',
+    declaracao_transporte: user.declaracao_transporte || '',
+});
+
 export default function Show({ member, allUsers, internalCommunications, userTypes, ageGroups, faturas, movimentos, monthlyFees, costCenters }: Props) {
     const page = usePage<PageProps>();
     const [user, setUser] = useState<User>(() => normalizeMember(member));
     const [hasChanges, setHasChanges] = useState(false);
     const query = page.props.ziggy?.query;
     const initialTab = query?.tab === 'communications' ? 'communications' : 'dashboard';
+
+    useEffect(() => {
+        setUser(normalizeMember(member));
+        setHasChanges(false);
+    }, [
+        member.id,
+        member.updated_at,
+        JSON.stringify(member.educandos ?? []),
+        JSON.stringify(member.encarregado_educacao ?? []),
+    ]);
 
     const handleChange = (field: keyof User, value: any) => {
         setUser(prev => ({ ...prev, [field]: value }));
@@ -106,12 +180,18 @@ export default function Show({ member, allUsers, internalCommunications, userTyp
 
     const handleSave: FormEventHandler = (e) => {
         e.preventDefault();
-        router.put(route('membros.update', user.id), user, {
+        router.put(route('membros.update', user.id), buildMemberUpdatePayload(user), {
             onSuccess: () => {
                 setHasChanges(false);
                 toast.success('Membro atualizado com sucesso!');
+                router.visit(route('membros.show', user.id), {
+                    preserveScroll: true,
+                    preserveState: false,
+                    replace: true,
+                });
             },
-            onError: () => {
+            onError: (errors) => {
+                console.error('Erro ao atualizar membro:', errors);
                 toast.error('Erro ao atualizar membro');
             }
         });

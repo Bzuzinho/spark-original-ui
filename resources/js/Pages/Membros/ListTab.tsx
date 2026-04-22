@@ -6,6 +6,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Avatar, AvatarFallback, AvatarImage } from '@/Components/ui/avatar';
 import { Badge } from '@/Components/ui/badge';
 import { Button } from '@/Components/ui/button';
+import { MemberImportDialog } from '@/Components/Members/MemberImportDialog';
 import { Card } from '@/Components/ui/card';
 import { Input } from '@/Components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select';
@@ -91,6 +92,16 @@ export default function MembrosListTab({ members, userTypes }: Props) {
                 </p>
 
                 <div className="flex items-center gap-1.5">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-8 text-xs"
+                        onClick={() => window.location.assign(route('membros.import.template'))}
+                    >
+                        Modelo
+                    </Button>
+                    <MemberImportDialog />
                     <Button
                         variant={viewMode === 'card' ? 'default' : 'outline'}
                         size="sm"

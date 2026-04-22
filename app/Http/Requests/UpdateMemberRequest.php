@@ -66,6 +66,8 @@ class UpdateMemberRequest extends FormRequest
             'encarregado_educacao.*' => ['exists:users,id'],
             'educandos' => ['nullable', 'array'],
             'educandos.*' => ['exists:users,id'],
+            'sync_encarregado_educacao' => ['sometimes', 'boolean'],
+            'sync_educandos' => ['sometimes', 'boolean'],
 
             // RGPD e documentos
             'rgpd' => ['boolean'],

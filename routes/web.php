@@ -3,6 +3,7 @@
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MembrosController;
+use App\Http\Controllers\MembrosImportController;
 use App\Http\Controllers\DocumentosMembrosController;
 use App\Http\Controllers\RelacoesMembroController;
 use App\Http\Controllers\EventosController;
@@ -52,6 +53,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middlewareFor(['create', 'store', 'edit', 'update'], 'permission.access:membros.ficha,edit')
         ->middlewareFor(['destroy'], 'permission.access:membros.ficha,delete')
         ->parameters(['membros' => 'member']);
+
+    Route::prefix('membros/import')->middleware(['module.access:membros', 'permission.access:membros.ficha,edit'])->group(function () {
+        Route::get('template', [MembrosImportController::class, 'template'])
+            ->name('membros.import.template');
+        Route::post('preview', [MembrosImportController::class, 'preview'])
+            ->name('membros.import.preview');
+        Route::post('/', [MembrosImportController::class, 'store'])
+            ->name('membros.import.store');
+    });
     
     // Member documents and relationships
     Route::prefix('membros/{member}')->middleware('module.access:membros')->group(function() {
