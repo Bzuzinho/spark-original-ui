@@ -44,9 +44,9 @@ class ComunicacaoController extends Controller
 
         return [
             ...$this->buildDashboardPayload($useDefaultCache),
-            'filterOptions' => $useDefaultCache
+            'filterOptions' => Inertia::lazy(fn () => $useDefaultCache
                 ? Cache::remember('comunicacao:filter-options', now()->addSeconds(60), fn () => $this->buildFilterOptions())
-                : $this->buildFilterOptions(),
+                : $this->buildFilterOptions()),
             'campaigns' => Inertia::lazy(fn () => $this->buildCampaignsPayload($request, $useDefaultCache)),
             'deliveries' => Inertia::lazy(fn () => $this->buildDeliveriesPayload($request, $useDefaultCache)),
             'templates' => Inertia::lazy(fn () => $this->buildTemplatesPayload($useDefaultCache)),
@@ -104,20 +104,34 @@ class ComunicacaoController extends Controller
             return Cache::remember('comunicacao:dashboard', now()->addSeconds(60), fn () => $this->buildDashboardPayload(false));
         }
 
+        $alertsSummaryRow = InAppAlert::query()
+            ->selectRaw('COUNT(*) as total')
+            ->selectRaw('SUM(CASE WHEN is_read = false THEN 1 ELSE 0 END) as unread')
+            ->selectRaw('SUM(CASE WHEN is_read = true THEN 1 ELSE 0 END) as read')
+            ->first();
+
         $alertsSummary = [
-            'total' => InAppAlert::count(),
-            'unread' => InAppAlert::where('is_read', false)->count(),
-            'read' => InAppAlert::where('is_read', true)->count(),
+            'total' => (int) ($alertsSummaryRow?->total ?? 0),
+            'unread' => (int) ($alertsSummaryRow?->unread ?? 0),
+            'read' => (int) ($alertsSummaryRow?->read ?? 0),
         ];
+
+        $deliverySummary = CommunicationDelivery::query()
+            ->selectRaw("SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_deliveries")
+            ->selectRaw("SUM(CASE WHEN status IN ('failed', 'partial') THEN 1 ELSE 0 END) as failed_deliveries")
+            ->selectRaw('COALESCE(SUM(success_count), 0) as total_sent')
+            ->selectRaw('COALESCE(SUM(failed_count), 0) as total_failed')
+            ->selectRaw('COALESCE(SUM(pending_count), 0) as total_pending')
+            ->first();
 
         $stats = [
             'scheduled_campaigns' => CommunicationCampaign::where('status', 'agendada')->count(),
-            'completed_deliveries' => CommunicationDelivery::where('status', 'completed')->count(),
-            'failed_deliveries' => CommunicationDelivery::whereIn('status', ['failed', 'partial'])->count(),
             'active_templates' => CommunicationTemplate::where('status', 'ativo')->count(),
-            'total_sent' => CommunicationDelivery::sum('success_count'),
-            'total_failed' => CommunicationDelivery::sum('failed_count'),
-            'total_pending' => CommunicationDelivery::sum('pending_count'),
+            'completed_deliveries' => (int) ($deliverySummary?->completed_deliveries ?? 0),
+            'failed_deliveries' => (int) ($deliverySummary?->failed_deliveries ?? 0),
+            'total_sent' => (int) ($deliverySummary?->total_sent ?? 0),
+            'total_failed' => (int) ($deliverySummary?->total_failed ?? 0),
+            'total_pending' => (int) ($deliverySummary?->total_pending ?? 0),
             'alerts_unread' => $alertsSummary['unread'],
         ];
 

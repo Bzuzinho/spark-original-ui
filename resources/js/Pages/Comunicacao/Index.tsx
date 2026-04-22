@@ -140,7 +140,7 @@ interface Props {
   latestCampaigns: Array<{ id: string; codigo: string; title: string; status: CampaignStatus }>;
   channelSummary: Array<{ channel: Channel; total: number; success_count: number; failed_count: number }>;
   alertsSummary: { total: number; unread: number; read: number };
-  filterOptions: {
+  filterOptions?: {
     authors: Array<{ id: string; name?: string | null; nome_completo?: string | null }>;
     segments: Array<{ id: string; name: string }>;
     dynamicSources: DynamicSourceOption[];
@@ -165,6 +165,19 @@ interface Props {
   }>;
   filters: Record<string, string | undefined>;
 }
+
+type ComunicacaoPageProps = Props & Record<string, unknown>;
+
+const EMPTY_FILTER_OPTIONS: NonNullable<Props['filterOptions']> = {
+  authors: [],
+  segments: [],
+  dynamicSources: [],
+  alertCategories: [],
+  templates: [],
+  ageGroups: [],
+  userTypes: [],
+  templateVariables: [],
+};
 
 function SectionLoadingState({ message = 'A carregar...' }: { message?: string }) {
   return (
@@ -247,11 +260,11 @@ export default function ComunicacaoIndex({
   latestCampaigns,
   channelSummary,
   alertsSummary,
-  filterOptions,
+  filterOptions = EMPTY_FILTER_OPTIONS,
   recipientOptions,
   filters,
 }: Props) {
-  const page = usePage<Props>();
+  const page = usePage<ComunicacaoPageProps>();
   const fallbackAlertCategories = useMemo<Array<{ value: AlertCategory; label: string; channels: Array<'email' | 'sms' | 'alert_app'> }>>(
     () => [
       { value: 'mensalidade', label: 'Mensalidade', channels: ['email', 'sms', 'alert_app'] },
@@ -296,6 +309,7 @@ export default function ComunicacaoIndex({
   const hasDeliveries = Object.prototype.hasOwnProperty.call(page.props, 'deliveries');
   const hasTemplates = Object.prototype.hasOwnProperty.call(page.props, 'templates');
   const hasSegments = Object.prototype.hasOwnProperty.call(page.props, 'segments');
+  const hasFilterOptions = Object.prototype.hasOwnProperty.call(page.props, 'filterOptions');
   const hasRecipientOptions = Object.prototype.hasOwnProperty.call(page.props, 'recipientOptions');
 
   const templateVariableMap = useMemo(
@@ -1199,10 +1213,10 @@ export default function ComunicacaoIndex({
 
   useEffect(() => {
     const pendingByTab: Record<string, { ready: boolean; props: string[] }> = {
-      envios: { ready: hasCampaigns, props: ['campaigns'] },
-      execucao: { ready: hasDeliveries, props: ['deliveries'] },
-      templates: { ready: hasTemplates, props: ['templates'] },
-      segmentos: { ready: hasSegments, props: ['segments'] },
+      envios: { ready: hasFilterOptions && hasCampaigns, props: ['filterOptions', 'campaigns'] },
+      execucao: { ready: hasFilterOptions && hasDeliveries, props: ['filterOptions', 'deliveries'] },
+      templates: { ready: hasFilterOptions && hasTemplates, props: ['filterOptions', 'templates'] },
+      segmentos: { ready: hasFilterOptions && hasSegments, props: ['filterOptions', 'segments'] },
     };
 
     const pending = pendingByTab[activeTab];
@@ -1219,10 +1233,24 @@ export default function ComunicacaoIndex({
       preserveScroll: true,
       onFinish: () => setLoadingTab((current) => (current === activeTab ? null : current)),
     });
-  }, [activeTab, hasCampaigns, hasDeliveries, hasSegments, hasTemplates]);
+  }, [activeTab, hasCampaigns, hasDeliveries, hasFilterOptions, hasSegments, hasTemplates]);
 
   useEffect(() => {
-    if (!showDirectModal || hasRecipientOptions || loadingRecipients) {
+    const needsFilterOptions = showCampaignModal || showTemplateModal || showSegmentModal || showDirectModal;
+
+    if (!needsFilterOptions || hasFilterOptions) {
+      return;
+    }
+
+    router.reload({
+      only: ['filterOptions'],
+      preserveState: true,
+      preserveScroll: true,
+    });
+  }, [hasFilterOptions, showCampaignModal, showDirectModal, showSegmentModal, showTemplateModal]);
+
+  useEffect(() => {
+    if (!showDirectModal || !hasFilterOptions || hasRecipientOptions || loadingRecipients) {
       return;
     }
 
@@ -1233,7 +1261,7 @@ export default function ComunicacaoIndex({
       preserveScroll: true,
       onFinish: () => setLoadingRecipients(false),
     });
-  }, [hasRecipientOptions, loadingRecipients, showDirectModal]);
+  }, [hasFilterOptions, hasRecipientOptions, loadingRecipients, showDirectModal]);
 
   const renderCampaignChannels = (campaign: CampaignRow) => {
     const enabledChannels = campaign.channels.filter((item) => item.is_enabled);

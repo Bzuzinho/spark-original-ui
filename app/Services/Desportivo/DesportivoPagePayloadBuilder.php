@@ -93,28 +93,15 @@ class DesportivoPagePayloadBuilder
     {
         $upcomingCompetitions = $this->upcomingCompetitions();
         $nextTrainings = $this->nextTrainings();
-        $trainingOptions = collect($nextTrainings)
-            ->map(fn (array $training) => [
-                'id' => $training['id'],
-                'numero_treino' => $training['numero_treino'] ?? null,
-                'data' => $training['data'] ?? null,
-            ])
-            ->values()
-            ->all();
 
         return [
             'stats' => $this->dashboardStats(),
             'alerts' => $this->dashboardAlerts(),
             'upcomingCompetitions' => $upcomingCompetitions,
-            'attendanceByGroup' => $this->attendanceByGroup(last30Days: true),
             'nextTrainings' => $nextTrainings,
-            'activeSeason' => $this->activeSeason(),
             'trainings' => [
                 'data' => $nextTrainings,
             ],
-            'trainingOptions' => $trainingOptions,
-            'statusOptions' => [],
-            'athleteOperationalRows' => [],
             'competitions' => collect($upcomingCompetitions)
                 ->map(fn (array $item) => [
                     'id' => $item['id'],
@@ -268,26 +255,17 @@ class DesportivoPagePayloadBuilder
             $sevenDaysAgo = $now->copy()->subDays(7)->toDateString();
             $thirtyDaysAgo = $now->copy()->subDays(30)->toDateString();
 
+            $trainingSummary = Training::query()
+                ->selectRaw('SUM(CASE WHEN data BETWEEN ? AND ? THEN 1 ELSE 0 END) as trainings_7_days', [$sevenDaysAgo, $now->toDateString()])
+                ->selectRaw('SUM(CASE WHEN data BETWEEN ? AND ? THEN 1 ELSE 0 END) as trainings_30_days', [$thirtyDaysAgo, $now->toDateString()])
+                ->selectRaw('COALESCE(SUM(CASE WHEN data BETWEEN ? AND ? THEN volume_planeado_m ELSE 0 END), 0) as km_7_days', [$sevenDaysAgo, $now->toDateString()])
+                ->selectRaw('COALESCE(SUM(CASE WHEN data BETWEEN ? AND ? THEN volume_planeado_m ELSE 0 END), 0) as km_30_days', [$thirtyDaysAgo, $now->toDateString()])
+                ->first();
+
             $athletesCount = User::query()
                 ->whereJsonContains('tipo_membro', 'atleta')
                 ->where('estado', 'ativo')
                 ->count();
-
-            $trainings7Days = Training::query()
-                ->whereBetween('data', [$sevenDaysAgo, $now->toDateString()])
-                ->count();
-
-            $trainings30Days = Training::query()
-                ->whereBetween('data', [$thirtyDaysAgo, $now->toDateString()])
-                ->count();
-
-            $km7Days = (float) Training::query()
-                ->whereBetween('data', [$sevenDaysAgo, $now->toDateString()])
-                ->sum('volume_planeado_m') / 1000;
-
-            $km30Days = (float) Training::query()
-                ->whereBetween('data', [$thirtyDaysAgo, $now->toDateString()])
-                ->sum('volume_planeado_m') / 1000;
 
             $attendanceRate = DB::table('training_athletes')
                 ->join('trainings', 'training_athletes.treino_id', '=', 'trainings.id')
@@ -297,10 +275,10 @@ class DesportivoPagePayloadBuilder
 
             return [
                 'athletesCount' => $athletesCount,
-                'trainings7Days' => $trainings7Days,
-                'trainings30Days' => $trainings30Days,
-                'km7Days' => round($km7Days, 2),
-                'km30Days' => round($km30Days, 2),
+                'trainings7Days' => (int) ($trainingSummary?->trainings_7_days ?? 0),
+                'trainings30Days' => (int) ($trainingSummary?->trainings_30_days ?? 0),
+                'km7Days' => round(((float) ($trainingSummary?->km_7_days ?? 0)) / 1000, 2),
+                'km30Days' => round(((float) ($trainingSummary?->km_30_days ?? 0)) / 1000, 2),
                 'attendanceRate' => $attendanceRate !== null ? (float) $attendanceRate : null,
             ];
         });
@@ -314,17 +292,13 @@ class DesportivoPagePayloadBuilder
         return $this->cacheSection('desportivo:dashboard:alerts', function (): array {
             $alerts = [];
             $thirtyDaysAgo = Carbon::now()->subDays(30)->toDateString();
-            $activeAthleteIds = User::query()
+            $userAlertSummary = User::query()
                 ->whereJsonContains('tipo_membro', 'atleta')
-                ->where('estado', 'ativo')
-                ->pluck('id');
+                ->selectRaw("SUM(CASE WHEN estado = 'ativo' AND data_atestado_medico IS NOT NULL AND data_atestado_medico <= ? THEN 1 ELSE 0 END) as medical_certs_count", [Carbon::now()->subDays(335)->toDateString()])
+                ->selectRaw("SUM(CASE WHEN estado = 'inativo' THEN 1 ELSE 0 END) as inactive_athletes")
+                ->first();
 
-            $medicalCertsCount = User::query()
-                ->whereJsonContains('tipo_membro', 'atleta')
-                ->where('estado', 'ativo')
-                ->whereNotNull('data_atestado_medico')
-                ->whereDate('data_atestado_medico', '<=', Carbon::now()->subDays(335)->toDateString())
-                ->count();
+            $medicalCertsCount = (int) ($userAlertSummary?->medical_certs_count ?? 0);
 
             if ($medicalCertsCount > 0) {
                 $alerts[] = [
@@ -339,23 +313,20 @@ class DesportivoPagePayloadBuilder
                 ->where('data', '>=', $thirtyDaysAgo)
                 ->count();
 
-            if ($trainingsLast30Days > 0 && $activeAthleteIds->isNotEmpty()) {
+            if ($trainingsLast30Days > 0) {
                 $presenceByAthlete = DB::table('training_athletes')
                     ->join('trainings', 'training_athletes.treino_id', '=', 'trainings.id')
-                    ->whereIn('training_athletes.user_id', $activeAthleteIds)
                     ->where('trainings.data', '>=', $thirtyDaysAgo)
                     ->where('training_athletes.estado', 'presente')
                     ->select('training_athletes.user_id', DB::raw('COUNT(*) as presentes'))
-                    ->groupBy('training_athletes.user_id')
-                    ->pluck('presentes', 'user_id');
+                    ->groupBy('training_athletes.user_id');
 
-                $lowAttendanceCount = 0;
-                foreach ($activeAthleteIds as $athleteId) {
-                    $presenceCount = (int) ($presenceByAthlete[$athleteId] ?? 0);
-                    if (($presenceCount / $trainingsLast30Days) < 0.5) {
-                        $lowAttendanceCount++;
-                    }
-                }
+                $lowAttendanceCount = User::query()
+                    ->whereJsonContains('tipo_membro', 'atleta')
+                    ->where('estado', 'ativo')
+                    ->leftJoinSub($presenceByAthlete, 'presence_by_athlete', 'presence_by_athlete.user_id', '=', 'users.id')
+                    ->whereRaw('COALESCE(presence_by_athlete.presentes, 0) < ?', [$trainingsLast30Days * 0.5])
+                    ->count();
 
                 if ($lowAttendanceCount > 0) {
                     $alerts[] = [
@@ -367,10 +338,7 @@ class DesportivoPagePayloadBuilder
                 }
             }
 
-            $inactiveAthletes = User::query()
-                ->whereJsonContains('tipo_membro', 'atleta')
-                ->where('estado', 'inativo')
-                ->count();
+            $inactiveAthletes = (int) ($userAlertSummary?->inactive_athletes ?? 0);
 
             if ($inactiveAthletes > 0) {
                 $alerts[] = [
