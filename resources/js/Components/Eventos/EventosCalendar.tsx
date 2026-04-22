@@ -3,13 +3,6 @@ import { Card } from '@/Components/ui/card';
 import { Badge } from '@/Components/ui/badge';
 import { Button } from '@/Components/ui/button';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/Components/ui/select';
-import {
   startOfMonth,
   endOfMonth,
   eachDayOfInterval,
@@ -174,20 +167,22 @@ export function EventosCalendar({ events = [], ageGroups = [], isActive = true }
           </Button>
         </div>
 
-        <Select value={typeFilter} onValueChange={setTypeFilter}>
-          <SelectTrigger className="w-full sm:w-[180px] h-8 bg-white">
-            <SelectValue placeholder="Tipo de Evento" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todos">Todos os Tipos</SelectItem>
-            <SelectItem value="prova">Prova</SelectItem>
-            <SelectItem value="estagio">Estágio</SelectItem>
-            <SelectItem value="reuniao">Reunião</SelectItem>
-            <SelectItem value="evento_interno">Evento Interno</SelectItem>
-            <SelectItem value="treino">Treino</SelectItem>
-            <SelectItem value="outro">Outro</SelectItem>
-          </SelectContent>
-        </Select>
+        <label className="flex w-full sm:w-[180px] items-center">
+          <span className="sr-only">Tipo de Evento</span>
+          <select
+            value={typeFilter}
+            onChange={(event) => setTypeFilter(event.target.value)}
+            className="h-8 w-full rounded-md border border-input bg-white px-3 text-sm shadow-sm outline-none focus:ring-2 focus:ring-ring"
+          >
+            <option value="todos">Todos os Tipos</option>
+            <option value="prova">Prova</option>
+            <option value="estagio">Estágio</option>
+            <option value="reuniao">Reunião</option>
+            <option value="evento_interno">Evento Interno</option>
+            <option value="treino">Treino</option>
+            <option value="outro">Outro</option>
+          </select>
+        </label>
       </div>
 
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
