@@ -1,5 +1,5 @@
-import { Suspense, lazy, useState } from 'react';
-import { Head } from '@inertiajs/react';
+import { Suspense, lazy, useEffect, useState } from 'react';
+import { Head, router, usePage } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { moduleTabbedContentClass, moduleTabsClass, moduleViewportClass } from '@/lib/module-layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs';
@@ -45,10 +45,13 @@ interface Event {
 }
 
 interface EventStats {
-    totalEvents: number;
-    upcomingEvents: number;
-    completedEvents: number;
-    activeConvocatorias: number;
+  totalEvents: number;
+  upcomingEvents: number;
+  completedEvents: number;
+  activeConvocatorias: number;
+  treinos: number;
+  provas: number;
+  taxaPresencaMedia: number;
 }
 
 interface User {
@@ -80,16 +83,18 @@ interface EventType {
 }
 
 interface Props {
-    eventos: Event[];
-    stats: EventStats;
-    users: User[];
+  eventos: Event[];
+  stats: EventStats;
+  users?: User[];
   costCenters: CostCenter[];
   eventTypes: EventType[];
   ageGroups: AgeGroup[];
-    convocations?: any[];
-    attendances?: any[];
-    results?: any[];
+  convocations?: any[];
+  attendances?: any[];
+  results?: any[];
 }
+
+type EventosPageProps = Props & Record<string, unknown>;
 
 export default function EventosIndex({
   eventos = [],
@@ -102,13 +107,41 @@ export default function EventosIndex({
   attendances: initialAttendances = [],
   results = [],
 }: Props) {
+  const page = usePage<EventosPageProps>();
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [loadingTab, setLoadingTab] = useState<string | null>(null);
   const [attendances, setAttendances] = useState(initialAttendances);
+  const hasUsers = Object.prototype.hasOwnProperty.call(page.props, 'users');
+  const hasConvocations = Object.prototype.hasOwnProperty.call(page.props, 'convocations');
+  const hasAttendances = Object.prototype.hasOwnProperty.call(page.props, 'attendances');
+  const hasResults = Object.prototype.hasOwnProperty.call(page.props, 'results');
 
-  // Callback para atualizar attendances quando houver mudanças
-  const handleAttendancesUpdate = (updatedAttendances: any[]) => {
-    setAttendances(updatedAttendances);
-  };
+  useEffect(() => {
+    setAttendances(initialAttendances);
+  }, [initialAttendances]);
+
+  useEffect(() => {
+    const pendingByTab: Record<string, { ready: boolean; props: string[] }> = {
+      eventos: { ready: hasUsers, props: ['users'] },
+      relatorios: {
+        ready: hasUsers && hasConvocations && hasAttendances && hasResults,
+        props: ['users', 'convocations', 'attendances', 'results'],
+      },
+    };
+
+    const pending = pendingByTab[activeTab];
+
+    if (!pending || pending.ready) {
+      setLoadingTab((current) => (current === activeTab ? null : current));
+      return;
+    }
+
+    setLoadingTab(activeTab);
+    router.reload({
+      only: pending.props,
+      onFinish: () => setLoadingTab((current) => (current === activeTab ? null : current)),
+    });
+  }, [activeTab, hasAttendances, hasConvocations, hasResults, hasUsers]);
 
   return (
     <AuthenticatedLayout
@@ -164,8 +197,7 @@ export default function EventosIndex({
               <Suspense fallback={<TabFallback />}>
                 <EventosDashboard
                   events={eventos}
-                  convocatorias={convocations}
-                  attendances={attendances}
+                  stats={stats}
                 />
               </Suspense>
             ) : null}
@@ -185,30 +217,38 @@ export default function EventosIndex({
 
           <TabsContent value="eventos" className={`${moduleTabbedContentClass} space-y-3`}>
             {activeTab === 'eventos' ? (
-              <Suspense fallback={<TabFallback />}>
-                <EventosList
-                  events={eventos}
-                  users={users}
-                  costCenters={costCenters}
-                  eventTypes={eventTypes}
-                  ageGroups={ageGroups}
-                />
-              </Suspense>
+              !hasUsers || loadingTab === 'eventos' ? (
+                <TabFallback />
+              ) : (
+                <Suspense fallback={<TabFallback />}>
+                  <EventosList
+                    events={eventos}
+                    users={users}
+                    costCenters={costCenters}
+                    eventTypes={eventTypes}
+                    ageGroups={ageGroups}
+                  />
+                </Suspense>
+              )
             ) : null}
           </TabsContent>
 
           <TabsContent value="relatorios" className={`${moduleTabbedContentClass} space-y-3`}>
             {activeTab === 'relatorios' ? (
-              <Suspense fallback={<TabFallback />}>
-                <EventosRelatorios
-                  events={eventos}
-                  convocatorias={convocations}
-                  attendances={attendances}
-                  results={results}
-                  users={users}
-                  ageGroups={ageGroups}
-                />
-              </Suspense>
+              !hasUsers || !hasConvocations || !hasAttendances || !hasResults || loadingTab === 'relatorios' ? (
+                <TabFallback />
+              ) : (
+                <Suspense fallback={<TabFallback />}>
+                  <EventosRelatorios
+                    events={eventos}
+                    convocatorias={convocations}
+                    attendances={attendances}
+                    results={results}
+                    users={users}
+                    ageGroups={ageGroups}
+                  />
+                </Suspense>
+              )
             ) : null}
           </TabsContent>
         </Tabs>

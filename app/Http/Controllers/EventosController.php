@@ -27,47 +27,40 @@ use Carbon\CarbonPeriod;
 
 class EventosController extends Controller
 {
-    public function index(): Response
+    public function index(Request $request): Response
     {
-        if ($this->shouldUseIndexCache(request())) {
-            return Inertia::render('Eventos/Index', Cache::remember(
-                'eventos:index',
-                now()->addSeconds(60),
-                fn () => $this->buildIndexPayload()
-            ));
-        }
+        $useDefaultCache = $this->shouldUseIndexCache($request);
 
-        return Inertia::render('Eventos/Index', $this->buildIndexPayload());
+        $basePayload = $useDefaultCache
+            ? Cache::remember('eventos:index', now()->addSeconds(60), fn () => $this->buildIndexPayload(false))
+            : $this->buildIndexPayload(false);
+
+        return Inertia::render('Eventos/Index', [
+            ...$basePayload,
+            'users' => Inertia::lazy(fn () => $this->buildUsersPayload($useDefaultCache)),
+            'convocations' => Inertia::lazy(fn () => $this->buildConvocationsPayload($useDefaultCache)),
+            'attendances' => Inertia::lazy(fn () => $this->buildAttendancesPayload($useDefaultCache)),
+            'results' => Inertia::lazy(fn () => $this->buildResultsPayload($useDefaultCache)),
+        ]);
     }
 
     /**
      * @return array<string, mixed>
      */
-    private function buildIndexPayload(): array
+    private function buildIndexPayload(bool $useDefaultCache = true): array
     {
         $now = Carbon::now();
         $startOfMonth = $now->copy()->startOfMonth();
         $endOfMonth = $now->copy()->endOfMonth();
 
-        $eventos = Cache::remember('eventos:list', 60, fn () =>
-            Event::with([
-                'creator:id,name',
-                'ageGroups' => function ($q) {
-                    $q->select('age_groups.id', 'age_groups.nome');
-                },
-            ])
-                ->select(
-                    'id', 'titulo', 'descricao', 'data_inicio', 'hora_inicio',
-                    'data_fim', 'hora_fim', 'estado', 'local', 'tipo', 'visibilidade',
-                    'criado_por', 'created_at', 'tipo_config_id', 'centro_custo_id'
-                )
-                ->orderBy('data_inicio', 'desc')
-                ->get()
-        );
-
+        $eventos = $this->buildEventosPayload($useDefaultCache);
         $eventosAtivos = $eventos->filter(fn (Event $event) => $event->estado !== 'cancelado');
 
         $stats = Cache::remember('eventos:stats:' . $now->format('Y-m'), 60, function () use ($now, $startOfMonth, $endOfMonth, $eventos, $eventosAtivos) {
+            $attendances = $this->buildAttendancesPayload(false);
+            $totalPresentes = $attendances->filter(fn (EventAttendance $attendance) => $attendance->estado === 'presente')->count();
+            $totalPresencas = $attendances->count();
+
             return [
                 'totalEvents' => $eventos->count(),
                 'upcomingEvents' => $eventosAtivos->filter(fn (Event $event) => $event->estado === 'agendado')->count(),
@@ -79,77 +72,14 @@ class EventosController extends Controller
                 'activeConvocatorias' => EventConvocation::whereHas('event', function ($query) use ($now) {
                     $query->where('data_inicio', '>=', $now);
                 })->count(),
+                'treinos' => $eventos->filter(fn (Event $event) => $event->tipo === 'treino')->count(),
+                'provas' => $eventos->filter(fn (Event $event) => $event->tipo === 'prova')->count(),
+                'taxaPresencaMedia' => $totalPresencas > 0 ? round(($totalPresentes / $totalPresencas) * 100, 1) : 0,
             ];
         });
 
         $ageGroups = Cache::remember('eventos:age_groups', 300, fn () =>
             AgeGroup::where('ativo', true)->orderBy('idade_minima')->get(['id', 'nome', 'idade_minima', 'idade_maxima', 'ativo'])
-        );
-
-        $results = Cache::remember('eventos:results', 60, function () {
-            $competitionEventIds = Competition::query()
-                ->whereNotNull('evento_id')
-                ->pluck('evento_id')
-                ->map(fn ($id) => (string) $id)
-                ->unique();
-
-            $eventResults = EventResult::with([
-                'event:id,titulo,estado',
-                'user:id,nome_completo',
-                'ageGroup:id,nome',
-            ])
-                ->get()
-                ->reject(fn (EventResult $result) => $competitionEventIds->contains((string) $result->evento_id))
-                ->values();
-
-            $legacyCompetitionResults = Result::with([
-                'prova:id,competicao_id,distancia_m,estilo',
-                'prova.competition:id,evento_id',
-                'prova.competition.evento:id,titulo,estado',
-                'athlete:id,nome_completo',
-            ])
-                ->get()
-                ->map(function (Result $result) {
-                    $competition = $result->prova?->competition;
-                    $event = $competition?->evento;
-
-                    return [
-                        'id' => 'legacy_' . $result->id,
-                        'evento_id' => $competition?->evento_id,
-                        'user_id' => $result->user_id,
-                        'prova' => trim((string) (($result->prova?->distancia_m ?? '') . ' ' . ($result->prova?->estilo ?? ''))),
-                        'tempo' => $result->tempo_oficial,
-                        'classificacao' => $result->posicao,
-                        'event' => $event ? [
-                            'id' => $event->id,
-                            'titulo' => $event->titulo,
-                            'estado' => $event->estado,
-                        ] : null,
-                        'user' => $result->athlete ? [
-                            'id' => $result->athlete->id,
-                            'nome_completo' => $result->athlete->nome_completo,
-                        ] : null,
-                    ];
-                })
-                ->values();
-
-            return $eventResults
-                ->map(fn (EventResult $result) => $result->toArray())
-                ->concat($legacyCompetitionResults)
-                ->values();
-        });
-
-        $users = Cache::remember('eventos:users', 60, fn () =>
-            User::with(['athleteSportsData:id,user_id,escalao_id'])
-                ->where('estado', 'ativo')
-                ->get(['id', 'nome_completo', 'perfil', 'email', 'numero_socio', 'estado', 'tipo_membro', 'escalao'])
-                ->map(function (User $user) {
-                    if ((!is_array($user->escalao) || count($user->escalao) === 0) && $user->athleteSportsData?->escalao_id) {
-                        $user->escalao = [(string) $user->athleteSportsData->escalao_id];
-                    }
-                    unset($user->athleteSportsData);
-                    return $user;
-                })
         );
 
         $costCenters = Cache::remember('eventos:cost_centers', 300, fn () =>
@@ -160,28 +90,132 @@ class EventosController extends Controller
             EventType::where('ativo', true)->orderBy('nome')->get(['id', 'nome', 'visibilidade_default', 'ativo'])
         );
 
-        $convocations = Cache::remember('eventos:convocations', 60, fn () =>
-            EventConvocation::with(['event:id,titulo,data_inicio', 'user:id,nome_completo'])->get()
-        );
-
-        $attendances = Cache::remember('eventos:attendances', 60, fn () =>
-            EventAttendance::with([
-                'event:id,titulo,data_inicio,estado',
-                'user:id,nome_completo,numero_socio',
-            ])->get()
-        );
-
         return [
-            'eventos'      => $eventos,
-            'stats'        => $stats,
-            'users'        => $users,
-            'costCenters'  => $costCenters,
-            'eventTypes'   => $eventTypes,
-            'ageGroups'    => $ageGroups,
-            'convocations' => $convocations,
-            'attendances'  => $attendances,
-            'results'      => $results,
+            'eventos' => $eventos,
+            'stats' => $stats,
+            'costCenters' => $costCenters,
+            'eventTypes' => $eventTypes,
+            'ageGroups' => $ageGroups,
         ];
+    }
+
+    private function buildEventosPayload(bool $useDefaultCache = true)
+    {
+        if ($useDefaultCache) {
+            return Cache::remember('eventos:list', 60, fn () => $this->buildEventosPayload(false));
+        }
+
+        return Event::with([
+            'creator:id,name',
+            'ageGroups' => function ($query) {
+                $query->select('age_groups.id', 'age_groups.nome');
+            },
+        ])
+            ->select(
+                'id', 'titulo', 'descricao', 'data_inicio', 'hora_inicio',
+                'data_fim', 'hora_fim', 'estado', 'local', 'tipo', 'visibilidade',
+                'criado_por', 'created_at', 'tipo_config_id', 'centro_custo_id'
+            )
+            ->orderBy('data_inicio', 'desc')
+            ->get();
+    }
+
+    private function buildResultsPayload(bool $useDefaultCache = true)
+    {
+        if ($useDefaultCache) {
+            return Cache::remember('eventos:results', 60, fn () => $this->buildResultsPayload(false));
+        }
+
+        $competitionEventIds = Competition::query()
+            ->whereNotNull('evento_id')
+            ->pluck('evento_id')
+            ->map(fn ($id) => (string) $id)
+            ->unique();
+
+        $eventResults = EventResult::with([
+            'event:id,titulo,estado',
+            'user:id,nome_completo',
+            'ageGroup:id,nome',
+        ])
+            ->get()
+            ->reject(fn (EventResult $result) => $competitionEventIds->contains((string) $result->evento_id))
+            ->values();
+
+        $legacyCompetitionResults = Result::with([
+            'prova:id,competicao_id,distancia_m,estilo',
+            'prova.competition:id,evento_id',
+            'prova.competition.evento:id,titulo,estado',
+            'athlete:id,nome_completo',
+        ])
+            ->get()
+            ->map(function (Result $result) {
+                $competition = $result->prova?->competition;
+                $event = $competition?->evento;
+
+                return [
+                    'id' => 'legacy_' . $result->id,
+                    'evento_id' => $competition?->evento_id,
+                    'user_id' => $result->user_id,
+                    'prova' => trim((string) (($result->prova?->distancia_m ?? '') . ' ' . ($result->prova?->estilo ?? ''))),
+                    'tempo' => $result->tempo_oficial,
+                    'classificacao' => $result->posicao,
+                    'event' => $event ? [
+                        'id' => $event->id,
+                        'titulo' => $event->titulo,
+                        'estado' => $event->estado,
+                    ] : null,
+                    'user' => $result->athlete ? [
+                        'id' => $result->athlete->id,
+                        'nome_completo' => $result->athlete->nome_completo,
+                    ] : null,
+                ];
+            })
+            ->values();
+
+        return $eventResults
+            ->map(fn (EventResult $result) => $result->toArray())
+            ->concat($legacyCompetitionResults)
+            ->values();
+    }
+
+    private function buildUsersPayload(bool $useDefaultCache = true)
+    {
+        if ($useDefaultCache) {
+            return Cache::remember('eventos:users', 60, fn () => $this->buildUsersPayload(false));
+        }
+
+        return User::with(['athleteSportsData:id,user_id,escalao_id'])
+            ->where('estado', 'ativo')
+            ->get(['id', 'nome_completo', 'perfil', 'email', 'numero_socio', 'estado', 'tipo_membro', 'escalao'])
+            ->map(function (User $user) {
+                if ((!is_array($user->escalao) || count($user->escalao) === 0) && $user->athleteSportsData?->escalao_id) {
+                    $user->escalao = [(string) $user->athleteSportsData->escalao_id];
+                }
+                unset($user->athleteSportsData);
+
+                return $user;
+            });
+    }
+
+    private function buildConvocationsPayload(bool $useDefaultCache = true)
+    {
+        if ($useDefaultCache) {
+            return Cache::remember('eventos:convocations', 60, fn () => $this->buildConvocationsPayload(false));
+        }
+
+        return EventConvocation::with(['event:id,titulo,data_inicio', 'user:id,nome_completo'])->get();
+    }
+
+    private function buildAttendancesPayload(bool $useDefaultCache = true)
+    {
+        if ($useDefaultCache) {
+            return Cache::remember('eventos:attendances', 60, fn () => $this->buildAttendancesPayload(false));
+        }
+
+        return EventAttendance::with([
+            'event:id,titulo,data_inicio,estado',
+            'user:id,nome_completo,numero_socio',
+        ])->get();
     }
 
     private function shouldUseIndexCache(Request $request): bool
@@ -190,98 +224,6 @@ class EventosController extends Controller
             && ! $request->session()->has('success')
             && ! $request->session()->has('error')
             && ! $request->session()->has('warning');
-    }
-
-    public function store(StoreEventRequest $request): RedirectResponse
-    {
-        $data = $request->validated();
-        
-        // ✅ Extrair escaloes_elegiveis para sync posterior
-        $escaloesElegiveis = $this->normalizeEscaloesToIds($data['escaloes_elegiveis'] ?? []);
-        unset($data['escaloes_elegiveis']); // Remover do array (não é campo da tabela)
-        
-        $data['criado_por'] = $data['criado_por'] ?? auth()->id();
-        $data['descricao'] = $data['descricao'] ?? '';
-        
-        // Set default estado if not provided
-        if (!isset($data['estado'])) {
-            $data['estado'] = 'rascunho';
-        }
-        
-        // Handle recurrence
-        if ($data['recorrente'] ?? false) {
-            $parentEvent = Event::create($data);
-            
-            // ✅ Sync escalões e criar presenças
-            if (!empty($escaloesElegiveis)) {
-                $parentEvent->syncAgeGroups($escaloesElegiveis);
-            }
-            
-            $this->generateRecurringEvents($parentEvent, $data, $escaloesElegiveis);
-            $event = $parentEvent;
-        } else {
-            $event = Event::create($data);
-            
-            // ✅ Sync escalões e criar presenças
-            if (!empty($escaloesElegiveis)) {
-                $event->syncAgeGroups($escaloesElegiveis);
-            }
-        }
-
-        Cache::forget('eventos:list');
-        Cache::forget('eventos:stats:' . now()->format('Y-m'));
-        Cache::forget('eventos:results');
-        Cache::forget('dashboard:stats');
-        Cache::forget('dashboard:recent_events');
-        Cache::forget('dashboard:recent_activity');
-
-        return redirect()->route('eventos.index')
-            ->with('success', 'Evento criado com sucesso!');
-    }
-
-    /**
-     * Generate recurring events
-     */
-    private function generateRecurringEvents(Event $parentEvent, array $data, array $escaloesElegiveis = []): void
-    {
-        if (!($data['recorrente'] ?? false)) {
-            return;
-        }
-
-        $startDate = Carbon::parse($data['recorrencia_data_inicio']);
-        $endDate = Carbon::parse($data['recorrencia_data_fim']);
-        $selectedDays = $data['recorrencia_dias_semana'] ?? [];
-
-        if (empty($selectedDays)) {
-            return;
-        }
-
-        $period = CarbonPeriod::create($startDate, '1 day', $endDate);
-
-        foreach ($period as $date) {
-            // Check if this day of the week is selected (0 = Sunday, 1 = Monday, etc.)
-            if (in_array((string)$date->dayOfWeek, $selectedDays)) {
-                $eventData = $data;
-                $eventData['data_inicio'] = $date->toDateString();
-                $eventData['recorrente'] = false;
-                $eventData['evento_pai_id'] = $parentEvent->id;
-                
-                // If there's a data_fim, adjust it accordingly
-                if (isset($data['data_fim'])) {
-                    $originalStartDate = Carbon::parse($data['data_inicio']);
-                    $originalEndDate = Carbon::parse($data['data_fim']);
-                    $daysOffset = $originalStartDate->diffInDays($originalEndDate);
-                    $eventData['data_fim'] = $date->addDays($daysOffset)->toDateString();
-                }
-
-                $childEvent = Event::create($eventData);
-                
-                // ✅ Sync escalões e criar presenças
-                if (!empty($escaloesElegiveis)) {
-                    $childEvent->syncAgeGroups($escaloesElegiveis);
-                }
-            }
-        }
     }
 
     public function show(Event $evento): Response

@@ -21,52 +21,39 @@ interface Event {
   escaloes_elegiveis?: string[];
 }
 
+interface DashboardStats {
+  totalEvents: number;
+  upcomingEvents: number;
+  completedEvents: number;
+  activeConvocatorias: number;
+  treinos: number;
+  provas: number;
+  taxaPresencaMedia: number;
+}
+
 interface EventosDashboardProps {
   events: Event[];
-  convocatorias?: any[];
-  attendances?: any[];
+  stats: DashboardStats;
 }
 
 export function EventosDashboard({
   events = [],
-  convocatorias = [],
-  attendances = [],
+  stats,
 }: EventosDashboardProps) {
-  const stats = useMemo(() => {
-    const now = new Date();
-    const seteDiasFrente = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-
-    const totalEventos = events.length;
-    const eventosAgendados = events.filter((e) => e.estado === 'agendado').length;
-    const eventosEmCurso = events.filter((e) => e.estado === 'em_curso').length;
-    const eventosConcluidos = events.filter((e) => e.estado === 'concluido').length;
-
-    const treinos = events.filter((e) => e.tipo === 'treino').length;
-    const provas = events.filter((e) => e.tipo === 'prova').length;
-
-    const convocatoriasAtivas = convocatorias.filter((c: any) => {
-      const evento = events.find((e) => e.id === c.evento_id);
-      if (!evento) return false;
-      const dataEvento = new Date(evento.data_inicio);
-      return dataEvento >= now;
-    }).length;
-
-    const totalPresentes = attendances.filter((a: any) => a.estado === 'presente').length;
-    const totalPresencas = attendances.length;
-    const taxaPresencaMedia =
-      totalPresencas > 0 ? (totalPresentes / totalPresencas) * 100 : 0;
+  const computedStats = useMemo(() => {
+    const eventosEmCurso = events.filter((event) => event.estado === 'em_curso').length;
 
     return {
-      totalEventos,
-      eventosAgendados,
+      totalEventos: stats.totalEvents,
+      eventosAgendados: stats.upcomingEvents,
       eventosEmCurso,
-      eventosConcluidos,
-      treinos,
-      provas,
-      convocatoriasAtivas,
-      taxaPresencaMedia,
+      eventosConcluidos: stats.completedEvents,
+      treinos: stats.treinos,
+      provas: stats.provas,
+      convocatoriasAtivas: stats.activeConvocatorias,
+      taxaPresencaMedia: stats.taxaPresencaMedia,
     };
-  }, [events, convocatorias, attendances]);
+  }, [events, stats]);
 
   const eventosPorTipo = useMemo(() => {
     const tipoMap = new Map<string, number>();
@@ -99,56 +86,56 @@ export function EventosDashboard({
   const mainStats = [
     {
       title: 'Total de Eventos',
-      value: stats.totalEventos,
+      value: computedStats.totalEventos,
       icon: CalendarBlank,
       color: 'text-blue-600',
       bgColor: 'bg-blue-50',
     },
     {
       title: 'Eventos Agendados',
-      value: stats.eventosAgendados,
+      value: computedStats.eventosAgendados,
       icon: ClockCounterClockwise,
       color: 'text-orange-600',
       bgColor: 'bg-orange-50',
     },
     {
       title: 'A decorrer',
-      value: stats.eventosEmCurso,
+      value: computedStats.eventosEmCurso,
       icon: TrendUp,
       color: 'text-emerald-600',
       bgColor: 'bg-emerald-50',
     },
     {
       title: 'Concluídos',
-      value: stats.eventosConcluidos,
+      value: computedStats.eventosConcluidos,
       icon: CheckCircle,
       color: 'text-green-600',
       bgColor: 'bg-green-50',
     },
     {
       title: 'Treinos',
-      value: stats.treinos,
+      value: computedStats.treinos,
       icon: Users,
       color: 'text-purple-600',
       bgColor: 'bg-purple-50',
     },
     {
       title: 'Provas',
-      value: stats.provas,
+      value: computedStats.provas,
       icon: Trophy,
       color: 'text-yellow-600',
       bgColor: 'bg-yellow-50',
     },
     {
       title: 'Convocatórias Ativas',
-      value: stats.convocatoriasAtivas,
+      value: computedStats.convocatoriasAtivas,
       icon: Users,
       color: 'text-cyan-600',
       bgColor: 'bg-cyan-50',
     },
     {
       title: 'Taxa de Presença Média',
-      value: `${stats.taxaPresencaMedia.toFixed(1)}%`,
+      value: `${computedStats.taxaPresencaMedia.toFixed(1)}%`,
       icon: CheckCircle,
       color: 'text-indigo-600',
       bgColor: 'bg-indigo-50',
