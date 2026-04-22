@@ -1144,7 +1144,6 @@ class DesportivoPagePayloadBuilder
                     'centro_custo_id',
                     'local_detalhes',
                     'tipo_piscina',
-                    'escaloes_elegiveis',
                     'transporte_necessario',
                     'hora_partida',
                     'local_partida',
@@ -1161,6 +1160,12 @@ class DesportivoPagePayloadBuilder
                     'recorrencia_dias_semana',
                 ])
                 ->map(function (Event $event) {
+                    $ageGroupIds = $event->ageGroups
+                        ->pluck('id')
+                        ->map(fn ($id) => (string) $id)
+                        ->values()
+                        ->all();
+
                     return [
                         'id' => $event->id,
                         'titulo' => $event->titulo,
@@ -1175,7 +1180,7 @@ class DesportivoPagePayloadBuilder
                         'centro_custo_id' => $event->centro_custo_id,
                         'local_detalhes' => $event->local_detalhes,
                         'tipo_piscina' => $event->tipo_piscina,
-                        'escaloes_elegiveis' => $event->escaloes_elegiveis ?? [],
+                        'escaloes_elegiveis' => $ageGroupIds,
                         'transporte_necessario' => $event->transporte_necessario,
                         'hora_partida' => $event->hora_partida,
                         'local_partida' => $event->local_partida,
