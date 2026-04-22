@@ -434,13 +434,13 @@ class DesportivoPagePayloadBuilder
      */
     private function activeSeason(): ?array
     {
-        return $this->once('active-season', function (): ?array {
+        return $this->once('active-season', fn (): ?array => $this->cacheSection('desportivo:shared:active-season', function (): ?array {
             $season = Season::query()
                 ->where('estado', 'Em curso')
                 ->first(['id', 'nome', 'ano_temporada', 'estado', 'tipo', 'data_inicio', 'data_fim']);
 
             return $season ? $this->mapSeason($season) : null;
-        });
+        }));
     }
 
     /**
