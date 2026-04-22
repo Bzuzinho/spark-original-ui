@@ -469,6 +469,7 @@ export function EventosList({
                 Novo Evento
               </Button>
             </DialogTrigger>
+            {dialogOpen ? (
             <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
@@ -1020,6 +1021,7 @@ export function EventosList({
               </Button>
             </DialogFooter>
           </DialogContent>
+            ) : null}
         </Dialog>
       </div>
       </div>
@@ -1036,31 +1038,35 @@ export function EventosList({
                 className="h-7 pl-8 text-xs bg-white"
               />
             </div>
-            <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger className="h-7 w-full md:w-[170px] text-xs bg-white">
-                <SelectValue placeholder="Tipo" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todos os Tipos</SelectItem>
+            <label className="flex w-full md:w-[170px] items-center rounded-md border border-input bg-white px-2 text-xs text-muted-foreground focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+              <span className="sr-only">Filtrar por tipo</span>
+              <select
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value)}
+                className="h-7 w-full bg-transparent text-xs text-foreground outline-none"
+              >
+                <option value="todos">Todos os Tipos</option>
                 {eventTypeOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
+                  <option key={option.value} value={option.value}>
                     {option.label}
-                  </SelectItem>
+                  </option>
                 ))}
-              </SelectContent>
-            </Select>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="h-7 w-full md:w-[170px] text-xs bg-white">
-                <SelectValue placeholder="Estado" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todos os Estados</SelectItem>
-                <SelectItem value="agendado">Agendado</SelectItem>
-                <SelectItem value="em_curso">A decorrer</SelectItem>
-                <SelectItem value="concluido">Concluído</SelectItem>
-                <SelectItem value="cancelado">Cancelado</SelectItem>
-              </SelectContent>
-            </Select>
+              </select>
+            </label>
+            <label className="flex w-full md:w-[170px] items-center rounded-md border border-input bg-white px-2 text-xs text-muted-foreground focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+              <span className="sr-only">Filtrar por estado</span>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="h-7 w-full bg-transparent text-xs text-foreground outline-none"
+              >
+                <option value="todos">Todos os Estados</option>
+                <option value="agendado">Agendado</option>
+                <option value="em_curso">A decorrer</option>
+                <option value="concluido">Concluído</option>
+                <option value="cancelado">Cancelado</option>
+              </select>
+            </label>
           </div>
 
           {filteredEvents.length > 0 && (
