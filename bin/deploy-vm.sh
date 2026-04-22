@@ -367,6 +367,9 @@ fi
 
 echo "[backend] composer install"
 "${RUN_AS[@]}" composer --working-dir="${APP_DIR}" install --no-dev --optimize-autoloader
+echo "[backend] ensure storage symlink"
+"${RUN_AS[@]}" mkdir -p "${APP_DIR}/storage/app/public"
+"${RUN_AS[@]}" php "${APP_DIR}/artisan" storage:link || true
 echo "[backend] migrate"
 "${RUN_AS[@]}" php "${APP_DIR}/artisan" migrate --force
 echo "[backend] cache"
