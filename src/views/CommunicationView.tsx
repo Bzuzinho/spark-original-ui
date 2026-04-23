@@ -15,10 +15,15 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
-import { Plus, Trash, Eye, Users, Envelope, CalendarBlank, Bell, GearSix, Warning, ChartBar, TrendUp, CheckCircle, Clock, PaperPlaneRight, XCircle } from '@phosphor-icons/react';
+import { Plus, Trash, Eye, Users, Envelope, CalendarBlank, Bell, GearSix, Warning, ChartBar, TrendUp, CheckCircle, Clock, PaperPlaneRight, XCircle, Sparkle } from '@phosphor-icons/react';
 import type { User } from '@/lib/types';
 import { emailService } from '@/lib/email-service';
 import { EmailConfigComponent } from '@/components/EmailConfig';
+
+declare const spark: {
+  llm: (prompt: string, modelName?: string, jsonMode?: boolean) => Promise<string>;
+  llmPrompt: (strings: TemplateStringsArray, ...values: any[]) => string;
+};
 
 interface Comunicacao {
   id: string;
@@ -135,6 +140,10 @@ export function CommunicationView() {
   const [destinatariosSelecionados, setDestinatariosSelecionados] = useState<Set<string>>(new Set());
   const [isEmailConfigured, setIsEmailConfigured] = useState(false);
   const [sendingProgress, setSendingProgress] = useState({ current: 0, total: 0, isActive: false });
+  const [aiPromptManual, setAiPromptManual] = useState('');
+  const [isGeneratingManual, setIsGeneratingManual] = useState(false);
+  const [aiPromptAuto, setAiPromptAuto] = useState('');
+  const [isGeneratingAuto, setIsGeneratingAuto] = useState(false);
 
   useEffect(() => {
     checkEmailConfiguration();
@@ -409,6 +418,56 @@ export function CommunicationView() {
   const limparSelecao = () => {
     setDestinatariosSelecionados(new Set());
     setFormManual(prev => ({ ...prev, destinatarios: [] }));
+  };
+
+  const handleGerarMensagemManual = async () => {
+    if (!aiPromptManual.trim()) {
+      toast.error('Descreva o assunto da mensagem para gerar com IA');
+      return;
+    }
+    setIsGeneratingManual(true);
+    try {
+      const prompt = spark.llmPrompt`Escreve uma mensagem de email profissional em português para um clube desportivo (BSCN - Benedita Sport Clube Natação).
+Assunto do email: ${formManual.assunto || aiPromptManual}
+Descrição: ${aiPromptManual}
+A mensagem deve ser clara, cordial e adequada para enviar a membros do clube.
+Responde apenas com o corpo da mensagem, sem saudações genéricas nem assinaturas.`;
+      const resultado = await spark.llm(prompt);
+      setFormManual(prev => ({ ...prev, mensagem: resultado.trim() }));
+      setAiPromptManual('');
+      toast.success('Mensagem gerada com sucesso');
+    } catch (error) {
+      toast.error('Erro ao gerar mensagem com IA');
+      console.error('Erro ao chamar spark.llm:', error);
+    } finally {
+      setIsGeneratingManual(false);
+    }
+  };
+
+  const handleGerarMensagemAuto = async () => {
+    if (!aiPromptAuto.trim()) {
+      toast.error('Descreva o assunto da mensagem para gerar com IA');
+      return;
+    }
+    setIsGeneratingAuto(true);
+    try {
+      const prompt = spark.llmPrompt`Escreve uma mensagem de email profissional em português para um clube desportivo (BSCN - Benedita Sport Clube Natação).
+Tipo de comunicação: ${formAutomatica.tipo}
+Assunto do email: ${formAutomatica.assunto || aiPromptAuto}
+Descrição: ${aiPromptAuto}
+A mensagem deve ser clara, cordial e adequada para enviar a membros do clube.
+Podes usar as variáveis {{NOME_ATLETA}}, {{MES_VENCIMENTO}}, {{DIAS_ATRASO}}, {{VALOR_DEVIDO}}, {{DATA_EXPIRACAO}}, {{DIAS_RESTANTES}}, {{NOME_CLUBE}} onde fizer sentido.
+Responde apenas com o corpo da mensagem, sem saudações genéricas nem assinaturas.`;
+      const resultado = await spark.llm(prompt);
+      setFormAutomatica(prev => ({ ...prev, mensagem: resultado.trim() }));
+      setAiPromptAuto('');
+      toast.success('Mensagem gerada com sucesso');
+    } catch (error) {
+      toast.error('Erro ao gerar mensagem com IA');
+      console.error('Erro ao chamar spark.llm:', error);
+    } finally {
+      setIsGeneratingAuto(false);
+    }
   };
 
   const getEstadoBadge = (estado: Comunicacao['estado']) => {
@@ -901,6 +960,26 @@ Cumprimentos,
                 <p className="text-xs text-muted-foreground mt-1">
                   O email será formatado automaticamente com o template do clube
                 </p>
+                <div className="flex gap-2 mt-2">
+                  <Input
+                    value={aiPromptManual}
+                    onChange={(e) => setAiPromptManual(e.target.value)}
+                    placeholder="Descreva o que pretende comunicar..."
+                    className="text-xs"
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleGerarMensagemManual(); }}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleGerarMensagemManual}
+                    disabled={isGeneratingManual}
+                    className="shrink-0"
+                  >
+                    <Sparkle className="mr-1.5" size={14} weight="fill" />
+                    {isGeneratingManual ? 'A gerar...' : 'Gerar com IA'}
+                  </Button>
+                </div>
               </div>
 
               <div className="flex items-center gap-4">
@@ -1127,6 +1206,26 @@ Cumprimentos,
                 <p className="text-xs text-muted-foreground mt-1">
                   Variáveis disponíveis: {'{{'} NOME_ATLETA {'}}'}, {'{{'} MES_VENCIMENTO {'}}'}, {'{{'} DIAS_ATRASO {'}}'}, {'{{'} VALOR_DEVIDO {'}}'}, {'{{'} NOME_CLUBE {'}}'}
                 </p>
+                <div className="flex gap-2 mt-2">
+                  <Input
+                    value={aiPromptAuto}
+                    onChange={(e) => setAiPromptAuto(e.target.value)}
+                    placeholder="Descreva o que pretende comunicar..."
+                    className="text-xs"
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleGerarMensagemAuto(); }}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleGerarMensagemAuto}
+                    disabled={isGeneratingAuto}
+                    className="shrink-0"
+                  >
+                    <Sparkle className="mr-1.5" size={14} weight="fill" />
+                    {isGeneratingAuto ? 'A gerar...' : 'Gerar com IA'}
+                  </Button>
+                </div>
               </div>
 
               <div>
