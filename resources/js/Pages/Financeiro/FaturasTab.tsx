@@ -223,6 +223,7 @@ export function FaturasTab({
   const [selectedFaturas, setSelectedFaturas] = useState<Set<string>>(new Set());
   const [numeroRecibo, setNumeroRecibo] = useState<string>('');
   const [gerarParaTodos, setGerarParaTodos] = useState(false);
+  const [dataInicioMensalidades, setDataInicioMensalidades] = useState('');
   const [editingFaturaId, setEditingFaturaId] = useState<string | null>(null);
   const [showFutureInvoices, setShowFutureInvoices] = useState(false);
 
@@ -492,6 +493,17 @@ export function FaturasTab({
     }
   };
 
+  const getDataInicioMensalidades = (user: User) => {
+    if (dataInicioMensalidades) {
+      const parsed = new Date(dataInicioMensalidades);
+      if (!Number.isNaN(parsed.getTime())) {
+        return parsed;
+      }
+    }
+
+    return getInscricaoDate(user);
+  };
+
   const gerarFaturasParaUtilizador = (userId: string) => {
     const user = (users || []).find((u) => u.id === userId);
     if (!user || !user.tipo_mensalidade) {
@@ -503,13 +515,13 @@ export function FaturasTab({
       return { faturas: [], itens: [], skipped: false };
     }
 
-    const inscricaoDate = getInscricaoDate(user);
-    if (!inscricaoDate) {
+    const dataInicio = getDataInicioMensalidades(user);
+    if (!dataInicio) {
       return { faturas: [], itens: [], skipped: true };
     }
 
-    const mesInicial = startOfMonth(inscricaoDate);
-    const julhoSeguinte = getFinalMes(inscricaoDate);
+    const mesInicial = startOfMonth(dataInicio);
+    const julhoSeguinte = getFinalMes(dataInicio);
 
     let dataAtual = mesInicial;
     const novasFaturas: Fatura[] = [];
@@ -699,6 +711,7 @@ export function FaturasTab({
         setDialogAutoOpen(false);
         setSelectedUserId('');
         setGerarParaTodos(false);
+        setDataInicioMensalidades('');
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Erro ao gravar faturas na base de dados';
         toast.error(message);
@@ -1225,10 +1238,22 @@ export function FaturasTab({
                   </div>
                 )}
 
+                <div className="space-y-2">
+                  <Label className="text-sm">Data de Inicio</Label>
+                  <Input
+                    type="date"
+                    value={dataInicioMensalidades}
+                    onChange={(e) => setDataInicioMensalidades(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Se ficar vazio, sera usada a data de inscricao do utilizador.
+                  </p>
+                </div>
+
                 <p className="text-xs text-muted-foreground">
                   {gerarParaTodos
-                    ? 'Serao geradas faturas para todos os utilizadores desde o mes da inscricao ate julho seguinte.'
-                    : 'Serao geradas faturas desde o mes da inscricao ate julho seguinte.'}
+                    ? 'Serao geradas faturas para todos os utilizadores desde a data inicial indicada, ou desde o mes da inscricao quando nao for preenchida, ate julho seguinte.'
+                    : 'Serao geradas faturas desde a data inicial indicada, ou desde o mes da inscricao quando nao for preenchida, ate julho seguinte.'}
                 </p>
               </div>
               <DialogFooter className="flex-col sm:flex-row gap-2">
@@ -1238,6 +1263,7 @@ export function FaturasTab({
                     setDialogAutoOpen(false);
                     setGerarParaTodos(false);
                     setSelectedUserId('');
+                    setDataInicioMensalidades('');
                   }}
                   className="w-full sm:w-auto"
                 >

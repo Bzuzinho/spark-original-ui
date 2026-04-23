@@ -462,13 +462,17 @@ class ConfiguracoesController extends Controller
     public function updateCostCenter(Request $request, CostCenter $costCenter): RedirectResponse
     {
         $data = $request->validate([
-            'codigo' => 'required|string|max:50|unique:cost_centers,codigo,' . $costCenter->id,
+            'codigo' => 'nullable|string|max:50|unique:cost_centers,codigo,' . $costCenter->id,
             'nome' => 'required|string|max:255',
             'tipo' => 'nullable|string|max:100',
             'descricao' => 'nullable|string',
             'orcamento' => 'nullable|numeric|min:0',
             'ativo' => 'boolean',
         ]);
+
+        if (empty($data['codigo'])) {
+            $data['codigo'] = $costCenter->codigo ?: 'CC-' . strtoupper(Str::random(6));
+        }
 
         $costCenter->update($data);
 

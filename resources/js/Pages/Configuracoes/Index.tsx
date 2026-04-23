@@ -620,7 +620,7 @@ export default function SettingsIndex({
     });
 
     // Generic form for CRUD operations
-    const { data, setData, post, put, delete: destroy, reset, processing } = useForm<any>({});
+    const { data, setData, post, put, delete: destroy, reset, clearErrors, processing, errors } = useForm<any>({});
 
     const moduleOptions = buildOptions(
         permissionCatalog.map((item) => ({ value: item.value, label: item.label }))
@@ -752,6 +752,7 @@ export default function SettingsIndex({
 
     const openAddDialog = (type: string) => {
         reset();
+        clearErrors();
         if (type === 'sponsor') {
             setData('tipo', 'secundario');
             setData('estado', 'ativo');
@@ -770,11 +771,22 @@ export default function SettingsIndex({
         if (type === 'item-category') {
             setData('ativo', true);
         }
+        if (type === 'cost-center') {
+            setData({
+                codigo: '',
+                nome: '',
+                tipo: 'departamento',
+                descricao: '',
+                orcamento: '',
+                ativo: true,
+            });
+        }
         setEditingItem({ type });
         setDialogOpen(true);
     };
 
     const openEditDialog = (item: any, type: string) => {
+        clearErrors();
         if (type === 'sponsor') {
             setData({ ...item, logo: null });
             setSponsorLogoPreview(item.logo || null);
@@ -856,8 +868,9 @@ export default function SettingsIndex({
                 if (type === 'sponsor') setSponsorLogoPreview(null);
                 toast.success(isEditing ? 'Atualizado com sucesso!' : 'Criado com sucesso!');
             },
-            onError: () => {
-                toast.error('Erro ao processar a operação.');
+            onError: (formErrors: Record<string, string>) => {
+                const firstError = Object.values(formErrors)[0];
+                toast.error(firstError || 'Erro ao processar a operação.');
             },
         };
 
@@ -2624,6 +2637,12 @@ export default function SettingsIndex({
                     </DialogHeader>
                     <form onSubmit={handleSubmit}>
                         <div className="space-y-4 py-4">
+                            {editingItem?.type === 'cost-center' && Object.keys(errors).length > 0 && (
+                                <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                                    Verifique os campos obrigatórios antes de guardar.
+                                </div>
+                            )}
+
                             {editingItem?.type === 'age-group' && (
                                 <>
                                     <div className="space-y-2">
@@ -3124,6 +3143,10 @@ export default function SettingsIndex({
                                             onChange={e => setData('codigo', e.target.value)}
                                             placeholder="CC-0001"
                                         />
+                                        <p className="text-xs text-muted-foreground">
+                                            Opcional ao criar. Se ficar vazio, o sistema gera automaticamente.
+                                        </p>
+                                        {errors.codigo && <p className="text-sm text-red-600">{errors.codigo}</p>}
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="nome">Nome *</Label>
@@ -3133,6 +3156,7 @@ export default function SettingsIndex({
                                             onChange={e => setData('nome', e.target.value)}
                                             required
                                         />
+                                        {errors.nome && <p className="text-sm text-red-600">{errors.nome}</p>}
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="tipo">Tipo</Label>
@@ -3142,6 +3166,7 @@ export default function SettingsIndex({
                                             onChange={e => setData('tipo', e.target.value)}
                                             placeholder="departamento"
                                         />
+                                        {errors.tipo && <p className="text-sm text-red-600">{errors.tipo}</p>}
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="descricao">Descricao</Label>
@@ -3150,6 +3175,7 @@ export default function SettingsIndex({
                                             value={data.descricao || ''}
                                             onChange={e => setData('descricao', e.target.value)}
                                         />
+                                        {errors.descricao && <p className="text-sm text-red-600">{errors.descricao}</p>}
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="orcamento">Orcamento (€)</Label>
@@ -3160,6 +3186,7 @@ export default function SettingsIndex({
                                             value={data.orcamento ?? ''}
                                             onChange={e => setData('orcamento', e.target.value ? parseFloat(e.target.value) : '')}
                                         />
+                                        {errors.orcamento && <p className="text-sm text-red-600">{errors.orcamento}</p>}
                                     </div>
                                     <div className="flex items-center space-x-2">
                                         <Switch
@@ -3169,6 +3196,7 @@ export default function SettingsIndex({
                                         />
                                         <Label htmlFor="ativo">Ativo</Label>
                                     </div>
+                                    {errors.ativo && <p className="text-sm text-red-600">{errors.ativo}</p>}
                                 </>
                             )}
 

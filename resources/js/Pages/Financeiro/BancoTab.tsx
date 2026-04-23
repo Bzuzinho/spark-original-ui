@@ -4,6 +4,7 @@ import { Button } from '@/Components/ui/button';
 import { Card } from '@/Components/ui/card';
 import { Input } from '@/Components/ui/input';
 import { Label } from '@/Components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '@/Components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogFooter } from '@/Components/ui/dialog';
 import { Badge } from '@/Components/ui/badge';
@@ -93,6 +94,8 @@ export function BancoTab({
   const [dialogMappingOpen, setDialogMappingOpen] = useState(false);
   const [selectedExtrato, setSelectedExtrato] = useState<ExtratoBancario | null>(null);
   const [editingExtrato, setEditingExtrato] = useState<ExtratoBancario | null>(null);
+  const [userPickerOpen, setUserPickerOpen] = useState(false);
+  const [userSearchTerm, setUserSearchTerm] = useState('');
   const [conciliadoFilter, setConciliadoFilter] = useState<string>('all');
   const [conciliacaoItens, setConciliacaoItens] = useState<Array<{ tipo: 'fatura' | 'movimento'; id: string; valor: number }>>([]);
   const [importFile, setImportFile] = useState<File | null>(null);
@@ -174,6 +177,19 @@ export function BancoTab({
   const valorExtrato = selectedExtrato ? Math.abs(toNumber(selectedExtrato.valor)) : 0;
   const totalConciliacao = conciliacaoItens.reduce((sum, item) => sum + toNumber(item.valor), 0);
   const restanteConciliacao = Math.max(0, valorExtrato - totalConciliacao);
+  const selectedCatalogUser = (users || []).find((user) => user.id === catalogData.user_id) || null;
+  const filteredCatalogUsers = useMemo(() => {
+    const term = userSearchTerm.trim().toLowerCase();
+    if (!term) {
+      return users || [];
+    }
+
+    return (users || []).filter((user) => {
+      const nome = user.nome_completo?.toLowerCase() || '';
+      const numeroSocio = user.numero_socio?.toLowerCase() || '';
+      return nome.includes(term) || numeroSocio.includes(term);
+    });
+  }, [userSearchTerm, users]);
 
   const toggleConciliacaoItem = (tipo: 'fatura' | 'movimento', id: string, defaultValor: number) => {
     setConciliacaoItens((current) => {
@@ -434,6 +450,8 @@ export function BancoTab({
       user_id: '',
       movimento_id: '',
     });
+    setUserSearchTerm('');
+    setUserPickerOpen(false);
   };
 
   const handleEditExtrato = async () => {
@@ -1540,18 +1558,74 @@ export function BancoTab({
 
             <div className="space-y-2">
               <Label>Utilizador (opcional)</Label>
-              <Select value={catalogData.user_id} onValueChange={(v) => setCatalogData({ ...catalogData, user_id: v })}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Nenhum" />
-                </SelectTrigger>
-                <SelectContent>
-                  {(users || []).map((user) => (
-                    <SelectItem key={user.id} value={user.id}>
-                      {user.nome_completo} - {user.numero_socio}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover open={userPickerOpen} onOpenChange={setUserPickerOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={userPickerOpen}
+                    className="w-full justify-between font-normal"
+                  >
+                    <span className="truncate">
+                      {selectedCatalogUser
+                        ? `${selectedCatalogUser.nome_completo} - ${selectedCatalogUser.numero_socio}`
+                        : 'Nenhum'}
+                    </span>
+                    <span className="ml-2 shrink-0 text-xs text-muted-foreground">Pesquisar</span>
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                  <div className="border-b p-2">
+                    <Input
+                      value={userSearchTerm}
+                      onChange={(e) => setUserSearchTerm(e.target.value)}
+                      placeholder="Pesquisar por nome ou numero de socio"
+                      className="h-9"
+                    />
+                  </div>
+                  <div className="max-h-60 overflow-y-auto p-1">
+                    <button
+                      type="button"
+                      className={`flex w-full items-center justify-between rounded-sm px-2 py-2 text-left text-sm hover:bg-muted ${!catalogData.user_id ? 'bg-muted' : ''}`}
+                      onClick={() => {
+                        setCatalogData((current) => ({ ...current, user_id: '' }));
+                        setUserPickerOpen(false);
+                      }}
+                    >
+                      <span>Nenhum</span>
+                      {!catalogData.user_id ? <Check size={14} /> : null}
+                    </button>
+
+                    {filteredCatalogUsers.length === 0 ? (
+                      <div className="px-2 py-3 text-sm text-muted-foreground">
+                        Nenhum utilizador encontrado.
+                      </div>
+                    ) : (
+                      filteredCatalogUsers.map((user) => {
+                        const isSelected = catalogData.user_id === user.id;
+
+                        return (
+                          <button
+                            key={user.id}
+                            type="button"
+                            className={`flex w-full items-center justify-between rounded-sm px-2 py-2 text-left text-sm hover:bg-muted ${isSelected ? 'bg-muted' : ''}`}
+                            onClick={() => {
+                              setCatalogData((current) => ({ ...current, user_id: user.id }));
+                              setUserPickerOpen(false);
+                            }}
+                          >
+                            <span className="min-w-0 truncate pr-2">
+                              {user.nome_completo} - {user.numero_socio}
+                            </span>
+                            {isSelected ? <Check size={14} /> : null}
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
 
             <div className="space-y-2">
