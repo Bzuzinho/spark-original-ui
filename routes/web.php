@@ -40,9 +40,10 @@ Route::get('/', function () {
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    // Dashboard
+    // Dashboard — gate handled inside DashboardController (athlete vs admin dispatch).
+    // Do not add module.access:inicio here, otherwise athlete/encarregado get 403
+    // before the controller can render the personal dashboard.
     Route::get('/dashboard', [DashboardController::class, 'index'])
-        ->middleware('module.access:inicio')
         ->name('dashboard');
     
     // Resource routes
