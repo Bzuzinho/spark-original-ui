@@ -1,17 +1,11 @@
 import { Head, router, usePage } from '@inertiajs/react';
 import { List } from '@phosphor-icons/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { ClubMark } from '@/Components/ClubMark';
 import { Button } from '@/Components/ui/button';
 import { CaisTab } from '@/Components/Desportivo/CaisTab';
+import { useClubSettings } from '@/hooks/useClubSettings';
 import type { AgeGroup, Training, User } from '@/types/sports';
-
-interface PageProps extends Record<string, unknown> {
-  clubSettings?: {
-    nome_clube?: string | null;
-    sigla?: string | null;
-    logo_url?: string | null;
-  };
-}
 
 interface TrainingOption {
   id: string;
@@ -34,7 +28,8 @@ export default function DesportivoCaisPage({
   users = [],
   ageGroups = [],
 }: CaisPageProps) {
-  const { clubSettings } = usePage<PageProps>().props;
+  usePage();
+  const { clubLogoUrl, clubName, clubShortName } = useClubSettings();
 
   const safeTrainings = Array.isArray(trainings?.data) ? trainings.data : [];
   const safeUsers = Array.isArray(users) ? users : [];
@@ -64,10 +59,12 @@ export default function DesportivoCaisPage({
               >
                 <List size={16} />
               </Button>
-              <img
-                src={clubSettings?.logo_url || '/images/logo-cutout.png'}
-                alt={clubSettings?.nome_clube || 'Logo do clube'}
-                className="h-7 w-7 shrink-0 object-contain"
+              <ClubMark
+                logoUrl={clubLogoUrl}
+                clubName={clubName}
+                clubShortName={clubShortName}
+                className="h-7 w-7 shrink-0 border border-slate-300 bg-white text-[10px]"
+                imageClassName="h-7 w-7 shrink-0 object-contain"
               />
               <p className="text-sm sm:text-base font-semibold text-slate-800 truncate">Modo Cais</p>
             </div>

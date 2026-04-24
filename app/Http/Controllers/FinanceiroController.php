@@ -17,6 +17,7 @@ use App\Models\MovementItem;
 use App\Models\MapaConciliacao;
 use App\Models\Product;
 use App\Models\User;
+use App\Services\Club\ClubSettingsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
@@ -466,7 +467,7 @@ class FinanceiroController extends Controller
         ]);
 
         if (!$data['user_id'] && empty($data['nome_manual'])) {
-            $data['nome_manual'] = $data['classificacao'] === 'despesa' ? 'BSCN Despesa' : 'BSCN Receita';
+            $data['nome_manual'] = app(ClubSettingsService::class)->defaultFinancialEntityName($data['classificacao'] ?? null);
         }
 
         if ($request->hasFile('documento_original')) {
@@ -562,7 +563,7 @@ class FinanceiroController extends Controller
         ]);
 
         if (!$data['user_id'] && empty($data['nome_manual'])) {
-            $data['nome_manual'] = $data['classificacao'] === 'despesa' ? 'BSCN Despesa' : 'BSCN Receita';
+            $data['nome_manual'] = app(ClubSettingsService::class)->defaultFinancialEntityName($data['classificacao'] ?? null);
         }
 
         if ($request->hasFile('documento_original')) {

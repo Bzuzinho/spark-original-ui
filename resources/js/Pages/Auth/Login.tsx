@@ -1,6 +1,8 @@
 import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
+import { ClubMark } from '@/Components/ClubMark';
+import { useClubSettings } from '@/hooks/useClubSettings';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { FormEventHandler } from 'react';
 
@@ -11,6 +13,7 @@ export default function Login({
     status?: string;
     canResetPassword: boolean;
 }) {
+    const { clubDisplayName, clubLogoUrl, clubName, clubShortName } = useClubSettings();
     const { data, setData, post, processing, errors, reset } = useForm({
         email: '',
         password: '',
@@ -32,13 +35,15 @@ export default function Login({
             <div className="flex min-h-screen items-center justify-center bg-gray-100 p-3">
                 <div className="w-full max-w-lg rounded-xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
                     <div className="mb-5 text-center">
-                        <img
-                            src="/images/logo-cutout.png"
-                            alt="Logo BSCN"
-                            className="mx-auto h-16 w-auto object-contain"
+                        <ClubMark
+                            logoUrl={clubLogoUrl}
+                            clubName={clubName}
+                            clubShortName={clubShortName}
+                            className="mx-auto h-16 w-16 border border-gray-200 bg-white text-lg"
+                            imageClassName="mx-auto h-16 w-auto object-contain"
                         />
-                        <h1 className="mt-3 text-xl font-bold text-gray-900">Gestão de Clube</h1>
-                        <p className="mt-1 text-base text-gray-600">Bem-vindo ao sistema de gestão BSCN</p>
+                        <h1 className="mt-3 text-xl font-bold text-gray-900">{clubDisplayName}</h1>
+                        <p className="mt-1 text-base text-gray-600">Bem-vindo ao sistema de gestão {clubName}</p>
                     </div>
 
                     {status && (

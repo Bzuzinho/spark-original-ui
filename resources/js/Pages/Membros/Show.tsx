@@ -53,6 +53,32 @@ interface PageProps {
     };
 }
 
+type MemberTab = 'dashboard' | 'personal' | 'financial' | 'sports' | 'configuration' | 'communications';
+
+const resolveMemberTab = (value: string | undefined, showSportsTab: boolean): MemberTab => {
+    switch ((value || '').toLowerCase()) {
+        case 'dashboard':
+            return 'dashboard';
+        case 'personal':
+        case 'pessoal':
+            return 'personal';
+        case 'financial':
+        case 'financeiro':
+            return 'financial';
+        case 'sports':
+        case 'desportivo':
+            return showSportsTab ? 'sports' : 'dashboard';
+        case 'configuration':
+        case 'configuracao':
+            return 'configuration';
+        case 'communications':
+        case 'comunicacoes':
+            return 'communications';
+        default:
+            return 'dashboard';
+    }
+};
+
 const extractDateString = (value: any): string => {
     if (!value) return '';
     if (typeof value === 'string') return value;
@@ -161,7 +187,8 @@ export default function Show({ member, allUsers, internalCommunications, userTyp
     const [user, setUser] = useState<User>(() => normalizeMember(member));
     const [hasChanges, setHasChanges] = useState(false);
     const query = page.props.ziggy?.query;
-    const initialTab = query?.tab === 'communications' ? 'communications' : 'dashboard';
+    const showSportsTab = (member.tipo_membro?.includes('atleta') || false);
+    const initialTab = resolveMemberTab(query?.tab, showSportsTab);
 
     useEffect(() => {
         setUser(normalizeMember(member));
@@ -207,7 +234,7 @@ export default function Show({ member, allUsers, internalCommunications, userTyp
         }
     };
 
-    const showSportsTab = user.tipo_membro?.includes('atleta') || false;
+    const currentShowSportsTab = user.tipo_membro?.includes('atleta') || false;
 
     return (
         <AuthenticatedLayout
@@ -250,8 +277,8 @@ export default function Show({ member, allUsers, internalCommunications, userTyp
 
             <div className={moduleViewportClass}>
             <Card className="flex min-h-0 flex-1 flex-col p-2 sm:p-3 bg-white border-0">
-                <Tabs defaultValue={initialTab} className={moduleTabsClass}>
-                    <TabsList className={`grid w-full shrink-0 h-auto gap-1 p-1 ${showSportsTab ? 'grid-cols-2 sm:grid-cols-6' : 'grid-cols-2 sm:grid-cols-5'}`}>
+                <Tabs defaultValue={resolveMemberTab(query?.tab, currentShowSportsTab)} className={moduleTabsClass}>
+                    <TabsList className={`grid w-full shrink-0 h-auto gap-1 p-1 ${currentShowSportsTab ? 'grid-cols-2 sm:grid-cols-6' : 'grid-cols-2 sm:grid-cols-5'}`}>
                             <TabsTrigger value="dashboard" className="text-xs px-2 py-1.5 whitespace-normal leading-tight text-center min-h-8">
                                 Dashboard
                             </TabsTrigger>
@@ -261,7 +288,7 @@ export default function Show({ member, allUsers, internalCommunications, userTyp
                             <TabsTrigger value="financial" className="text-xs px-2 py-1.5 whitespace-normal leading-tight text-center min-h-8">
                                 Financeiro
                             </TabsTrigger>
-                            {showSportsTab && (
+                            {currentShowSportsTab && (
                                 <TabsTrigger value="sports" className="text-xs px-2 py-1.5 whitespace-normal leading-tight text-center min-h-8">
                                     Desportivo
                                 </TabsTrigger>
@@ -302,7 +329,7 @@ export default function Show({ member, allUsers, internalCommunications, userTyp
                         />
                     </TabsContent>
 
-                    {showSportsTab && (
+                    {currentShowSportsTab && (
                         <TabsContent value="sports" className={`${moduleTabbedContentClass} space-y-2 bg-white p-0 rounded-lg`}>
                             <SportsTab 
                                 user={user as any}

@@ -64,5 +64,7 @@ export {
   useAgeGroups,
   useEventTypes,
   useCostCenters,
-  useClubSettings,
+  useClubSettingsApi,
 } from './useApi';
+
+export { useClubSettings } from './useClubSettings';

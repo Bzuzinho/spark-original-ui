@@ -1,7 +1,11 @@
 <?php
 
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\PortalPageController;
+use App\Http\Controllers\PortalDocumentController;
+use App\Http\Controllers\PortalProfileController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\FamilyPortalController;
 use App\Http\Controllers\MembrosController;
 use App\Http\Controllers\MembrosImportController;
 use App\Http\Controllers\DocumentosMembrosController;
@@ -28,6 +32,8 @@ use App\Http\Controllers\ConfiguracoesController;
 use App\Http\Controllers\ConfiguracoesDesportivoController;
 use App\Http\Controllers\LogisticaController;
 use App\Http\Controllers\EquipasController;
+use App\Http\Controllers\PortalTrainingController;
+use App\Http\Controllers\PortalEventController;
 use App\Http\Controllers\MembrosEquipaController;
 use App\Http\Controllers\SessoesFormacaoController;
 use App\Http\Controllers\ConvocatoriasController;
@@ -45,6 +51,49 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // before the controller can render the personal dashboard.
     Route::get('/dashboard', [DashboardController::class, 'index'])
         ->name('dashboard');
+
+    Route::get('/portal/perfil', [PortalProfileController::class, 'show'])
+        ->name('portal.profile');
+    Route::patch('/portal/perfil', [PortalProfileController::class, 'update'])
+        ->name('portal.profile.update');
+    Route::get('/portal/treinos', [PortalTrainingController::class, 'index'])
+        ->name('portal.trainings');
+    Route::patch('/portal/treinos/{trainingAthlete}', [PortalTrainingController::class, 'update'])
+        ->name('portal.trainings.update');
+    Route::get('/portal/eventos', [PortalEventController::class, 'index'])
+        ->name('portal.events');
+    Route::patch('/portal/eventos/{eventConvocation}', [PortalEventController::class, 'update'])
+        ->name('portal.events.update');
+    Route::get('/portal/pagamentos', [PortalPageController::class, 'payments'])
+        ->name('portal.payments');
+    Route::get('/portal/resultados', [PortalPageController::class, 'results'])
+        ->name('portal.results');
+    Route::get('/portal/documentos', [PortalDocumentController::class, 'index'])
+        ->name('portal.documents');
+    Route::post('/portal/documentos', [PortalDocumentController::class, 'store'])
+        ->name('portal.documents.store');
+    Route::get('/portal/documentos/essenciais/{documentType}', [PortalDocumentController::class, 'showLegacy'])
+        ->name('portal.documents.legacy.view');
+    Route::get('/portal/documentos/essenciais/{documentType}/download', [PortalDocumentController::class, 'downloadLegacy'])
+        ->name('portal.documents.legacy.download');
+    Route::get('/portal/documentos/uploads/{document}', [PortalDocumentController::class, 'showUpload'])
+        ->name('portal.documents.uploads.view');
+    Route::get('/portal/documentos/uploads/{document}/download', [PortalDocumentController::class, 'downloadUpload'])
+        ->name('portal.documents.uploads.download');
+    Route::get('/portal/comunicados', [PortalPageController::class, 'communications'])
+        ->name('portal.communications');
+    Route::post('/portal/comunicados/read', [PortalPageController::class, 'markCommunicationRead'])
+        ->name('portal.communications.read');
+    Route::post('/portal/comunicados/mark-all-read', [PortalPageController::class, 'markAllCommunicationsRead'])
+        ->name('portal.communications.markAllRead');
+    Route::get('/portal/loja', [PortalPageController::class, 'shop'])
+        ->name('portal.shop');
+    Route::get('/portal/familia', [FamilyPortalController::class, 'show'])
+        ->name('portal.family');
+    Route::get('/portal/familia/membros/search', [FamilyPortalController::class, 'searchMembers'])
+        ->name('portal.family.members.search');
+    Route::post('/portal/familia/membros', [FamilyPortalController::class, 'storeMember'])
+        ->name('portal.family.members.store');
     
     // Resource routes
     Route::resource('membros', MembrosController::class)

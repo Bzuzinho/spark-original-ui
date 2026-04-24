@@ -112,4 +112,4 @@ export const useUserTypes = () => useApi<any[]>('user-types');
 export const useAgeGroups = () => useApi<any[]>('age-groups');
 export const useEventTypes = () => useApi<any[]>('event-types');
 export const useCostCenters = () => useApi<any[]>('cost-centers');
-export const useClubSettings = () => useApi<any>('club-settings');
+export const useClubSettingsApi = () => useApi<any>('club-settings');

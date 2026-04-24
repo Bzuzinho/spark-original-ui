@@ -1,9 +1,13 @@
+import { ClubMark } from '@/Components/ClubMark';
+import { useClubSettings } from '@/hooks/useClubSettings';
 import { PageProps } from '@/types';
 import { Head, Link } from '@inertiajs/react';
 
 export default function Welcome({
     auth,
 }: PageProps<{ laravelVersion: string; phpVersion: string }>) {
+    const { clubDisplayName, clubLogoUrl, clubName, clubShortName } = useClubSettings();
+
     return (
         <>
             <Head title="Welcome" />
@@ -12,9 +16,16 @@ export default function Welcome({
                     <div className="relative w-full max-w-2xl px-6 lg:max-w-7xl">
                         <header className="grid grid-cols-2 items-center gap-2 py-10 lg:grid-cols-3">
                             <div className="flex lg:col-start-2 lg:justify-center">
-                                <h1 className="text-3xl font-bold">
-                                    BSCN Gestão
-                                </h1>
+                                <div className="flex items-center gap-4">
+                                    <ClubMark
+                                        logoUrl={clubLogoUrl}
+                                        clubName={clubName}
+                                        clubShortName={clubShortName}
+                                        className="h-12 w-12 border border-black/10 bg-white text-sm dark:border-white/10 dark:bg-zinc-900"
+                                        imageClassName="h-12 w-12 object-contain"
+                                    />
+                                    <h1 className="text-3xl font-bold">{clubDisplayName}</h1>
+                                </div>
                             </div>
                             <nav className="-mx-3 flex flex-1 justify-end">
                                 {auth.user ? (
@@ -47,11 +58,10 @@ export default function Welcome({
                             <div className="grid gap-6 lg:grid-cols-2 lg:gap-8">
                                 <div className="flex flex-col items-start gap-6 overflow-hidden rounded-lg bg-white p-6 shadow-[0px_14px_34px_0px_rgba(0,0,0,0.08)] ring-1 ring-white/[0.05] transition duration-300 hover:text-black/70 hover:ring-black/20 focus:outline-none focus-visible:ring-[#FF2D20] dark:bg-zinc-900 dark:ring-zinc-800 dark:hover:text-white/70 dark:hover:ring-zinc-700 dark:focus-visible:ring-[#FF2D20]">
                                     <h2 className="text-xl font-semibold text-black dark:text-white">
-                                        Welcome to BSCN Club Management
+                                        Welcome to {clubName}
                                     </h2>
                                     <p className="text-sm/relaxed">
-                                        Complete club management system built
-                                        with Laravel 11 and React.
+                                        Complete club management system built with Laravel 11 and React.
                                     </p>
                                 </div>
                             </div>

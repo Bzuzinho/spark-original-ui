@@ -8,6 +8,7 @@ use App\Models\EventTypeConfig;
 use App\Models\CostCenter;
 use App\Models\User;
 use App\Models\AgeGroup;
+use App\Services\Club\ClubSettingsService;
 use Carbon\Carbon;
 
 class EventoDadosTeste extends Seeder
@@ -17,6 +18,8 @@ class EventoDadosTeste extends Seeder
      */
     public function run(): void
     {
+        $defaultMeetingPoint = app(ClubSettingsService::class)->defaultMeetingPoint();
+
         // Buscar dados necessários
         $admin = User::where('perfil', 'admin')->first();
         $trainador = User::where('perfil', 'treinador')->first() ?? $admin;
@@ -70,7 +73,7 @@ class EventoDadosTeste extends Seeder
                 'local' => 'Piscina Olímpica',
                 'transporte_necessario' => true,
                 'hora_partida' => '18:30',
-                'local_partida' => 'Sede do Clube',
+                'local_partida' => $defaultMeetingPoint,
                 'centro_custo_id' => $costFormacao?->id,
                 'estado' => 'agendado',
                 'criado_por' => $trainador->id,
@@ -115,7 +118,7 @@ class EventoDadosTeste extends Seeder
                 'local' => 'Piscina Municipal',
                 'transporte_necessario' => true,
                 'hora_partida' => '08:00',
-                'local_partida' => 'Sede do Clube',
+                'local_partida' => $defaultMeetingPoint,
                 'taxa_inscricao' => 150.00,
                 'custo_inscricao_por_prova' => 15.00,
                 'centro_custo_id' => $costCompeticao?->id,
@@ -136,7 +139,7 @@ class EventoDadosTeste extends Seeder
                 'local' => 'Praia da Nazaré',
                 'transporte_necessario' => true,
                 'hora_partida' => '08:30',
-                'local_partida' => 'Sede do Clube',
+                'local_partida' => $defaultMeetingPoint,
                 'taxa_inscricao' => 200.00,
                 'custo_inscricao_por_estafeta' => 50.00,
                 'centro_custo_id' => $costCompeticao?->id,
@@ -156,7 +159,7 @@ class EventoDadosTeste extends Seeder
                 'local' => 'Piscina Olímpica',
                 'transporte_necessario' => true,
                 'hora_partida' => '14:00',
-                'local_partida' => 'Sede do Clube',
+                'local_partida' => $defaultMeetingPoint,
                 'taxa_inscricao' => 50.00,
                 'custo_inscricao_por_prova' => 5.00,
                 'centro_custo_id' => $costFormacao?->id,

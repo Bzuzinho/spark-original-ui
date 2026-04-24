@@ -11,6 +11,7 @@ import { ScrollArea } from '@/Components/ui/scroll-area';
 import { Textarea } from '@/Components/ui/textarea';
 import { Users } from '@phosphor-icons/react';
 import { toast } from 'sonner';
+import { useClubSettings } from '@/hooks/useClubSettings';
 import { useKV } from '@/hooks/useKV';
 import axios from 'axios';
 import { format } from 'date-fns';
@@ -56,6 +57,7 @@ export function EditConvocatoriaDialog({
   users = [],
   costCenters = [],
 }: EditConvocatoriaDialogProps) {
+  const { defaultMeetingPoint } = useClubSettings();
   const [step, setStep] = useState(1);
   const [selectedAthletes, setSelectedAthletes] = useState<string[]>([]);
   const [initialAthletes, setInitialAthletes] = useState<string[]>([]);
@@ -389,7 +391,7 @@ export function EditConvocatoriaDialog({
                 id="local_encontro"
                 value={localEncontro}
                 onChange={(e) => setLocalEncontro(e.target.value)}
-                placeholder="Ex: Sede do Clube"
+                placeholder={`Ex: ${defaultMeetingPoint}`}
                 className="text-xs bg-white"
               />
 

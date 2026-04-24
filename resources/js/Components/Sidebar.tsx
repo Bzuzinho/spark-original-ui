@@ -1,3 +1,5 @@
+import { ClubMark } from '@/Components/ClubMark';
+import { useClubSettings } from '@/hooks/useClubSettings';
 import { Link, usePage } from '@inertiajs/react';
 import { 
     House, 
@@ -32,7 +34,8 @@ const mainMenuItems: MenuItem[] = [
 ];
 
 export default function Sidebar() {
-    const { url, auth, clubSettings } = usePage<any>().props;
+    const { url, auth } = usePage<any>().props;
+    const { clubDisplayName, clubLogoUrl, clubName, clubShortName } = useClubSettings();
     const currentPath = url;
 
     const isActive = (href: string) => currentPath === href;
@@ -41,23 +44,23 @@ export default function Sidebar() {
         <aside className="fixed left-0 top-0 h-screen w-64 bg-white text-gray-800 flex flex-col border-r border-gray-200">
             {/* Logo Section */}
             <div className="p-6 border-b border-gray-200">
-                <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-full flex items-center justify-center overflow-hidden border border-gray-200 bg-white">
-                        {clubSettings?.logo_url ? (
-                            <img
-                                src={clubSettings.logo_url}
-                                alt={clubSettings?.nome_clube || 'Logo do clube'}
-                                className="h-full w-full object-contain"
-                            />
-                        ) : (
-                            <span className="text-gray-900 font-bold text-xl">BC</span>
-                        )}
+                <div className="flex min-w-0 items-center gap-3">
+                    <div className="h-12 w-12 shrink-0 overflow-hidden bg-transparent">
+                        <ClubMark
+                            logoUrl={clubLogoUrl}
+                            clubName={clubName}
+                            clubShortName={clubShortName}
+                            className="h-full w-full bg-transparent text-xl"
+                            imageClassName="h-full w-full object-contain"
+                        />
                     </div>
-                    <div>
-                        <div className="font-bold text-lg text-gray-900">
-                            {clubSettings?.sigla || 'BSCN'}
+                    <div className="min-w-0 flex-1 overflow-hidden">
+                        <div className="truncate text-lg font-bold text-gray-900">
+                            {clubShortName}
                         </div>
-                        <div className="text-sm text-gray-500">Gestão de Clube</div>
+                        <div className="whitespace-normal break-words text-[clamp(0.68rem,1.2vw,0.9rem)] leading-tight text-gray-500">
+                            {clubDisplayName}
+                        </div>
                     </div>
                 </div>
             </div>

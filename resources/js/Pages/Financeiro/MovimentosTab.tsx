@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Movimento, MovimentoItem, User, CentroCusto, Product, LancamentoFinanceiro, Fatura } from './types';
+import { useClubSettings } from '@/hooks/useClubSettings';
 import { Button } from '@/Components/ui/button';
 import { Card } from '@/Components/ui/card';
 import { Input } from '@/Components/ui/input';
@@ -41,6 +42,7 @@ export function MovimentosTab({
   setProducts,
   faturas,
 }: MovimentosTabProps) {
+  const { defaultFinancialEntityName } = useClubSettings();
   const allMovimentos = movimentos || [];
   const toNumber = (value: unknown, fallback = 0): number => {
     if (typeof value === 'number' && !Number.isNaN(value)) return value;
@@ -183,7 +185,7 @@ export function MovimentosTab({
 
   const [formData, setFormData] = useState({
     user_id: '',
-    nome_manual: 'BSCN',
+    nome_manual: defaultFinancialEntityName,
     nif_manual: '',
     morada_manual: '',
     classificacao: 'receita' as 'receita' | 'despesa',
@@ -532,7 +534,7 @@ export function MovimentosTab({
   const resetForm = () => {
     setFormData({
       user_id: '',
-      nome_manual: 'BSCN',
+      nome_manual: defaultFinancialEntityName,
       nif_manual: '',
       morada_manual: '',
       classificacao: 'receita',
@@ -630,7 +632,7 @@ export function MovimentosTab({
       const user = (users || []).find((u) => u.id === movimento.user_id);
       return user ? user.nome_completo : 'Utilizador desconhecido';
     }
-    return movimento.nome_manual || 'BSCN';
+    return movimento.nome_manual || defaultFinancialEntityName;
   };
 
   const getCentroCustoName = (id?: string) => {
@@ -755,7 +757,7 @@ export function MovimentosTab({
                         setFormData((prev) => ({
                           ...prev,
                           user_id: '',
-                          nome_manual: 'BSCN',
+                          nome_manual: defaultFinancialEntityName,
                           nif_manual: '',
                           morada_manual: '',
                         }));

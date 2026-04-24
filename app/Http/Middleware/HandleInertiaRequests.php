@@ -2,9 +2,9 @@
 
 namespace App\Http\Middleware;
 
-use App\Models\ClubSetting;
 use App\Models\InAppAlert;
 use App\Services\AccessControl\UserTypeAccessControlService;
+use App\Services\Club\ClubSettingsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
@@ -56,15 +56,7 @@ class HandleInertiaRequests extends Middleware
                     fn () => app(UserTypeAccessControlService::class)->getCurrentUserAccess($user)
                 )
                 : app(UserTypeAccessControlService::class)->getCurrentUserAccess(null),
-            'clubSettings' => Cache::remember('club_settings_shared', now()->addMinutes(5), function () {
-                $settings = ClubSetting::select('nome_clube', 'sigla', 'logo_url')->first();
-
-                return [
-                    'nome_clube' => $settings?->nome_clube,
-                    'sigla' => $settings?->sigla,
-                    'logo_url' => $settings?->logo_url,
-                ];
-            }),
+            'clubSettings' => app(ClubSettingsService::class)->get(),
             'communicationAlerts' => $this->sharedCommunicationAlerts($user),
         ];
     }

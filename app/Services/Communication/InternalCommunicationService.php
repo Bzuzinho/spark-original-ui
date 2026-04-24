@@ -114,6 +114,44 @@ class InternalCommunicationService
         ])->save();
     }
 
+    public function markAllReceivedAsRead(string $userId): void
+    {
+        $recipients = InternalMessageRecipient::query()
+            ->where('recipient_id', $userId)
+            ->whereNull('deleted_at')
+            ->where('is_read', false)
+            ->get(['id', 'in_app_alert_id']);
+
+        if ($recipients->isEmpty()) {
+            return;
+        }
+
+        $timestamp = now();
+
+        InternalMessageRecipient::query()
+            ->whereIn('id', $recipients->pluck('id'))
+            ->update([
+                'is_read' => true,
+                'read_at' => $timestamp,
+            ]);
+
+        $alertIds = $recipients
+            ->pluck('in_app_alert_id')
+            ->filter()
+            ->values();
+
+        if ($alertIds->isEmpty()) {
+            return;
+        }
+
+        InAppAlert::query()
+            ->whereIn('id', $alertIds)
+            ->update([
+                'is_read' => true,
+                'read_at' => $timestamp,
+            ]);
+    }
+
     public function deleteReceived(InternalMessageRecipient $recipient): void
     {
         $recipient->forceFill([

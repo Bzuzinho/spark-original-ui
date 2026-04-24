@@ -13,7 +13,7 @@ class SetupCommand extends Command
 
     public function handle()
     {
-        $this->info('🚀 Setting up BSCN Laravel Application...');
+        $this->info('🚀 Setting up Laravel application...');
         
         // 1. Create storage structure
         $this->info('📁 Creating storage structure...');

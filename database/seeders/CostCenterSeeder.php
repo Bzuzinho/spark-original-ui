@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\CostCenter;
+use App\Services\Club\ClubSettingsService;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 
@@ -13,6 +14,9 @@ class CostCenterSeeder extends Seeder
      */
     public function run(): void
     {
+        $clubSettings = app(ClubSettingsService::class);
+        $generalCenterName = sprintf('%s - Geral', $clubSettings->shortName() ?: $clubSettings->name());
+
         $costCenters = [
             // Equipas (Teams)
             ['nome' => 'Master', 'tipo' => 'equipa', 'descricao' => 'Masters', 'ativo' => true],
@@ -22,7 +26,7 @@ class CostCenterSeeder extends Seeder
             ['nome' => 'Seniores', 'tipo' => 'equipa', 'descricao' => 'Seniores', 'ativo' => true],
 
             // Departamento
-            ['nome' => 'BSCN - Geral', 'tipo' => 'departamento', 'descricao' => 'Geral', 'ativo' => true],
+            ['nome' => $generalCenterName, 'tipo' => 'departamento', 'descricao' => 'Geral', 'ativo' => true],
         ];
 
         foreach ($costCenters as $center) {

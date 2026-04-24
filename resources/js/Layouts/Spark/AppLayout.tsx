@@ -1,5 +1,7 @@
 import { PropsWithChildren } from 'react';
 import { Link, usePage, router } from '@inertiajs/react';
+import { ClubMark } from '@/Components/ClubMark';
+import { useClubSettings } from '@/hooks/useClubSettings';
 import {
   Users,
   CalendarBlank,
@@ -28,6 +30,7 @@ const mainMenuItems = [
 
 export default function AppLayout({ children }: PropsWithChildren) {
     const { url, auth } = usePage<any>().props;
+    const { clubDisplayName, clubLogoUrl, clubName, clubShortName } = useClubSettings();
 
     const handleLogout = () => {
         router.post('/logout');
@@ -49,13 +52,19 @@ export default function AppLayout({ children }: PropsWithChildren) {
                 <div className="h-full flex flex-col">
                     {/* Logo */}
                     <div className="p-6 border-b border-gray-200">
-                        <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 bg-yellow-400 text-gray-900 rounded-full flex items-center justify-center font-bold text-xl">
-                                BC
-                            </div>
-                            <div>
-                                <h2 className="text-xl font-semibold text-gray-800">BSCN</h2>
-                                <p className="text-sm text-gray-500">Gestão de Clube</p>
+                        <div className="flex min-w-0 items-center gap-3">
+                            <ClubMark
+                                logoUrl={clubLogoUrl}
+                                clubName={clubName}
+                                clubShortName={clubShortName}
+                                className="h-12 w-12 shrink-0 bg-transparent text-xl"
+                                imageClassName="h-12 w-12 rounded-full object-contain"
+                            />
+                            <div className="min-w-0 flex-1 overflow-hidden">
+                                <h2 className="truncate text-xl font-semibold text-gray-800">{clubShortName}</h2>
+                                <p className="whitespace-normal break-words text-[clamp(0.68rem,1.2vw,0.9rem)] leading-tight text-gray-500">
+                                    {clubDisplayName}
+                                </p>
                             </div>
                         </div>
                     </div>

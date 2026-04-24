@@ -12,6 +12,7 @@ import { Textarea } from '@/Components/ui/textarea';
 import { Separator } from '@/Components/ui/separator';
 import { Users, FilePdf } from '@phosphor-icons/react';
 import { toast } from 'sonner';
+import { useClubSettings } from '@/hooks/useClubSettings';
 import { useKV } from '@/hooks/useKV';
 import axios from 'axios';
 import { format } from 'date-fns';
@@ -102,6 +103,7 @@ export function CreateConvocatoriaDialog({
   costCenters: _costCenters = [],
   onCreated,
 }: CreateConvocatoriaDialogProps) {
+  const { defaultMeetingPoint } = useClubSettings();
   const [step, setStep] = useState(1);
   const [selectedEventId, setSelectedEventId] = useState('');
   const [selectedEscalao, setSelectedEscalao] = useState('todos');
@@ -598,7 +600,7 @@ export function CreateConvocatoriaDialog({
                 </div>
                 <div className="space-y-2">
                   <Label>Local de Encontro</Label>
-                  <Input value={localEncontro} onChange={(e) => setLocalEncontro(e.target.value)} placeholder="Ex: Sede do Clube" />
+                  <Input value={localEncontro} onChange={(e) => setLocalEncontro(e.target.value)} placeholder={`Ex: ${defaultMeetingPoint}`} />
                 </div>
                 <div className="space-y-2">
                   <Label>Observações</Label>

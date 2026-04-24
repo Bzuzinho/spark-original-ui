@@ -18,6 +18,8 @@ import {
     Bell
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
+import { ClubMark } from '@/Components/ClubMark';
+import { useClubSettings } from '@/hooks/useClubSettings';
 import { Badge } from '@/Components/ui/badge';
 import { Button } from '@/Components/ui/button';
 import {
@@ -114,7 +116,8 @@ export default function AuthenticatedLayout({
     hideMobileHeader?: boolean;
 }>) {
     const page = usePage<PageProps>();
-    const { auth, accessControl, clubSettings, communicationAlerts } = page.props;
+    const { auth, accessControl, communicationAlerts } = page.props;
+    const { clubDisplayName, clubLogoUrl, clubName, clubShortName } = useClubSettings();
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [selectedAlertId, setSelectedAlertId] = useState<string | null>(null);
     const [isAlertDialogOpen, setIsAlertDialogOpen] = useState(false);
@@ -338,17 +341,21 @@ export default function AuthenticatedLayout({
                     {/* Logo Header */}
                     <div className="p-6 border-b border-sidebar-border">
                         <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <img 
-                                    src={clubSettings?.logo_url || '/images/logo-cutout.png'}
-                                    alt={clubSettings?.nome_clube || 'Logo do clube'}
-                                    className="h-12 w-12 object-contain"
+                            <div className="flex min-w-0 items-center gap-3">
+                                <ClubMark
+                                    logoUrl={clubLogoUrl}
+                                    clubName={clubName}
+                                    clubShortName={clubShortName}
+                                    className="h-12 w-12 shrink-0 bg-transparent text-sm"
+                                    imageClassName="h-12 w-12 object-contain"
                                 />
-                                <div>
-                                    <h2 className="text-xl font-semibold text-sidebar-foreground">
-                                        {clubSettings?.sigla || 'BSCN'}
+                                <div className="min-w-0 flex-1 overflow-hidden">
+                                    <h2 className="truncate text-xl font-semibold text-sidebar-foreground">
+                                        {clubShortName}
                                     </h2>
-                                    <p className="text-sm text-muted-foreground mt-1">Gestão de Clube</p>
+                                    <p className="mt-1 whitespace-normal break-words text-[clamp(0.68rem,1.2vw,0.9rem)] leading-tight text-muted-foreground">
+                                        {clubDisplayName}
+                                    </p>
                                 </div>
                             </div>
                             <Button

@@ -688,8 +688,40 @@ export default function SettingsIndex({
     useEffect(() => {
         if (clubSettings?.logo_url) {
             setLogoPreview(clubSettings.logo_url);
+            return;
         }
+
+        setLogoPreview(null);
     }, [clubSettings?.logo_url]);
+
+    useEffect(() => {
+        clubForm.setData({
+            nome_clube: clubSettings?.nome_clube || '',
+            sigla: clubSettings?.sigla || '',
+            morada: clubSettings?.morada || '',
+            codigo_postal: clubSettings?.codigo_postal || '',
+            localidade: clubSettings?.localidade || '',
+            telefone: clubSettings?.telefone || '',
+            email: clubSettings?.email || '',
+            website: clubSettings?.website || '',
+            nif: clubSettings?.nif || '',
+            logo_url: clubSettings?.logo_url || '',
+            iban: clubSettings?.iban || '',
+            logo: null,
+        });
+    }, [
+        clubSettings?.codigo_postal,
+        clubSettings?.email,
+        clubSettings?.iban,
+        clubSettings?.localidade,
+        clubSettings?.logo_url,
+        clubSettings?.morada,
+        clubSettings?.nif,
+        clubSettings?.nome_clube,
+        clubSettings?.sigla,
+        clubSettings?.telefone,
+        clubSettings?.website,
+    ]);
 
     useEffect(() => {
         notificationPrefsForm.setData({
@@ -911,10 +943,19 @@ export default function SettingsIndex({
 
     const handleSaveClubSettings: FormEventHandler = (e) => {
         e.preventDefault();
-        clubForm.put('/configuracoes/clube', {
+
+        clubForm.transform((formData) => ({
+            ...formData,
+            _method: 'put',
+        }));
+
+        clubForm.post(route('configuracoes.clube.update'), {
             forceFormData: true,
             onSuccess: () => toast.success('Configurações do clube atualizadas com sucesso!'),
-            onError: () => toast.error('Erro ao atualizar configurações.'),
+            onError: (formErrors) => {
+                const firstError = Object.values(formErrors)[0];
+                toast.error(firstError || 'Erro ao atualizar configurações.');
+            },
         });
     };
 

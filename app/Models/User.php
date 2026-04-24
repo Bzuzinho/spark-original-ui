@@ -12,6 +12,8 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Support\Facades\Storage;
+use App\Models\Familia;
+use App\Models\FamiliaUser;
 use App\Models\UserGuardian;
 
 class User extends Authenticatable
@@ -358,6 +360,32 @@ class User extends Authenticatable
             ->using(UserGuardian::class)
             ->withPivot('id')
             ->withTimestamps();
+    }
+
+    public function families(): BelongsToMany
+    {
+        return $this->belongsToMany(Familia::class, 'familia_user', 'user_id', 'familia_id')
+            ->using(FamiliaUser::class)
+            ->withPivot([
+                'id',
+                'papel_na_familia',
+                'pode_editar',
+                'pode_ver_financeiro',
+                'pode_ver_desportivo',
+                'pode_ver_documentos',
+                'pode_ver_comunicacoes',
+            ])
+            ->withTimestamps();
+    }
+
+    public function familyMemberships(): HasMany
+    {
+        return $this->hasMany(FamiliaUser::class, 'user_id');
+    }
+
+    public function responsibleFamilies(): HasMany
+    {
+        return $this->hasMany(Familia::class, 'responsavel_user_id');
     }
 
     public function eventsCreated(): HasMany

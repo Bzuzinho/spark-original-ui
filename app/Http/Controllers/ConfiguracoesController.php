@@ -28,6 +28,7 @@ use App\Models\NotificationPreference;
 use App\Models\ProvaTipo;
 use App\Models\User;
 use App\Services\AccessControl\UserTypeAccessControlService;
+use App\Services\Club\ClubSettingsService;
 use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Http\RedirectResponse;
@@ -95,7 +96,7 @@ class ConfiguracoesController extends Controller
             'eventTypes' => EventType::all(),
             'athleteStatuses' => AthleteStatusConfig::query()->ordenado()->get(),
             'absenceReasons' => AbsenceReasonConfig::query()->ordenado()->get(),
-            'clubSettings' => ClubSetting::first(),
+            'clubSettings' => app(ClubSettingsService::class)->model(),
             'permissions' => UserTypePermission::all(),
             'accessControlBootstrap' => app(UserTypeAccessControlService::class)->getBootstrap($userTypes->first()),
         ];
@@ -310,8 +311,10 @@ class ConfiguracoesController extends Controller
 
     public function updateClubSettings(Request $request): RedirectResponse
     {
+        $clubSettingsService = app(ClubSettingsService::class);
+
         $data = $request->validate([
-            'nome_clube' => 'required|string|max:255',
+            'nome_clube' => 'nullable|string|max:255',
             'sigla' => 'nullable|string|max:10',
             'morada' => 'nullable|string',
             'codigo_postal' => 'nullable|string|max:20',
@@ -325,6 +328,8 @@ class ConfiguracoesController extends Controller
             'logo' => 'nullable|image|max:2048',
         ]);
 
+        $data['nome_clube'] = trim((string) ($data['nome_clube'] ?? '')) ?: $clubSettingsService->name();
+
         if ($request->hasFile('logo')) {
             $path = $request->file('logo')->store('club-logos', 'public');
             $data['logo_url'] = Storage::url($path);
@@ -332,13 +337,17 @@ class ConfiguracoesController extends Controller
 
         unset($data['logo']);
 
-        $clubSettings = ClubSetting::first();
+        $clubSettings = $clubSettingsService->model();
         
         if ($clubSettings) {
             $clubSettings->update($data);
         } else {
             ClubSetting::create($data);
         }
+
+        $clubSettingsService->clearCache();
+        Cache::forget('club_settings_shared');
+        Cache::forget('configuracoes:index:eager');
 
         return redirect()->route('configuracoes')
             ->with('success', 'Configurações do clube atualizadas com sucesso!');
