@@ -131,6 +131,13 @@ final class AccessControlCatalog
                         'module_key' => 'membros',
                         'children' => [
                             [
+                                'key' => 'membros.ficha.dashboard',
+                                'label' => 'Dashboard',
+                                'node_type' => 'tab',
+                                'module_key' => 'membros',
+                                'children' => [],
+                            ],
+                            [
                                 'key' => 'membros.ficha.pessoal',
                                 'label' => 'Pessoal',
                                 'node_type' => 'tab',
@@ -155,6 +162,13 @@ final class AccessControlCatalog
                                 'node_type' => 'tab',
                                 'module_key' => 'membros',
                                 'children' => [
+                                    ['key' => 'membros.ficha.desportivo.dados_desportivos', 'label' => 'Dados Desportivos', 'node_type' => 'field', 'module_key' => 'membros', 'children' => []],
+                                    ['key' => 'membros.ficha.desportivo.informacoes_medicas', 'label' => 'Informações Médicas', 'node_type' => 'field', 'module_key' => 'membros', 'children' => []],
+                                    ['key' => 'membros.ficha.desportivo.convocatorias', 'label' => 'Convocatórias', 'node_type' => 'field', 'module_key' => 'membros', 'children' => []],
+                                    ['key' => 'membros.ficha.desportivo.presencas', 'label' => 'Registo Presenças', 'node_type' => 'field', 'module_key' => 'membros', 'children' => []],
+                                    ['key' => 'membros.ficha.desportivo.resultados', 'label' => 'Resultados', 'node_type' => 'field', 'module_key' => 'membros', 'children' => []],
+                                    ['key' => 'membros.ficha.desportivo.treinos', 'label' => 'Treinos', 'node_type' => 'field', 'module_key' => 'membros', 'children' => []],
+                                    ['key' => 'membros.ficha.desportivo.disciplina', 'label' => 'Disciplina', 'node_type' => 'field', 'module_key' => 'membros', 'children' => []],
                                     ['key' => 'membros.ficha.desportivo.metros_finais', 'label' => 'metros_finais', 'node_type' => 'field', 'module_key' => 'membros', 'children' => []],
                                 ],
                             ],
@@ -166,6 +180,13 @@ final class AccessControlCatalog
                                 'children' => [
                                     ['key' => 'membros.ficha.configuracao.perfil', 'label' => 'perfil', 'node_type' => 'field', 'module_key' => 'membros', 'children' => []],
                                 ],
+                            ],
+                            [
+                                'key' => 'membros.ficha.comunicacoes',
+                                'label' => 'Comunicações',
+                                'node_type' => 'tab',
+                                'module_key' => 'membros',
+                                'children' => [],
                             ],
                         ],
                     ],

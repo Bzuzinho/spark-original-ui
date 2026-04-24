@@ -17,7 +17,8 @@ class EnsureModuleAccess
     public function handle(Request $request, Closure $next, string $moduleKey): Response
     {
         abort_unless(
-            $this->accessControlService->canAccessModule($request->user(), $moduleKey),
+            $this->accessControlService->canAccessModule($request->user(), $moduleKey)
+                || $this->accessControlService->canBypassOwnMemberProfileView($request->user(), $request, $moduleKey),
             Response::HTTP_FORBIDDEN,
             'Sem permissão para aceder a este módulo.'
         );

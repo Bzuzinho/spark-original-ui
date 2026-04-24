@@ -20,6 +20,7 @@ return Application::configure(basePath: dirname(__DIR__))
         \App\Console\Commands\AuditarTrainingSessions::class,
         \App\Console\Commands\MigrarPresencasLegacy::class,
         \App\Console\Commands\BenchmarkModulesPerformance::class,
+        \App\Console\Commands\SyncPermissionNodes::class,
     ])
     ->withMiddleware(function (Middleware $middleware) {
         // Trust all proxies for Codespaces

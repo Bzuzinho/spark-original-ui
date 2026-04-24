@@ -9,6 +9,7 @@ use App\Models\UserTypeLandingPage;
 use App\Models\UserTypeMenuModule;
 use App\Models\UserTypePermission;
 use App\Support\AccessControl\AccessControlCatalog;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -166,6 +167,8 @@ class UserTypeAccessControlService
 
         $userType->forceFill(['menu_visibility_configured' => true])->save();
 
+        $this->forgetUserTypeAccessCaches($userType);
+
         return $this->getUserTypeSettings($userType);
     }
 
@@ -192,6 +195,8 @@ class UserTypeAccessControlService
                 'base_page_key' => $basePageKey,
             ]
         );
+
+        $this->forgetUserTypeAccessCaches($userType);
 
         return $this->getUserTypeSettings($userType);
     }
@@ -223,18 +228,30 @@ class UserTypeAccessControlService
         }
 
         foreach ($permissionCollection as $permission) {
+            $legacyScope = $this->legacyScopeFromPermissionNodeId($permission['permission_node_id']);
+
             UserTypePermission::query()->updateOrCreate(
                 [
                     'user_type_id' => $userType->id,
                     'permission_node_id' => $permission['permission_node_id'],
                 ],
                 [
+                    'modulo' => $legacyScope['modulo'],
+                    'submodulo' => $legacyScope['submodulo'],
+                    'separador' => $legacyScope['separador'],
+                    'campo' => $legacyScope['campo'],
                     'can_view' => $permission['can_view'],
                     'can_edit' => $permission['can_edit'],
                     'can_delete' => $permission['can_delete'],
+                    'pode_ver' => $permission['can_view'],
+                    'pode_criar' => $permission['can_edit'],
+                    'pode_editar' => $permission['can_edit'],
+                    'pode_eliminar' => $permission['can_delete'],
                 ]
             );
         }
+
+        $this->forgetUserTypeAccessCaches($userType);
 
         return $this->getUserTypeSettings($userType);
     }
@@ -349,6 +366,48 @@ class UserTypeAccessControlService
             ->all();
 
         return array_intersect($allowedPermissionNodeIds, $this->permissionNodeAndAncestorIds($permissionNode)) !== [];
+    }
+
+    public function canBypassOwnMemberProfileView(?User $user, Request $request, ?string $moduleKey = null, ?string $permissionKey = null, string $capability = 'view'): bool
+    {
+        if ($user === null || $capability !== 'view') {
+            return false;
+        }
+
+        if ($moduleKey !== null && $moduleKey !== 'membros') {
+            return false;
+        }
+
+        if ($permissionKey !== null && $permissionKey !== 'membros.ficha') {
+            return false;
+        }
+
+        if (! $request->routeIs('membros.show')) {
+            return false;
+        }
+
+        $member = $request->route('member');
+        $targetMemberId = $member instanceof User ? $member->getKey() : (is_scalar($member) ? (string) $member : null);
+
+        if ($targetMemberId === null) {
+            return false;
+        }
+
+        $userType = $this->resolveUserType($user);
+
+        if ($userType === null) {
+            return false;
+        }
+
+        if ($targetMemberId === $user->getKey()) {
+            return $this->isAthleteUserType($userType) || $this->isGuardianUserType($userType);
+        }
+
+        if (! $this->isGuardianUserType($userType)) {
+            return false;
+        }
+
+        return $user->educandos()->whereKey($targetMemberId)->exists();
     }
 
     private function menuModulesForUserType(UserType $userType): array
@@ -524,7 +583,7 @@ class UserTypeAccessControlService
         return self::$permissionNodesById[$nodeId] = Cache::remember(
             'access_control:permission_node:id:' . $nodeId,
             now()->addMinutes(10),
-            fn () => PermissionNode::query()->find($nodeId, ['id', 'parent_id'])
+            fn () => PermissionNode::query()->find($nodeId, ['id', 'key', 'parent_id', 'module_key'])
         );
     }
 
@@ -553,5 +612,75 @@ class UserTypeAccessControlService
         }
 
         return $ids;
+    }
+
+    private function legacyScopeFromPermissionNodeId(string $permissionNodeId): array
+    {
+        $permissionNode = $this->permissionNodeById($permissionNodeId);
+
+        if ($permissionNode === null) {
+            return [
+                'modulo' => 'desconhecido',
+                'submodulo' => null,
+                'separador' => null,
+                'campo' => null,
+            ];
+        }
+
+        $segments = explode('.', $permissionNode->key);
+
+        return [
+            'modulo' => $segments[0] ?? 'desconhecido',
+            'submodulo' => $segments[1] ?? null,
+            'separador' => $segments[2] ?? null,
+            'campo' => $segments[3] ?? null,
+        ];
+    }
+
+    private function forgetUserTypeAccessCaches(UserType $userType): void
+    {
+        unset(self::$userTypeSettings[$userType->id]);
+        Cache::forget('access_control:user_type_settings:' . $userType->id);
+
+        foreach ($this->userIdsForUserType($userType) as $userId) {
+            unset(self::$currentUserAccess[$userId], self::$resolvedUserTypes[$userId]);
+            Cache::forget('access_control:current_user_access:' . $userId);
+            Cache::forget('access_control:resolved_user_type:' . $userId);
+        }
+    }
+
+    /**
+     * @return array<string>
+     */
+    private function userIdsForUserType(UserType $userType): array
+    {
+        $normalizedAliases = array_values(array_unique(array_filter([
+            $this->normalizeUserTypeIdentifier($userType->codigo),
+            $this->normalizeUserTypeIdentifier($userType->nome),
+        ])));
+
+        return User::query()
+            ->select(['id', 'perfil'])
+            ->where(function ($query) use ($userType, $normalizedAliases) {
+                $query->whereHas('userTypes', function ($userTypesQuery) use ($userType) {
+                    $userTypesQuery->where('user_types.id', $userType->id);
+                });
+
+                if ($normalizedAliases !== []) {
+                    $query->orWhereIn('perfil', $normalizedAliases);
+                }
+            })
+            ->get()
+            ->filter(function (User $user) use ($normalizedAliases, $userType): bool {
+                if ($user->userTypes->contains('id', $userType->id)) {
+                    return true;
+                }
+
+                return in_array($this->normalizeUserTypeIdentifier($user->perfil), $normalizedAliases, true);
+            })
+            ->pluck('id')
+            ->map(static fn (mixed $id) => (string) $id)
+            ->values()
+            ->all();
     }
 }

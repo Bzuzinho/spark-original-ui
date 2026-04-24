@@ -372,6 +372,8 @@ echo "[backend] ensure storage symlink"
 "${RUN_AS[@]}" php "${APP_DIR}/artisan" storage:link || true
 echo "[backend] migrate"
 "${RUN_AS[@]}" php "${APP_DIR}/artisan" migrate --force
+echo "[backend] sync permission nodes"
+"${RUN_AS[@]}" php "${APP_DIR}/artisan" access-control:sync-permission-nodes
 echo "[backend] cache"
 "${RUN_AS[@]}" php "${APP_DIR}/artisan" config:cache
 "${RUN_AS[@]}" php "${APP_DIR}/artisan" route:cache
