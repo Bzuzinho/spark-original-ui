@@ -13,7 +13,7 @@ final class AccessControlCatalog
             ['key' => 'eventos', 'label' => 'Eventos', 'route' => '/eventos'],
             ['key' => 'financeiro', 'label' => 'Financeiro', 'route' => '/financeiro'],
             ['key' => 'logistica', 'label' => 'Logística', 'route' => '/logistica'],
-            ['key' => 'loja', 'label' => 'Loja', 'route' => '/loja'],
+            ['key' => 'loja', 'label' => 'Loja', 'route' => '/admin/loja'],
             ['key' => 'patrocinios', 'label' => 'Patrocínios', 'route' => '/patrocinios'],
             ['key' => 'comunicacao', 'label' => 'Comunicação', 'route' => '/comunicacao'],
             ['key' => 'marketing', 'label' => 'Marketing', 'route' => '/campanhas-marketing'],
@@ -79,7 +79,7 @@ final class AccessControlCatalog
                 'module_key' => 'loja',
                 'module_label' => 'Loja',
                 'base_pages' => [
-                    ['key' => 'loja_dashboard', 'label' => 'Loja', 'route' => '/loja'],
+                    ['key' => 'loja_dashboard', 'label' => 'Loja', 'route' => '/admin/loja'],
                 ],
             ],
             [

@@ -15,6 +15,7 @@ import PortalKpiCard from '@/Components/Portal/PortalKpiCard';
 import PortalSection from '@/Components/Portal/PortalSection';
 import PortalUserContextSwitcher from '@/Components/Portal/PortalUserContextSwitcher';
 import PortalLayout from '@/Layouts/PortalLayout';
+import { amountToneClass, formatSignedCurrency } from '@/lib/financialDisplay';
 import { portalRoutes } from '@/lib/portalRoutes';
 import type { ClubSettingsProps, PageProps as SharedPageProps } from '@/types';
 
@@ -159,7 +160,6 @@ interface FamilyMemberCard {
     numero_socio?: string | null;
     foto_perfil?: string | null;
     estado?: string | null;
-    tipoLabel: string;
     roleLabel: string;
     memberUrl?: string | null;
 }
@@ -172,16 +172,6 @@ function getInitials(name: string): string {
     }
 
     return (parts[0]?.[0] ?? 'U').toUpperCase();
-}
-
-function formatCurrency(value: string | number | null | undefined): string {
-    const parsed = typeof value === 'number' ? value : Number.parseFloat(String(value ?? '0'));
-
-    return new Intl.NumberFormat('pt-PT', {
-        style: 'currency',
-        currency: 'EUR',
-        maximumFractionDigits: 2,
-    }).format(Number.isFinite(parsed) ? parsed : 0);
 }
 
 function formatDate(date?: string | null): string {
@@ -230,36 +220,13 @@ function roleLabel(value?: string | null): string {
         case 'educando':
             return 'Educando';
         case 'encarregado_educacao':
-            return 'Encarregado';
         case 'responsavel':
-            return 'Responsável';
+            return 'Encarregado de educação';
         case 'familiar':
             return 'Familiar';
         default:
             return 'Membro';
     }
-}
-
-function memberTypeLabel(member: { tipo_membro?: string[]; papel_na_familia?: string | null }): string {
-    const types = (member.tipo_membro ?? []).map((item) => normalizeRole(item));
-
-    if (types.includes('educando') || types.includes('familiar') || types.includes('encarregado_educacao')) {
-        return roleLabel(types[0]);
-    }
-
-    if (types.includes('responsavel')) {
-        return 'Responsável';
-    }
-
-    if ((member.tipo_membro ?? []).some((item) => normalizeRole(item) === 'atleta')) {
-        return 'Atleta';
-    }
-
-    if ((member.tipo_membro ?? []).some((item) => normalizeRole(item) === 'socio')) {
-        return 'Sócio';
-    }
-
-    return roleLabel(member.papel_na_familia);
 }
 
 export default function Family() {
@@ -309,7 +276,6 @@ export default function Family() {
                 foto_perfil: member.foto_perfil ?? null,
                 estado: member.estado ?? null,
                 roleLabel: roleLabel(member.papel_na_familia),
-                tipoLabel: memberTypeLabel(member),
                 memberUrl: member.can_view ? `/portal/perfil?member=${member.id}` : null,
             });
 
@@ -375,7 +341,7 @@ export default function Family() {
     const kpis = [
         { label: 'Membros', value: String(totalManagedMembers), helper: 'Associados', icon: Users },
         { label: 'Pagamentos', value: String(familySummary?.pagamentos_pendentes ?? pagamentos.length), helper: 'Pendentes', icon: CreditCard },
-        { label: 'Agenda', value: String(familySummary?.convocatorias_pendentes ?? convocatorias_pendentes.length), helper: 'Convocatórias', icon: CalendarDays },
+        { label: 'Convocatórias', value: String(familySummary?.convocatorias_pendentes ?? convocatorias_pendentes.length), helper: 'Treinos por responder', icon: CalendarDays },
         { label: 'Documentos', value: String(familySummary?.documentos_alerta ?? documentos_alerta.length), helper: 'A expirar', icon: FileText },
     ];
 
@@ -420,25 +386,13 @@ export default function Family() {
                 activeNav="family"
                 hasFamily={has_family}
             >
-                <section className="overflow-hidden rounded-[18px] bg-[linear-gradient(180deg,#0f57b3_0%,#114c98_100%)] px-2.5 py-2 text-white shadow-[0_10px_18px_rgba(15,76,152,0.16)]">
-                    <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
+                <section className="overflow-hidden rounded-[16px] bg-[linear-gradient(180deg,#0f57b3_0%,#114c98_100%)] px-2.5 py-2 text-white shadow-[0_8px_16px_rgba(15,76,152,0.14)]">
+                    <div className="flex flex-col items-start gap-2">
                         <div className="min-w-0">
-                            <div className="flex items-center justify-between gap-2">
-                                <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-blue-100">Portal Família</p>
-                                <button
-                                    type="button"
-                                    onClick={() => router.visit(portalRoutes.dashboard)}
-                                    className="hidden rounded-lg border border-white/15 bg-white/10 px-2.5 py-1 text-[10px] font-semibold text-white transition hover:bg-white/20 lg:inline-flex"
-                                >
-                                    Voltar ao início
-                                </button>
-                            </div>
-                            <h2 className="mt-1 text-[1.05rem] font-semibold">A Minha Família</h2>
-                            <p className="mt-1 max-w-xl text-[11px] leading-4 text-blue-50">
-                                Consulte educandos associados, agenda, documentos e pagamentos num contexto familiar sem entrar na área administrativa.
-                            </p>
+                            <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-blue-100">Portal Família</p>
+                            <h2 className="mt-1 text-base font-semibold">A Minha Família</h2>
                         </div>
-                        <div className="rounded-lg border border-white/15 bg-white/10 px-2.5 py-1.5 text-[11px] text-blue-50 lg:max-w-[38%] lg:min-w-[220px]">
+                        <div className="w-full max-w-[19rem] rounded-xl border border-white/15 bg-white/10 px-2.5 py-1.5 text-[10px] text-blue-50">
                             <p className="font-semibold text-white">{familyMember.name}</p>
                             <p className="mt-1">{familyMember.numero_socio ? `Sócio #${familyMember.numero_socio}` : 'Encarregado de Educação'}</p>
                         </div>
@@ -453,7 +407,7 @@ export default function Family() {
 
                 <section className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] xl:items-start">
                     <div className="space-y-4">
-                        <PortalSection title="Membros" description="Todos os membros associados à família e respetivo tipo.">
+                        <PortalSection title="Membros" description="Todos os membros associados à família e respetiva relação.">
                             <div className="grid gap-3 md:grid-cols-2">
                                 {familyMembers.length > 0 ? familyMembers.map((member) => (
                                     <button
@@ -475,7 +429,6 @@ export default function Family() {
                                                 <p className="truncate text-sm font-semibold text-slate-900">{member.name}</p>
                                                 <p className="mt-1 text-xs text-slate-500">{member.numero_socio ? `#${member.numero_socio} · ` : ''}{member.estado || 'Ativo'}</p>
                                                 <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-medium text-slate-600">
-                                                    <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1">{member.tipoLabel}</span>
                                                     <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1">{member.roleLabel}</span>
                                                 </div>
                                             </div>
@@ -599,7 +552,7 @@ export default function Family() {
                                                 <p className="text-sm font-semibold text-slate-900">{payment.user_name}</p>
                                                 <p className="mt-1 text-xs text-slate-500">{payment.mes || 'Pagamento pendente'} · {payment.estado || 'Pendente'}</p>
                                             </div>
-                                            <p className="text-sm font-semibold text-slate-900">{formatCurrency(payment.valor)}</p>
+                                            <p className={`text-sm font-semibold ${amountToneClass(payment.valor, 'debt')}`}>{formatSignedCurrency(payment.valor, 'debt')}</p>
                                         </div>
                                         <p className="mt-2 text-xs text-slate-500">Vencimento: {formatDate(payment.data_vencimento)}</p>
                                     </div>
@@ -611,7 +564,7 @@ export default function Family() {
                             </div>
                         </PortalSection>
 
-                        <PortalSection title="Agenda dos educandos" description="Treinos e convocatórias pendentes.">
+                        <PortalSection title="Agenda da família" description="Treinos e convocatórias pendentes dos membros associados.">
                             <div className="space-y-2.5">
                                 {[...proximos_treinos, ...convocatorias_pendentes].slice(0, 6).map((item) => (
                                     <div key={`${item.id}-${item.user_id}`} className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3">

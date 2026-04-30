@@ -36,6 +36,28 @@ export interface ClubSettingsProps {
     default_meeting_point: string;
 }
 
+export interface CommunicationAlertItem {
+    id: string;
+    title: string;
+    message: string;
+    type: 'info' | 'warning' | 'success' | 'error';
+    link?: string | null;
+    is_read: boolean;
+    created_at: string;
+    sender?: {
+        id: string;
+        name: string;
+    } | null;
+}
+
+export interface CommunicationMemberOption {
+    id: string;
+    numero_socio?: string | null;
+    nome_completo?: string | null;
+    name?: string | null;
+    email?: string | null;
+}
+
 export type PageProps<
     T extends Record<string, unknown> = Record<string, unknown>,
 > = T & {
@@ -46,6 +68,7 @@ export type PageProps<
     clubSettings?: ClubSettingsProps;
     communicationAlerts?: {
         unreadCount: number;
-        recent?: unknown[];
+        recent?: CommunicationAlertItem[];
     };
+    communicationMembers?: CommunicationMemberOption[];
 };

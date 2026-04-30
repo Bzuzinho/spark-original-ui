@@ -26,6 +26,7 @@ MAIL_FROM_ADDRESS="${MAIL_FROM_ADDRESS:-}"
 MAIL_FROM_NAME="${MAIL_FROM_NAME:-}"
 APP_URL="${APP_URL:-}"
 ALLOW_SHARED_DB="${ALLOW_SHARED_DB:-0}"
+SHARED_DB_TARGET=0
 
 echo "==> Repo: $(pwd)"
 echo "==> VM:   ${VM_USER}@${VM_HOST}:${VM_APP_DIR}"
@@ -71,6 +72,7 @@ guard_shared_database_target() {
   fi
 
   if [[ "${local_db_host}" == "${remote_db_host}" && "${local_db_database}" == "${remote_db_database}" && "${local_db_username}" == "${remote_db_username}" ]]; then
+    SHARED_DB_TARGET=1
     echo ""
     echo "❌ Guardrail: o ambiente local e a VM apontam para a mesma base de dados (${local_db_host}/${local_db_database})."
     echo "   Isto é perigoso: comandos locais (benchmarks, tinker, scripts) podem alterar dados da VM."
@@ -85,6 +87,34 @@ guard_shared_database_target() {
   else
     echo "   ✔ Guardrail DB OK — Codespace e VM usam bases distintas"
   fi
+}
+
+sync_shared_db_club_logo() {
+  local logo_url relative_path relative_dir local_file
+
+  if [[ "${SHARED_DB_TARGET}" != "1" ]]; then
+    return 0
+  fi
+
+  logo_url="$(php artisan tinker --execute="print(App\\Models\\ClubSetting::query()->value('logo_url') ?? '');" 2>/dev/null | tr -d '\r')"
+
+  if [[ -z "${logo_url}" || "${logo_url}" != /storage/* ]]; then
+    echo "    Sem logotipo do clube em /storage para sincronizar"
+    return 0
+  fi
+
+  relative_path="${logo_url#/storage/}"
+  relative_dir="$(dirname "${relative_path}")"
+  local_file="storage/app/public/${relative_path}"
+
+  if [[ ! -f "${local_file}" ]]; then
+    echo "   ⚠ Logotipo referenciado na base de dados não existe localmente: ${local_file}"
+    return 0
+  fi
+
+  echo "    Sincronizar logotipo do clube (${relative_path}) ..."
+  tar -C storage/app/public -cf - "${relative_path}" | vm_ssh "sudo mkdir -p '${VM_APP_DIR}/storage/app/public/${relative_dir}' && sudo tar -xf - -C '${VM_APP_DIR}/storage/app/public' && sudo chown www-data:www-data '${VM_APP_DIR}/storage/app/public/${relative_path}'"
+  echo "   ✔ Logotipo do clube sincronizado"
 }
 
 quote_env_value() {
@@ -489,6 +519,8 @@ echo ""
 echo "==> [5/6] Upload public/build → VM"
 tar -C public -cf - build | vm_ssh "sudo mkdir -p '${VM_APP_DIR}/public' && sudo rm -rf '${VM_APP_DIR}/public/build' && sudo tar -xf - -C '${VM_APP_DIR}/public' && sudo chown -R www-data:www-data '${VM_APP_DIR}/public/build'"
 echo "   ✔ public/build copiado"
+
+sync_shared_db_club_logo
 
 # ===== [6/6] Reload frontend + healthcheck =====
 echo ""

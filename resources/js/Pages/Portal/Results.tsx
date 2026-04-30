@@ -136,33 +136,30 @@ export default function Results() {
                 activeNav="results"
                 hasFamily={has_family}
             >
-                <section className="overflow-hidden rounded-[24px] border border-blue-900/10 bg-[linear-gradient(180deg,rgba(29,78,216,0.92)_0%,rgba(30,64,175,0.9)_100%)] px-4 py-5 text-white shadow-[0_16px_32px_rgba(30,64,175,0.18)] sm:px-5 lg:px-6">
-                    <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                <section className="overflow-hidden rounded-[20px] border border-blue-900/10 bg-[linear-gradient(180deg,rgba(29,78,216,0.92)_0%,rgba(30,64,175,0.9)_100%)] px-3.5 py-4 text-white shadow-[0_14px_28px_rgba(30,64,175,0.16)] sm:px-4 lg:px-5">
+                    <div className="flex flex-col items-start gap-3">
                         <div className="max-w-2xl">
-                            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-100">Resultados</p>
-                            <h1 className="mt-2 text-2xl font-semibold">Resultados</h1>
-                            <p className="mt-2 text-sm text-blue-50">
-                                Consulta simples de tempos, classificações, melhores marcas e evolução pessoal do atleta.
-                            </p>
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-blue-100">Resultados</p>
+                            <h1 className="mt-1.5 text-xl font-semibold">Resultados</h1>
                         </div>
 
                         <div className="flex flex-wrap gap-2">
                             <a
                                 href="#portal-results-evolution"
-                                className="inline-flex items-center justify-center rounded-2xl bg-white px-3.5 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-50"
+                                className="inline-flex items-center justify-center rounded-xl bg-white px-3 py-1.5 text-xs font-semibold text-blue-700 transition hover:bg-blue-50"
                             >
                                 Ver evolução
                             </a>
                             <a
                                 href="#portal-results-history"
-                                className="inline-flex items-center justify-center rounded-2xl border border-white/30 px-3.5 py-2 text-sm font-semibold text-white transition hover:bg-white/10"
+                                className="inline-flex items-center justify-center rounded-xl border border-white/30 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-white/10"
                             >
                                 Histórico
                             </a>
                         </div>
                     </div>
 
-                    <div className="mt-5 grid gap-3 md:grid-cols-3">
+                    <div className="mt-4 grid gap-2.5 md:grid-cols-3">
                         <HeroHighlight
                             eyebrow="Último resultado"
                             title={hero.last_result?.prova ?? 'Sem resultados registados'}
@@ -373,12 +370,12 @@ export default function Results() {
 
 function HeroHighlight({ eyebrow, title, value, detail, note }: { eyebrow: string; title: string; value: string; detail: string; note: string }) {
     return (
-        <div className="rounded-[22px] border border-white/15 bg-white/10 p-4 backdrop-blur">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-blue-100">{eyebrow}</p>
-            <h2 className="mt-2 text-lg font-semibold text-white">{title}</h2>
-            <p className="mt-2 text-2xl font-semibold text-white">{value}</p>
-            <p className="mt-2 text-sm text-blue-50">{detail}</p>
-            <p className="mt-1 text-xs font-medium uppercase tracking-[0.12em] text-blue-100">{note}</p>
+        <div className="rounded-[18px] border border-white/15 bg-white/10 p-3.5 backdrop-blur">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-blue-100">{eyebrow}</p>
+            <h2 className="mt-1.5 text-base font-semibold text-white">{title}</h2>
+            <p className="mt-1.5 text-xl font-semibold text-white">{value}</p>
+            <p className="mt-1.5 text-xs text-blue-50">{detail}</p>
+            <p className="mt-1 text-[10px] font-medium uppercase tracking-[0.12em] text-blue-100">{note}</p>
         </div>
     );
 }

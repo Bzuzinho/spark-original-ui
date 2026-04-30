@@ -20,7 +20,7 @@ export const portalRoutes = {
     results: '/portal/resultados',
     documents: '/portal/documentos',
     communications: '/portal/comunicados',
-    shop: '/portal/loja',
+    shop: '/loja',
     family: '/portal/familia',
     admin: '/dashboard?mode=admin',
 } as const;
@@ -41,7 +41,7 @@ export const portalNavLabels: Record<PortalNavKey, string> = {
 };
 
 export interface PortalBottomNavItem {
-    key: 'dashboard' | 'family' | 'events' | 'payments' | 'profile';
+    key: 'dashboard' | 'family' | 'events' | 'payments' | 'profile' | 'shop';
     label: string;
     icon: LucideIcon;
     href: string;
@@ -53,6 +53,7 @@ export function getPortalBottomNavItems(hasFamily: boolean): PortalBottomNavItem
             { key: 'dashboard', label: 'Início', icon: House, href: portalRoutes.dashboard },
             { key: 'family', label: 'Família', icon: Users, href: portalRoutes.family },
             { key: 'events', label: 'Agenda', icon: CalendarDays, href: portalRoutes.events },
+            { key: 'shop', label: 'Loja', icon: ShoppingBag, href: portalRoutes.shop },
             { key: 'profile', label: 'Perfil', icon: UserCircle2, href: portalRoutes.profile },
         ];
     }
@@ -60,6 +61,7 @@ export function getPortalBottomNavItems(hasFamily: boolean): PortalBottomNavItem
     return [
         { key: 'dashboard', label: 'Início', icon: House, href: portalRoutes.dashboard },
         { key: 'events', label: 'Agenda', icon: CalendarDays, href: portalRoutes.events },
+        { key: 'shop', label: 'Loja', icon: ShoppingBag, href: portalRoutes.shop },
         { key: 'payments', label: 'Pagamentos', icon: CreditCard, href: portalRoutes.payments },
         { key: 'profile', label: 'Perfil', icon: UserCircle2, href: portalRoutes.profile },
     ];

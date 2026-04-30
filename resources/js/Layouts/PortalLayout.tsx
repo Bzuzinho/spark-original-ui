@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { ArrowLeft } from 'lucide-react';
 import { router, usePage } from '@inertiajs/react';
 import PortalBottomNav from '@/Components/Portal/PortalBottomNav';
 import PortalHeader from '@/Components/Portal/PortalHeader';
@@ -42,12 +43,14 @@ export default function PortalLayout({
     const clubLogoUrl = clubSettings?.logo_url || null;
     const userName = resolveUserName(user);
     const unreadNotifications = props.communicationAlerts?.unreadCount ?? 0;
+    const recentAlerts = props.communicationAlerts?.recent ?? [];
     const resolvedHeader = header ?? (
         <PortalHeader
             clubName={clubName}
             clubShortName={clubShortName}
             clubLogoUrl={clubLogoUrl}
             unreadNotifications={unreadNotifications}
+            alerts={recentAlerts}
             canAccessAdmin={isAlsoAdmin}
             currentUserName={userName}
             currentUserSubtitle={portalNavLabels[activeNav]}
@@ -69,6 +72,18 @@ export default function PortalLayout({
         <div className="min-h-screen bg-slate-50 text-slate-900">
             <div className="mx-auto w-full max-w-screen-2xl px-4 pb-28 pt-4 sm:px-6 lg:px-8 xl:px-10">
                 {resolvedHeader}
+                {activeNav !== 'dashboard' ? (
+                    <div className="mt-4 hidden md:flex">
+                        <button
+                            type="button"
+                            onClick={() => router.visit(portalRoutes.dashboard)}
+                            className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-blue-200 hover:text-blue-700"
+                        >
+                            <ArrowLeft className="h-4 w-4" />
+                            Voltar ao dashboard
+                        </button>
+                    </div>
+                ) : null}
                 <main className="mt-5 space-y-5">{children}</main>
             </div>
 

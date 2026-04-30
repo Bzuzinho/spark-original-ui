@@ -17,6 +17,14 @@ use App\Http\Controllers\TransacoesController;
 use App\Http\Controllers\TaxasController;
 use App\Http\Controllers\CategoriasFinanceirasController;
 use App\Http\Controllers\RelatoriosFinanceirosController;
+use App\Http\Controllers\AdminLojaController;
+use App\Http\Controllers\AdminLojaEncomendaController;
+use App\Http\Controllers\AdminLojaHeroController;
+use App\Http\Controllers\AdminLojaProdutoController;
+use App\Http\Controllers\LojaCarrinhoController;
+use App\Http\Controllers\LojaController;
+use App\Http\Controllers\LojaEncomendaController;
+use App\Http\Controllers\LojaProdutoController;
 use App\Http\Controllers\StoreCartController;
 use App\Http\Controllers\StoreController;
 use App\Http\Controllers\StoreOrderController;
@@ -82,12 +90,25 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('portal.documents.uploads.download');
     Route::get('/portal/comunicados', [PortalPageController::class, 'communications'])
         ->name('portal.communications');
+    Route::post('/portal/comunicados', [PortalPageController::class, 'storeCommunication'])
+        ->name('portal.communications.store');
     Route::post('/portal/comunicados/read', [PortalPageController::class, 'markCommunicationRead'])
         ->name('portal.communications.read');
+    Route::post('/portal/comunicados/unread', [PortalPageController::class, 'markCommunicationUnread'])
+        ->name('portal.communications.unread');
     Route::post('/portal/comunicados/mark-all-read', [PortalPageController::class, 'markAllCommunicationsRead'])
         ->name('portal.communications.markAllRead');
-    Route::get('/portal/loja', [PortalPageController::class, 'shop'])
+    Route::delete('/portal/comunicados/received', [PortalPageController::class, 'destroyReceivedCommunication'])
+        ->name('portal.communications.received.destroy');
+    Route::delete('/portal/comunicados/sent/{message}', [PortalPageController::class, 'destroySentCommunication'])
+        ->name('portal.communications.sent.destroy');
+    Route::redirect('/portal/loja', '/loja')
         ->name('portal.shop');
+    Route::get('/loja', [LojaController::class, 'index'])->name('store.front.index');
+    Route::get('/loja/produto/{produto:slug}', [LojaProdutoController::class, 'show'])->name('store.front.product.show');
+    Route::get('/loja/carrinho', [LojaCarrinhoController::class, 'show'])->name('store.front.cart.show');
+    Route::get('/loja/historico', [LojaEncomendaController::class, 'index'])->name('store.front.orders.index');
+    Route::get('/loja/historico/{encomenda}', [LojaEncomendaController::class, 'show'])->name('store.front.orders.show');
     Route::get('/portal/familia', [FamilyPortalController::class, 'show'])
         ->name('portal.family');
     Route::get('/portal/familia/membros/search', [FamilyPortalController::class, 'searchMembers'])
@@ -230,17 +251,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('financeiro/{financeiro}/apagar', [FinanceiroController::class, 'destroy'])
         ->middleware(['module.access:financeiro', 'permission.access:financeiro.dashboard,delete'])
         ->name('financeiro.destroy.post');
-    Route::prefix('loja')->middleware('module.access:loja')->group(function () {
-        Route::get('/', [StoreController::class, 'index'])->name('loja.index');
-        Route::get('/pedidos', [StoreController::class, 'orders'])->name('loja.pedidos');
+    Route::prefix('admin/loja')->middleware('module.access:loja')->name('admin.loja.')->group(function () {
+        Route::get('/', [AdminLojaController::class, 'index'])->name('index');
 
-        Route::post('/carrinho/items', [StoreCartController::class, 'store'])->name('loja.cart.store');
-        Route::put('/carrinho/items/{storeCartItem}', [StoreCartController::class, 'update'])->name('loja.cart.update');
-        Route::delete('/carrinho/items/{storeCartItem}', [StoreCartController::class, 'destroy'])->name('loja.cart.destroy');
+        Route::get('/produtos', [AdminLojaProdutoController::class, 'index'])->name('produtos.index');
+        Route::get('/produtos/criar', [AdminLojaProdutoController::class, 'create'])->name('produtos.create');
+        Route::get('/produtos/{produto}/editar', [AdminLojaProdutoController::class, 'edit'])->name('produtos.edit');
 
-        Route::post('/pedidos', [StoreOrderController::class, 'store'])->name('loja.orders.store');
-        Route::put('/pedidos/{storeOrder}', [StoreOrderController::class, 'update'])->name('loja.orders.update');
-        Route::delete('/pedidos/{storeOrder}', [StoreOrderController::class, 'destroy'])->name('loja.orders.destroy');
+        Route::get('/encomendas', [AdminLojaEncomendaController::class, 'index'])->name('encomendas.index');
+        Route::get('/encomendas/{encomenda}', [AdminLojaEncomendaController::class, 'show'])->name('encomendas.show');
+
+        Route::get('/hero', [AdminLojaHeroController::class, 'index'])->name('hero.index');
+        Route::get('/hero/criar', [AdminLojaHeroController::class, 'create'])->name('hero.create');
+        Route::get('/hero/{item}/editar', [AdminLojaHeroController::class, 'edit'])->name('hero.edit');
     });
     Route::prefix('patrocinios')->middleware('module.access:patrocinios')->group(function () {
         Route::get('/integracoes', [PatrocinosController::class, 'integrationsIndex'])->name('patrocinios.integrations.index');

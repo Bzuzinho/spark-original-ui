@@ -3,15 +3,19 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
     CalendarClock,
     Camera,
+    CreditCard,
     FileText,
     FileUp,
     Receipt,
     ScrollText,
+    ShieldCheck,
+    Wallet,
 } from 'lucide-react';
 import PortalCard from '@/Components/Portal/PortalCard';
 import PortalKpiCard from '@/Components/Portal/PortalKpiCard';
 import PortalSection from '@/Components/Portal/PortalSection';
 import PortalLayout from '@/Layouts/PortalLayout';
+import { amountToneClass, formatSignedCurrency } from '@/lib/financialDisplay';
 import { portalRoutes } from '@/lib/portalRoutes';
 import type { ClubSettingsProps, PageProps as SharedPageProps } from '@/types';
 
@@ -70,7 +74,8 @@ interface ProfilePayload {
     documents: DocumentItem[];
     sports: DetailItem[];
     financial: {
-        current_balance: string;
+        account_balance: string;
+        outstanding_value: string;
         next_payment: NextPayment | null;
         plan: string;
     };
@@ -177,17 +182,68 @@ function navigate(href: string) {
     router.visit(href);
 }
 
-function InfoGrid({ items }: { items: DetailItem[] }) {
+function InfoGrid({
+    items,
+    gridClassName = 'grid gap-3 sm:grid-cols-2',
+    getItemClassName,
+}: {
+    items: DetailItem[];
+    gridClassName?: string;
+    getItemClassName?: (item: DetailItem) => string;
+}) {
     return (
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className={gridClassName}>
             {items.map((item) => (
-                <div key={item.label} className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3">
+                <div key={item.label} className={[
+                    'rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3',
+                    getItemClassName ? getItemClassName(item) : '',
+                ].filter(Boolean).join(' ')}>
                     <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">{item.label}</p>
                     <p className="mt-2 text-sm font-medium text-slate-900">{item.value}</p>
                 </div>
             ))}
         </div>
     );
+}
+
+function CompactSummaryCard({
+    label,
+    value,
+    helper,
+    icon: Icon,
+    valueClassName,
+}: {
+    label: string;
+    value: string;
+    helper: string;
+    icon: typeof ShieldCheck;
+    valueClassName?: string;
+}) {
+    return (
+        <div className="rounded-[20px] border border-slate-200 bg-white px-4 py-3 shadow-[0_10px_24px_rgba(15,23,42,0.05)]">
+            <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">{label}</p>
+                    <p className={["mt-1.5 truncate text-xl font-semibold", valueClassName || 'text-slate-900'].join(' ')}>{value}</p>
+                    <p className="mt-1 text-[11px] text-slate-500">{helper}</p>
+                </div>
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-50 text-slate-500">
+                    <Icon className="h-4 w-4" />
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function personalItemClassName(item: DetailItem): string {
+    switch (item.label) {
+        case 'Nome completo':
+        case 'Morada':
+        case 'Email secundário':
+            return 'xl:col-span-2';
+        default:
+            return '';
+    }
 }
 
 function FieldError({ message }: { message?: string }) {
@@ -381,24 +437,24 @@ export default function Profile() {
             >
                 <div className="grid gap-5 lg:grid-cols-2 xl:grid-cols-[minmax(0,1.3fr)_minmax(320px,0.9fr)]">
                     <div className="space-y-5">
-                        <section className="overflow-hidden rounded-[28px] bg-[linear-gradient(180deg,#1d5db6_0%,#184b91_100%)] px-4 py-4 text-white shadow-[0_16px_34px_rgba(24,75,145,0.22)] sm:px-5">
+                        <section className="overflow-hidden rounded-[20px] bg-[linear-gradient(180deg,#1d5db6_0%,#184b91_100%)] px-3.5 py-3.5 text-white shadow-[0_14px_28px_rgba(24,75,145,0.18)] sm:px-4">
                             <div className="relative">
                                 <div className="pointer-events-none absolute right-[-2rem] top-[-2rem] h-24 w-24 rounded-full bg-white/10" />
                                 <div className="relative flex flex-col gap-4">
-                                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                                    <div className="flex flex-col items-start gap-3">
                                         <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start">
                                             {currentPhotoUrl ? (
-                                                <img src={currentPhotoUrl || undefined} alt={profile.name} className="h-16 w-16 rounded-2xl border border-white/20 object-cover sm:h-18 sm:w-18" />
+                                                <img src={currentPhotoUrl || undefined} alt={profile.name} className="h-14 w-14 rounded-xl border border-white/20 object-cover sm:h-16 sm:w-16" />
                                             ) : (
-                                                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/90 text-lg font-bold text-[#184b91] sm:h-18 sm:w-18">
+                                                <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-white/90 text-base font-bold text-[#184b91] sm:h-16 sm:w-16">
                                                     {getInitials(profile.name)}
                                                 </div>
                                             )}
 
                                             <div className="min-w-0">
-                                                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-100">Portal pessoal</p>
-                                                <h1 className="mt-2 truncate text-xl font-semibold leading-tight sm:text-2xl">{profile.name}</h1>
-                                                <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-sm text-blue-100">
+                                                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-blue-100">Portal pessoal</p>
+                                                <h1 className="mt-1.5 truncate text-lg font-semibold leading-tight sm:text-xl">{profile.name}</h1>
+                                                <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-xs text-blue-100">
                                                     <span>{profile.member_number ? `Socio #${profile.member_number}` : 'Sem numero de socio'}</span>
                                                     <span>{profile.type}</span>
                                                     <span>{profile.state}</span>
@@ -410,7 +466,7 @@ export default function Profile() {
                                             <button
                                                 type="button"
                                                 onClick={() => navigate(route('portal.profile'))}
-                                                className="rounded-2xl border border-white/20 bg-white/10 px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/20"
+                                                className="rounded-xl border border-white/20 bg-white/10 px-3 py-1.5 text-[11px] font-semibold text-white transition hover:bg-white/20"
                                             >
                                                 Voltar ao meu perfil
                                             </button>
@@ -588,11 +644,15 @@ export default function Profile() {
                                     </div>
                                 </div>
                             ) : (
-                                <InfoGrid items={profile.personal} />
+                                <InfoGrid
+                                    items={profile.personal}
+                                    gridClassName="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
+                                    getItemClassName={personalItemClassName}
+                                />
                             )}
                         </PortalSection>
 
-                        <PortalSection title="Encarregado de educacao / Educandos" description="Relacoes pessoais disponiveis neste portal.">
+                        <PortalSection title="Família" description="Relações familiares disponíveis neste portal.">
                             <div className="space-y-4">
                                 {profile.flags.show_guardians ? (
                                     <div>
@@ -643,35 +703,13 @@ export default function Profile() {
                     </div>
 
                     <div className="space-y-5">
-                        <section id="status" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-1">
-                            <PortalKpiCard label="Estado" value={profile.state} helper={profile.type} icon={ShieldCheck} />
-                            <PortalKpiCard label="Conta corrente" value={profile.financial.current_balance} helper="saldo atual" icon={Wallet} />
+                        <section id="status" className="grid gap-3 sm:grid-cols-2">
+                            <CompactSummaryCard label="Estado" value={profile.state} helper={profile.type} icon={ShieldCheck} />
+                            <CompactSummaryCard label="Conta corrente" value={formatSignedCurrency(profile.financial.account_balance)} valueClassName={amountToneClass(profile.financial.account_balance)} helper="saldo atual" icon={Wallet} />
                         </section>
 
                         <PortalSection title="Estado e permissoes" description="Resumo simplificado do estado do membro.">
                             <InfoGrid items={profile.status} />
-                        </PortalSection>
-
-                        <PortalSection title="Documentos e validacoes" description="Situacao documental atual.">
-                            <div id="documents" className="space-y-3">
-                                {profile.documents.map((document) => (
-                                    <div key={document.label} className="rounded-[24px] border border-slate-200 bg-slate-50/70 p-4">
-                                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                                            <div>
-                                                <p className="text-sm font-semibold text-slate-900">{document.label}</p>
-                                                <p className="mt-1 text-xs text-slate-500">{document.helper}</p>
-                                            </div>
-                                            <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${documentClasses(document.status)}`}>
-                                                {document.state_label}
-                                            </span>
-                                        </div>
-                                        <div className="mt-3 flex items-center gap-2 text-xs text-slate-500">
-                                            <FileText className="h-3.5 w-3.5" />
-                                            <span>{document.meta}</span>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
                         </PortalSection>
 
                         <PortalSection title="Dados desportivos resumidos" description="Informacao desportiva essencial deste perfil.">
@@ -717,8 +755,8 @@ export default function Profile() {
                                 <div className="rounded-[24px] border border-slate-200 bg-slate-50/70 p-4">
                                     <div className="flex items-center justify-between gap-3">
                                         <div>
-                                            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Conta corrente</p>
-                                            <p className="mt-2 text-xl font-semibold text-slate-900">{profile.financial.current_balance}</p>
+                                            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Valor em dívida</p>
+                                            <p className={`mt-2 text-xl font-semibold ${amountToneClass(profile.financial.outstanding_value, 'debt')}`}>{formatSignedCurrency(profile.financial.outstanding_value, 'debt')}</p>
                                         </div>
                                         <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-emerald-700 shadow-sm">
                                             <CreditCard className="h-5 w-5" />
@@ -732,7 +770,7 @@ export default function Profile() {
                                         {profile.financial.next_payment ? (
                                             <>
                                                 <p className="mt-2 text-sm font-semibold text-slate-900">{profile.financial.next_payment.label}</p>
-                                                <p className="mt-1 text-xs text-slate-500">{profile.financial.next_payment.due_date || 'Sem data'} · {profile.financial.next_payment.amount}</p>
+                                                <p className="mt-1 text-xs text-slate-500">{profile.financial.next_payment.due_date || 'Sem data'} · <span className={amountToneClass(profile.financial.next_payment.amount, 'debt')}>{formatSignedCurrency(profile.financial.next_payment.amount, 'debt')}</span></p>
                                                 <p className="mt-2 text-xs font-semibold text-slate-600">{profile.financial.next_payment.state}</p>
                                             </>
                                         ) : (
@@ -745,6 +783,28 @@ export default function Profile() {
                                         <p className="mt-2 text-sm font-semibold text-slate-900">{profile.financial.plan}</p>
                                     </div>
                                 </div>
+                            </div>
+                        </PortalSection>
+
+                        <PortalSection title="Documentos e validacoes" description="Situacao documental atual.">
+                            <div id="documents" className="space-y-3">
+                                {profile.documents.map((document) => (
+                                    <div key={document.label} className="rounded-[24px] border border-slate-200 bg-slate-50/70 p-4">
+                                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                            <div>
+                                                <p className="text-sm font-semibold text-slate-900">{document.label}</p>
+                                                <p className="mt-1 text-xs text-slate-500">{document.helper}</p>
+                                            </div>
+                                            <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${documentClasses(document.status)}`}>
+                                                {document.state_label}
+                                            </span>
+                                        </div>
+                                        <div className="mt-3 flex items-center gap-2 text-xs text-slate-500">
+                                            <FileText className="h-3.5 w-3.5" />
+                                            <span>{document.meta}</span>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         </PortalSection>
                     </div>

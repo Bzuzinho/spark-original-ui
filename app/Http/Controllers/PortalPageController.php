@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Communication\StoreInternalMessageRequest;
+use App\Models\InternalMessage;
 use App\Models\InternalMessageRecipient;
 use App\Models\Invoice;
 use App\Models\LogisticsRequest;
@@ -70,13 +72,45 @@ class PortalPageController extends Controller
         /** @var User $user */
         $user = $request->user();
 
+        $payload = $this->buildCommunicationsPayload($user, $internalCommunicationService);
+        $payload['communicationState'] = [
+            'initialFolder' => $request->string('folder')->value() ?: 'received',
+            'initialMessageId' => $request->string('message')->value() ?: null,
+        ];
+
         return Inertia::render('Portal/Communications', array_merge(
-            $this->buildCommunicationsPayload($user, $internalCommunicationService),
+            $payload,
             [
                 'is_also_admin' => $familyService->userHasAdministratorProfile($user),
                 'has_family' => $familyService->userHasFamily($user),
             ],
         ));
+    }
+
+    public function storeCommunication(
+        StoreInternalMessageRequest $request,
+        InternalCommunicationService $internalCommunicationService,
+    ): RedirectResponse {
+        /** @var User $user */
+        $user = $request->user();
+
+        $recipientIds = collect($request->validated('recipient_ids', []))
+            ->filter(fn ($id) => $id !== $user->id)
+            ->values();
+
+        if ($recipientIds->isEmpty()) {
+            return back()->withErrors([
+                'recipient_ids' => 'Selecione pelo menos um destinatário diferente do utilizador atual.',
+            ]);
+        }
+
+        $payload = $request->validated();
+        $payload['recipient_ids'] = $recipientIds->all();
+        $payload['type'] = $payload['type'] ?? 'info';
+
+        $internalCommunicationService->send($user, $payload);
+
+        return back()->with('success', 'Comunicação interna enviada com sucesso.');
     }
 
     public function markCommunicationRead(
@@ -121,6 +155,48 @@ class PortalPageController extends Controller
         return back()->with('success', 'Comunicado marcado como lido.');
     }
 
+    public function markCommunicationUnread(
+        Request $request,
+        InternalCommunicationService $internalCommunicationService,
+        InAppAlertService $inAppAlertService,
+    ): RedirectResponse {
+        /** @var User $user */
+        $user = $request->user();
+
+        $source = (string) $request->validate([
+            'source' => ['required', 'string', Rule::in(['alert', 'internal'])],
+        ])['source'];
+
+        if ($source === 'alert') {
+            $alertId = (string) $request->validate([
+                'alert_id' => [
+                    'required',
+                    'string',
+                    Rule::exists('in_app_alerts', 'id')->where(fn ($query) => $query->where('user_id', $user->id)),
+                ],
+            ])['alert_id'];
+
+            $inAppAlertService->markAsUnread($alertId, $user->id);
+
+            return back()->with('success', 'Comunicado marcado como não lido.');
+        }
+
+        $recipientEntryId = (string) $request->validate([
+            'recipient_entry_id' => [
+                'required',
+                'string',
+                Rule::exists('internal_message_recipients', 'id')->where(
+                    fn ($query) => $query->where('recipient_id', $user->id)->whereNull('deleted_at')
+                ),
+            ],
+        ])['recipient_entry_id'];
+
+        $recipient = InternalMessageRecipient::query()->findOrFail($recipientEntryId);
+        $internalCommunicationService->markAsUnread($recipient);
+
+        return back()->with('success', 'Comunicado marcado como não lido.');
+    }
+
     public function markAllCommunicationsRead(
         Request $request,
         InternalCommunicationService $internalCommunicationService,
@@ -133,6 +209,60 @@ class PortalPageController extends Controller
         $inAppAlertService->markAllAsRead($user->id);
 
         return back()->with('success', 'Todos os comunicados foram marcados como lidos.');
+    }
+
+    public function destroyReceivedCommunication(
+        Request $request,
+        InternalCommunicationService $internalCommunicationService,
+        InAppAlertService $inAppAlertService,
+    ): RedirectResponse {
+        /** @var User $user */
+        $user = $request->user();
+
+        $source = (string) $request->validate([
+            'source' => ['required', 'string', Rule::in(['alert', 'internal'])],
+        ])['source'];
+
+        if ($source === 'alert') {
+            $alertId = (string) $request->validate([
+                'alert_id' => [
+                    'required',
+                    'string',
+                    Rule::exists('in_app_alerts', 'id')->where(fn ($query) => $query->where('user_id', $user->id)),
+                ],
+            ])['alert_id'];
+
+            $inAppAlertService->deleteForUser($alertId, $user->id);
+
+            return back()->with('success', 'Comunicação removida da caixa de entrada.');
+        }
+
+        $recipientEntryId = (string) $request->validate([
+            'recipient_entry_id' => [
+                'required',
+                'string',
+                Rule::exists('internal_message_recipients', 'id')->where(
+                    fn ($query) => $query->where('recipient_id', $user->id)->whereNull('deleted_at')
+                ),
+            ],
+        ])['recipient_entry_id'];
+
+        $recipient = InternalMessageRecipient::query()->findOrFail($recipientEntryId);
+        $internalCommunicationService->deleteReceived($recipient);
+
+        return back()->with('success', 'Comunicação removida da caixa de entrada.');
+    }
+
+    public function destroySentCommunication(
+        Request $request,
+        InternalMessage $message,
+        InternalCommunicationService $internalCommunicationService,
+    ): RedirectResponse {
+        abort_unless($message->sender_id === $request->user()->id, 403);
+
+        $internalCommunicationService->deleteSent($message);
+
+        return back()->with('success', 'Comunicação removida dos enviados.');
     }
 
     public function shop(Request $request, FamilyService $familyService): Response
@@ -413,7 +543,10 @@ class PortalPageController extends Controller
      */
     private function buildCommunicationsPayload(User $user, InternalCommunicationService $internalCommunicationService): array
     {
-        $items = $internalCommunicationService->receivedFeed($user->id)
+        $receivedFeed = $internalCommunicationService->receivedFeed($user->id);
+        $sentFeed = $internalCommunicationService->sentFeed($user->id);
+
+        $items = $receivedFeed
             ->map(function (array $item) {
                 $category = $this->categorizeCommunication($item);
                 $requiresAction = $this->communicationRequiresAction($item, $category['key']);
@@ -482,10 +615,14 @@ class PortalPageController extends Controller
             ->values();
 
         return [
+            'internalCommunications' => [
+                'received' => $receivedFeed->values()->all(),
+                'sent' => $sentFeed->values()->all(),
+            ],
             'communications' => [
                 'hero' => [
-                    'title' => 'Comunicados',
-                    'unread_label' => $unreadCount === 1 ? '1 comunicado por ler' : sprintf('%d comunicados por ler', $unreadCount),
+                    'title' => 'Comunicações',
+                    'unread_label' => $unreadCount === 1 ? '1 comunicação por ler' : sprintf('%d comunicações por ler', $unreadCount),
                     'action_label' => $this->communicationActionHighlight($actionRequiredCount, $items),
                 ],
                 'kpis' => [
@@ -502,8 +639,8 @@ class PortalPageController extends Controller
                 'categories' => $categories,
                 'items' => $items,
                 'empty_states' => [
-                    'unread' => 'Sem comunicados por ler.',
-                    'recent' => 'Não existem comunicados recentes.',
+                    'unread' => 'Sem comunicações por ler.',
+                    'recent' => 'Não existem comunicações recentes.',
                     'pending' => 'Sem ações pendentes.',
                 ],
             ],
@@ -591,10 +728,10 @@ class PortalPageController extends Controller
         }
 
         if ($actionRequiredCount === 1) {
-            return '1 comunicado exige ação';
+            return '1 comunicação exige ação';
         }
 
-        return sprintf('%d comunicados exigem ação', $actionRequiredCount);
+        return sprintf('%d comunicações exigem ação', $actionRequiredCount);
     }
 
     /**

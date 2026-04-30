@@ -48,10 +48,9 @@ export default function PortalFeaturePage({
             activeNav={activeNav}
             hasFamily={hasFamily}
         >
-            <section className="overflow-hidden rounded-[24px] border border-blue-900/10 bg-[linear-gradient(180deg,rgba(15,87,179,0.96)_0%,rgba(17,76,152,0.94)_100%)] px-4 py-5 text-white shadow-[0_16px_32px_rgba(15,76,152,0.18)] sm:px-5 lg:px-6">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-100">{eyebrow}</p>
-                <h2 className="mt-2 text-2xl font-semibold">{title}</h2>
-                <p className="mt-2 max-w-3xl text-sm text-blue-50">{description}</p>
+            <section className="overflow-hidden rounded-[20px] border border-blue-900/10 bg-[linear-gradient(180deg,rgba(15,87,179,0.96)_0%,rgba(17,76,152,0.94)_100%)] px-3.5 py-4 text-white shadow-[0_14px_28px_rgba(15,76,152,0.16)] sm:px-4 lg:px-5">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-blue-100">{eyebrow}</p>
+                <h2 className="mt-1.5 text-xl font-semibold">{title}</h2>
             </section>
 
             {actions.length > 0 ? (
@@ -74,7 +73,7 @@ export default function PortalFeaturePage({
             ) : (
                 <section className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-[0_12px_28px_rgba(15,23,42,0.04)]">
                     <p className="text-sm text-slate-600">
-                        Esta área já está ligada ao layout e navegação globais do Portal. Os conteúdos específicos podem agora evoluir sem voltar a perder a identidade do clube.
+                        Esta área está pronta para conteúdo específico.
                     </p>
                 </section>
             )}

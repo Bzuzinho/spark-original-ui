@@ -11,6 +11,7 @@ import {
 import PortalKpiCard from '@/Components/Portal/PortalKpiCard';
 import PortalSection from '@/Components/Portal/PortalSection';
 import PortalLayout from '@/Layouts/PortalLayout';
+import { amountToneClass, formatSignedCurrency } from '@/lib/financialDisplay';
 import type { PageProps as SharedPageProps } from '@/types';
 
 interface PaymentStatus {
@@ -99,14 +100,6 @@ const statusClassMap: Record<PaymentStatus['key'], string> = {
     cancelled: 'border-slate-200 bg-slate-100 text-slate-600',
 };
 
-function formatCurrency(value: number): string {
-    return new Intl.NumberFormat('pt-PT', {
-        style: 'currency',
-        currency: 'EUR',
-        maximumFractionDigits: 2,
-    }).format(value || 0);
-}
-
 function formatDate(date: string | null | undefined): string {
     if (!date) {
         return 'Sem data';
@@ -174,7 +167,6 @@ export default function Payments() {
         latest_receipts,
     } = usePage<PageProps>().props;
 
-    const outstandingMovements = movements.filter((movement) => ['pending', 'overdue', 'partial'].includes(movement.status.key));
     const hasDebt = account_current.outstanding_value > 0;
 
     return (
@@ -188,57 +180,54 @@ export default function Payments() {
                 activeNav="payments"
                 hasFamily={has_family}
             >
-                <section className="overflow-hidden rounded-[24px] bg-[linear-gradient(180deg,#0f57b3_0%,#114c98_100%)] px-4 py-5 text-white shadow-[0_16px_32px_rgba(15,76,152,0.2)] sm:px-5">
-                    <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                <section className="overflow-hidden rounded-[20px] bg-[linear-gradient(180deg,#0f57b3_0%,#114c98_100%)] px-3.5 py-4 text-white shadow-[0_14px_28px_rgba(15,76,152,0.18)] sm:px-4">
+                    <div className="flex flex-col items-start gap-3">
                         <div className="max-w-2xl">
-                            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-100">Portal</p>
-                            <h2 className="mt-2 text-2xl font-semibold">{hero.title}</h2>
-                            <div className="mt-3 flex flex-wrap items-center gap-2">
-                                <span className={`rounded-full px-3 py-1 text-xs font-semibold ${hasDebt ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-blue-100">Portal</p>
+                            <h2 className="mt-1.5 text-xl font-semibold">{hero.title}</h2>
+                            <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                                <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${hasDebt ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>
                                     {hero.status}
                                 </span>
-                                {!hasDebt ? <span className="text-sm text-blue-100">Tudo em dia.</span> : null}
+                                {!hasDebt ? <span className="text-xs text-blue-100">Tudo em dia.</span> : null}
                             </div>
-                            <p className="mt-4 text-sm text-blue-50">
-                                Consulte apenas a sua situação financeira: conta corrente, faturas, recibos e próximos pagamentos, sem ferramentas administrativas.
-                            </p>
                         </div>
 
-                        <div className="grid gap-3 rounded-[22px] border border-white/15 bg-white/10 p-4 backdrop-blur sm:min-w-[320px]">
+                        <div className="grid w-full max-w-[22rem] gap-2.5 rounded-[18px] border border-white/15 bg-white/10 p-3.5 backdrop-blur">
                             <div>
-                                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-100">Valor em dívida</p>
-                                <p className="mt-2 text-2xl font-semibold text-white">{formatCurrency(hero.outstanding_value)}</p>
+                                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-blue-100">Valor em dívida</p>
+                                <p className={`mt-1.5 text-xl font-semibold ${amountToneClass(hero.outstanding_value, 'debt', 'dark')}`}>{formatSignedCurrency(hero.outstanding_value, 'debt')}</p>
                             </div>
                             <div>
-                                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-100">Próximo pagamento</p>
+                                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-blue-100">Próximo pagamento</p>
                                 {hero.next_payment ? (
                                     <>
-                                        <p className="mt-2 text-sm font-semibold text-white">{hero.next_payment.label}</p>
-                                        <p className="mt-1 text-sm text-blue-50">{formatFullDate(hero.next_payment.date)} · {formatCurrency(hero.next_payment.amount)}</p>
+                                        <p className="mt-1.5 text-xs font-semibold text-white">{hero.next_payment.label}</p>
+                                        <p className="mt-1 text-xs text-blue-50">{formatFullDate(hero.next_payment.date)} · <span className={amountToneClass(hero.next_payment.amount, 'debt', 'dark')}>{formatSignedCurrency(hero.next_payment.amount, 'debt')}</span></p>
                                     </>
                                 ) : (
-                                    <p className="mt-2 text-sm text-blue-50">Sem pagamentos pendentes.</p>
+                                    <p className="mt-1.5 text-xs text-blue-50">Sem pagamentos pendentes.</p>
                                 )}
                             </div>
-                            <div className="flex flex-wrap gap-2 pt-1">
+                            <div className="flex flex-wrap gap-2 pt-0.5">
                                 <button
                                     type="button"
                                     onClick={() => scrollToSection('latest-receipts')}
-                                    className="inline-flex items-center justify-center rounded-2xl bg-white px-3.5 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-50"
+                                    className="inline-flex items-center justify-center rounded-xl bg-white px-3 py-1.5 text-xs font-semibold text-blue-700 transition hover:bg-blue-50"
                                 >
                                     Ver recibos
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => scrollToSection('movements')}
-                                    className="inline-flex items-center justify-center rounded-2xl border border-white/25 bg-white/10 px-3.5 py-2 text-sm font-semibold text-white transition hover:bg-white/15"
+                                    className="inline-flex items-center justify-center rounded-xl border border-white/25 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-white/15"
                                 >
                                     Histórico
                                 </button>
                                 {secure_payment_enabled && hero.actions.can_pay ? (
                                     <button
                                         type="button"
-                                        className="inline-flex items-center justify-center rounded-2xl border border-lime-200 bg-lime-50 px-3.5 py-2 text-sm font-semibold text-lime-700 transition hover:bg-lime-100"
+                                        className="inline-flex items-center justify-center rounded-xl border border-lime-200 bg-lime-50 px-3 py-1.5 text-xs font-semibold text-lime-700 transition hover:bg-lime-100"
                                     >
                                         Pagar
                                     </button>
@@ -249,8 +238,8 @@ export default function Payments() {
                 </section>
 
                 <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                    <PortalKpiCard label="Valor em dívida" value={formatCurrency(kpis.outstanding_value)} helper="total por regularizar" icon={CreditCard} />
-                    <PortalKpiCard label="Próximo pagamento" value={kpis.next_payment ? formatDate(kpis.next_payment.date) : 'Sem data'} helper={kpis.next_payment ? formatCurrency(kpis.next_payment.amount) : 'Tudo em dia'} icon={CalendarClock} />
+                    <PortalKpiCard label="Valor em dívida" value={formatSignedCurrency(kpis.outstanding_value, 'debt')} valueClassName={amountToneClass(kpis.outstanding_value, 'debt')} helper="total por regularizar" icon={CreditCard} />
+                    <PortalKpiCard label="Próximo pagamento" value={kpis.next_payment ? formatDate(kpis.next_payment.date) : 'Sem data'} helper={kpis.next_payment ? formatSignedCurrency(kpis.next_payment.amount, 'debt') : 'Tudo em dia'} icon={CalendarClock} />
                     <PortalKpiCard label="Plano / mensalidade" value={kpis.plan} helper="configuração atual" icon={FileText} />
                     <PortalKpiCard label="Recibos no ano" value={String(kpis.receipts_this_year)} helper="emitidos este ano" icon={Receipt} />
                 </section>
@@ -269,7 +258,7 @@ export default function Payments() {
                                                 </div>
                                                 <div className="mt-3 grid gap-2 text-sm text-slate-600 sm:grid-cols-2">
                                                     <p><span className="font-medium text-slate-800">Data:</span> {formatFullDate(movement.date)}</p>
-                                                    <p><span className="font-medium text-slate-800">Valor:</span> {formatCurrency(movement.amount)}</p>
+                                                    <p><span className="font-medium text-slate-800">Valor:</span> <span className={amountToneClass(movement.amount, movement.status.key === 'paid' ? 'credit' : 'debt')}>{formatSignedCurrency(movement.amount, movement.status.key === 'paid' ? 'credit' : 'debt')}</span></p>
                                                     <p><span className="font-medium text-slate-800">Referência / recibo:</span> {movement.receipt_number || movement.reference || 'Sem referência'}</p>
                                                     <p><span className="font-medium text-slate-800">Método de pagamento:</span> {movement.payment_method || 'Não disponível'}</p>
                                                     <p className="sm:col-span-2"><span className="font-medium text-slate-800">Vencimento:</span> {formatFullDate(movement.due_date)}</p>
@@ -316,19 +305,19 @@ export default function Payments() {
                                 <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
                                     <div className="rounded-[22px] border border-slate-200 bg-slate-50/70 p-4">
                                         <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Valor em dívida</p>
-                                        <p className="mt-2 text-xl font-semibold text-slate-900">{formatCurrency(account_current.outstanding_value)}</p>
+                                        <p className={`mt-2 text-xl font-semibold ${amountToneClass(account_current.outstanding_value, 'debt')}`}>{formatSignedCurrency(account_current.outstanding_value, 'debt')}</p>
                                     </div>
                                     <div className="rounded-[22px] border border-slate-200 bg-slate-50/70 p-4">
                                         <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Faturas vencidas</p>
                                         <p className="mt-2 text-xl font-semibold text-slate-900">{account_current.overdue_invoices}</p>
-                                        <p className="mt-1 text-sm text-slate-500">{formatCurrency(account_current.overdue_value)}</p>
+                                        <p className={`mt-1 text-sm ${amountToneClass(account_current.overdue_value, 'debt')}`}>{formatSignedCurrency(account_current.overdue_value, 'debt')}</p>
                                     </div>
                                     <div className="rounded-[22px] border border-slate-200 bg-slate-50/70 p-4">
                                         <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Próximo pagamento</p>
                                         {account_current.next_payment ? (
                                             <>
                                                 <p className="mt-2 text-base font-semibold text-slate-900">{account_current.next_payment.label}</p>
-                                                <p className="mt-1 text-sm text-slate-500">{formatFullDate(account_current.next_payment.date)} · {formatCurrency(account_current.next_payment.amount)}</p>
+                                                <p className="mt-1 text-sm text-slate-500">{formatFullDate(account_current.next_payment.date)} · <span className={amountToneClass(account_current.next_payment.amount, 'debt')}>{formatSignedCurrency(account_current.next_payment.amount, 'debt')}</span></p>
                                             </>
                                         ) : (
                                             <p className="mt-2 text-sm text-slate-500">Tudo em dia.</p>
@@ -350,7 +339,7 @@ export default function Payments() {
                                             <div>
                                                 <p className="text-sm font-semibold text-slate-900">{receipt.receipt_number}</p>
                                                 <p className="mt-1 text-xs text-slate-500">{formatFullDate(receipt.date)}</p>
-                                                <p className="mt-2 text-sm font-medium text-slate-700">{formatCurrency(receipt.amount)}</p>
+                                                <p className={`mt-2 text-sm font-medium ${amountToneClass(receipt.amount, 'credit')}`}>{formatSignedCurrency(receipt.amount, 'credit')}</p>
                                             </div>
                                             {receipt.can_view_receipt ? (
                                                 <button type="button" className="inline-flex items-center gap-1 rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100">
@@ -366,23 +355,6 @@ export default function Payments() {
                             </div>
                         </PortalSection>
 
-                        <PortalSection title="Pendências" description="Apenas faturas por regularizar neste portal." actionLabel="Ver lista" onAction={() => scrollToSection('movements')}>
-                            {outstandingMovements.length > 0 ? (
-                                <div className="space-y-2">
-                                    {outstandingMovements.slice(0, 4).map((movement) => (
-                                        <div key={movement.id} className="flex items-start justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
-                                            <div>
-                                                <p className="text-sm font-semibold text-slate-900">{movement.description}</p>
-                                                <p className="mt-1 text-xs text-slate-500">{formatFullDate(movement.due_date)} · {movement.status.label}</p>
-                                            </div>
-                                            <p className="text-sm font-semibold text-slate-900">{formatCurrency(movement.amount)}</p>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <EmptyState message="Não existem faturas pendentes." />
-                            )}
-                        </PortalSection>
                     </div>
                 </section>
             </PortalLayout>

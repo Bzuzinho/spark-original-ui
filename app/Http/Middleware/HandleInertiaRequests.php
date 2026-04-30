@@ -3,6 +3,8 @@
 namespace App\Http\Middleware;
 
 use App\Models\InAppAlert;
+use App\Models\InternalMessageRecipient;
+use App\Models\User;
 use App\Services\AccessControl\UserTypeAccessControlService;
 use App\Services\Club\ClubSettingsService;
 use Illuminate\Http\Request;
@@ -58,6 +60,7 @@ class HandleInertiaRequests extends Middleware
                 : app(UserTypeAccessControlService::class)->getCurrentUserAccess(null),
             'clubSettings' => app(ClubSettingsService::class)->get(),
             'communicationAlerts' => $this->sharedCommunicationAlerts($user),
+            'communicationMembers' => $this->sharedCommunicationMembers($user),
         ];
     }
 
@@ -74,6 +77,23 @@ class HandleInertiaRequests extends Middleware
             'shared:communication_alerts:' . $user->id,
             now()->addSeconds(30),
             function () use ($user) {
+                $recentAlerts = InAppAlert::where('user_id', $user->id)
+                    ->where(function ($query) {
+                        $query->whereNull('visible_from')->orWhere('visible_from', '<=', now());
+                    })
+                    ->where(function ($query) {
+                        $query->whereNull('visible_until')->orWhere('visible_until', '>=', now());
+                    })
+                    ->latest()
+                    ->limit(8)
+                    ->get(['id', 'title', 'message', 'type', 'link', 'is_read', 'created_at']);
+
+                $messageRecipients = InternalMessageRecipient::query()
+                    ->with(['message.sender:id,name,nome_completo'])
+                    ->whereIn('in_app_alert_id', $recentAlerts->pluck('id')->filter()->all())
+                    ->get()
+                    ->keyBy('in_app_alert_id');
+
                 return [
                     'unreadCount' => InAppAlert::where('user_id', $user->id)
                         ->where('is_read', false)
@@ -84,16 +104,24 @@ class HandleInertiaRequests extends Middleware
                             $query->whereNull('visible_until')->orWhere('visible_until', '>=', now());
                         })
                         ->count(),
-                    'recent' => InAppAlert::where('user_id', $user->id)
-                        ->where(function ($query) {
-                            $query->whereNull('visible_from')->orWhere('visible_from', '<=', now());
-                        })
-                        ->where(function ($query) {
-                            $query->whereNull('visible_until')->orWhere('visible_until', '>=', now());
-                        })
-                        ->latest()
-                        ->limit(8)
-                        ->get(['id', 'title', 'message', 'type', 'link', 'is_read', 'created_at']),
+                    'recent' => $recentAlerts->map(function (InAppAlert $alert) use ($messageRecipients) {
+                        $recipient = $messageRecipients->get($alert->id);
+                        $sender = $recipient?->message?->sender;
+
+                        return [
+                            'id' => $alert->id,
+                            'title' => $alert->title,
+                            'message' => $alert->message,
+                            'type' => $alert->type,
+                            'link' => $alert->link,
+                            'is_read' => (bool) $alert->is_read,
+                            'created_at' => optional($alert->created_at)?->toIso8601String(),
+                            'sender' => $sender ? [
+                                'id' => (string) $sender->id,
+                                'name' => $sender->nome_completo ?: $sender->name,
+                            ] : null,
+                        ];
+                    })->values()->all(),
                 ];
             }
         );
@@ -102,5 +130,30 @@ class HandleInertiaRequests extends Middleware
     private function hasInAppAlertsTable(): bool
     {
         return $this->hasInAppAlertsTable ??= Schema::hasTable('in_app_alerts');
+    }
+
+    private function sharedCommunicationMembers($user): array
+    {
+        if (! $user) {
+            return [];
+        }
+
+        return Cache::remember(
+            'shared:communication_members',
+            now()->addMinutes(5),
+            fn () => User::query()
+                ->select(['id', 'numero_socio', 'nome_completo', 'name', 'email'])
+                ->orderByRaw('COALESCE(nome_completo, name)')
+                ->get()
+                ->map(fn (User $member) => [
+                    'id' => (string) $member->id,
+                    'numero_socio' => $member->numero_socio,
+                    'nome_completo' => $member->nome_completo,
+                    'name' => $member->name,
+                    'email' => $member->email,
+                ])
+                ->values()
+                ->all(),
+        );
     }
 }

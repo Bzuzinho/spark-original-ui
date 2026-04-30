@@ -115,12 +115,9 @@ export default function Base() {
                 activeNav="dashboard"
                 hasFamily={has_family}
             >
-                <section className="overflow-hidden rounded-[24px] bg-[linear-gradient(180deg,#0f57b3_0%,#114c98_100%)] px-4 py-4 text-white shadow-[0_16px_32px_rgba(15,76,152,0.22)]">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-100">Portal Base</p>
-                    <h2 className="mt-2 text-2xl font-semibold">A Minha Área</h2>
-                    <p className="mt-2 max-w-2xl text-sm text-blue-50">
-                        Entrada simplificada para utilizadores sem perfil desportivo específico. A partir daqui pode aceder às rotas comuns do Portal mantendo sempre a identidade do clube.
-                    </p>
+                <section className="overflow-hidden rounded-[20px] bg-[linear-gradient(180deg,#0f57b3_0%,#114c98_100%)] px-3.5 py-3.5 text-white shadow-[0_14px_28px_rgba(15,76,152,0.18)]">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-blue-100">Portal Base</p>
+                    <h2 className="mt-1.5 text-xl font-semibold">A Minha Área</h2>
                 </section>
 
                 <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">

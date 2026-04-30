@@ -88,7 +88,7 @@ const mainMenuItems = [
     { id: 'eventos', moduleKey: 'eventos', label: 'Eventos', icon: CalendarBlank, route: '/eventos' },
     { id: 'financeiro', moduleKey: 'financeiro', label: 'Financeiro', icon: CurrencyCircleDollar, route: '/financeiro' },
     { id: 'logistica', moduleKey: 'logistica', label: 'Logística', icon: Package, route: '/logistica' },
-    { id: 'loja', moduleKey: 'loja', label: 'Loja', icon: ShoppingCart, route: '/loja' },
+    { id: 'loja', moduleKey: 'loja', label: 'Loja', icon: ShoppingCart, route: '/admin/loja' },
     { id: 'patrocinios', moduleKey: 'patrocinios', label: 'Patrocínios', icon: Handshake, route: '/patrocinios' },
     { id: 'comunicacao', moduleKey: 'comunicacao', label: 'Comunicação', icon: Envelope, route: '/comunicacao' },
     { id: 'marketing', moduleKey: 'marketing', label: 'Marketing', icon: MegaphoneSimple, route: '/campanhas-marketing' },

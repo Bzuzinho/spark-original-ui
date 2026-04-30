@@ -220,7 +220,7 @@ class PortalEventController extends Controller
             ->get()
             ->groupBy('evento_id');
 
-        $cards = $convocations
+        $cards = collect($convocations->all())
             ->map(function (EventConvocation $convocation) use ($groupsByEvent, $member) {
                 return $this->mapCardFromConvocation($convocation, $groupsByEvent->get($convocation->evento_id, collect()), $member);
             })

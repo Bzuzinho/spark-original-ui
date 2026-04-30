@@ -16,9 +16,11 @@ use App\Models\SupplierPurchase;
 use App\Models\User;
 use App\Jobs\ProcessCommunicationCampaignJob;
 use App\Services\Communication\CommunicationCampaignService;
+use Illuminate\Support\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
@@ -352,6 +354,50 @@ class CommunicationFlowsTest extends TestCase
         $this->assertStringContainsString('invoice:', $campaign->notes ?? '');
         $this->assertSame('enviada', $campaign->status);
         $this->assertSame([$recipient->id], $campaign->segment?->rules_json['user_ids'] ?? []);
+    }
+
+    public function test_future_invoice_creation_defers_automatic_communication_until_visible(): void
+    {
+        Mail::fake();
+
+        Carbon::setTestNow('2025-04-10 10:00:00');
+
+        try {
+            $recipient = User::factory()->create([
+                'tipo_membro' => ['atleta'],
+            ]);
+
+            $invoice = Invoice::create([
+                'user_id' => $recipient->id,
+                'data_fatura' => '2025-05-01',
+                'mes' => 'Maio',
+                'data_emissao' => now()->toDateString(),
+                'data_vencimento' => now()->addMonth()->toDateString(),
+                'valor_total' => 45.50,
+                'oculta' => true,
+                'estado_pagamento' => 'pendente',
+                'tipo' => 'mensalidade',
+            ]);
+
+            $this->assertSame(0, CommunicationCampaign::query()->count());
+
+            Carbon::setTestNow('2025-05-01 09:00:00');
+
+            Artisan::call('comunicacao:libertar-alertas-faturas');
+
+            $campaign = CommunicationCampaign::query()->latest('created_at')->first();
+
+            $this->assertNotNull($campaign);
+            $this->assertSame('Nova fatura disponível', $campaign->alert_title);
+            $this->assertStringContainsString('origem: invoice:' . $invoice->id, $campaign->notes ?? '');
+            $this->assertSame([$recipient->id], $campaign->segment?->rules_json['user_ids'] ?? []);
+
+            Artisan::call('comunicacao:libertar-alertas-faturas');
+
+            $this->assertSame(1, CommunicationCampaign::query()->count());
+        } finally {
+            Carbon::setTestNow();
+        }
     }
 
     public function test_invoice_automation_prefers_dedicated_templates_when_available(): void

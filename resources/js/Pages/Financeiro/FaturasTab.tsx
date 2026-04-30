@@ -1202,7 +1202,7 @@ export function FaturasTab({
                       <SelectTrigger>
                         <SelectValue placeholder="Escolher utilizador" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="max-h-72">
                         {(users || []).length === 0 ? (
                           <div className="px-2 py-6 text-center text-sm text-muted-foreground">
                             Nenhum utilizador disponivel

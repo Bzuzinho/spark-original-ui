@@ -20,6 +20,10 @@ return Application::configure(basePath: dirname(__DIR__))
         \App\Console\Commands\AuditarTrainingSessions::class,
         \App\Console\Commands\MigrarPresencasLegacy::class,
         \App\Console\Commands\BenchmarkModulesPerformance::class,
+        \App\Console\Commands\CatalogBackfillStoreProductsIntoProducts::class,
+        \App\Console\Commands\CatalogAuditBackfillMappings::class,
+        \App\Console\Commands\CatalogResetBackfillFixtures::class,
+        \App\Console\Commands\ReleaseVisibleInvoiceCommunications::class,
         \App\Console\Commands\SyncPermissionNodes::class,
     ])
     ->withMiddleware(function (Middleware $middleware) {

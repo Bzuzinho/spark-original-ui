@@ -410,7 +410,7 @@ class PortalDocumentController extends Controller
     private function buildAlerts(Collection $documents): array
     {
         $items = $documents
-            ->filter(fn (array $document) => in_array(data_get($document, 'status.key'), ['expired', 'expiring'], true))
+            ->filter(fn (array $document) => in_array(data_get($document, 'status.key'), ['pending', 'expired', 'expiring'], true))
             ->sortBy(fn (array $document) => $this->alertPriorityScore((string) ($document['type'] ?? ''), (string) data_get($document, 'status.key')))
             ->values()
             ->map(fn (array $document) => [

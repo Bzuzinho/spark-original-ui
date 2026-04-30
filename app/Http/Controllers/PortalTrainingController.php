@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\TrainingAthlete;
 use App\Models\User;
+use App\Models\Training;
 use App\Services\AccessControl\UserTypeAccessControlService;
 use App\Services\Desportivo\UpdateTrainingAthleteAction;
 use App\Services\Family\FamilyService;
@@ -93,15 +94,61 @@ class PortalTrainingController extends Controller
      */
     private function trainingRecordsForUser(User $user): Collection
     {
+        $this->ensureTrainingRecordsForUser($user);
+
         return TrainingAthlete::query()
             ->with([
                 'training:id,numero_treino,data,hora_inicio,hora_fim,local,tipo_treino,volume_planeado_m,descricao_treino,notas_gerais,escaloes',
+                'training.ageGroups:id,nome',
+                'training.series:id,treino_id,ordem,descricao_texto,distancia_total_m,zona_intensidade,estilo,repeticoes,intervalo,observacoes',
             ])
             ->where('user_id', $user->id)
             ->get()
             ->filter(fn (TrainingAthlete $record) => $record->training !== null)
             ->sortBy(fn (TrainingAthlete $record) => $this->trainingSortKey($record))
             ->values();
+    }
+
+    private function ensureTrainingRecordsForUser(User $user): void
+    {
+        $ageGroupIds = collect(is_array($user->escalao) ? $user->escalao : [$user->escalao])
+            ->push($user->athleteSportsData?->escalao_id)
+            ->filter(fn ($value) => filled($value))
+            ->map(fn ($value) => (string) $value)
+            ->unique()
+            ->values();
+
+        if ($ageGroupIds->isEmpty()) {
+            return;
+        }
+
+        $eligibleTrainings = Training::query()
+            ->select('id', 'criado_por')
+            ->whereHas('ageGroups', fn ($query) => $query->whereIn('age_groups.id', $ageGroupIds))
+            ->whereDoesntHave('athleteRecords', fn ($query) => $query->where('user_id', $user->id))
+            ->get();
+
+        if ($eligibleTrainings->isEmpty()) {
+            return;
+        }
+
+        foreach ($eligibleTrainings as $training) {
+            TrainingAthlete::query()->firstOrCreate(
+                [
+                    'treino_id' => $training->id,
+                    'user_id' => $user->id,
+                ],
+                [
+                    'presente' => false,
+                    'estado' => 'ausente',
+                    'volume_real_m' => null,
+                    'rpe' => null,
+                    'observacoes_tecnicas' => null,
+                    'registado_por' => $training->criado_por,
+                    'registado_em' => now(),
+                ],
+            );
+        }
     }
 
     private function buildSummary(Collection $records): array
@@ -148,7 +195,8 @@ class PortalTrainingController extends Controller
             'time_label' => $this->formatTimeRange($training?->hora_inicio, $training?->hora_fim),
             'location' => $training?->local ?: 'Local por definir',
             'title' => $training?->descricao_treino ?: ($training?->tipo_treino ?: 'Treino agendado'),
-            'group_label' => $this->groupLabel($training?->escaloes),
+            'description' => $training?->descricao_treino,
+            'group_label' => $this->groupLabel($training?->ageGroups?->pluck('nome')->all() ?: $training?->escaloes),
             'planned_meters' => $plannedMeters,
             'planned_meters_label' => $this->formatMeters($plannedMeters),
             'final_meters' => $finalMeters,
@@ -156,6 +204,17 @@ class PortalTrainingController extends Controller
             'completion_percent' => $completion,
             'coach_note' => $record->observacoes_tecnicas,
             'plan_note' => $training?->notas_gerais,
+            'series' => $training?->series?->map(fn ($series) => [
+                'id' => $series->id,
+                'ordem' => $series->ordem,
+                'descricao_texto' => $series->descricao_texto,
+                'distancia_total_m' => $series->distancia_total_m,
+                'zona_intensidade' => $series->zona_intensidade,
+                'estilo' => $series->estilo,
+                'repeticoes' => $series->repeticoes,
+                'intervalo' => $series->intervalo,
+                'observacoes' => $series->observacoes,
+            ])->values()->all() ?? [],
             'status' => $status,
             'permissions' => [
                 'can_confirm_presence' => $this->canConfirmPresence($record),
@@ -181,6 +240,8 @@ class PortalTrainingController extends Controller
     {
         $status = strtolower(trim((string) ($record->estado ?? '')));
         $isPastOrToday = $record->training?->data?->isPast() || $record->training?->data?->isToday();
+        $plannedMeters = (int) ($record->training?->volume_planeado_m ?? 0);
+        $completedMeters = $record->volume_real_m;
 
         return match (true) {
             in_array($status, ['justificado', 'ausencia_justificada'], true) => [
@@ -188,7 +249,17 @@ class PortalTrainingController extends Controller
                 'label' => 'Ausência justificada',
                 'tone' => 'warning',
             ],
-            $isPastOrToday && $record->presente && $record->volume_real_m !== null => [
+            $record->presente && $completedMeters !== null && $completedMeters === 0 => [
+                'key' => 'not_completed',
+                'label' => 'Não concluído',
+                'tone' => 'danger',
+            ],
+            $record->presente && $completedMeters !== null && $plannedMeters > 0 && $completedMeters < $plannedMeters => [
+                'key' => 'incomplete',
+                'label' => 'Incompleto',
+                'tone' => 'warning',
+            ],
+            $record->presente && $completedMeters !== null => [
                 'key' => 'completed',
                 'label' => 'Concluído',
                 'tone' => 'success',
@@ -219,7 +290,7 @@ class PortalTrainingController extends Controller
             return false;
         }
 
-        return !in_array($this->displayStatus($record)['key'], ['confirmed', 'completed'], true);
+        return !in_array($this->displayStatus($record)['key'], ['confirmed', 'completed', 'incomplete', 'not_completed'], true);
     }
 
     private function canJustifyAbsence(TrainingAthlete $record): bool
@@ -235,12 +306,6 @@ class PortalTrainingController extends Controller
 
     private function canCorrectVolume(TrainingAthlete $record): bool
     {
-        $trainingDate = $record->training?->data;
-
-        if ($trainingDate === null || $trainingDate->isFuture()) {
-            return false;
-        }
-
         return $record->presente || in_array(strtolower((string) $record->estado), ['presente', 'limitado'], true);
     }
 

@@ -31,7 +31,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Textarea } from '@/Components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/Components/ui/tooltip';
 
-interface MemberOption {
+export interface MemberOption {
     id: string;
     numero_socio?: string;
     nome_completo?: string;
@@ -46,7 +46,7 @@ interface ReplyTo {
     sender_name: string;
 }
 
-interface ReceivedCommunication {
+export interface ReceivedCommunication {
     recipient_entry_id: string | null;
     message_id: string;
     folder: 'received';
@@ -76,7 +76,7 @@ interface SentRecipient {
     deleted_at: string | null;
 }
 
-interface SentCommunication {
+export interface SentCommunication {
     message_id: string;
     folder: 'sent';
     subject: string;
@@ -89,7 +89,7 @@ interface SentCommunication {
 }
 
 type CommunicationType = 'info' | 'warning' | 'success' | 'error';
-type MailboxFolder = 'received' | 'sent';
+export type MailboxFolder = 'received' | 'sent';
 type CommunicationItem = ReceivedCommunication | SentCommunication;
 
 interface PageProps {
@@ -110,6 +110,7 @@ interface Props {
     initialMessageId?: string | null;
     readOnly?: boolean;
     ownerLabel?: string;
+    context?: 'member' | 'portal';
 }
 
 const typeOptions: Array<{ value: CommunicationType; label: string }> = [
@@ -166,6 +167,7 @@ export default function CommunicationsTab({
     initialMessageId = null,
     readOnly = false,
     ownerLabel,
+    context = 'member',
 }: Props) {
     const { auth } = usePage<PageProps>().props;
     const currentUserId = auth.user ? String(auth.user.id) : null;
@@ -228,15 +230,32 @@ export default function CommunicationsTab({
     const unreadCount = communications.received.filter((item) => !item.is_read).length;
     const sentCount = communications.sent.length;
     const ownerReference = ownerLabel || 'o utilizador atual';
+    const reloadProps = context === 'portal'
+        ? ['internalCommunications', 'communications', 'communicationAlerts', 'flash']
+        : ['internalCommunications', 'communicationAlerts', 'flash'];
+    const formReloadProps = [...reloadProps, 'errors'];
 
     const markReceivedAsRead = (item: ReceivedCommunication) => {
+        if (context === 'portal') {
+            router.post(route('portal.communications.read'), {
+                source: item.source === 'alert' ? 'alert' : 'internal',
+                alert_id: item.alert_id,
+                recipient_entry_id: item.recipient_entry_id,
+            }, {
+                preserveScroll: true,
+                preserveState: true,
+                only: reloadProps,
+            });
+            return;
+        }
+
         if (item.source === 'alert' && item.alert_id) {
             router.post(route('comunicacao.alerts.markRead'), {
                 alert_id: item.alert_id,
             }, {
                 preserveScroll: true,
                 preserveState: true,
-                only: ['internalCommunications', 'communicationAlerts', 'flash'],
+                only: reloadProps,
             });
             return;
         }
@@ -248,7 +267,7 @@ export default function CommunicationsTab({
         router.post(route('membros.comunicacoes.recebidas.read', item.recipient_entry_id), {}, {
             preserveScroll: true,
             preserveState: true,
-            only: ['internalCommunications', 'communicationAlerts', 'flash'],
+            only: reloadProps,
         });
     };
 
@@ -284,10 +303,10 @@ export default function CommunicationsTab({
     };
 
     const submitCompose = () => {
-        form.post(route('membros.comunicacoes.store'), {
+        form.post(route(context === 'portal' ? 'portal.communications.store' : 'membros.comunicacoes.store'), {
             preserveScroll: true,
             preserveState: true,
-            only: ['internalCommunications', 'communicationAlerts', 'flash', 'errors'],
+            only: formReloadProps,
             onSuccess: () => {
                 setComposeOpen(false);
                 setFolder('sent');
@@ -317,13 +336,26 @@ export default function CommunicationsTab({
     };
 
     const markAsUnread = (item: ReceivedCommunication) => {
+        if (context === 'portal') {
+            router.post(route('portal.communications.unread'), {
+                source: item.source === 'alert' ? 'alert' : 'internal',
+                alert_id: item.alert_id,
+                recipient_entry_id: item.recipient_entry_id,
+            }, {
+                preserveScroll: true,
+                preserveState: true,
+                only: reloadProps,
+            });
+            return;
+        }
+
         if (item.source === 'alert' && item.alert_id) {
             router.post(route('comunicacao.alerts.markUnread'), {
                 alert_id: item.alert_id,
             }, {
                 preserveScroll: true,
                 preserveState: true,
-                only: ['internalCommunications', 'communicationAlerts', 'flash'],
+                only: reloadProps,
             });
             return;
         }
@@ -335,16 +367,35 @@ export default function CommunicationsTab({
         router.post(route('membros.comunicacoes.recebidas.unread', item.recipient_entry_id), {}, {
             preserveScroll: true,
             preserveState: true,
-            only: ['internalCommunications', 'communicationAlerts', 'flash'],
+            only: reloadProps,
         });
     };
 
     const deleteReceived = (item: ReceivedCommunication) => {
+        if (context === 'portal') {
+            router.delete(route('portal.communications.received.destroy'), {
+                data: {
+                    source: item.source === 'alert' ? 'alert' : 'internal',
+                    alert_id: item.alert_id,
+                    recipient_entry_id: item.recipient_entry_id,
+                },
+                preserveScroll: true,
+                preserveState: true,
+                only: reloadProps,
+                onSuccess: () => {
+                    if (viewedItem?.message_id === item.message_id) {
+                        setViewedItem(null);
+                    }
+                },
+            });
+            return;
+        }
+
         if (item.source === 'alert' && item.alert_id) {
             router.delete(route('comunicacao.alerts.destroy', item.alert_id), {
                 preserveScroll: true,
                 preserveState: true,
-                only: ['internalCommunications', 'communicationAlerts', 'flash'],
+                only: reloadProps,
                 onSuccess: () => {
                     if (viewedItem?.message_id === item.message_id) {
                         setViewedItem(null);
@@ -361,7 +412,7 @@ export default function CommunicationsTab({
         router.delete(route('membros.comunicacoes.recebidas.destroy', item.recipient_entry_id), {
             preserveScroll: true,
             preserveState: true,
-            only: ['internalCommunications', 'communicationAlerts', 'flash'],
+            only: reloadProps,
             onSuccess: () => {
                 if (viewedItem?.message_id === item.message_id) {
                     setViewedItem(null);
@@ -371,10 +422,10 @@ export default function CommunicationsTab({
     };
 
     const deleteSent = (item: SentCommunication) => {
-        router.delete(route('membros.comunicacoes.enviadas.destroy', item.message_id), {
+        router.delete(route(context === 'portal' ? 'portal.communications.sent.destroy' : 'membros.comunicacoes.enviadas.destroy', item.message_id), {
             preserveScroll: true,
             preserveState: true,
-            only: ['internalCommunications', 'flash'],
+            only: context === 'portal' ? reloadProps : ['internalCommunications', 'flash'],
             onSuccess: () => {
                 if (viewedItem?.message_id === item.message_id) {
                     setViewedItem(null);

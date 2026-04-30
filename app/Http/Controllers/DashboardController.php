@@ -9,6 +9,7 @@ use App\Models\UserType;
 use App\Models\AgeGroup;
 use App\Models\Event;
 use App\Models\EventAttendance;
+use App\Models\EventConvocation;
 use App\Models\Invoice;
 use App\Models\Result;
 use App\Models\Presence;
@@ -18,6 +19,7 @@ use App\Models\UserDocument;
 use App\Services\Performance\AuthenticatedModuleWarmupService;
 use App\Services\AccessControl\UserTypeAccessControlService;
 use App\Services\Family\FamilyService;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -298,15 +300,23 @@ class DashboardController extends Controller
             ->orderByRaw('COALESCE(users.nome_completo, users.name)')
             ->get();
 
+        $paymentMemberIds = $educandos->pluck('id')
+            ->push($user->id)
+            ->filter()
+            ->unique()
+            ->values();
         $educandoIds = $educandos->pluck('id')->filter()->values();
 
-        $pagamentos = $educandoIds->isEmpty()
+        $pagamentos = $paymentMemberIds->isEmpty()
             ? collect()
             : Invoice::query()
                 ->with(['user:id,name,nome_completo'])
-                ->whereIn('user_id', $educandoIds)
+                ->whereIn('user_id', $paymentMemberIds)
                 ->where('oculta', false)
-                ->where('estado_pagamento', '!=', 'pago')
+                ->where(function ($query) {
+                    $query->whereNull('estado_pagamento')
+                        ->orWhereNotIn('estado_pagamento', ['pago', 'cancelado']);
+                })
                 ->orderByRaw('CASE WHEN data_vencimento IS NULL THEN 1 ELSE 0 END')
                 ->orderBy('data_vencimento')
                 ->take(6)
@@ -333,14 +343,14 @@ class DashboardController extends Controller
                 ->values()
                 ->take(6);
 
-        $convocatoriasPendentes = $educandoIds->isEmpty()
+        $convocatoriasPendentes = $paymentMemberIds->isEmpty()
             ? collect()
             : EventAttendance::query()
                 ->with([
                     'user:id,name,nome_completo',
                     'event:id,titulo,data_inicio,hora_inicio,local,tipo,estado',
                 ])
-                ->whereIn('user_id', $educandoIds)
+                ->whereIn('user_id', $paymentMemberIds)
                 ->whereHas('event', function ($query) {
                     $query->whereDate('data_inicio', '>=', now()->toDateString())
                         ->where('estado', '!=', 'cancelado');
@@ -355,11 +365,11 @@ class DashboardController extends Controller
                 ->values()
                 ->take(6);
 
-        $documentosAlerta = $educandoIds->isEmpty()
+        $documentosAlerta = $paymentMemberIds->isEmpty()
             ? collect()
             : UserDocument::query()
                 ->with(['user:id,name,nome_completo'])
-                ->whereIn('user_id', $educandoIds)
+            ->whereIn('user_id', $paymentMemberIds)
                 ->whereNotNull('expiry_date')
                 ->whereDate('expiry_date', '<=', now()->addDays(30)->toDateString())
                 ->orderBy('expiry_date')
@@ -501,19 +511,25 @@ class DashboardController extends Controller
         $familyService = app(FamilyService::class);
         $uid = $user->id;
 
-        $proximo_treino = Cache::remember("athlete_dashboard:{$uid}:next_training", 60, function () use ($user) {
-            $training = Training::query()
-                ->whereHas('athleteRecords', fn ($query) => $query->where('user_id', $user->id))
-                ->whereDate('data', '>=', now()->toDateString())
-                ->orderBy('data')
-                ->orderBy('hora_inicio')
-                ->first(['id', 'numero_treino', 'data', 'hora_inicio', 'hora_fim', 'local', 'tipo_treino', 'escaloes']);
+        $trainingRecords = Cache::remember("athlete_dashboard:{$uid}:training_records", 60, function () use ($user) {
+            return $this->dashboardTrainingRecordsForUser($user);
+        });
 
-            if (! $training) {
+        $upcomingTrainings = $trainingRecords
+            ->filter(fn (TrainingAthlete $record) => $record->training?->data?->isToday() || $record->training?->data?->isFuture())
+            ->values();
+
+        $proximo_treino = Cache::remember("athlete_dashboard:{$uid}:next_training", 60, function () use ($upcomingTrainings) {
+            $record = $upcomingTrainings->first();
+
+            if (! $record || ! $record->training) {
                 return null;
             }
 
-            $escaloes = collect($training->escaloes ?? [])->filter()->values()->all();
+            $training = $record->training;
+            $escaloes = $training->ageGroups?->pluck('nome')
+                ?? collect($training->escaloes ?? []);
+            $escaloes = collect($escaloes)->filter()->values()->all();
 
             return [
                 'id' => $training->id,
@@ -528,39 +544,30 @@ class DashboardController extends Controller
             ];
         });
 
-        $proximos_eventos = Cache::remember("athlete_dashboard:{$uid}:events", 60, function () use ($user) {
-            $attendedEventIds = EventAttendance::where('user_id', $user->id)
-                ->pluck('evento_id');
-
-            return Event::whereIn('id', $attendedEventIds)
-                ->where('data_inicio', '>=', now()->toDateString())
-                ->where('estado', '!=', 'cancelado')
-                ->orderBy('data_inicio')
-                ->take(5)
-                ->get(['id', 'titulo', 'data_inicio', 'hora_inicio', 'local', 'estado', 'tipo'])
-                ->map(fn ($e) => [
-                    'id'          => $e->id,
-                    'titulo'      => $e->titulo,
-                    'data_inicio' => $e->data_inicio?->toDateString(),
-                    'hora_inicio' => $e->hora_inicio,
-                    'local'       => $e->local,
-                    'estado'      => $e->estado,
-                    'tipo'        => $e->tipo,
+        $proximos_eventos = Cache::remember("athlete_dashboard:{$uid}:events:v2", 60, function () use ($user) {
+            return $this->dashboardUpcomingEventItemsForUser($user)
+                ->sortBy([
+                    ['data_inicio', 'asc'],
+                    ['hora_inicio', 'asc'],
+                    ['titulo', 'asc'],
                 ])
+                ->take(5)
                 ->values()
                 ->all();
         });
 
-        $attendanceSummary = Cache::remember("athlete_dashboard:{$uid}:attendance", 60, function () use ($user) {
-            $baseQuery = TrainingAthlete::query()
-                ->where('user_id', $user->id)
-                ->whereHas('training', function ($query) {
-                    $query->whereYear('data', now()->year)
-                        ->whereMonth('data', now()->month);
-                });
+        $attendanceSummary = Cache::remember("athlete_dashboard:{$uid}:attendance", 60, function () use ($trainingRecords) {
+            $monthStart = now()->startOfMonth()->toDateString();
+            $monthEnd = now()->endOfMonth()->toDateString();
 
-            $scheduled = (clone $baseQuery)->count();
-            $present = (clone $baseQuery)->where('presente', true)->count();
+            $monthRecords = $trainingRecords->filter(function (TrainingAthlete $record) use ($monthStart, $monthEnd) {
+                $trainingDate = $record->training?->data?->toDateString();
+
+                return $trainingDate !== null && $trainingDate >= $monthStart && $trainingDate <= $monthEnd;
+            });
+
+            $scheduled = $monthRecords->count();
+            $present = $monthRecords->where('presente', true)->count();
 
             return [
                 'scheduled' => $scheduled,
@@ -595,12 +602,31 @@ class DashboardController extends Controller
                 ->all();
         });
 
-        $treinos_mes = Cache::remember("athlete_dashboard:{$uid}:presences", 60, function () use ($user) {
-            return Presence::where('user_id', $user->id)
-                ->whereMonth('data', now()->month)
-                ->whereYear('data', now()->year)
-                ->where('is_legacy', false)
-                ->count();
+        $treinos_mes = Cache::remember("athlete_dashboard:{$uid}:presences", 60, function () use ($attendanceSummary) {
+            return $attendanceSummary['scheduled'];
+        });
+
+        $contaCorrente = Cache::remember("athlete_dashboard:{$uid}:current_account", 60, function () use ($user) {
+            $pendingAmount = Invoice::query()
+                ->where('user_id', $user->id)
+                ->where('oculta', false)
+                ->get()
+                ->filter(function (Invoice $invoice) {
+                    if (! in_array($invoice->estado_pagamento, ['pendente', 'vencido', 'parcial'], true)) {
+                        return false;
+                    }
+
+                    if (! $invoice->data_fatura) {
+                        return true;
+                    }
+
+                    return $invoice->data_fatura->startOfDay()->lte(now()->startOfDay());
+                })
+                ->sum('valor_total');
+
+            $manualBalance = (float) ($user->dadosFinanceiros?->conta_corrente_manual ?? 0);
+
+            return round((float) $pendingAmount + $manualBalance, 2);
         });
 
         $proxima_mensalidade_pendente = Cache::remember("athlete_dashboard:{$uid}:pending_invoice", 60, function () use ($user) {
@@ -642,7 +668,10 @@ class DashboardController extends Controller
         });
 
         $escaloes = $user->escalao ?? [];
-        $escalao  = $escaloes[0] ?? null;
+        $escalaoId = $escaloes[0] ?? null;
+        $escalao = $escalaoId
+            ? AgeGroup::query()->whereKey($escalaoId)->value('nome') ?? $escalaoId
+            : null;
 
         $athlete = [
             'name'          => $this->displayName($user),
@@ -650,7 +679,7 @@ class DashboardController extends Controller
             'numero_socio'  => $user->numero_socio,
             'foto_perfil'   => $user->foto_perfil,
             'estado'        => $user->estado,
-            'conta_corrente' => $user->conta_corrente,
+            'conta_corrente' => $contaCorrente,
         ];
 
         $isAlsoAdmin = (bool) ($overrides['is_also_admin'] ?? $this->userHasAdministratorProfile($user));
@@ -688,5 +717,136 @@ class DashboardController extends Controller
     private function userHasAdministratorProfile(User $user): bool
     {
         return $this->normalizeTypeIdentifier((string) $user->perfil) === 'admin';
+    }
+
+    /**
+     * @return Collection<int, TrainingAthlete>
+     */
+    private function dashboardTrainingRecordsForUser(User $user): Collection
+    {
+        $this->ensureDashboardTrainingRecordsForUser($user);
+
+        return TrainingAthlete::query()
+            ->with([
+                'training:id,numero_treino,data,hora_inicio,hora_fim,local,tipo_treino,descricao_treino,escaloes',
+                'training.ageGroups:id,nome',
+            ])
+            ->where('user_id', $user->id)
+            ->get()
+            ->filter(fn (TrainingAthlete $record) => $record->training !== null)
+            ->sortBy(fn (TrainingAthlete $record) => sprintf(
+                '%s %s',
+                $record->training?->data?->toDateString() ?? '9999-12-31',
+                $record->training?->hora_inicio ?? '23:59'
+            ))
+            ->values();
+    }
+
+    private function ensureDashboardTrainingRecordsForUser(User $user): void
+    {
+        $ageGroupIds = collect(is_array($user->escalao) ? $user->escalao : [$user->escalao])
+            ->push($user->athleteSportsData?->escalao_id)
+            ->filter(fn ($value) => filled($value))
+            ->map(fn ($value) => (string) $value)
+            ->unique()
+            ->values();
+
+        if ($ageGroupIds->isEmpty()) {
+            return;
+        }
+
+        $eligibleTrainings = Training::query()
+            ->select('id', 'criado_por')
+            ->whereHas('ageGroups', fn ($query) => $query->whereIn('age_groups.id', $ageGroupIds))
+            ->whereDoesntHave('athleteRecords', fn ($query) => $query->where('user_id', $user->id))
+            ->get();
+
+        if ($eligibleTrainings->isEmpty()) {
+            return;
+        }
+
+        foreach ($eligibleTrainings as $training) {
+            TrainingAthlete::query()->firstOrCreate(
+                [
+                    'treino_id' => $training->id,
+                    'user_id' => $user->id,
+                ],
+                [
+                    'presente' => false,
+                    'estado' => 'ausente',
+                    'volume_real_m' => null,
+                    'rpe' => null,
+                    'observacoes_tecnicas' => null,
+                    'registado_por' => $training->criado_por,
+                    'registado_em' => now(),
+                ],
+            );
+        }
+    }
+
+    /**
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function dashboardUpcomingEventItemsForUser(User $user): Collection
+    {
+        $today = now()->toDateString();
+        $convocations = EventConvocation::query()
+            ->with(['event:id,titulo,data_inicio,hora_inicio,local,tipo,estado'])
+            ->where('user_id', $user->id)
+            ->whereHas('event', function ($query) use ($today) {
+                $query->whereDate('data_inicio', '>=', $today)
+                    ->where('estado', '!=', 'cancelado');
+            })
+            ->get()
+            ->filter(fn (EventConvocation $convocation) => $convocation->event !== null)
+            ->values();
+
+        $convocationEventIds = $convocations->pluck('evento_id')->filter()->unique()->values()->all();
+        $memberAgeGroupIds = collect(is_array($user->escalao) ? $user->escalao : [$user->escalao])
+            ->push($user->athleteSportsData?->escalao_id)
+            ->filter(fn ($value) => filled($value))
+            ->map(fn ($value) => (string) $value)
+            ->unique()
+            ->values()
+            ->all();
+
+        $informativeEvents = empty($memberAgeGroupIds)
+            ? collect()
+            : Event::query()
+                ->with(['ageGroups:id,nome'])
+                ->where('estado', '!=', 'cancelado')
+                ->whereDate('data_inicio', '>=', $today)
+                ->whereNotIn('id', $convocationEventIds)
+                ->where(function ($query) use ($memberAgeGroupIds) {
+                    foreach ($memberAgeGroupIds as $ageGroupId) {
+                        $query->orWhereHas('ageGroups', fn ($ageGroupQuery) => $ageGroupQuery->where('age_groups.id', $ageGroupId));
+                    }
+                })
+                ->orderBy('data_inicio')
+                ->orderBy('hora_inicio')
+                ->get();
+
+        return collect($convocations
+            ->map(fn (EventConvocation $convocation) => [
+                'id' => 'event-' . $convocation->event->id,
+                'titulo' => $convocation->event->titulo,
+                'data_inicio' => $convocation->event->data_inicio?->toDateString(),
+                'hora_inicio' => $convocation->event->hora_inicio,
+                'local' => $convocation->event->local,
+                'estado' => $convocation->event->estado,
+                'tipo' => $convocation->event->tipo,
+            ])
+            ->all())
+            ->merge($informativeEvents->map(fn (Event $event) => [
+                'id' => 'informative-event-' . $event->id,
+                'titulo' => $event->titulo,
+                'data_inicio' => $event->data_inicio?->toDateString(),
+                'hora_inicio' => $event->hora_inicio,
+                'local' => $event->local,
+                'estado' => $event->estado,
+                'tipo' => $event->tipo,
+            ])->all())
+            ->unique('id')
+            ->values();
     }
 }

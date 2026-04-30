@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AgeGroup;
 use App\Models\Invoice;
+use App\Models\MonthlyFee;
 use App\Models\User;
 use App\Models\UserType;
 use App\Services\AccessControl\UserTypeAccessControlService;
@@ -42,6 +44,11 @@ class PortalProfileController extends Controller
             ->with([
                 'encarregados:id,nome_completo,name,numero_socio,foto_perfil,estado,tipo_membro,menor',
                 'educandos:id,nome_completo,name,numero_socio,foto_perfil,estado,tipo_membro,menor',
+                'userTypes:id,codigo,nome,ativo',
+                'athleteSportsData:id,user_id,escalao_id',
+                'athleteSportsData.escalao:id,nome',
+                'dadosFinanceiros:id,user_id,mensalidade_id,conta_corrente_manual',
+                'dadosFinanceiros.mensalidade:id,designacao',
             ])
             ->findOrFail($requestedMemberId);
 
@@ -143,16 +150,23 @@ class PortalProfileController extends Controller
         $isAthlete = $this->hasMemberType($member, 'atleta');
         $isSocio = $this->hasMemberType($member, 'socio');
         $isGuardian = $this->hasMemberType($member, 'encarregado_educacao') || $this->hasMemberType($member, 'encarregado');
-        $memberTypeLabel = $this->memberTypeLabel($member);
+        $memberTypeLabels = $this->memberTypeLabels($member);
+        $memberTypeLabel = implode(' · ', $memberTypeLabels);
         $attestationStatus = $this->dateStatus($member->data_atestado_medico, true);
-        $ageGroup = $this->primaryValue($member->escalao);
-        $nextInvoice = Invoice::query()
+        $ageGroup = $this->resolveAgeGroupLabel($member);
+        $openInvoices = Invoice::query()
             ->where('user_id', $member->id)
             ->where('oculta', false)
             ->where('estado_pagamento', '!=', 'pago')
             ->orderByRaw('CASE WHEN data_vencimento IS NULL THEN 1 ELSE 0 END')
             ->orderBy('data_vencimento')
-            ->first();
+            ->get();
+        $nextInvoice = $openInvoices->first();
+        $outstandingValue = round((float) $openInvoices->sum('valor_total'), 2);
+        $accountBalance = $member->dadosFinanceiros?->conta_corrente_manual ?? $member->conta_corrente;
+        $planName = $member->dadosFinanceiros?->mensalidade?->designacao
+            ?: $this->resolveMonthlyFeeName($member->tipo_mensalidade)
+            ?: $this->displayValue(optional($nextInvoice)->tipo);
 
         return [
             'id' => $member->id,
@@ -205,8 +219,7 @@ class PortalProfileController extends Controller
             'status' => [
                 ['label' => 'Estado', 'value' => $this->humanizeState($member->estado)],
                 ['label' => 'Número de sócio', 'value' => $this->displayValue($member->numero_socio)],
-                ['label' => 'Tipo de membro', 'value' => $memberTypeLabel],
-                ['label' => 'Escalão', 'value' => $this->displayValue($ageGroup)],
+                ['label' => 'Tipos de membro', 'value' => $this->displayValue($memberTypeLabel)],
             ],
             'guardians' => $member->encarregados
                 ->map(fn (User $guardian) => $this->mapRelatedMember($guardian, $viewer))
@@ -236,14 +249,15 @@ class PortalProfileController extends Controller
                 ['label' => 'Estado desportivo', 'value' => $member->ativo_desportivo ? 'Ativo' : 'Inativo'],
             ],
             'financial' => [
-                'current_balance' => $this->formatCurrency($member->conta_corrente),
+                'account_balance' => $this->formatCurrency($accountBalance),
+                'outstanding_value' => $this->formatCurrency($outstandingValue),
                 'next_payment' => $nextInvoice ? [
                     'label' => $this->displayValue($nextInvoice->mes ?: $nextInvoice->tipo ?: 'Próximo pagamento'),
                     'due_date' => $this->formatDate($nextInvoice->data_vencimento),
                     'amount' => $this->formatCurrency($nextInvoice->valor_total),
                     'state' => $this->humanizeInvoiceState($nextInvoice->estado_pagamento),
                 ] : null,
-                'plan' => $this->displayValue($member->tipo_mensalidade ?: optional($nextInvoice)->tipo),
+                'plan' => $this->displayValue($planName),
             ],
             'flags' => [
                 'is_athlete' => $isAthlete,
@@ -349,19 +363,97 @@ class PortalProfileController extends Controller
 
     private function memberTypeLabel(User $member): string
     {
-        if ($this->hasMemberType($member, 'atleta')) {
-            return 'Atleta';
+        return implode(' · ', $this->memberTypeLabels($member));
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function memberTypeLabels(User $member): array
+    {
+        $relationLabels = $member->relationLoaded('userTypes')
+            ? $member->userTypes
+                ->filter(fn (UserType $userType) => $userType->ativo)
+                ->map(fn (UserType $userType) => trim((string) ($userType->nome ?: $userType->codigo)))
+                ->filter()
+                ->values()
+                ->all()
+            : [];
+
+        $fallbackLabels = collect($member->tipo_membro ?? [])
+            ->filter()
+            ->map(fn ($type) => $this->humanizeMemberType($type))
+            ->values()
+            ->all();
+
+        $labels = collect([...$relationLabels, ...$fallbackLabels])
+            ->map(fn (string $label) => trim($label))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        return $labels !== [] ? $labels : ['Membro'];
+    }
+
+    private function humanizeMemberType(mixed $value): string
+    {
+        $normalized = Str::of((string) $value)
+            ->lower()
+            ->ascii()
+            ->replaceMatches('/[^a-z0-9]+/', '_')
+            ->trim('_')
+            ->value();
+
+        return match ($normalized) {
+            'atleta' => 'Atleta',
+            'encarregado_educacao', 'encarregado' => 'Encarregado',
+            'socio' => 'Sócio',
+            default => $value ? Str::headline((string) $value) : 'Membro',
+        };
+    }
+
+    private function resolveAgeGroupLabel(User $member): ?string
+    {
+        $sportsAgeGroup = $member->athleteSportsData?->escalao?->nome;
+        if (filled($sportsAgeGroup)) {
+            return trim((string) $sportsAgeGroup);
         }
 
-        if ($this->hasMemberType($member, 'encarregado_educacao') || $this->hasMemberType($member, 'encarregado')) {
-            return 'Encarregado';
+        $rawAgeGroupIds = collect(is_array($member->escalao) ? $member->escalao : [$member->escalao])
+            ->filter()
+            ->map(fn ($value) => (string) $value)
+            ->values();
+
+        if ($rawAgeGroupIds->isEmpty()) {
+            return null;
         }
 
-        if ($this->hasMemberType($member, 'socio')) {
-            return 'Sócio';
+        $resolvedNames = AgeGroup::query()
+            ->whereIn('id', $rawAgeGroupIds->all())
+            ->pluck('nome')
+            ->filter()
+            ->values();
+
+        if ($resolvedNames->isNotEmpty()) {
+            return $resolvedNames->implode(' · ');
         }
 
-        return 'Membro';
+        return $this->primaryValue($member->escalao);
+    }
+
+    private function resolveMonthlyFeeName(mixed $value): ?string
+    {
+        $rawValue = $this->primaryValue($value);
+        if (! filled($rawValue)) {
+            return null;
+        }
+
+        $monthlyFeeName = MonthlyFee::query()
+            ->where('id', $rawValue)
+            ->value('designacao');
+
+        return $monthlyFeeName ?: $rawValue;
     }
 
     private function hasMemberType(User $member, string $expected): bool

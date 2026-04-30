@@ -7,11 +7,9 @@ import {
     CircleDot,
     Clock3,
     FileText,
-    MapPin,
     Megaphone,
     ShieldAlert,
     Trophy,
-    UserCheck,
 } from 'lucide-react';
 import PortalKpiCard from '@/Components/Portal/PortalKpiCard';
 import PortalSection from '@/Components/Portal/PortalSection';
@@ -114,7 +112,6 @@ interface PortalEventsProps {
         }>;
         alerts: string[];
     };
-    next_trip: EventCard | null;
     recent_history: EventCard[];
     is_also_admin: boolean;
     has_family: boolean;
@@ -133,7 +130,6 @@ export default function Events() {
         hero_card,
         active_items,
         response_state,
-        next_trip,
         recent_history,
         is_also_admin,
         has_family,
@@ -188,41 +184,36 @@ export default function Events() {
                 activeNav="events"
                 hasFamily={has_family}
             >
-                <section className="overflow-hidden rounded-[28px] border border-blue-900/10 bg-[linear-gradient(180deg,rgba(30,98,193,0.96)_0%,rgba(20,75,154,0.92)_100%)] px-4 py-5 text-white shadow-[0_18px_36px_rgba(20,75,154,0.18)] sm:px-5 lg:px-6">
-                    <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+                <section className="overflow-hidden rounded-[20px] border border-blue-900/10 bg-[linear-gradient(180deg,rgba(30,98,193,0.96)_0%,rgba(20,75,154,0.92)_100%)] px-3.5 py-4 text-white shadow-[0_14px_28px_rgba(20,75,154,0.16)] sm:px-4 lg:px-5">
+                    <div className="flex flex-col items-start gap-3">
                         <div className="max-w-2xl">
-                            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-100">Portal</p>
-                            <h2 className="mt-2 text-2xl font-semibold">Convocatórias e Eventos</h2>
-                            <p className="mt-2 text-sm text-blue-50">
-                                {view_mode === 'family'
-                                    ? 'Vista agregada da família para acompanhar convocatórias e eventos dos membros autorizados.'
-                                    : 'Vista simples para consultar agenda pessoal, confirmações e logística de provas, estágios, reuniões e outras deslocações do clube.'}
-                            </p>
-                            <p className="mt-3 text-sm text-blue-100">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-blue-100">Portal</p>
+                            <h2 className="mt-1.5 text-xl font-semibold">Convocatórias e Eventos</h2>
+                            <p className="mt-2 text-xs text-blue-100">
                                 {view_mode === 'family' ? 'A acompanhar:' : 'Perfil ativo:'} <span className="font-semibold text-white">{selected_profile.name}</span> · {selected_profile.type}
                             </p>
                         </div>
 
-                        <div className="w-full max-w-md rounded-[24px] border border-white/15 bg-white/10 p-4 backdrop-blur">
+                        <div className="w-full max-w-[22rem] rounded-[18px] border border-white/15 bg-white/10 p-3.5 backdrop-blur">
                             {highlightCard ? (
                                 <>
                                     <div className="flex items-start justify-between gap-3">
                                         <div>
-                                            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-100">
+                                            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-blue-100">
                                                 {highlightCard.status.key === 'pending' ? 'Convocatória pendente' : 'Próximo destaque'}
                                             </p>
-                                            <h3 className="mt-2 text-lg font-semibold text-white">{highlightCard.title}</h3>
+                                            <h3 className="mt-1.5 text-base font-semibold text-white">{highlightCard.title}</h3>
                                         </div>
                                         <StatusBadge status={highlightCard.status} />
                                     </div>
-                                    <p className="mt-3 text-sm text-blue-50">{highlightCard.date.full_label}</p>
-                                    <p className="mt-1 text-sm text-blue-50">{highlightCard.location.name}</p>
-                                    <div className="mt-4 flex flex-wrap gap-2">
+                                    <p className="mt-2.5 text-xs text-blue-50">{highlightCard.date.full_label}</p>
+                                    <p className="mt-1 text-xs text-blue-50">{highlightCard.location.name}</p>
+                                    <div className="mt-3 flex flex-wrap gap-2">
                                         {highlightCard.actions.can_confirm ? (
                                             <button
                                                 type="button"
                                                 onClick={() => submitAction(highlightCard, 'confirm_presence')}
-                                                className="inline-flex items-center justify-center rounded-2xl bg-white px-3.5 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-50"
+                                                className="inline-flex items-center justify-center rounded-xl bg-white px-3 py-1.5 text-xs font-semibold text-blue-700 transition hover:bg-blue-50"
                                             >
                                                 Confirmar presença
                                             </button>
@@ -230,7 +221,7 @@ export default function Events() {
                                         <button
                                             type="button"
                                             onClick={() => setExpandedCardId(highlightCard.id)}
-                                            className="inline-flex items-center justify-center rounded-2xl border border-white/30 px-3.5 py-2 text-sm font-semibold text-white transition hover:bg-white/10"
+                                            className="inline-flex items-center justify-center rounded-xl border border-white/30 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-white/10"
                                         >
                                             Ver detalhes
                                         </button>
@@ -241,7 +232,7 @@ export default function Events() {
                                                     setExpandedCardId(highlightCard.id);
                                                     setJustifyingCardId(highlightCard.id);
                                                 }}
-                                                className="inline-flex items-center justify-center rounded-2xl border border-white/20 bg-white/10 px-3.5 py-2 text-sm font-semibold text-white transition hover:bg-white/15"
+                                                className="inline-flex items-center justify-center rounded-xl border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-white/15"
                                             >
                                                 Justificar ausência
                                             </button>
@@ -249,7 +240,7 @@ export default function Events() {
                                     </div>
                                 </>
                             ) : (
-                                <p className="text-sm text-blue-50">Sem eventos próximos.</p>
+                                <p className="text-xs text-blue-50">Sem eventos próximos.</p>
                             )}
                         </div>
                     </div>
@@ -409,19 +400,6 @@ export default function Events() {
                                     ))}
                                 </div>
                             </div>
-                        </PortalSection>
-
-                        <PortalSection title="Próxima deslocação" description="Resumo rápido do ponto de encontro e transporte.">
-                            {next_trip ? (
-                                <div className="space-y-3">
-                                    <ResponseMetric icon={MapPin} label="Ponto de encontro" value={next_trip.trip.meeting_point || 'Por definir'} />
-                                    <ResponseMetric icon={Clock3} label="Hora de saída" value={next_trip.trip.departure_time || 'Por definir'} />
-                                    <ResponseMetric icon={CircleDot} label="Transporte" value={next_trip.trip.transport || 'Sem transporte definido'} />
-                                    <ResponseMetric icon={UserCheck} label="Regresso previsto" value={next_trip.trip.return_estimate || 'Sem previsão'} />
-                                </div>
-                            ) : (
-                                <EmptyState icon={MapPin} label="Sem eventos próximos." />
-                            )}
                         </PortalSection>
 
                         <PortalSection title="Histórico recente" description="Eventos passados e respetivo estado de participação.">

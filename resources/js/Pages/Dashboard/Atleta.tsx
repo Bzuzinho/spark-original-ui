@@ -2,11 +2,9 @@ import { Head, router, usePage } from '@inertiajs/react';
 import type { LucideIcon } from 'lucide-react';
 import {
     CalendarDays,
-    ChevronRight,
     CreditCard,
     Dumbbell,
     FileText,
-    House,
     IdCard,
     MessageCircle,
     Megaphone,
@@ -18,6 +16,7 @@ import PortalCard from '@/Components/Portal/PortalCard';
 import PortalKpiCard from '@/Components/Portal/PortalKpiCard';
 import PortalSection from '@/Components/Portal/PortalSection';
 import PortalLayout from '@/Layouts/PortalLayout';
+import { amountToneClass, formatSignedCurrency } from '@/lib/financialDisplay';
 import { portalRoutes } from '@/lib/portalRoutes';
 import type { ClubSettingsProps, PageProps as SharedPageProps } from '@/types';
 
@@ -169,20 +168,6 @@ function parseNumber(value: string | number | null | undefined): number | null {
     return Number.isFinite(parsed) ? parsed : null;
 }
 
-function formatCurrency(value: string | number | null | undefined): string {
-    const parsed = parseNumber(value);
-
-    if (parsed === null) {
-        return '0,00 €';
-    }
-
-    return new Intl.NumberFormat('pt-PT', {
-        style: 'currency',
-        currency: 'EUR',
-        maximumFractionDigits: 2,
-    }).format(parsed);
-}
-
 function formatDate(dateStr: string | null | undefined, options?: Intl.DateTimeFormatOptions): string {
     if (!dateStr) {
         return 'Sem data';
@@ -233,11 +218,9 @@ export default function Atleta() {
         clubSettings,
         accessControl,
         communicationAlerts,
-        proximo_treino,
         proximos_eventos = [],
         ultimos_resultados = [],
         mensalidades = [],
-        proxima_mensalidade_pendente,
         resumo,
         modulos_visiveis = [],
         is_also_admin = false,
@@ -252,13 +235,9 @@ export default function Atleta() {
     const memberId = String(props.user?.id ?? auth.user?.id ?? '');
     const currentProfile = portal_context_label || accessControl?.currentUserType?.nome?.trim() || (is_atleta ? 'Atleta' : perfil_tipos[0] || 'Portal');
     const currentBalance = parseNumber(resumo?.conta_corrente ?? athlete.conta_corrente);
-    const nextEvent = proximos_eventos[0] ?? null;
     const recentAlerts = (communicationAlerts?.recent ?? []).slice(0, 3);
     const upcomingEvents = proximos_eventos.slice(0, 2);
     const recentResults = ultimos_resultados.slice(0, 2);
-    const pendingInvoice = proxima_mensalidade_pendente
-        ?? mensalidades.find((invoice) => (invoice.estado ?? '').toLowerCase() !== 'pago')
-        ?? null;
 
     const dashboardHref = portalRoutes.dashboard;
     const memberProfileHref = portalRoutes.profile;
@@ -306,7 +285,9 @@ export default function Atleta() {
         ...(has_family && family_portal_url ? [{
             key: 'familia',
             title: 'Família',
-            description: family_summary?.educandos ? `${family_summary.educandos} educando(s)` : 'Área familiar',
+            description: family_summary
+                ? `${family_summary.educandos} educando(s) · ${family_summary.total_elementos} membro(s)`
+                : 'Área familiar',
             icon: Users,
             href: family_portal_url,
             accentClass: 'bg-rose-50 text-rose-600',
@@ -345,60 +326,6 @@ export default function Atleta() {
         },
     ];
 
-    const nextAction = (() => {
-        if (proximo_treino) {
-            return {
-                eyebrow: 'Próximo treino',
-                title: formatDateTime(proximo_treino.data, proximo_treino.hora_inicio),
-                badge: 'Sessão agendada',
-                lineOne: proximo_treino.numero_treino ? `Treino ${proximo_treino.numero_treino}` : 'Treino planeado',
-                lineTwo: [proximo_treino.local, proximo_treino.grupo_label || proximo_treino.tipo_treino].filter(Boolean).join(' • '),
-                cta: 'Ver detalhes',
-                href: trainingsHref,
-                icon: Dumbbell,
-            };
-        }
-
-        if (nextEvent) {
-            return {
-                eyebrow: 'Próxima ação',
-                title: nextEvent.titulo,
-                badge: nextEvent.estado?.trim() || 'Agendado',
-                lineOne: formatDateTime(nextEvent.data_inicio, nextEvent.hora_inicio),
-                lineTwo: nextEvent.local || nextEvent.tipo || 'Local por definir',
-                cta: 'Ver agenda',
-                href: convocationsHref,
-                icon: CalendarDays,
-            };
-        }
-
-        if (pendingInvoice) {
-            return {
-                eyebrow: 'Pagamento pendente',
-                title: pendingInvoice.mes || formatInvoiceState(pendingInvoice.estado),
-                badge: formatInvoiceState(pendingInvoice.estado),
-                lineOne: formatCurrency(pendingInvoice.valor),
-                lineTwo: pendingInvoice.data_vencimento ? `Vencimento ${formatDate(pendingInvoice.data_vencimento, { day: '2-digit', month: 'short' })}` : 'Consulte a sua conta corrente',
-                cta: 'Ver pagamentos',
-                href: paymentsHref,
-                icon: CreditCard,
-            };
-        }
-
-        return {
-            eyebrow: 'Próxima ação',
-            title: 'Acompanhar a sua área pessoal',
-            badge: 'Portal ativo',
-            lineOne: 'Consulte agenda, pagamentos e comunicados num só lugar.',
-            lineTwo: 'Tudo o que precisa, sem entrar na área administrativa.',
-            cta: 'Atualizar área',
-            href: dashboardHref,
-            icon: House,
-        };
-    })();
-
-    const NextActionIcon = nextAction.icon;
-
     const kpis: Array<{ label: string; value: string; helper: string; icon: LucideIcon }> = [
         {
             label: 'Treinos',
@@ -414,7 +341,7 @@ export default function Atleta() {
         },
         {
             label: 'Conta Corrente',
-            value: formatCurrency(currentBalance),
+            value: formatSignedCurrency(currentBalance, 'debt'),
             helper: 'Saldo atual',
             icon: CreditCard,
         },
@@ -479,32 +406,6 @@ export default function Atleta() {
                                     ) : null}
                                 </div>
                             </div>
-
-                            <button
-                                type="button"
-                                onClick={() => handleVisit(nextAction.href)}
-                                className="group flex w-full items-center justify-between gap-2 rounded-[16px] border border-white/15 bg-white/10 px-2.5 py-2 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur"
-                            >
-                                <div className="flex min-w-0 items-center gap-2">
-                                    <div className="flex h-7.5 w-7.5 shrink-0 items-center justify-center rounded-lg bg-white/12 md:h-8 md:w-8">
-                                        <NextActionIcon className="h-4 w-4 text-white" />
-                                    </div>
-
-                                    <div className="min-w-0">
-                                        <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-blue-100">{nextAction.eyebrow}</p>
-                                        <div className="mt-0.5 flex flex-wrap items-center gap-1">
-                                            <h3 className="text-sm font-semibold leading-none text-white md:text-[0.95rem]">{nextAction.title}</h3>
-                                            <span className="rounded-full bg-orange-50 px-1.5 py-0.5 text-[9px] font-semibold text-orange-600">{nextAction.badge}</span>
-                                        </div>
-                                        <p className="mt-0.5 text-[11px] text-blue-50 md:text-xs">{nextAction.lineOne}</p>
-                                        <p className="mt-0.5 text-[11px] text-blue-100/90 md:text-xs">{nextAction.lineTwo}</p>
-                                    </div>
-                                </div>
-
-                                <div className="hidden shrink-0 rounded-lg border border-white/20 bg-white/10 px-2 py-1.5 text-[11px] font-semibold text-white transition group-hover:bg-white/15 sm:block">
-                                    {nextAction.cta}
-                                </div>
-                            </button>
                         </div>
                     </div>
                 </section>
@@ -516,7 +417,7 @@ export default function Atleta() {
                         </div>
                         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                             {kpis.map((item) => (
-                                <PortalKpiCard key={item.label} label={item.label} value={item.value} helper={item.helper} icon={item.icon} />
+                                <PortalKpiCard key={item.label} label={item.label} value={item.value} valueClassName={item.label === 'Conta Corrente' ? amountToneClass(currentBalance, 'debt') : undefined} helper={item.helper} icon={item.icon} />
                             ))}
                         </div>
                     </div>

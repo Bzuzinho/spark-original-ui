@@ -2,6 +2,7 @@
 
 namespace App\Services\Communication;
 
+use App\Models\CommunicationCampaign;
 use App\Models\CommunicationTemplate;
 use App\Models\EventConvocation;
 use App\Models\Invoice;
@@ -27,6 +28,10 @@ class CommunicationAutomationService
             return;
         }
 
+        if (!$this->invoiceCommunicationShouldBeVisible($invoice) || $this->invoiceCommunicationAlreadyDispatched($invoice)) {
+            return;
+        }
+
         $invoice->loadMissing('user');
 
         $subject = sprintf('Nova fatura emitida - %s', $invoice->mes ?: $invoice->tipo);
@@ -48,6 +53,31 @@ class CommunicationAutomationService
                 'alert_app' => ['Automação Financeiro - Fatura App'],
             ]),
         ], 'invoice', $invoice->id);
+    }
+
+    public function releaseVisibleInvoiceCommunications(): int
+    {
+        if (!$this->canRun() || !$this->automationEnabled('automacoes_financeiro') || !$this->automationEnabled('automacoes_faturas_financeiras') || !$this->automationEnabled('alertas_pagamento')) {
+            return 0;
+        }
+
+        $released = 0;
+
+        Invoice::query()
+            ->whereNotNull('user_id')
+            ->orderBy('data_fatura')
+            ->chunkById(100, function (Collection $invoices) use (&$released) {
+                foreach ($invoices as $invoice) {
+                    if (!$this->invoiceCommunicationShouldBeVisible($invoice) || $this->invoiceCommunicationAlreadyDispatched($invoice)) {
+                        continue;
+                    }
+
+                    $this->triggerInvoiceIssued($invoice);
+                    $released++;
+                }
+            }, 'id');
+
+        return $released;
     }
 
     public function triggerMovementIssued(Movement $movement): void
@@ -296,6 +326,22 @@ class CommunicationAutomationService
                 'message' => $exception->getMessage(),
             ]);
         }
+    }
+
+    private function invoiceCommunicationShouldBeVisible(Invoice $invoice): bool
+    {
+        if (!$invoice->data_fatura) {
+            return true;
+        }
+
+        return $invoice->data_fatura->startOfDay()->lte(now()->startOfDay());
+    }
+
+    private function invoiceCommunicationAlreadyDispatched(Invoice $invoice): bool
+    {
+        return CommunicationCampaign::query()
+            ->where('notes', 'like', sprintf('%%origem: invoice:%s%%', $invoice->id))
+            ->exists();
     }
 
     private function canRun(): bool

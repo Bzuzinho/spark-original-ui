@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\EventAttendance;
+use App\Models\EventConvocation;
 use App\Models\Familia;
 use App\Models\Invoice;
 use App\Models\TrainingAthlete;
@@ -40,6 +40,13 @@ class FamilyPortalController extends Controller
 
         abort_if($families->isEmpty(), 403);
 
+        $visibleFamilyMemberIds = $families
+            ->flatMap(fn (array $family) => collect($family['members'] ?? []))
+            ->filter(fn (array $member) => ($member['can_view'] ?? false) && filled($member['id'] ?? null))
+            ->pluck('id')
+            ->unique()
+            ->values();
+
         $educandos = $families
             ->flatMap(fn (array $family) => collect($family['members'] ?? []))
             ->filter(function (array $member) use ($user) {
@@ -52,19 +59,21 @@ class FamilyPortalController extends Controller
 
         $educandoIds = $educandos->pluck('id')->filter()->values();
 
-        $pagamentos = $educandoIds->isEmpty()
+        $pendingPayments = $visibleFamilyMemberIds->isEmpty()
             ? collect()
             : Invoice::query()
                 ->with(['user:id,name,nome_completo'])
-                ->whereIn('user_id', $educandoIds)
+                ->whereIn('user_id', $visibleFamilyMemberIds)
                 ->where('oculta', false)
-                ->where('estado_pagamento', '!=', 'pago')
+                ->where(function ($query) {
+                    $query->whereNull('estado_pagamento')
+                        ->orWhereNotIn('estado_pagamento', ['pago', 'cancelado']);
+                })
                 ->orderByRaw('CASE WHEN data_vencimento IS NULL THEN 1 ELSE 0 END')
                 ->orderBy('data_vencimento')
-                ->take(6)
                 ->get();
 
-        $proximosTreinos = $educandoIds->isEmpty()
+        $upcomingTrainings = $educandoIds->isEmpty()
             ? collect()
             : TrainingAthlete::query()
                 ->with([
@@ -82,46 +91,51 @@ class FamilyPortalController extends Controller
                     $record->training?->data?->toDateString() ?? '9999-12-31',
                     $record->training?->hora_inicio ?? '23:59'
                 ))
-                ->values()
-                ->take(6);
+                ->values();
 
-        $convocatoriasPendentes = $educandoIds->isEmpty()
+        $pendingConvocations = $visibleFamilyMemberIds->isEmpty()
             ? collect()
-            : EventAttendance::query()
+            : EventConvocation::query()
                 ->with([
                     'user:id,name,nome_completo',
                     'event:id,titulo,data_inicio,hora_inicio,local,tipo,estado',
                 ])
-                ->whereIn('user_id', $educandoIds)
+                ->whereIn('user_id', $visibleFamilyMemberIds)
+                ->where('estado_confirmacao', 'pendente')
+                ->whereNull('data_resposta')
                 ->whereHas('event', function ($query) {
                     $query->whereDate('data_inicio', '>=', now()->toDateString())
+                        ->where('tipo', 'treino')
                         ->where('estado', '!=', 'cancelado');
                 })
                 ->get()
-                ->filter(fn (EventAttendance $attendance) => $attendance->event !== null)
-                ->sortBy(fn (EventAttendance $attendance) => sprintf(
+                ->filter(fn (EventConvocation $convocation) => $convocation->event !== null)
+                ->sortBy(fn (EventConvocation $convocation) => sprintf(
                     '%s %s',
-                    $attendance->event?->data_inicio?->toDateString() ?? '9999-12-31',
-                    $attendance->event?->hora_inicio ?? '23:59'
+                    $convocation->event?->data_inicio?->toDateString() ?? '9999-12-31',
+                    $convocation->event?->hora_inicio ?? '23:59'
                 ))
-                ->values()
-                ->take(6);
+                ->values();
 
-        $documentosAlerta = $educandoIds->isEmpty()
+        $documentAlerts = $visibleFamilyMemberIds->isEmpty()
             ? collect()
             : UserDocument::query()
                 ->with(['user:id,name,nome_completo'])
-                ->whereIn('user_id', $educandoIds)
+            ->whereIn('user_id', $visibleFamilyMemberIds)
                 ->whereNotNull('expiry_date')
                 ->whereDate('expiry_date', '<=', now()->addDays(30)->toDateString())
                 ->orderBy('expiry_date')
-                ->take(6)
                 ->get();
 
-        $pagamentosPorEducando = $pagamentos->groupBy('user_id');
-        $treinosPorEducando = $proximosTreinos->groupBy('user_id');
-        $convocatoriasPorEducando = $convocatoriasPendentes->groupBy('user_id');
-        $documentosPorEducando = $documentosAlerta->groupBy('user_id');
+        $pagamentos = $pendingPayments->take(6)->values();
+        $proximosTreinos = $upcomingTrainings->take(6)->values();
+        $convocatoriasPendentes = $pendingConvocations->take(6)->values();
+        $documentosAlerta = $documentAlerts->take(6)->values();
+
+        $pagamentosPorEducando = $pendingPayments->groupBy('user_id');
+        $treinosPorEducando = $upcomingTrainings->groupBy('user_id');
+        $convocatoriasPorEducando = $pendingConvocations->groupBy('user_id');
+        $documentosPorEducando = $documentAlerts->groupBy('user_id');
 
         $educandosPayload = $educandos->map(function (array $educando) use (
             $pagamentosPorEducando,
@@ -173,11 +187,11 @@ class FamilyPortalController extends Controller
             'educandos' => $educandosPayload,
             'familySummary' => [
                 'total_educandos' => (int) $familyService->familySummary($user)['educandos'],
-                'pagamentos_pendentes' => $pagamentos->count(),
-                'pagamentos_pendentes_valor' => (float) $pagamentos->sum('valor_total'),
-                'convocatorias_pendentes' => $convocatoriasPendentes->count(),
-                'proximos_treinos' => $proximosTreinos->count(),
-                'documentos_alerta' => $documentosAlerta->count(),
+                'pagamentos_pendentes' => $pendingPayments->count(),
+                'pagamentos_pendentes_valor' => (float) $pendingPayments->sum('valor_total'),
+                'convocatorias_pendentes' => $pendingConvocations->count(),
+                'proximos_treinos' => $upcomingTrainings->count(),
+                'documentos_alerta' => $documentAlerts->count(),
             ],
             'pagamentos' => $pagamentos->map(fn (Invoice $invoice) => [
                 'id' => $invoice->id,
@@ -188,15 +202,15 @@ class FamilyPortalController extends Controller
                 'estado' => $invoice->estado_pagamento,
                 'data_vencimento' => $invoice->data_vencimento?->toDateString(),
             ])->values()->all(),
-            'convocatorias_pendentes' => $convocatoriasPendentes->map(fn (EventAttendance $attendance) => [
-                'id' => $attendance->id,
-                'user_id' => $attendance->user_id,
-                'user_name' => $this->displayName($attendance->user),
-                'title' => $attendance->event?->titulo,
-                'date' => $attendance->event?->data_inicio?->toDateString(),
-                'time' => $attendance->event?->hora_inicio,
-                'location' => $attendance->event?->local,
-                'type' => $attendance->event?->tipo,
+            'convocatorias_pendentes' => $convocatoriasPendentes->map(fn (EventConvocation $convocation) => [
+                'id' => $convocation->id,
+                'user_id' => $convocation->user_id,
+                'user_name' => $this->displayName($convocation->user),
+                'title' => $convocation->event?->titulo,
+                'date' => $convocation->event?->data_inicio?->toDateString(),
+                'time' => $convocation->event?->hora_inicio,
+                'location' => $convocation->event?->local,
+                'type' => $convocation->event?->tipo,
             ])->values()->all(),
             'proximos_treinos' => $proximosTreinos->map(fn (TrainingAthlete $record) => [
                 'id' => $record->id,
